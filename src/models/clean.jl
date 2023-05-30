@@ -69,7 +69,7 @@ Base.getindex(m::MultiComponentModel, i::Int) = modify(m.base, Shift(m.x[i], m.y
 imanalytic(::Type{<:MultiComponentModel{M}}) where {M} =  imanalytic(M)
 visanalytic(::Type{<:MultiComponentModel{M}}) where {M} = visanalytic(M)
 ispolarized(::Type{<:MultiComponentModel{M}}) where {M} = ispolarized(M)
-radialextent(m::MultiComponentModel) = maximum(hypot.(m.x, m.y)) + Comrade.radialextent(m.base)
+radialextent(m::MultiComponentModel) = maximum(hypot.(m.x, m.y)) + ComradeBase.radialextent(m.base)
 
 convolved(m1::MultiComponentModel, m2::AbstractModel) = MultiComponentModel(convolved(m1.base, m2), m1.flux, m1.x, m1.y)
 convolved(m1::AbstractModel, m2::MultiComponentModel) = convolved(m2, m1)
@@ -77,7 +77,7 @@ convolved(m1::AbstractModel, m2::MultiComponentModel) = convolved(m2, m1)
 function intensity_point(m::MultiComponentModel, p)
     s = zero(p.X)
     for i in eachindex(m.x, m.y, m.flux)
-        s += Comrade.intensity_point(m[i], p)
+        s += ComradeBase.intensity_point(m[i], p)
     end
     return s
 end
@@ -85,7 +85,7 @@ end
 function visibility_point(m::MultiComponentModel, x, y, t, f)
     s = zero(x)
     for i in eachindex(m.x, m.y, m.flux)
-        s += Comrade.visibility_point(m[i], x, y, t, f)
+        s += ComradeBase.visibility_point(m[i], x, y, t, f)
     end
     return s
 end

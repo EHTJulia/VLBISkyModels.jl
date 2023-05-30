@@ -3,6 +3,7 @@ module SkyModels
 using Accessors
 using ArgCheck
 using AbstractFFTs
+using BasicInterpolators
 using ChainRulesCore
 using ComradeBase
 using ForwardDiff
@@ -15,6 +16,7 @@ using NamedTupleTools
 using PaddedViews
 using Reexport
 using RecipesBase
+using SpecialFunctions
 using StaticArrays
 using StructArrays
 using LinearAlgebra
@@ -51,6 +53,7 @@ import ComradeBase: flux, radialextent, intensitymap, intensitymap!,
 include(joinpath(@__DIR__, "models/models.jl"))
 include("utility.jl")
 include("rules.jl")
+include("visualizations/vis.jl")
 
 
 end

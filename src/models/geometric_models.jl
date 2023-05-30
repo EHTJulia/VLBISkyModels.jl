@@ -26,7 +26,7 @@ As a result a user only needs to implement the following methods
 - `radialextent`
 
 Note that if the geometric model isn't **analytic** then the usual methods listed
-in [`Comrade.AbstractModel`](@ref) for non-analytic models need to be implemented.
+in [`ComradeBase.AbstractModel`](@ref) for non-analytic models need to be implemented.
 """
 abstract type GeometricModel{T} <: AbstractModel end
 @inline flux(::GeometricModel{T}) where {T} = one(T)
@@ -372,7 +372,7 @@ $(FIELDS)
 ## Notes
 Unlike the Gaussian and Disk models this does not create the
 unit version. In fact, this model could have been created using
-the `Disk` and primitives by using Comrade.jl's model composition
+the `Disk` and primitives by using SkyModels's model composition
 functionality.
 """
 struct ConcordanceCrescent{T} <: GeometricModel{T}

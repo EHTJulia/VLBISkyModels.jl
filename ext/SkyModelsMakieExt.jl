@@ -13,7 +13,7 @@ function Makie.convert_arguments(::Makie.SurfaceLike, img::IntensityMap{T,2}) wh
     (;X, Y) = img
     Xr = rad2μas.(X)
     Yr = rad2μas.(Y)
-    return Xr, Yr, Comrade.baseimage(img)
+    return Xr, Yr, ComradeBase.baseimage(img)
 end
 
 

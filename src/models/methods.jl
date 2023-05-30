@@ -234,11 +234,11 @@ end
 
 # internal method used for trait dispatch for analytic visibilities
 @inline function _closure_phases(::IsAnalytic, m,
-                        p1,
-                        p2,
-                        p3
+                        p1::NamedTuple,
+                        p2::NamedTuple,
+                        p3::NamedTuple
                        )
-    return closure_phase.(Ref(m), p1, p2, p3)
+    return closure_phase.(Ref(m), StructArray(p1), StructArray(p2), StructArray(p3))
 end
 
 # internal method used for trait dispatch for non-analytic visibilities
@@ -278,9 +278,8 @@ end
 end
 
 # internal method used for trait dispatch for analytic visibilities
-@inline function _logclosure_amplitudes(::IsAnalytic, m, p1, p2, p3, p4)
-
-    return logclosure_amplitude.(Ref(m), p1, p2, p3, p4)
+@inline function _logclosure_amplitudes(::IsAnalytic, m, p1::NamedTuple, p2::NamedTuple, p3::NamedTuple, p4::NamedTuple)
+    return logclosure_amplitude.(Ref(m), StructArray(p1), StructArray(p2), StructArray(p3), StructArray(p4))
 end
 
 # internal method used for trait dispatch for non-analytic visibilities
