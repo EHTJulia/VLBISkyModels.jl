@@ -1,4 +1,4 @@
-using SkyModels
+using VLBISkyModels
 using ChainRulesTestUtils
 using ChainRulesCore
 using FiniteDifferences
@@ -8,6 +8,7 @@ using Plots
 using Statistics
 using Test
 
-@testset "SkyModels.jl" begin
+@testset "VLBISkyModels.jl" begin
     include("models.jl")
+    include("polarized.jl")
 end

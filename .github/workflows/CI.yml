@@ -55,6 +55,6 @@ jobs:
       - run: |
           julia --project=docs -e '
             using Documenter: DocMeta, doctest
-            using SkyModels
-            DocMeta.setdocmeta!(SkyModels, :DocTestSetup, :(using SkyModels); recursive=true)
-            doctest(SkyModels)'
+            using VLBISkyModels
+            DocMeta.setdocmeta!(VLBISkyModels, :DocTestSetup, :(using VLBISkyModels); recursive=true)
+            doctest(VLBISkyModels)'

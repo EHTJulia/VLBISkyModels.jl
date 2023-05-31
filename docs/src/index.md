@@ -1,14 +1,14 @@
 ```@meta
-CurrentModule = SkyModels
+CurrentModule = VLBISkyModels
 ```
 
-# SkyModels
+# VLBISkyModels
 
-Documentation for [SkyModels](https://github.com/ptiede/SkyModels.jl).
+Documentation for [VLBISkyModels](https://github.com/ptiede/VLBISkyModels.jl).
 
 ```@index
 ```
 
 ```@autodocs
-Modules = [SkyModels]
+Modules = [VLBISkyModels]
 ```

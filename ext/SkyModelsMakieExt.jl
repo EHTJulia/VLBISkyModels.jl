@@ -1,8 +1,8 @@
-module SkyModelsMakieExt
+module VLBISkyModelsMakieExt
 
 
 
-using SkyModels
+using VLBISkyModels
 if isdefined(Base, :get_extension)
     using Makie
 else

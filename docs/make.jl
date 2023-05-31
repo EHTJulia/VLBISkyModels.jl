@@ -1,16 +1,16 @@
-using SkyModels
+using VLBISkyModels
 using Documenter
 
-DocMeta.setdocmeta!(SkyModels, :DocTestSetup, :(using SkyModels); recursive=true)
+DocMeta.setdocmeta!(VLBISkyModels, :DocTestSetup, :(using VLBISkyModels); recursive=true)
 
 makedocs(;
-    modules=[SkyModels],
+    modules=[VLBISkyModels],
     authors="Paul Tiede <ptiede91@gmail.com> and contributors",
-    repo="https://github.com/ptiede/SkyModels.jl/blob/{commit}{path}#{line}",
-    sitename="SkyModels.jl",
+    repo="https://github.com/ptiede/VLBISkyModels.jl/blob/{commit}{path}#{line}",
+    sitename="VLBISkyModels.jl",
     format=Documenter.HTML(;
         prettyurls=get(ENV, "CI", "false") == "true",
-        canonical="https://ptiede.github.io/SkyModels.jl",
+        canonical="https://ptiede.github.io/VLBISkyModels.jl",
         edit_link="main",
         assets=String[],
     ),
@@ -20,6 +20,6 @@ makedocs(;
 )
 
 deploydocs(;
-    repo="github.com/ptiede/SkyModels.jl",
+    repo="github.com/ptiede/VLBISkyModels.jl",
     devbranch="main",
 )

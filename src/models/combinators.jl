@@ -95,7 +95,7 @@ end
 """
     added(m1::AbstractModel, m2::AbstractModel)
 
-Combine two models to create a composite [`AddModel`](@ref SkyModels.AddModel).
+Combine two models to create a composite [`AddModel`](@ref VLBISkyModels.AddModel).
 This adds two models pointwise, i.e.
 ```julia-repl
 julia> m1 = Gaussian()
@@ -110,7 +110,7 @@ true
 """
     Base.:+(m1::AbstractModel, m2::AbstractModel)
 
-Combine two models to create a composite [`AddModel`](@ref SkyModels.AddModel).
+Combine two models to create a composite [`AddModel`](@ref VLBISkyModels.AddModel).
 This adds two models pointwise, i.e.
 
 ```julia-repl
@@ -255,7 +255,7 @@ end
 """
     convolved(m1::AbstractModel, m2::AbstractModel)
 
-Convolve two models to create a composite [`ConvolvedModel`](@ref SkyModels.ConvolvedModel).
+Convolve two models to create a composite [`ConvolvedModel`](@ref VLBISkyModels.ConvolvedModel).
 
 ```julia-repl
 julia> m1 = Ring()

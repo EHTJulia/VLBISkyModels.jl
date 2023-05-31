@@ -372,7 +372,7 @@ $(FIELDS)
 ## Notes
 Unlike the Gaussian and Disk models this does not create the
 unit version. In fact, this model could have been created using
-the `Disk` and primitives by using SkyModels's model composition
+the `Disk` and primitives by using VLBISkyModels's model composition
 functionality.
 """
 struct ConcordanceCrescent{T} <: GeometricModel{T}

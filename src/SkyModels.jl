@@ -1,4 +1,4 @@
-module SkyModels
+module VLBISkyModels
 
 using Accessors
 using ArgCheck

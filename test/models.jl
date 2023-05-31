@@ -1,6 +1,6 @@
-function testmodel(m::SkyModels.AbstractModel, npix=1024, atol=1e-4)
+function testmodel(m::VLBISkyModels.AbstractModel, npix=1024, atol=1e-4)
     plot(m)
-    g = imagepixels(4*SkyModels.radialextent(m), 4*SkyModels.radialextent(m), npix, npix)
+    g = imagepixels(4*VLBISkyModels.radialextent(m), 4*VLBISkyModels.radialextent(m), npix, npix)
     img = intensitymap(m, g)
     imgt = intensitymap(m, g, true)
     imgt2 = intensitymap(m, g, false)
@@ -12,7 +12,7 @@ function testmodel(m::SkyModels.AbstractModel, npix=1024, atol=1e-4)
     @test eltype(img) === Float64
     @test isapprox(flux(m), flux(img), atol=atol)
     @test isapprox(maximum(parent(img) .- parent(img2)), 0, atol=1e-8)
-    cache = SkyModels.create_cache(SkyModels.FFTAlg(padfac=3), img/flux(img)*flux(m))
+    cache = VLBISkyModels.create_cache(VLBISkyModels.FFTAlg(padfac=3), img/flux(img)*flux(m))
     dx, dy = pixelsizes(img)
     u = fftshift(fftfreq(size(img,1), 1/dx))./30
     Plots.closeall()
@@ -26,10 +26,10 @@ end
 
 
 function testft(m, npix=256, atol=1e-4)
-    mn = SkyModels.NonAnalyticTest(m)
+    mn = VLBISkyModels.NonAnalyticTest(m)
     uu = 0.25*randn(1000)
     vv = 0.25*randn(1000)
-    img = intensitymap(m, 2*SkyModels.radialextent(m), 2*SkyModels.radialextent(m), npix, npix)
+    img = intensitymap(m, 2*VLBISkyModels.radialextent(m), 2*VLBISkyModels.radialextent(m), npix, npix)
     mimg_ff = modelimage(mn, zero(img), FFTAlg(padfac=4))
     mimg_nf = modelimage(mn, zero(img), NFFTAlg())
     mimg_df = modelimage(mn, zero(img), DFTAlg())
@@ -150,10 +150,10 @@ end
     @testset "Gaussian" begin
         m = Gaussian()
         @test amplitude(m, (U=0.0, V=0.0)) == abs(visibility(m, (U=0.0, V=0.0)))
-        @inferred SkyModels.visibility(m, (U=0.0, V=0.0))
-        @inferred SkyModels.intensity_point(m, (X=0.0, Y=0.0))
+        @inferred VLBISkyModels.visibility(m, (U=0.0, V=0.0))
+        @inferred VLBISkyModels.intensity_point(m, (X=0.0, Y=0.0))
 
-        foo(x) = sum(abs2, SkyModels.visibilities_analytic(x[1]*Gaussian(), u, v, t, f))
+        foo(x) = sum(abs2, VLBISkyModels.visibilities_analytic(x[1]*Gaussian(), u, v, t, f))
         x = rand(1)
         foo(x)
         testgrad(foo, x)
@@ -163,11 +163,11 @@ end
 
     @testset "Disk" begin
         m = smoothed(Disk(), 0.25)
-        @inferred SkyModels.visibility(m.m1, (U=0.0, V=0.0))
-        @inferred SkyModels.intensity_point(m.m1, (X=0.0, Y=0.0))
+        @inferred VLBISkyModels.visibility(m.m1, (U=0.0, V=0.0))
+        @inferred VLBISkyModels.intensity_point(m.m1, (X=0.0, Y=0.0))
         testmodel(m)
 
-        foo(x) = sum(abs2, SkyModels.visibilities_analytic(x[1]*Disk(), u, v, t, f))
+        foo(x) = sum(abs2, VLBISkyModels.visibilities_analytic(x[1]*Disk(), u, v, t, f))
         x = rand(1)
         foo(x)
         testgrad(foo, x)
@@ -176,11 +176,11 @@ end
 
     @testset "SlashedDisk" begin
         m = smoothed(SlashedDisk(0.5), 0.25)
-        @inferred SkyModels.visibility(m.m1, (U=0.0, V=0.0))
-        @inferred SkyModels.intensity_point(m.m1, (X=0.0, Y=0.0))
+        @inferred VLBISkyModels.visibility(m.m1, (U=0.0, V=0.0))
+        @inferred VLBISkyModels.intensity_point(m.m1, (X=0.0, Y=0.0))
         testmodel(m)
 
-        foo(x) = sum(abs2, SkyModels.visibilities_analytic(SlashedDisk(x[1]), u, v, t, f))
+        foo(x) = sum(abs2, VLBISkyModels.visibilities_analytic(SlashedDisk(x[1]), u, v, t, f))
         x = rand(1)
         foo(x)
         testgrad(foo, x)
@@ -188,47 +188,47 @@ end
 
     @testset "Pulses" begin
         m0 = BSplinePulse{0}()
-        @inferred SkyModels.visibility(m0, (U=0.0, V=0.0))
-        @inferred SkyModels.intensity_point(m0, (X=0.0, Y=0.0))
+        @inferred VLBISkyModels.visibility(m0, (U=0.0, V=0.0))
+        @inferred VLBISkyModels.intensity_point(m0, (X=0.0, Y=0.0))
         testmodel(m0)
         m1 = BSplinePulse{1}()
         testmodel(m1)
-        @inferred SkyModels.visibility(m1, (U=0.0, V=0.0))
-        @inferred SkyModels.intensity_point(m1, (X=0.0, Y=0.0))
+        @inferred VLBISkyModels.visibility(m1, (U=0.0, V=0.0))
+        @inferred VLBISkyModels.intensity_point(m1, (X=0.0, Y=0.0))
         m3 = BSplinePulse{3}()
         testmodel(m3)
-        @inferred SkyModels.visibility(m3, (U=0.0, V=0.0))
-        @inferred SkyModels.intensity_point(m3, (X=0.0, Y=0.0))
+        @inferred VLBISkyModels.visibility(m3, (U=0.0, V=0.0))
+        @inferred VLBISkyModels.intensity_point(m3, (X=0.0, Y=0.0))
         m4 = BicubicPulse()
         testmodel(m4)
-        @inferred SkyModels.visibility(m4, (U=0.0, V=0.0))
-        @inferred SkyModels.intensity_point(m4, (X=0.0, Y=0.0))
+        @inferred VLBISkyModels.visibility(m4, (U=0.0, V=0.0))
+        @inferred VLBISkyModels.intensity_point(m4, (X=0.0, Y=0.0))
         m5 = RaisedCosinePulse()
         testmodel(m5)
-        @inferred SkyModels.visibility(m5, (U=0.0, V=0.0))
-        @inferred SkyModels.intensity_point(m5, (X=0.0, Y=0.0))
+        @inferred VLBISkyModels.visibility(m5, (U=0.0, V=0.0))
+        @inferred VLBISkyModels.intensity_point(m5, (X=0.0, Y=0.0))
     end
 
     @testset "Butterworth" begin
         m1 = Butterworth{1}()
         testmodel(m1)
-        @inferred SkyModels.visibility(m1, (U=0.0, V=0.0))
+        @inferred VLBISkyModels.visibility(m1, (U=0.0, V=0.0))
         m2 = Butterworth{2}()
         testmodel(m2)
-        @inferred SkyModels.visibility(m2, (U=0.0, V=0.0))
+        @inferred VLBISkyModels.visibility(m2, (U=0.0, V=0.0))
         m3 = Butterworth{3}()
         testmodel(m3)
-        @inferred SkyModels.visibility(m3, (U=0.0, V=0.0))
+        @inferred VLBISkyModels.visibility(m3, (U=0.0, V=0.0))
     end
 
 
     @testset "Ring" begin
         m = smoothed(Ring(), 0.25)
-        @inferred SkyModels.visibility(m.m1, (U=0.0, V=0.0))
-        @inferred SkyModels.intensity_point(m.m1, (X=0.0, Y=0.0))
+        @inferred VLBISkyModels.visibility(m.m1, (U=0.0, V=0.0))
+        @inferred VLBISkyModels.intensity_point(m.m1, (X=0.0, Y=0.0))
         testmodel(m, 2048)
 
-        foo(x) = sum(abs2, SkyModels.visibilities_analytic(x[1]*Ring(), u, v, t, f))
+        foo(x) = sum(abs2, VLBISkyModels.visibilities_analytic(x[1]*Ring(), u, v, t, f))
         x = rand(1)
         foo(x)
         testgrad(foo, x)
@@ -240,12 +240,12 @@ end
         m2 = ParabolicSegment(2.0, 2.0)
         @test stretched(m, 2.0, 2.0) == m2
         @test ComradeBase.intensity_point(m, (X=0.0, Y=1.0)) != 0.0
-        @inferred SkyModels.visibility(m, (U=0.0, V=0.0))
-        @inferred SkyModels.intensity_point(m, (X=0.0, Y=0.0))
+        @inferred VLBISkyModels.visibility(m, (U=0.0, V=0.0))
+        @inferred VLBISkyModels.intensity_point(m, (X=0.0, Y=0.0))
         testmodel(m, 2400, 1e-2)
 
         # TODO why is this broken?
-        # foo(x) = sum(abs2, SkyModels.visibilities_analytic(ParabolicSegment(x[1], x[2]), u, v, t, f))
+        # foo(x) = sum(abs2, VLBISkyModels.visibilities_analytic(ParabolicSegment(x[1], x[2]), u, v, t, f))
         # x = rand(2)
         # foo(x)
         # testgrad(foo, x)
@@ -255,17 +255,17 @@ end
     @testset "MRing1" begin
         α = [0.25,]
         β = [0.1,]
-        #test_rrule(SkyModels.visibility_point, MRing(α, β), 0.5, 0.25)
+        #test_rrule(VLBISkyModels.visibility_point, MRing(α, β), 0.5, 0.25)
         # We convolve it to remove some pixel effects
         m = convolved(MRing(α, β), stretched(Gaussian(), 0.1, 0.1))
         m2 = convolved(MRing(α[1], β[1]), stretched(Gaussian(), 0.1, 0.1))
         @test visibility(m, (U=0.1, V=0.1)) == visibility(m2, (U=0.1, V=0.1))
         testmodel(m, 2048, 1e-3)
-        @inferred SkyModels.visibility(m.m1, (U=0.0, V=0.0))
-        @inferred SkyModels.intensity_point(m.m1, (X=0.0, Y=0.0))
+        @inferred VLBISkyModels.visibility(m.m1, (U=0.0, V=0.0))
+        @inferred VLBISkyModels.intensity_point(m.m1, (X=0.0, Y=0.0))
 
 
-        foo(x) = sum(abs2, SkyModels.visibilities_analytic(MRing(x[1], x[2]), u, v, t, f))
+        foo(x) = sum(abs2, VLBISkyModels.visibilities_analytic(MRing(x[1], x[2]), u, v, t, f))
         x = rand(2)
         foo(x)
         testgrad(foo, x)
@@ -274,15 +274,15 @@ end
     @testset "MRing2" begin
         α = [0.25, -0.1]
         β = [0.1, 0.2]
-        #test_rrule(SkyModels.visibility_point, MRing(α, β), 0.5, 0.25)
+        #test_rrule(VLBISkyModels.visibility_point, MRing(α, β), 0.5, 0.25)
 
         # We convolve it to remove some pixel effects
         m = convolved(MRing(α, β), stretched(Gaussian(), 0.1, 0.1))
         testmodel(m, 2048, 1e-3)
-        @inferred SkyModels.visibility(m.m1, (U=0.0, V=0.0))
-        @inferred SkyModels.intensity_point(m.m1, (X=0.0, Y=0.0))
+        @inferred VLBISkyModels.visibility(m.m1, (U=0.0, V=0.0))
+        @inferred VLBISkyModels.intensity_point(m.m1, (X=0.0, Y=0.0))
 
-        foo(x) = sum(abs2, SkyModels.visibilities_analytic(MRing((x[1],x[2]), (x[3], x[4])), u, v, t, f))
+        foo(x) = sum(abs2, VLBISkyModels.visibilities_analytic(MRing((x[1],x[2]), (x[3], x[4])), u, v, t, f))
         x = rand(4)
         foo(x)
         testgrad(foo, x)
@@ -292,10 +292,10 @@ end
     @testset "ConcordanceCrescent" begin
         m = ConcordanceCrescent(20.0, 10.0, 5.0, 0.5)
         testmodel(m, 2048, 1e-3)
-        @inferred SkyModels.visibility(m, (U=0.0, V=0.0))
-        @inferred SkyModels.intensity_point(m, (X=0.0, Y=0.0))
+        @inferred VLBISkyModels.visibility(m, (U=0.0, V=0.0))
+        @inferred VLBISkyModels.intensity_point(m, (X=0.0, Y=0.0))
 
-        foo(x) = sum(abs2, SkyModels.visibilities_analytic(ConcordanceCrescent(x[1], x[2], x[3], x[4]), u, v, t, f))
+        foo(x) = sum(abs2, VLBISkyModels.visibilities_analytic(ConcordanceCrescent(x[1], x[2], x[3], x[4]), u, v, t, f))
         x = rand(4)
         foo(x)
         testgrad(foo, x)
@@ -305,10 +305,10 @@ end
     @testset "Crescent" begin
         m = smoothed(Crescent(5.0, 2.0, 1.0, 0.5), 1.0)
         testmodel(m,1024,1e-3)
-        @inferred SkyModels.visibility(m.m1, (U=0.0, V=0.0))
-        @inferred SkyModels.intensity_point(m.m1, (X=0.0, Y=0.0))
+        @inferred VLBISkyModels.visibility(m.m1, (U=0.0, V=0.0))
+        @inferred VLBISkyModels.intensity_point(m.m1, (X=0.0, Y=0.0))
 
-        foo(x) = sum(abs2, SkyModels.visibilities_analytic(Crescent(x[1], x[2], x[3], x[4]), u, v, t, f))
+        foo(x) = sum(abs2, VLBISkyModels.visibilities_analytic(Crescent(x[1], x[2], x[3], x[4]), u, v, t, f))
         x = rand(4)
         foo(x)
         testgrad(foo, x)
@@ -318,10 +318,10 @@ end
 
     @testset "ExtendedRing" begin
         mr = ExtendedRing(8.0)
-        rad = 2.5*SkyModels.radialextent(mr)
-        m = modelimage(mr, IntensityMap(zeros(1024,1024), rad, rad), SkyModels.FFTAlg(padfac=4))
+        rad = 2.5*VLBISkyModels.radialextent(mr)
+        m = modelimage(mr, IntensityMap(zeros(1024,1024), rad, rad), VLBISkyModels.FFTAlg(padfac=4))
         testmodel(m)
-        @inferred SkyModels.intensity_point(mr, (X=0.0, Y=0.0))
+        @inferred VLBISkyModels.intensity_point(mr, (X=0.0, Y=0.0))
     end
 
     @testset "M87 model test" begin
@@ -347,9 +347,9 @@ end
         testmodel(m)
 
 
-        @inferred SkyModels.visibility(m, (U=0.0, V=0.0))
+        @inferred VLBISkyModels.visibility(m, (U=0.0, V=0.0))
         # k = keys(xopt)
-        # foo(x) = sum(abs2, SkyModels.visibilities_analytic(model(NamedTuple{k}(Tuple(x))), u, v, t, f))
+        # foo(x) = sum(abs2, VLBISkyModels.visibilities_analytic(model(NamedTuple{k}(Tuple(x))), u, v, t, f))
         # x = collect(values(xopt))
         # foo(x)
         # testgrad(foo, x)
@@ -386,10 +386,10 @@ end
         mbs = shifted(mb, 0.1, 0.1)
         testmodel(mas)
         testmodel(modelimage(mbs, IntensityMap(zeros(1024, 1024),
-                                               2*SkyModels.radialextent(mbs),
-                                               2*SkyModels.radialextent(mbs))))
+                                               2*VLBISkyModels.radialextent(mbs),
+                                               2*VLBISkyModels.radialextent(mbs))))
 
-        foo(x) = sum(abs2, SkyModels.visibilities_analytic(shifted(ma, x[1], x[2]), u, v, t, f))
+        foo(x) = sum(abs2, VLBISkyModels.visibilities_analytic(shifted(ma, x[1], x[2]), u, v, t, f))
         x = rand(2)
         foo(x)
         testgrad(foo, x)
@@ -405,10 +405,10 @@ end
         mbs = 3.0*mb
         testmodel(m1)
         testmodel(modelimage(mbs, IntensityMap(zeros(1024, 1024),
-                                               2.5*SkyModels.radialextent(mbs),
-                                               2.5*SkyModels.radialextent(mbs))))
+                                               2.5*VLBISkyModels.radialextent(mbs),
+                                               2.5*VLBISkyModels.radialextent(mbs))))
 
-        foo(x) = sum(abs2, SkyModels.visibilities_analytic(x[1]*ma, u, v, t, f))
+        foo(x) = sum(abs2, VLBISkyModels.visibilities_analytic(x[1]*ma, u, v, t, f))
         x = rand(1)
         foo(x)
         testgrad(foo, x)
@@ -420,10 +420,10 @@ end
         mbs = stretched(mb, 5.0, 4.0)
         testmodel(mas)
         testmodel(modelimage(mbs, IntensityMap(zeros(2024, 2024),
-                                               2*SkyModels.radialextent(mbs),
-                                               2*SkyModels.radialextent(mbs))), 1024, 1e-3)
+                                               2*VLBISkyModels.radialextent(mbs),
+                                               2*VLBISkyModels.radialextent(mbs))), 1024, 1e-3)
 
-        foo(x) = sum(abs2, SkyModels.visibilities_analytic(stretched(ma, x[1], x[2]), u, v, t, f))
+        foo(x) = sum(abs2, VLBISkyModels.visibilities_analytic(stretched(ma, x[1], x[2]), u, v, t, f))
         x = rand(2)
         foo(x)
         testgrad(foo, x)
@@ -434,10 +434,10 @@ end
         mbs = rotated(mb, π/3)
         testmodel(mas)
         testmodel(modelimage(mbs, IntensityMap(zeros(1024, 1024),
-                                               2*SkyModels.radialextent(mbs),
-                                               2*SkyModels.radialextent(mbs))))
+                                               2*VLBISkyModels.radialextent(mbs),
+                                               2*VLBISkyModels.radialextent(mbs))))
 
-        foo(x) = sum(abs2, SkyModels.visibilities_analytic(rotated(ma, x[1]), u, v, t, f))
+        foo(x) = sum(abs2, VLBISkyModels.visibilities_analytic(rotated(ma, x[1]), u, v, t, f))
         x = rand(1)
         foo(x)
         testgrad(foo, x)
@@ -450,10 +450,10 @@ end
         mbs = rotated(stretched(shifted(mb, 0.5, 0.5), 5.0, 4.0), π/3)
         testmodel(mas)
         testmodel(modelimage(mbs, IntensityMap(zeros(2024, 2024),
-                                               2*SkyModels.radialextent(mbs),
-                                               2*SkyModels.radialextent(mbs))), 1024, 1e-3)
+                                               2*VLBISkyModels.radialextent(mbs),
+                                               2*VLBISkyModels.radialextent(mbs))), 1024, 1e-3)
 
-        foo(x) = sum(abs2, SkyModels.visibilities_analytic(modify(ma, Shift(x[1], x[2]), Stretch(x[3], x[4]), Rotate(x[5]), Renormalize(x[6])), u, v, t, f))
+        foo(x) = sum(abs2, VLBISkyModels.visibilities_analytic(modify(ma, Shift(x[1], x[2]), Stretch(x[3], x[4]), Rotate(x[5]), Renormalize(x[6])), u, v, t, f))
         x = rand(6)
         foo(x)
         testgrad(foo, x)
@@ -479,12 +479,12 @@ end
         mt1 = m1 + m2
         mt2 = shifted(m1, 1.0, 1.0) + m2
         mt3 = shifted(m1, 1.0, 1.0) + 0.5*stretched(m2, 0.9, 0.8)
-        mc = SkyModels.components(mt1)
+        mc = VLBISkyModels.components(mt1)
         @test mc[1] === m1
         @test mc[2] === m2
         @test flux(mt1) ≈ flux(m1) + flux(m2)
 
-        foo(x) = sum(abs2, SkyModels.visibilities_analytic(x[1]*stretched(Disk(), x[2], x[3]) + stretched(Ring(), x[4], x[4]), u, v, t, f))
+        foo(x) = sum(abs2, VLBISkyModels.visibilities_analytic(x[1]*stretched(Disk(), x[2], x[3]) + stretched(Ring(), x[4], x[4]), u, v, t, f))
         x = rand(4)
         foo(x)
         testgrad(foo, x)
@@ -503,7 +503,7 @@ end
         mt1 = convolved(m1, m2)
         mt2 = convolved(shifted(m1, 1.0, 1.0), m2)
         mt3 = convolved(shifted(m1, 1.0, 1.0), 0.5*stretched(m2, 0.9, 0.8))
-        mc = SkyModels.components(mt1)
+        mc = VLBISkyModels.components(mt1)
         @test mc[1] === m1
         @test mc[2] === m2
 
@@ -511,7 +511,7 @@ end
         testmodel(modelimage(mt2, img))
         testmodel(modelimage(mt3, img))
 
-        foo(x) = sum(abs2, SkyModels.visibilities_analytic(convolved(x[1]*stretched(Disk(), x[2], x[3]),stretched(Ring(), x[4], x[4])), u, v, t, f))
+        foo(x) = sum(abs2, VLBISkyModels.visibilities_analytic(convolved(x[1]*stretched(Disk(), x[2], x[3]),stretched(Ring(), x[4], x[4])), u, v, t, f))
         x = rand(4)
         foo(x)
         testgrad(foo, x)
@@ -525,14 +525,14 @@ end
                 )
 
         mt = m1 + convolved(m1, m2)
-        mc = SkyModels.components(mt)
+        mc = VLBISkyModels.components(mt)
         @test mc[1] === m1
         @test mc[2] === m1
         @test mc[3] === m2
 
         testmodel(modelimage(mt, img))
 
-        foo(x) = sum(abs2, SkyModels.visibilities_analytic(smoothed(x[1]*stretched(Disk(), x[2], x[3]), x[4]) + stretched(Ring(), x[5], x[4]), u, v, t, f))
+        foo(x) = sum(abs2, VLBISkyModels.visibilities_analytic(smoothed(x[1]*stretched(Disk(), x[2], x[3]), x[4]) + stretched(Ring(), x[5], x[4]), u, v, t, f))
         x = rand(5)
         foo(x)
         testgrad(foo, x)
@@ -552,7 +552,7 @@ end
     mV = 0.0*stretched(MRing((0.0,), (-0.6,)), 20.0, 20.0)
     m = PolarizedModel(mI, mQ, mU, mV)
     @inferred visibility(m, (U=0.0, V=0.0))
-    @inferred SkyModels.intensity_point(m, (X=0.0, Y=0.0))
+    @inferred VLBISkyModels.intensity_point(m, (X=0.0, Y=0.0))
 
 
     mG = PolarizedModel(Gaussian(), Gaussian(), Gaussian(), Gaussian())
@@ -670,7 +670,7 @@ end
 
 
     @testset "nuft pullback" begin
-        test_rrule(SkyModels.nuft, cache_nf.plan ⊢ NoTangent(), complex.(parent(parent(img))))
+        test_rrule(VLBISkyModels.nuft, cache_nf.plan ⊢ NoTangent(), complex.(parent(parent(img))))
     end
 end
 
@@ -690,10 +690,10 @@ end
     @test img[1:5,1] == data[1:5,1]
 
     @test all(==(1), imagegrid(img) .== ComradeBase.grid(named_dims(axiskeys(img))))
-    @test SkyModels.axisdims(img) == axiskeys(img)
+    @test VLBISkyModels.axisdims(img) == axiskeys(img)
 
     @test g == imagepixels(img)
-    @test SkyModels.radialextent(img) ≈ 10.0/2
+    @test VLBISkyModels.radialextent(img) ≈ 10.0/2
 
     @test convolved(img, Gaussian()) isa ContinuousImage
     @test convolved(Gaussian(), img) isa ContinuousImage
