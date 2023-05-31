@@ -11,6 +11,7 @@ using DocStringExtensions
 using DelimitedFiles
 using Enzyme, EnzymeCore
 using FFTW
+using FillArrays
 using NFFT
 using NamedTupleTools
 using PaddedViews
