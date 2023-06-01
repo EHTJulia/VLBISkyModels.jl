@@ -103,8 +103,8 @@ end
     g = GriddedKeys(imagepixels(10.0, 10.0, 24, 24))
     img = intensitymap(m, g)
     cimg = ContinuousImage(img, BicubicPulse(0.0))
-    @test Comrade.ispolarized(typeof(cimg)) === Comrade.IsPolarized()
-    @test Comrade.ispolarized(typeof(stokes(cimg, :I))) === Comrade.NotPolarized()
+    @test ComradeBase.ispolarized(typeof(cimg)) === ComradeBase.IsPolarized()
+    @test ComradeBase.ispolarized(typeof(stokes(cimg, :I))) === ComradeBase.NotPolarized()
 
     img0 = intensitymap(cimg, g)
 

@@ -25,7 +25,7 @@
     end
 
     @testset "convolve" begin
-        cimg = Comrade.convolve(img, Gaussian())
+        cimg = VLBISkyModels.convolve(img, Gaussian())
         img2 = modify(img, Stretch(√(2.0)))
         @test isapprox(cimg, img2, rtol=1e-4)
     end
