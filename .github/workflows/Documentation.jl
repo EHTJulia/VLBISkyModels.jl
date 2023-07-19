@@ -32,10 +32,7 @@ jobs:
       - uses: julia-actions/setup-julia@v1
         with:
           version: '1'
-      - name: Install docs dependencies
-        run: julia --project=docs -e 'using Pkg; Pkg.develop([PackageSpec(path=pwd()), PackageSpec(url="https://github.com/ptiede/ComradeBase.jl"), PackageSpec(path=joinpath(pwd(), "lib/ComradeAHMC")), PackageSpec(path=joinpath(pwd(), "lib/ComradeOptimization")), PackageSpec(path=joinpath(pwd(), "lib/ComradeDynesty")), PackageSpec(path=joinpath(pwd(), "lib/ComradeNested")), PackageSpec(path=joinpath(pwd(), "lib/ComradeAdaptMCMC"))]); Pkg.instantiate()'
-      - name: Install examples dependencies
-        run: julia --project=examples -e 'using Pkg; Pkg.develop([PackageSpec(path=pwd()), PackageSpec(url="https://github.com/ptiede/ComradeBase.jl"), PackageSpec(path=joinpath(pwd(), "lib/ComradeAHMC")), PackageSpec(path=joinpath(pwd(), "lib/ComradeOptimization")), PackageSpec(path=joinpath(pwd(), "lib/ComradeDynesty")), PackageSpec(path=joinpath(pwd(), "lib/ComradeNested")), PackageSpec(path=joinpath(pwd(), "lib/ComradeAdaptMCMC"))]); Pkg.instantiate()'
+        run: julia --project=examples -e 'using Pkg; Pkg.develop([PackageSpec(path=pwd()),]); Pkg.instantiate()'
       - name: Build and deploy
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # For authentication with GitHub Actions token
