@@ -13,11 +13,6 @@ OUTDIR = joinpath(@__DIR__, "src", "examples")
 SOURCE_FILES = Glob.glob("*.jl", GENERATED)
 foreach(fn -> Literate.markdown(fn, OUTDIR, documenter=true), SOURCE_FILES)
 
-MD_FILES = [
-            joinpath("examples", "nonanalytic.md"),
-            ]
-
-
 
 makedocs(;
     modules=[VLBISkyModels],
@@ -32,11 +27,13 @@ makedocs(;
     pages=[
         "Home" => "index.md",
         "interface.md",
-        "api.md"
+        "api.md",
+        joinpath("examples", "nonanalytic.md"),
     ],
 )
 
 deploydocs(;
-    repo="https://github.com/EHTJulia/VLBISkyModels.jl",
+    repo="github.com/EHTJulia/VLBISkyModels.jl",
     devbranch="main",
+    push_preview=false
 )
