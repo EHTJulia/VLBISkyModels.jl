@@ -16,7 +16,7 @@ struct MultiComponentModel{M, F, V<:AbstractVector} <: AbstractModel
 end
 
 flux(m::MultiComponentModel)  = flux(m.base)*sum(m.flux)
-radialextent(m::MultiComponentModel) = 2*radialextent(maximum(splat(hypot), zip(m.x, m.y))) + radialextent(m.base)
+radialextent(m::MultiComponentModel) = 2*radialextent(maximum(splat(hypot), zip(m.x, m.y)))
 
 Base.getindex(m::MultiComponentModel, i::Int) = modify(m.base, Shift(m.x[i], m.y[i]), Renormalize(m.flux[i]))
 

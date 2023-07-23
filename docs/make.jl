@@ -3,6 +3,7 @@ using Documenter
 using Plots
 using Literate
 using Pkg
+using Glob
 
 Pkg.develop(PackageSpec(url="https://github.com/ptiede/ComradeBase.jl"))
 
