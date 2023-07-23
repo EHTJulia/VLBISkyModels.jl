@@ -8,7 +8,9 @@ using Plots
 using Statistics
 using Test
 
+
 @testset "VLBISkyModels.jl" begin
     include("models.jl")
     include("polarized.jl")
+    include("utility.jl")
 end

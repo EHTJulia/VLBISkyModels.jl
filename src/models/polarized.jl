@@ -98,7 +98,7 @@ function intensitymap!(pimg::Union{StokesIntensityMap, IntensityMap{<:StokesPara
     return pimg
 end
 
-function intensitymap(pmodel::PolarizedModel, dims::ComradeBase.AbstractDims)
+function intensitymap(pmodel::PolarizedModel, dims::AbstractDims)
     imgI = baseimage(intensitymap(stokes(pmodel, :I), dims))
     imgQ = baseimage(intensitymap(stokes(pmodel, :Q), dims))
     imgU = baseimage(intensitymap(stokes(pmodel, :U), dims))
@@ -107,12 +107,20 @@ function intensitymap(pmodel::PolarizedModel, dims::ComradeBase.AbstractDims)
 end
 
 @inline function convolved(m::PolarizedModel, p::AbstractModel)
+    return _convolved(ispolarized(typeof(p)), m::PolarizedModel, p)
+end
+
+@inline function _convolved(::IsPolarized, m::PolarizedModel, p)
+    return ConvolvedModel(m, p)
+end
+
+@inline function _convolved(::NotPolarized, m::PolarizedModel, p)
     return PolarizedModel(
-                convolved(stokes(m, :I), p),
-                convolved(stokes(m, :Q), p),
-                convolved(stokes(m, :U), p),
-                convolved(stokes(m, :V), p),
-                )
+            convolved(stokes(m, :I), p),
+            convolved(stokes(m, :Q), p),
+            convolved(stokes(m, :U), p),
+            convolved(stokes(m, :V), p),
+        )
 end
 
 @inline convolved(p::AbstractModel, m::PolarizedModel) = convolved(m, p)
@@ -125,24 +133,25 @@ end
         )
 end
 
-@inline function added(m::PolarizedModel, p::PolarizedModel)
-    return PolarizedModel(
-                added(stokes(m, :I), p),
-                added(stokes(m, :Q), p),
-                added(stokes(m, :U), p),
-                added(stokes(m, :V), p),
-                )
-end
 
-# @inline added(p::AbstractModel, m::PolarizedModel) = added(m, p)
-# @inline function added(p::PolarizedModel, m::PolarizedModel)
+
+# @inline function added(m::PolarizedModel, p::AbstractModel)
 #     return PolarizedModel(
-#             added(stokes(p, :I), stokes(m, :I)),
-#             added(stokes(p, :Q), stokes(m, :Q)),
-#             added(stokes(p, :U), stokes(m, :U)),
-#             added(stokes(p, :V), stokes(m, :V)),
-#         )
+#                 added(stokes(m, :I), p),
+#                 added(stokes(m, :Q), p),
+#                 added(stokes(m, :U), p),
+#                 added(stokes(m, :V), p),
+#                 )
 # end
+
+@inline function added(p::PolarizedModel, m::PolarizedModel)
+    return PolarizedModel(
+            added(stokes(p, :I), stokes(m, :I)),
+            added(stokes(p, :Q), stokes(m, :Q)),
+            added(stokes(p, :U), stokes(m, :U)),
+            added(stokes(p, :V), stokes(m, :V)),
+        )
+end
 
 # for m in (:renormed, :rotated, :shifted, :stretched)
 #     @eval begin

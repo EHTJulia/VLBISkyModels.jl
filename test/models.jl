@@ -128,11 +128,13 @@ end
 
 # 1.7x Enzyme fails (GC?) so we skip this.
 if VERSION >= v"1.8"
-    function testgrad(f, x)
-        gz = Zygote.gradient(f, x)
+    function testgrad(f, args...)
+        gz = Zygote.gradient(f, args...)
         fdm = central_fdm(5, 1)
-        gf = grad(fdm, f, x)
-        @test isapprox(first(gz), first(gf), atol=1e-5)
+        gf = grad(fdm, f, args...)
+        map(gz, gf) do dgz, dgf
+            @test isapprox(dgz, dgf, atol=1e-5)
+        end
     end
 else
     function testgrad(f, x)
@@ -539,6 +541,29 @@ end
     end
 end
 
+@testset "Multicomponent" begin
+    u = randn(100)*0.5
+    v = randn(100)*0.5
+    t = sort(rand(100)*0.5)
+    f = fill(230e9, 100)
+
+
+    m = MultiComponentModel(Gaussian(), rand(10), randn(10), randn(10))
+    @test amplitude(m, (U=0.0, V=0.0)) == abs(visibility(m, (U=0.0, V=0.0)))
+    @inferred VLBISkyModels.visibility(m, (U=0.0, V=0.0))
+    @inferred VLBISkyModels.intensity_point(m, (X=0.0, Y=0.0))
+
+    foo(fl, x, y) = sum(abs2, VLBISkyModels.visibilities_analytic(MultiComponentModel(Gaussian(), fl, x, y), u, v, t, f))
+    x = randn(10)
+    y = randn(10)
+    fl = rand(10)
+    foo(fl, x, y)
+    testgrad(foo, fl, x, y)
+
+    testmodel(m, 1024, 1e-5)
+
+end
+
 @testset "PolarizedModel" begin
     u = randn(100)*0.5
     v = randn(100)*0.5
@@ -552,25 +577,8 @@ end
     mV = 0.0*stretched(MRing((0.0,), (-0.6,)), 20.0, 20.0)
     m = PolarizedModel(mI, mQ, mU, mV)
     @inferred visibility(m, (U=0.0, V=0.0))
-    @inferred Comrade.intensity_point(m, (X=0.0, Y=0.0))
+    @inferred ComradeBase.intensity_point(m, (X=0.0, Y=0.0))
 
-
-    function foo(x)
-        m = PolarizedModel(
-            stretched(Gaussian(), x[1], x[2]),
-            stretched(Gaussian(), x[3], x[4]),
-            shifted(Gaussian(), x[5], x[6]),
-            x[7]*Gaussian()
-        )
-        vis = Comrade._coherency(Comrade.visibilities_analytic(m, u, v, t, f), CirBasis)
-        Σ = map(x->real.(x .+ 1), zero.(vis))
-        l = Comrade.CoherencyLikelihood(vis, Σ, 0.0)
-        return logdensityof(l, zero.(vis))
-    end
-
-    x = rand(7)
-    foo(x)
-    testgrad(foo, x)
 
     mG = PolarizedModel(Gaussian(), Gaussian(), Gaussian(), Gaussian())
     cm = convolved(m, Gaussian())

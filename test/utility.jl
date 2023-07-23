@@ -30,11 +30,3 @@
         @test isapprox(cimg, img2, rtol=1e-4)
     end
 end
-
-@testset "CLEAN image" begin
-    u = 10e9*rand(100) .- 5e9
-    v = 10e9*rand(100) .- 5e9
-    m = modify(Gaussian(), Stretch(μas2rad(20.0)))
-    vis = visibilities(m, (U=u, V=v))
-
-end
