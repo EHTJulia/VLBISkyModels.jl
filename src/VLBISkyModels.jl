@@ -22,8 +22,10 @@ using StaticArrays
 using StructArrays
 using LinearAlgebra
 using Printf
+using PolarizedTypes
 
 @reexport using ComradeBase
+@reexport using PolarizedTypes
 
 """
     rad2μas(x)

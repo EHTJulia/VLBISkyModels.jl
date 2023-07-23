@@ -18,7 +18,7 @@ function center_image(img::IntensityMap)
 end
 
 # This is an internal struct that is use to modify IntensityMaps so that we can hook into
-# Comrade image modifier interface.
+# VLBISkyModels image modifier interface.
 struct InterpolatedImage{I,P} <: AbstractModel
     img::I
     itp::P

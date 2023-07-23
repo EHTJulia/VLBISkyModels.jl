@@ -37,7 +37,4 @@ end
     m = modify(Gaussian(), Stretch(μas2rad(20.0)))
     vis = visibilities(m, (U=u, V=v))
 
-    dirty_image(μas2rad(100.0), 128, vis)
-    dirty_beam(μas2rad(100.0), 128, vis)
-
 end
