@@ -19,11 +19,11 @@ makedocs(;
     authors="Paul Tiede <ptiede91@gmail.com> and contributors",
     repo="https://github.com/EHTJulia/VLBISkyModels.jl/blob/{commit}{path}#{line}",
     sitename="VLBISkyModels.jl",
-    format=Documenter.HTML(;
+    format=Documenter.HTML()
         # prettyurls=get(ENV, "CI", "false") == "true",
         # edit_link="main",
         # assets=String[],
-    ),
+     draft=false,
     pages=[
         "Home" => "index.md",
         "interface.md",
