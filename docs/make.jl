@@ -25,10 +25,9 @@ makedocs(;
     repo="https://github.com/EHTJulia/VLBISkyModels.jl/blob/{commit}{path}#{line}",
     sitename="VLBISkyModels.jl",
     format=Documenter.HTML(;
-        prettyurls=get(ENV, "CI", "false") == "true",
-        canonical="https://ehtjulia.github.io/VLBISkyModels.jl",
-        edit_link="main",
-        assets=String[],
+        # prettyurls=get(ENV, "CI", "false") == "true",
+        # edit_link="main",
+        # assets=String[],
     ),
     pages=[
         "Home" => "index.md",
