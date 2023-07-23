@@ -30,3 +30,5 @@ intensitymap(::ZeroModel{T}, p::ComradeBase.AbstractDims) where {T} = IntensityM
 
 
 @inline ModifiedModel(z::ZeroModel, args...) = z
+
+__extract_tangent(::ZeroModel) = ZeroTangent()

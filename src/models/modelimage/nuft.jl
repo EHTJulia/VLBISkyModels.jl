@@ -76,17 +76,17 @@ ChainRulesCore.@non_differentiable checkuv(alg, u::AbstractArray, v::AbstractArr
 function visibilities_numeric(m::ModelImage{M,I,<:NUFTCache{A}},
                       u, v, time, freq) where {M,I<:IntensityMap,A<:ObservedNUFT}
     checkuv(m.cache.alg.uv, u, v)
-    vis =  nuft(m.cache.plan, complex.(ComradeBase.baseimage(m.cache.img)))
+    vis =  nuft(m.cache.plan, complex(Comrade.baseimage(m.cache.img)))
     return conj.(vis).*m.cache.phases
 end
 
 function visibilities_numeric(m::ModelImage{M,I,<:NUFTCache{A}},
                       u, v, time, freq) where {M,I<:StokesIntensityMap,A<:ObservedNUFT}
     checkuv(m.cache.alg.uv, u, v)
-    visI =  conj.(nuft(m.cache.plan, complex.(ComradeBase.baseimage(stokes(m.cache.img, :I))))).*m.cache.phases
-    visQ =  conj.(nuft(m.cache.plan, complex.(ComradeBase.baseimage(stokes(m.cache.img, :Q))))).*m.cache.phases
-    visU =  conj.(nuft(m.cache.plan, complex.(ComradeBase.baseimage(stokes(m.cache.img, :U))))).*m.cache.phases
-    visV =  conj.(nuft(m.cache.plan, complex.(ComradeBase.baseimage(stokes(m.cache.img, :V))))).*m.cache.phases
+    visI =  conj.(nuft(m.cache.plan, complex(ComradeBase.baseimage(stokes(m.cache.img, :I))))).*m.cache.phases
+    visQ =  conj.(nuft(m.cache.plan, complex(ComradeBase.baseimage(stokes(m.cache.img, :Q))))).*m.cache.phases
+    visU =  conj.(nuft(m.cache.plan, complex(ComradeBase.baseimage(stokes(m.cache.img, :U))))).*m.cache.phases
+    visV =  conj.(nuft(m.cache.plan, complex(ComradeBase.baseimage(stokes(m.cache.img, :V))))).*m.cache.phases
     r = StructArray{StokesParams{eltype(visI)}}((I=visI, Q=visQ, U=visU, V=visV))
     return r
 end
@@ -130,9 +130,9 @@ Base.@kwdef struct NFFTAlg{T,N,F} <: NUFT
     """
     window::Symbol = :kaiser_bessel
     """
-    NFFT interpolation algorithm. TENSOR is the fastest but takes the longest to precompute
+    NFFT interpolation algorithm.
     """
-    precompute::N=NFFT.TENSOR
+    precompute::N=NFFT.POLYNOMIAL
     """
     Flag block partioning should be used to speed up computation
     """

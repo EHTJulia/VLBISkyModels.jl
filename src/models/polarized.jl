@@ -125,7 +125,7 @@ end
         )
 end
 
-@inline function added(m::PolarizedModel, p::AbstractModel)
+@inline function added(m::PolarizedModel, p::PolarizedModel)
     return PolarizedModel(
                 added(stokes(m, :I), p),
                 added(stokes(m, :Q), p),
@@ -134,15 +134,15 @@ end
                 )
 end
 
-@inline added(p::AbstractModel, m::PolarizedModel) = added(m, p)
-@inline function added(p::PolarizedModel, m::PolarizedModel)
-    return PolarizedModel(
-            added(stokes(p, :I), stokes(m, :I)),
-            added(stokes(p, :Q), stokes(m, :Q)),
-            added(stokes(p, :U), stokes(m, :U)),
-            added(stokes(p, :V), stokes(m, :V)),
-        )
-end
+# @inline added(p::AbstractModel, m::PolarizedModel) = added(m, p)
+# @inline function added(p::PolarizedModel, m::PolarizedModel)
+#     return PolarizedModel(
+#             added(stokes(p, :I), stokes(m, :I)),
+#             added(stokes(p, :Q), stokes(m, :Q)),
+#             added(stokes(p, :U), stokes(m, :U)),
+#             added(stokes(p, :V), stokes(m, :V)),
+#         )
+# end
 
 # for m in (:renormed, :rotated, :shifted, :stretched)
 #     @eval begin

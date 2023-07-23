@@ -552,13 +552,30 @@ end
     mV = 0.0*stretched(MRing((0.0,), (-0.6,)), 20.0, 20.0)
     m = PolarizedModel(mI, mQ, mU, mV)
     @inferred visibility(m, (U=0.0, V=0.0))
-    @inferred VLBISkyModels.intensity_point(m, (X=0.0, Y=0.0))
+    @inferred Comrade.intensity_point(m, (X=0.0, Y=0.0))
 
+
+    function foo(x)
+        m = PolarizedModel(
+            stretched(Gaussian(), x[1], x[2]),
+            stretched(Gaussian(), x[3], x[4]),
+            shifted(Gaussian(), x[5], x[6]),
+            x[7]*Gaussian()
+        )
+        vis = Comrade._coherency(Comrade.visibilities_analytic(m, u, v, t, f), CirBasis)
+        Σ = map(x->real.(x .+ 1), zero.(vis))
+        l = Comrade.CoherencyLikelihood(vis, Σ, 0.0)
+        return logdensityof(l, zero.(vis))
+    end
+
+    x = rand(7)
+    foo(x)
+    testgrad(foo, x)
 
     mG = PolarizedModel(Gaussian(), Gaussian(), Gaussian(), Gaussian())
     cm = convolved(m, Gaussian())
     @test cm == convolved(m, mG)
-    @test m+mG == m+Gaussian()
+    @inferred cm+mG
     show(m)
 
     p = (U = 0.005, V=0.01)

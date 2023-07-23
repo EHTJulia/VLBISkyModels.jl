@@ -26,16 +26,19 @@ The `dirty image` is the inverse Fourier transform of the measured visibilties a
 other visibility is zero.
 
 """
-function dirty_image(fov::Real, npix::Int, u::AbstractArray{T}, v::AbstractArray{T}, vis::AbstractArray{Complex{T}}) where {T<:Real}
+function dirty_image(fov::Real, npix::Int, obs::EHTObservation{T,D}) where {T, D<:EHTVisibilityDatum}
     # First we double the baselines, i.e. we reflect them and conjugate the measurements
     # This ensures a real NFFT
-    u2, v2, vis2 = reflect_vis(obs)
+    img = IntensityMap(zeros(npix, npix), imagepixels(fov, fov, npix, npix))
+    dx, dy = pixelsizes(img)
+    vis2 = reflect_vis(obs)
 
     # Get the number of pixels
-    alg = NFFTAlg(u2, v2)
-    img = IntensityMap(zeros(npix, npix), imagepixels(fov, fov, npix, npix))
+    alg = NFFTAlg(vis2)
     cache = create_cache(alg, img)
-    m = cache.plan'*conj.(vis2)
+    u = vis2[:U]
+    v = vis2[:V]
+    m = cache.plan'*(conj.(vis2[:measurement].*cispi.(-(u.*(dx) .+ v.*(dy)))))
     return IntensityMap(real.(m)./npix^2, imagepixels(fov, fov, npix, npix))
 end
 
@@ -56,7 +59,12 @@ function dirty_beam(fov, npix, u::AbstractArray{T}, v::AbstractArray{T}, vis::Ab
     return dirty_image(fov, npix, u2, v2, vis2)
 end
 
+"""
+    MultiComponentModel(beam::AbstractModel, fluxes::AbstractVector, x::AbstractVector, y::AbstractVector)
 
+Build a model with a base model type `beam` where fluxes, x, y corresond to the flux, and positions
+of the components. This can be used to easily construct clean like models.
+"""
 struct MultiComponentModel{M, F, V<:AbstractVector} <: AbstractModel
     base::M
     flux::F
