@@ -17,7 +17,6 @@ MD_FILES = [
             ]
 
 
-DocMeta.setdocmeta!(VLBISkyModels, :DocTestSetup, :(using VLBISkyModels); recursive=true)
 
 makedocs(;
     modules=[VLBISkyModels],
