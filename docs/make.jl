@@ -26,7 +26,7 @@ makedocs(;
     sitename="VLBISkyModels.jl",
     format=Documenter.HTML(;
         prettyurls=get(ENV, "CI", "false") == "true",
-        canonical="https://github.com/EHTJulia/VLBISkyModels.jl",
+        canonical="https://ehtjulia.github.io/VLBISkyModels.jl",
         edit_link="main",
         assets=String[],
     ),
