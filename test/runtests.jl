@@ -7,6 +7,7 @@ using FFTW
 using Plots
 using Statistics
 using Test
+import CairoMakie as CM
 
 
 @testset "VLBISkyModels.jl" begin
