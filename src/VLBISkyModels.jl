@@ -49,7 +49,10 @@ import ComradeBase: flux, radialextent, intensitymap, intensitymap!,
                     visibilities, visibilities!,
                     _visibilities, _visibilities!,
                     visibilities_analytic, visibilities_analytic!,
-                    visibilities_numeric, visibilities_numeric!
+                    visibilities_numeric, visibilities_numeric!,
+                    closure_phase, closure_phases,
+                    logclosure_amplitude, logclosure_amplitudes,
+                    bispectra, bispectrum
 
 
 # Write your package code here.
