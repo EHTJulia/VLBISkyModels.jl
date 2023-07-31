@@ -288,12 +288,13 @@ smoothed(m, σ::Number) = convolved(m, stretched(Gaussian(), σ, σ))
 flux(m::ConvolvedModel) = flux(m.m1)*flux(m.m2)
 
 function intensitymap_numeric(model::ConvolvedModel, dims::ComradeBase.AbstractDims)
-    (;X, Y) = dims
     vis1 = fouriermap(model.m1, dims)
     vis2 = fouriermap(model.m2, dims)
-    U = vis1.U
-    V = vis1.V
-    vis = ifftshift(phasedecenter!(vis1.*vis2, X, Y, U, V))
+    return IntensityMap(apply_ifft(vis1.*vis2, dims), dims)
+end
+
+function apply_ifft(vis, dims::GriddedKeys{(:X, :Y)})
+    vis = ifftshift(phasedecenter!(vis, dims.X, dims.Y, vis.U, vis.V))
     ifft!(keyless_unname(vis))
     return IntensityMap(real.(keyless_unname(vis)), dims)
 end
