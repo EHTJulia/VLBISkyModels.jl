@@ -66,13 +66,15 @@ function intensitymap!(::IsAnalytic, img::IntensityMap, s::ThreadedModel)
     return img
 end
 
+
+
+
 function fouriermap(::IsAnalytic, m::ThreadedModel, dims::ComradeBase.AbstractDims)
-    X = dims.X
-    Y = dims.Y
+    X, Y, T, F = extract_pos(dims)
     uu,vv = uviterator(length(X), step(X), length(Y), step(Y))
-    uvgrid = ComradeBase.grid(U=uu, V=vv)
-    T = typeof(visibility(m, uvgrid[1]))
-    vis = similar(uvgrid, T)
+    uvgrid = ComradeBase.grid(U=uu, V=vv, T=T, F=F)
+    S = typeof(visibility(m, uvgrid[1]))
+    vis = similar(uvgrid, S)
     Threads.@threads for I in CartesianIndices(vis)
         vis[I] = visibility(m, uvgrid[I])
     end

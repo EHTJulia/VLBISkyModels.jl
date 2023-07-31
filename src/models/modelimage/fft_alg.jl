@@ -169,8 +169,7 @@ function create_cache(alg::FFTAlg, img::IntensityMapTypes, pulse::Pulse=DeltaPul
     vis = applyfft(plan, pimg)
 
     #Construct the uv grid
-    (;X, Y) = imagepixels(img)
-    (;U, V) = uviterator(size(pimg, 1), step(X), size(pimg, 2), step(Y))
+    uvg = uvgrid(axiskeys(img))
 
     vispc = phasecenter(vis, X, Y, U, V)
     sitp = create_interpolator(U, V, vispc, stretched(pulse, step(X), step(Y)))
@@ -218,6 +217,25 @@ end
 #    end
 #end
 
+function uvgrid(p::GriddedKeys{(:X,:Y,:T,:F)})
+    (;X, Y, T, F) = p
+    uu,vv = uviterator(length(X), step(X), length(Y), step(Y))
+    return ComradeBase.grid(U=uu, V=vv, T=T, F=F)
+end
+
+function uvgrid(p::GriddedKeys{(:X,:Y,:F,:T)})
+    (;X, Y, T, F) = p
+    uu,vv = uviterator(length(X), step(X), length(Y), step(Y))
+    return ComradeBase.grid(U=uu, V=vv, F=F, T=T)
+end
+
+function uvgrid(p::GriddedKeys{(:X,:Y)})
+    (;X, Y) = p
+    uu,vv = uviterator(length(X), step(X), length(Y), step(Y))
+    return ComradeBase.grid(U=uu, V=vv)
+end
+
+
 """
     fouriermap(m, x)
 
@@ -230,23 +248,17 @@ function fouriermap(m::M, dims::ComradeBase.AbstractDims) where {M}
 end
 
 function fouriermap(::IsAnalytic, m, dims::ComradeBase.AbstractDims)
-    X = dims.X
-    Y = dims.Y
-    uu,vv = uviterator(length(X), step(X), length(Y), step(Y))
-    uvgrid = ComradeBase.grid(U=uu, V=vv)
-    vis = visibility.(Ref(m), uvgrid)
+    uvg = uvgrid(dims)
+    vis = visibility.(Ref(m), uvg)
     return vis
 end
 
 
 function fouriermap(::NotAnalytic, m, g::ComradeBase.AbstractDims)
-    X = g.X
-    Y = g.Y
     img = IntensityMap(zeros(map(length, dims(g))), g)
     mimg = modelimage(m, img, FFTAlg(), DeltaPulse())
-    uu,vv = uviterator(length(X), step(X), length(Y), step(Y))
-    uvgrid = ComradeBase.grid(U=uu, V=vv)
-    return visibility.(Ref(mimg), uvgrid)
+    uvg = uvgrid(g)
+    return visibility.(Ref(mimg), uvg)
 end
 
 
