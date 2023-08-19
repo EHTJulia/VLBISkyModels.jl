@@ -61,14 +61,14 @@ end
 
 ContinuousImage(img::IntensityMapTypes, cache::AbstractCache) = modelimage(ContinuousImage(img, cache.pulse), cache)
 
-function ContinuousImage(img::AbstractMatrix, fovx::Real, fovy::Real, x0::Real, y0::Real, pulse, header=nothing)
+function ContinuousImage(img::AbstractMatrix, fovx::Real, fovy::Real, x0::Real, y0::Real, pulse, header=ComradeBase.NoHeader())
     xitr, yitr = imagepixels(fovx, fovy, size(img, 1), size(img,2), x0, y0)
     img = IntensityMap(img, (X=xitr, Y=yitr), header)
     # spulse = stretched(pulse, step(xitr), step(yitr))
     return ContinuousImage(img, pulse)
 end
 
-function ContinuousImage(im::AbstractMatrix, fov::Real, x0::Real, y0::Real, pulse, header=nothing)
+function ContinuousImage(im::AbstractMatrix, fov::Real, x0::Real, y0::Real, pulse, header=ComradeBase.NoHeader())
     return ContinuousImage(im, fov, fov, x0, y0, pulse, header)
 end
 
