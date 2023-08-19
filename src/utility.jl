@@ -51,7 +51,7 @@ This modifies the `img` by applying the `transforms...` returning a transformed 
 !!! note
 Unlike when `modify` is applied to a `<:AbstractModel` this returns an already modified image.
 """
-modify(img::IntensityMap, transforms...) = ModifiedModel(img, transforms)
+modify(img::SpatialIntensityMap, transforms...) = ModifiedModel(img, transforms)
 
 
 """
@@ -114,6 +114,9 @@ function convolve!(img::SpatialIntensityMap{<:StokesParams}, m)
     return img
 end
 
+function convolve(img::IntensityMap, m::AbstractModel)
+    return map(x->convolve(x, m), eachslice(img, dims=(:X, :Y)))
+end
 
 
 
