@@ -161,20 +161,14 @@ components(m::CompositeModel{M1,M2}) where
 flux(m::AddModel) = flux(m.m1) + flux(m.m2)
 
 
-function intensitymap(m::AddModel, dims::ComradeBase.AbstractDims)
-    sim1 = intensitymap(m.m1, dims)
-    sim2 = intensitymap(m.m2, dims)
-    return sim1 + sim2
-end
-
-function intensitymap(::NotAnalytic, m::AddModel, dims::ComradeBase.AbstractDims)
+function intensitymap_numeric(m::AddModel, dims::ComradeBase.AbstractDims)
     sim1 = intensitymap(m.m1, dims)
     sim2 = intensitymap(m.m2, dims)
     return sim1 + sim2
 end
 
 
-function intensitymap!(sim::IntensityMap, m::AddModel)
+function intensitymap_numeric!(sim::IntensityMap, m::AddModel)
     csim = deepcopy(sim)
     intensitymap!(csim, m.m1)
     sim .= csim

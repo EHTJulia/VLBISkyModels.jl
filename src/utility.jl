@@ -1,4 +1,4 @@
-export centroid_mean, center_image, convolve!, convolve
+export centroid_mean, center_image, convolve!, convolve, regrid
 
 function centroid_mean(imgs::AbstractVector{<:IntensityMap})
     return mapreduce(+, imgs) do img
@@ -132,7 +132,12 @@ function regrid(img::IntensityMap, g::GriddedKeys)
     end
 end
 
-function regrid(img::IntensityMap, nx::Int, ny::Int, fovx::Real, fovy::Real, x0=0.0, y0=0.0)
+"""
+    $(SIGNATURES)
+
+Regrids the spatial parts of an image `img` on the new domain `g`
+"""
+function regrid(img::IntensityMap, fovx::Real, fovy::Real, nx::Int, ny::Int, x0=0, y0=0)
     g = imagepixels(nx, ny, fovx, fovy, x0, y0)
     return regrid(img, g)
 end

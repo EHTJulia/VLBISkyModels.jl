@@ -27,10 +27,10 @@ Base.@constprop :aggressive @inline ispolarized(::Type{<:ThreadedModel{M}}) wher
 @inline flux(m::ThreadedModel) = flux(basemodel(m))
 
 using AxisKeys: keyless_unname
-function intensitymap(::IsAnalytic, s::ThreadedModel, g::GriddedKeys)
+function intensitymap_analytic(s::ThreadedModel, g::GriddedKeys)
     T = typeof(intensity_point(s, (X=g.X[begin], Y=g.Y[begin])))
     img = IntensityMap(Array{T}(undef, length(g.X), length(g.Y)), g)
-    return intensitymap!(IsAnalytic(), img, s)
+    return intensitymap_analytic!(img, s)
 end
 
 # function visibilities_analytic(m::ThreadedModel, u, v, time, freq)
