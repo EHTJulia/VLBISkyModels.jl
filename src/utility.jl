@@ -122,7 +122,7 @@ end
 
 
 """
-    regrid(img::IntensityMap, g::GriddedKeys)
+    $(SIGNATURES)
 
 Regrids the spatial parts of an image `img` on the new domain `g`
 """
