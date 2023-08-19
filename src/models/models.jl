@@ -17,6 +17,18 @@ abstract type AbstractModelImage{M} <: ComradeBase.AbstractModel end
 # ChainRulesCore.@non_differentiable isprimitive(M)
 #
 
+export unpack
+
+"""
+    unpack(m::AbstractModel)
+
+Unpacks all elements of a struct into a named tuple. Note that this may
+include elements that aren't direcltly model parameters.
+"""
+function unpack(m::ComradeBase.AbstractModel)
+    return ntfromstruct(m)
+end
+
 
 include(joinpath(@__DIR__, "methods.jl"))
 include(joinpath(@__DIR__, "pulse.jl"))
