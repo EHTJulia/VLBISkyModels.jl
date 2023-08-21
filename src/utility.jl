@@ -1,7 +1,7 @@
 export centroid_mean, center_image, convolve!, convolve, regrid
 
 function centroid_mean(imgs::AbstractVector{<:IntensityMap})
-    return mapreduce(+, imgs) do img
+    mimg = mapreduce(+, imgs) do img
         center_image(img)
     end
     return mimg./length(imgs)
@@ -31,6 +31,8 @@ end
 
 imanalytic(::Type{<:InterpolatedImage})  = IsAnalytic()
 visanalytic(::Type{<:InterpolatedImage}) = NotAnalytic()
+ispolarized(::Type{<:InterpolatedImage{<:IntensityMap{T}}}) where {T<:Real} = NotPolarized()
+ispolarized(::Type{<:InterpolatedImage{<:IntensityMap{T}}}) where {T<:StokesParams} = IsPolarized()
 
 function intensity_point(m::InterpolatedImage, p)
     (m.img.X[begin] > p.X || p.X > m.img.X[end]) && return zero(eltype(m.img))
@@ -68,6 +70,9 @@ This method does not automatically pad your image. If there is substantial flux 
 you will start to see artifacts.
 """
 function convolve!(img::SpatialIntensityMap{<:Real}, m::AbstractModel)
+    # short circuit if fill array since convolve is invariant
+    ComradeBase.baseimage(img) isa FillArrays.Fill && return img
+
     @assert visanalytic(typeof(m)) isa IsAnalytic "Convolving model must have an analytic Fourier transform currently"
     p = plan_rfft(baseimage(img))
 
@@ -85,6 +90,7 @@ function convolve!(img::SpatialIntensityMap{<:Real}, m::AbstractModel)
     mul!(baseimage(img), pinv, vis)
     return img
 end
+
 
 """
     convolve(img::IntensityMap, m::AbstractModel)
@@ -114,23 +120,23 @@ function convolve!(img::SpatialIntensityMap{<:StokesParams}, m)
     return img
 end
 
-function convolve(img::IntensityMap, m::AbstractModel)
-    return map(x->convolve(x, m), eachslice(img, dims=(:X, :Y)))
-end
+# function convolve(img::IntensityMap, m::AbstractModel)
+#     return map(x->convolve(x, m), eachslice(img, dims=(:X, :Y)))
+# end
 
 
 
 
-"""
-    $(SIGNATURES)
+# """
+#     $(SIGNATURES)
 
-Regrids the spatial parts of an image `img` on the new domain `g`
-"""
-function regrid(img::IntensityMap, g::GriddedKeys)
-    map(eachslice(img; dims=(:X, :Y))) do simg
-        return regrid(simg, g)
-    end
-end
+# Regrids the spatial parts of an image `img` on the new domain `g`
+# """
+# function regrid(img::IntensityMap, g::GriddedKeys)
+#     map(eachslice(img; dims=(:))) do simg
+#         return regrid(simg, g)
+#     end
+# end
 
 """
     $(SIGNATURES)
@@ -138,7 +144,7 @@ end
 Regrids the spatial parts of an image `img` on the new domain `g`
 """
 function regrid(img::IntensityMap, fovx::Real, fovy::Real, nx::Int, ny::Int, x0=0, y0=0)
-    g = imagepixels(nx, ny, fovx, fovy, x0, y0)
+    g = imagepixels(fovx, fovy, nx, ny, x0, y0)
     return regrid(img, g)
 end
 
