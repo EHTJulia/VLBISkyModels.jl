@@ -254,13 +254,13 @@ radialextent(::MRing{T}) where {T} = convert(T, 3/2)
 @inline function intensity_point(m::MRing{T}, p) where {T}
     x,y = _getxy(p)
     r = hypot(x,y)
-    θ = atan(x,y)
+    θ = atan(-x,y)
     dr = T(0.025)
     if (abs(r-1) < dr/2)
         acc = one(T)
         for n in eachindex(m.α, m.β)
             s,c = sincos(n*θ)
-            acc += m.α[n]*c - m.β[n]*s
+            acc += 2*(m.α[n]*c - m.β[n]*s)
         end
         return acc/(2*T(π)*dr)
     else
@@ -277,7 +277,7 @@ end
     (;α, β) = m
     k = T(2π)*sqrt(u^2 + v^2) + eps(T)
     vis = besselj0(k) + zero(T)*im
-    θ = atan(u, v)
+    θ = atan(-u, v)
     @inbounds for n in eachindex(α, β)
         s,c = sincos(n*θ)
         vis += 2*(α[n]*c - β[n]*s)*(1im)^n*besselj(n, k)

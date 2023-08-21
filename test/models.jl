@@ -268,6 +268,7 @@ end
         @inferred VLBISkyModels.visibility(m.m1, (U=0.0, V=0.0))
         @inferred VLBISkyModels.intensity_point(m.m1, (X=0.0, Y=0.0))
 
+        testmodel(MRing(0.5, 0.0), 2048, 1e-3)
 
         foo(x) = sum(abs2, VLBISkyModels.visibilities_analytic(MRing(x[1], x[2]), u, v, t, f))
         x = rand(2)
