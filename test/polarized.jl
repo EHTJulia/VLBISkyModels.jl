@@ -10,8 +10,13 @@ function testpol(m)
     uv = (U=u, V=u)
     v  = visibilities(m, uv)
 
+
+
+
     plot(m)
     plot(img)
+    polimage(img)
+    polimage(img; plot_total=false)
     Plots.closeall()
     return v
 end

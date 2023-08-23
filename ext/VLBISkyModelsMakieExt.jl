@@ -27,22 +27,81 @@ function Makie.convert_arguments(::SurfaceLike, g::VLBISkyModels.AbstractDims, m
     return g.X, g.Y, VLBISkyModels.baseimage(img)
 end
 
-function polarization_ellipse(s::StokesParams)
-    l = linearpol(s)
-    p = polintensity(s)
-    a = sqrt((p + abs(l))/2)
-    b = sqrt((p - abs(l))/2)
-    θ = angle(l)/2
-    sn = sign(s.V)
-    return (;a, b, θ, sn)
-end
 
 function polintensity(s::StokesParams)
     return sqrt(s.Q^2 + s.U^2 + s.V^2)
 end
 
+"""
+    polimage(img::IntensityMap{<:StokesParams};
+                colormap = :bone,
+                colorrange = Makie.automatic,
+                pcolorrange=Makie.automatic,
+                pcolormap=Reverse(:jet1),
+                nvec = 30,
+                min_frac = 0.1,
+                min_pol_frac=0.2,
+                length_norm=1.0,
+                plot_total=true)
+
+Plot a polarized intensity map using the image `img`.
+
+The plot follows the conventions from [EHTC M87 Paper VII](https://iopscience.iop.org/article/10.3847/2041-8213/abe71d).
+
+The stokes `I` image will be plotted with the attributes
+  - `colormap`
+  - `colorrange`
+  - `alpha`
+  - `colorscale`
+
+The polarized image will consist of a set. The attribute `plot_total` changes what polarized
+quantities are considered.
+
+**If `plot_total = true`**
+
+ - The total polarization will be considered and the markers will be given by ellipses.
+ - The orientation of the ellipse is equal to the EVPA.
+ - The area of the ellipse is proportional to `|V|²`.
+ - The semi-major axis is related to the total polarized intensity times the `length_norm`.
+ - The color of the ellipse is given by the fractional total polarization times the
+sign of Stokes `V`.
+
+**If `plot_total = false`**
+
+ - Only the linear polarization is considered and the markers will be ticks.
+ - The orientation of the ticks is equal to the EVPA.
+ - The length of the ticks is equal to the total linear polarized intensity,
+   i.e. `√(Q² + U²)` times the `length_norm`.
+ - The color of the tick is given by the fractional linear polarization.
+
+## Attributes
+  - `colormap`: The colormap of the stokes `I` image. The default is `:bone`.
+  - `colorrange`: The color range of the stokes `I` image. The default is `(0, maximum(stokes(img, :I)))`
+  - `pcolorrange:` The color range for the polarized image
+  - `pcolormap`: The colormap used for fractional total/linear polarization markers.
+  - `nvec`: The number of polarization vectors to plot
+  - `min_frac`: Any markers with `I < min_frac*maximum(I))` will not be plotted
+  - `min_frac`: Any markers with `P < min_frac*maximum(P))` where `P` is the total/linear polarization flux
+                will not be plotted.
+  - `length_norm`: Specifies the normalization used for the ticks. The default is that the pixel
+                    with the largest polarization intensity will have a tick length = 10x the
+                    pixel separation. For an image with a maximum polarized intensity of 10Jy/μas²
+                    and pixel spacing of 1μas the marker length will be equal to 10μas.
+  - `plot_total`: If true plot the total polarization. If false only plot the linear polarization.
+
+
+## Generic Attributes
+$(Makie.ATTRIBUTES)
+
+
+!!! warning
+    The polarized plotting is intrinsically defined using astronomer/EHT polarization conventions
+    This means that in order to have the polarization ticks plotted in a way that makes sense
+    you need to have `xreversed=true` when defining your axis.
+
+"""
 Makie.@recipe(PolImage, img) do scene
-    Makie.Attributes(;
+    attr = Makie.Attributes(;
         colormap = :bone,
         colorrange = Makie.automatic,
         pcolorrange = Makie.automatic,
@@ -53,9 +112,11 @@ Makie.@recipe(PolImage, img) do scene
         nvec = 30,
         min_frac = 0.1,
         min_pol_frac = 0.2,
-        length_norm = 1.2,
+        length_norm = 1.0,
         plot_total = true
     )
+    return generic_plot_attributes!(attr)
+
 end
 
 Makie.plottype(::SpatialIntensityMap{<:StokesParams}) = PolImage{<:Tuple{SpatialIntensityMap{<:StokesParams}}}
@@ -66,9 +127,9 @@ function polparams(x, y, s, ptot)
 end
 
 function ellipse_params(x, y, s)
-    e = polarization_ellipse(s)
-    p = Point2f(rad2μas(x), rad2μas(y))
-    len =  Vec2f(e.b+1e-2, e.a)
+    e = polellipse(s)
+    p = Point2(rad2μas(x), rad2μas(y))
+    len =  Vec2(e.b + 0.01*e.a, e.a)/6
     col =  polintensity(s)/s.I*sign(s.V)
     rot = evpa(s)
     return p, len, col, rot
@@ -76,7 +137,7 @@ end
 
 function lin_params(x, y, s)
     l = linearpol(s)
-    p = Point2f(rad2μas(x), rad2μas(y))
+    p = Point2(rad2μas(x), rad2μas(y))
     len =  Vec2f(5.0, abs(l))
     col =  abs(l)/s.I
     rot = evpa(s)
@@ -108,26 +169,40 @@ function Makie.plot!(plot::PolImage{<:Tuple{IntensityMap{<:StokesParams}}})
                  plot.min_frac, plot.min_pol_frac,
                  plot.length_norm,
                  plot.plot_total) do img, nvec, Icut, pcut, length_norm, ptot
-        Xvec = range(first(img.X), last(img.X), length=nvec)
-        Yvec = range(first(img.Y), last(img.Y), length=nvec)
+        Xvec = range(img.X[begin+1], img.X[end-1], length=nvec)
+        Yvec = range(img.Y[begin+1], img.Y[end-1], length=nvec)
 
         maxI = maximum((stokes(img, :I)))
-        maxL = maximum(x->abs(linearpol(x)), img)
-        dxdy = prod(rad2μas.(values(pixelsizes(img))))
+        if ptot
+            maxL = maximum(polintensity, img)
+        else
+            maxL = maximum(x->abs(linearpol(x)), img)
+        end
 
-        p   = Point2f[]
-        len = Vec2f[]
+        dxdy = prod(rad2μas.(values(pixelsizes(img))))
+        dx = max(rad2μas.(values(pixelsizes(img)))...)
+
+        p   = Point2[]
+        len = Vec2[]
         col = eltype(stokes(img, :I))[]
         rot = eltype(stokes(img, :I))[]
+
+        lenmul = 10*dx/maxL*length_norm
 
         for y in Yvec
             for x in Xvec
                 s = img[X=Near(x), Y=Near(y)]
-                suas = s/dxdy*1e6
-                psi, leni, coli, roti = polparams(x, y, suas, ptot)
-                if (abs(linearpol(s))/maxL > pcut && s.I/maxI > Icut)
+                psi, leni, coli, roti = polparams(x, y, s, ptot)
+
+                if ptot
+                    pol = polintensity(s)
+                else
+                    pol = abs(linearpol(s))
+                end
+
+                if (pol/maxL > pcut && s.I/maxI > Icut)
                     push!(p, psi)
-                    push!(len, length_norm .* leni)
+                    push!(len, lenmul .* leni)
                     push!(col, coli)
                     push!(rot, roti)
                 end

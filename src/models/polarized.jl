@@ -207,16 +207,60 @@ function PoincareSphere2Map(I, p, X, grid)
 end
 PoincareSphere2Map(I::IntensityMap, p, X) = PoincareSphere2Map(baseimage(I), p, X, axiskeys(I))
 
+"""
+    linearpol(pimg::AbstractPolarizedModel, p)
+
+Return the complex linear polarization of the model `m` at point `p`.
+"""
+function PolarizedTypes.linearpol(pimg::AbstractPolarizedModel, p)
+    return linearpol(intensity_point(pimg, p))
+end
+
+
+"""
+    mpol(pimg::AbstractPolarizedModel, p)
+
+Return the fractional linear polarization of the model `m` at point `p`.
+"""
+function PolarizedTypes.mpol(pimg::AbstractPolarizedModel, p)
+    return mpol(intensity_point(pimg, p))
+end
+
+"""
+    polarization(pimg::AbstractPolarizedModel, p)
+
+Return the polarization vector (Q, U, V) of the model `m` at point `p`.
+"""
+function PolarizedTypes.polarization(pimg::AbstractPolarizedModel, p)
+    return polarization(intensity_point(pimg, p))
+end
+
+"""
+    fracpolarization(pimg::AbstractPolarizedModel, p)
+
+Return the fractional polarization vector (Q/I, U/I, V/I) of the model `m` at point `p`.
+"""
+function PolarizedTypes.fracpolarization(pimg::AbstractPolarizedModel, p)
+    return fracpolarization(intensity_point(pimg, p))
+end
+
 
 """
     evpa(pimg::AbstractPolarizedModel, p)
 
-electric vector position angle or EVPA of the polarized model `pimg` at `u` and `v`
+electric vector position angle or EVPA of the polarized model `pimg` at `p`
 """
 @inline function PolarizedTypes.evpa(pimg::AbstractPolarizedModel, p)
-    sq = visibility(stokes(pimg, :Q), p)
-    su = visibility(stokes(pimg, :U), p)
-    return angle(su/sq)/2
+    return evpa(intensity_point(pimg, p))
+end
+
+"""
+    polellipse(pimg::AbstractPolarizedModel, p)
+
+Compute the polarization of the polarized model.
+"""
+@inline function PolarizedTypes.polellipse(pimg::AbstractPolarizedModel, p)
+    return polellipse(intensity_point(pimg, p))
 end
 
 
@@ -226,7 +270,7 @@ end
 
 Computes the fractional linear polarization in the visibility domain
 
-    m̆ = (Q + iU)/I
+    m̆ = (Q̃ + iŨ)/Ĩ
 
 To create the symbol type `m\\breve` in the REPL or use the
 [`mbreve`](@ref) function.

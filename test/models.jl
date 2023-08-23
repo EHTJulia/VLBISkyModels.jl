@@ -591,9 +591,19 @@ end
 
     p = (U = 0.005, V=0.01)
     v = visibility(m, p)
-    @test evpa(v) ≈ evpa(m, p)
     @test m̆(v) ≈ m̆(m, p)
     @test mbreve(v) ≈ mbreve(m, p)
+
+    g = GriddedKeys(imagepixels(60.0, 60.0, 128, 128))
+    img = intensitymap(m, g)
+    p0 = (X=g.X[64], Y=g.Y[64])
+    @test linearpol(m, p0) ≈ linearpol(img[64, 64])
+    @test mpol(m, p0) ≈ mpol(img[64, 64])
+    @test polarization(m, p0) ≈ polarization(img[64, 64])
+    @test fracpolarization(m, p0) ≈ fracpolarization(img[64, 64])
+    @test evpa(m, p0) ≈ evpa(img[64, 64])
+    map((x,y)->(@test x≈y), polellipse(m, p0), polellipse(img[64, 64]))
+
 
     I = IntensityMap(zeros(1024,1024), 100.0, 100.0)
     Q = similar(I)
