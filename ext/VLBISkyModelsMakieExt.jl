@@ -19,12 +19,12 @@ end
 
 function Makie.convert_arguments(::SurfaceLike, x::AbstractVector, y::AbstractVector, m::VLBISkyModels.AbstractModel)
     img = intensitymap(m, GriddedKeys((X=x, Y=y)))
-    return x, y, VLBISkyModels.baseimage(img)
+    return rad2μas(x), rad2μas(y), VLBISkyModels.baseimage(img)
 end
 
 function Makie.convert_arguments(::SurfaceLike, g::VLBISkyModels.AbstractDims, m::VLBISkyModels.AbstractModel)
     img = intensitymap(m, g)
-    return g.X, g.Y, VLBISkyModels.baseimage(img)
+    return rad2μas(g.X), rad2μas(g.Y), VLBISkyModels.baseimage(img)
 end
 
 
@@ -115,7 +115,7 @@ Makie.@recipe(PolImage, img) do scene
         length_norm = 1.0,
         plot_total = true
     )
-    return generic_plot_attributes!(attr)
+    return Makie.generic_plot_attributes(attr)
 
 end
 
