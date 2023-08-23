@@ -101,7 +101,7 @@ $(Makie.ATTRIBUTES)
 
 """
 Makie.@recipe(PolImage, img) do scene
-    attr = Makie.Attributes(;
+    Makie.Attributes(;
         colormap = :bone,
         colorrange = Makie.automatic,
         pcolorrange = Makie.automatic,
@@ -115,8 +115,6 @@ Makie.@recipe(PolImage, img) do scene
         length_norm = 1.0,
         plot_total = true
     )
-    return Makie.generic_plot_attributes(attr)
-
 end
 
 Makie.plottype(::SpatialIntensityMap{<:StokesParams}) = PolImage{<:Tuple{SpatialIntensityMap{<:StokesParams}}}
