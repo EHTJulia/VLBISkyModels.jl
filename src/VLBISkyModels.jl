@@ -26,6 +26,7 @@ using PolarizedTypes
 
 @reexport using ComradeBase
 @reexport using PolarizedTypes
+@reexport using AxisKeys
 
 """
     rad2μas(x)
@@ -60,6 +61,7 @@ include(joinpath(@__DIR__, "models/models.jl"))
 include("utility.jl")
 include("rules.jl")
 include("visualizations/vis.jl")
+include("visualizations/polimage.jl")
 
 if !isdefined(Base, :get_extension)
     using Requires
