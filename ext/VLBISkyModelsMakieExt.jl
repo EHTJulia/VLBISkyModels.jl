@@ -17,6 +17,11 @@ function Makie.convert_arguments(::SurfaceLike, img::IntensityMap{T, 2}) where {
     return rad2μas(X), rad2μas(Y), VLBISkyModels.baseimage(img)
 end
 
+function Makie.convert_arguments(::DiscreteSurface, img::IntensityMap{T, 2}) where {T}
+    (;X, Y) = img
+    return rad2μas(X), rad2μas(Y), VLBISkyModels.baseimage(img)
+end
+
 function Makie.convert_arguments(::SurfaceLike, x::AbstractVector, y::AbstractVector, m::VLBISkyModels.AbstractModel)
     img = intensitymap(m, GriddedKeys((X=x, Y=y)))
     return rad2μas(x), rad2μas(y), VLBISkyModels.baseimage(img)
@@ -102,7 +107,7 @@ $(Makie.ATTRIBUTES)
 """
 Makie.@recipe(PolImage, img) do scene
     Makie.Attributes(;
-        colormap = :bone,
+        colormap = Reverse(:bone),
         colorrange = Makie.automatic,
         pcolorrange = Makie.automatic,
         pcolormap=Reverse(:jet1),
@@ -113,6 +118,8 @@ Makie.@recipe(PolImage, img) do scene
         min_frac = 0.1,
         min_pol_frac = 0.2,
         length_norm = 1.0,
+        lowclip = Makie.automatic,
+        highclip = Makie.automatic,
         plot_total = true
     )
 end
@@ -127,7 +134,7 @@ end
 function ellipse_params(x, y, s)
     e = polellipse(s)
     p = Point2(rad2μas(x), rad2μas(y))
-    len =  Vec2(e.b + 0.01*e.a, e.a)/6
+    len =  Vec2(e.b + 0.02*e.a, e.a)/2
     col =  polintensity(s)/s.I*sign(s.V)
     rot = evpa(s)
     return p, len, col, rot
@@ -136,7 +143,7 @@ end
 function lin_params(x, y, s)
     l = linearpol(s)
     p = Point2(rad2μas(x), rad2μas(y))
-    len =  Vec2f(5.0, abs(l))
+    len =  Vec2f(abs(l)/10, abs(l))
     col =  abs(l)/s.I
     rot = evpa(s)
     return p, len, col, rot
@@ -161,6 +168,8 @@ function Makie.plot!(plot::PolImage{<:Tuple{IntensityMap{<:StokesParams}}})
         colorscale = plot.colorscale,
         colorrange = plot.colorrange,
         alpha = plot.alpha,
+        nan_color = plot.nan_color,
+        lowclip=plot.lowclip
     )
 
     points = lift(img, plot.nvec,
@@ -177,7 +186,6 @@ function Makie.plot!(plot::PolImage{<:Tuple{IntensityMap{<:StokesParams}}})
             maxL = maximum(x->abs(linearpol(x)), img)
         end
 
-        dxdy = prod(rad2μas.(values(pixelsizes(img))))
         dx = max(rad2μas.(values(pixelsizes(img)))...)
 
         p   = Point2[]
@@ -221,15 +229,13 @@ function Makie.plot!(plot::PolImage{<:Tuple{IntensityMap{<:StokesParams}}})
         return (-1.01*maxp, 1*01maxp)
     end
     m = lift(plot.plot_total) do pt
-            pt && return '𝗢'
-            return '.'
+            pt && return '𝐎'
+            return '⋅'
     end
     scatter!(plot, p;
         marker=m,
         markersize = len,
         markerspace = :data,
-        strokewidth=0.1,
-        strokecolor=:black,
         rotations = rot,
         colorrange = pc,
         color = col,
