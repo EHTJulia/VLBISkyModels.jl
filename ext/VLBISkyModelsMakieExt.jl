@@ -9,7 +9,7 @@ else
     using ..AxisKeys
 end
 
-import VLBISkyModels: polimage, polimage!
+import VLBISkyModels: polimage, polimage!, imgviz, imgviz!
 
 
 function Makie.convert_arguments(::SurfaceLike, img::IntensityMap{T, 2}) where {T}
@@ -110,7 +110,7 @@ Makie.@recipe(PolImage, img) do scene
         colormap = Reverse(:bone),
         colorrange = Makie.automatic,
         pcolorrange = Makie.automatic,
-        pcolormap=Reverse(:jet1),
+        pcolormap=Makie.automatic,
         colorscale = identity,
         alpha = 1.0,
         nan_color = Makie.RGBAf(0,0,0,0),
@@ -186,14 +186,14 @@ function Makie.plot!(plot::PolImage{<:Tuple{IntensityMap{<:StokesParams}}})
             maxL = maximum(x->abs(linearpol(x)), img)
         end
 
-        dx = max(rad2μas.(values(pixelsizes(img)))...)
+        dx = max(rad2μas.(values(fieldofview(img)))...)
 
         p   = Point2[]
         len = Vec2[]
         col = eltype(stokes(img, :I))[]
         rot = eltype(stokes(img, :I))[]
 
-        lenmul = 10*dx/maxL*length_norm
+        lenmul = 5*dx/nvec/maxL*length_norm
 
         for y in Yvec
             for x in Xvec
@@ -223,15 +223,31 @@ function Makie.plot!(plot::PolImage{<:Tuple{IntensityMap{<:StokesParams}}})
     col = lift(x->getindex(x, 3), points)
     rot = lift(x->getindex(x, 4), points)
 
-    pc = lift(plot.pcolorrange, img) do pc, img
-        pc != Makie.automatic && return pc
-        maxp = maximum(x->polintensity(x)/x.I, img)
-        return (-1.01*maxp, 1*01maxp)
+    pc = lift(plot.pcolorrange, plot.plot_total, img) do pc, pt, img
+        (pc != Makie.automatic) && return pc
+        if pt
+            maxp = maximum(x->polintensity(x)/x.I, img)
+            return (-1.1*maxp, 1.1*maxp)
+        else
+            maxp = maximum(x->abs(linearpol(x))/x.I, img)
+            return (0.0, 1.1*maxp)
+        end
     end
     m = lift(plot.plot_total) do pt
             pt && return '𝝾'
             return '⋅'
     end
+
+    pcm = lift(plot.pcolormap, plot.plot_total) do pc, pt
+        (pc != Makie.automatic) && return pc
+        if pt
+            return :diverging_bkr_55_10_c35_n256
+        else
+            return :viridis
+        end
+    end
+
+
     scatter!(plot, p;
         marker=m,
         markersize = len,
@@ -239,26 +255,88 @@ function Makie.plot!(plot::PolImage{<:Tuple{IntensityMap{<:StokesParams}}})
         rotations = rot,
         colorrange = pc,
         color = col,
-        colormap = plot.pcolormap,
+        colormap = pcm,
     )
 
 end
 
-function imgviz!(img::IntensityMap; kwargs...)
-    res = get(kwargs, "resolution", (550, 500))
-    fig = Figure(;resoluion = (550, 500))
-    ax = Axis(fig[1,1], xreversed=true, aspect=1)
+function imgviz(img::IntensityMap; scale_length = fieldofview(img).X/4, kwargs...)
+    dkwargs = Dict(kwargs)
+    res = get(dkwargs, :resolution, (600, 500))
+    delete!(dkwargs, :resolution)
+    fig = Figure(;resolution = res)
+    ax = Axis(fig[1,1], xreversed=true, aspect=DataAspect())
+    hidedecorations!(ax)
 
-    dxdy = prod(rad2μas(values(pixelsizes(img))))
+    dxdy = prod(rad2μas.(values(pixelsizes(img))))
     imguas = img./dxdy
 
-    imviz!(ax, imguas)
-    colorrange_default = (0.0, maximum(imguas))
-
+    return _imgviz!(fig, ax, imguas; scale_length, dkwargs...)
 end
 
-function imgviz!(ax::Axis, img::IntensityMap; kwargs...)
+function _imgviz!(fig, ax, img::IntensityMap{<:Real}; scale_length=fieldofview(img).X/4, kwargs...)
+    colorrange_default = (0.0, maximum(img))
+    dkwargs = Dict(kwargs)
+    crange = get(dkwargs, :colorrange, colorrange_default)
+    delete!(dkwargs, :colorrange)
+    cmap = get(dkwargs, :colormap, :afmhot)
+    delete!(dkwargs, :colormap)
 
+
+
+    hm = image!(ax, img, colorrange=crange, colormap=cmap, kwargs...)
+
+    color = Makie.to_colormap(cmap)[end]
+    add_scalebar!(ax, img, scale_length, color)
+
+
+    Colorbar(fig[1,2], hm, label="Brightness (Jy/μas)")
+    colgap!(fig.layout, 15)
+
+    return Makie.FigureAxisPlot(fig, ax, hm)
+end
+
+function _imgviz!(fig, ax, img::IntensityMap{<:StokesParams}; scale_length=fieldofview(img).X/4, kwargs...)
+    colorrange_default = (0.0, maximum(stokes(img, :I)))
+    dkwargs = Dict(kwargs)
+    crange = get(dkwargs, :colorrange, colorrange_default)
+    delete!(dkwargs, :colorrange)
+    cmap = get(dkwargs, :colormap, Reverse(:bone))
+    delete!(dkwargs, :colormap)
+    delete!(dkwargs, :resolution)
+
+    pt = get(dkwargs, :plot_total, true)
+
+    hm = polimage!(ax, img; colorrange=crange, colormap=cmap, dkwargs...)
+
+    color = Makie.to_colormap(cmap)[end]
+    add_scalebar!(ax, img, scale_length, color)
+
+    Colorbar(fig[1,2], hm, label="Brightness (Jy/μas)")
+
+    if pt
+        plabel = "Signed Fractional Total Polarization (sign(V)|p|)"
+    else
+        plabel = "Fractional Linear Polarization |m|"
+    end
+    Colorbar(fig[2, 1], getfield(hm, :plots)[2], label=plabel, vertical=false, flipaxis=false,)
+    colgap!(fig.layout, 5)
+    rowgap!(fig.layout, 5)
+
+    return Makie.FigureAxisPlot(fig, ax, hm)
+end
+
+function add_scalebar!(ax, img, scale_length, color)
+    fovx, fovy = map(rad2μas, fieldofview(img))
+    dx, dy = map(rad2μas, pixelsizes(img))
+    sl = rad2μas(scale_length)
+    barx = [-fovx/2 + fovx/16, -fovx/2 + fovx/16 + sl]
+    bary = fill(-fovy/2 + fovy/16, 2)
+
+    lines!(ax, -barx, bary, color=color)
+    text!(ax, -(barx[1] + (barx[2]-barx[1])/2), bary[1]+10*dy;
+            text = "$(round(Int, sl)) μas",
+            align=(:center, :bottom), color=color)
 end
 
 
