@@ -229,7 +229,7 @@ function Makie.plot!(plot::PolImage{<:Tuple{IntensityMap{<:StokesParams}}})
         return (-1.01*maxp, 1*01maxp)
     end
     m = lift(plot.plot_total) do pt
-            pt && return '𝐎'
+            pt && return '𝝾'
             return '⋅'
     end
     scatter!(plot, p;
@@ -241,6 +241,23 @@ function Makie.plot!(plot::PolImage{<:Tuple{IntensityMap{<:StokesParams}}})
         color = col,
         colormap = plot.pcolormap,
     )
+
+end
+
+function imgviz!(img::IntensityMap; kwargs...)
+    res = get(kwargs, "resolution", (550, 500))
+    fig = Figure(;resoluion = (550, 500))
+    ax = Axis(fig[1,1], xreversed=true, aspect=1)
+
+    dxdy = prod(rad2μas(values(pixelsizes(img))))
+    imguas = img./dxdy
+
+    imviz!(ax, imguas)
+    colorrange_default = (0.0, maximum(imguas))
+
+end
+
+function imgviz!(ax::Axis, img::IntensityMap; kwargs...)
 
 end
 
