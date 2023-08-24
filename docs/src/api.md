@@ -6,6 +6,12 @@
 
 ## Model Definitions
 
+### Visualization
+```@docs
+VLBISkyModels.imageviz
+VLBISkyModels.polimage
+```
+
 ### Combinators
 
 ```@docs

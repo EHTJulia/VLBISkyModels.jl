@@ -9,7 +9,7 @@ else
     using ..AxisKeys
 end
 
-import VLBISkyModels: polimage, polimage!, imgviz, imgviz!
+import VLBISkyModels: polimage, polimage!, imageviz
 
 
 function Makie.convert_arguments(::SurfaceLike, img::IntensityMap{T, 2}) where {T}
@@ -260,9 +260,33 @@ function Makie.plot!(plot::PolImage{<:Tuple{IntensityMap{<:StokesParams}}})
 
 end
 
-function imgviz(img::IntensityMap; scale_length = fieldofview(img).X/4, kwargs...)
+"""
+    imageviz(img::IntensityMap; scale_length = fieldofview(img.X/4), kwargs...)
+
+A default image visualization for a `IntensityMap`.
+
+**If `eltype(img) <: Real`** i.e. an image of a single stokes parameter
+this will plot the image with a colorbar in units of Jy/μas². The plot will
+accept any `kwargs` that are a supported by the `Makie.Image` type an can
+be queried by typing `?image` in the REPL
+
+**If `eltype(img) <: StokesParams`** i.e. full polarized image
+this will use `polimage`. The plot will
+accept any `kwargs` that are a supported by the `PolImage` type an can
+be queried by typing `?polimage` in the REPL.
+
+!!! tip
+    To customize the image, i.e. specify a specific axis we recommend to use
+    `image` and `polimage` directly.
+
+"""
+function imageviz(img::IntensityMap; scale_length = fieldofview(img).X/4, kwargs...)
     dkwargs = Dict(kwargs)
-    res = get(dkwargs, :resolution, (600, 500))
+    if eltype(img) <: Real
+        res = get(dkwargs, :resolution, (600, 500))
+    else
+        res = get(dkwargs, :resolution, (610, 600))
+    end
     delete!(dkwargs, :resolution)
     fig = Figure(;resolution = res)
     ax = Axis(fig[1,1], xreversed=true, aspect=DataAspect())
@@ -275,7 +299,7 @@ function imgviz(img::IntensityMap; scale_length = fieldofview(img).X/4, kwargs..
 end
 
 function _imgviz!(fig, ax, img::IntensityMap{<:Real}; scale_length=fieldofview(img).X/4, kwargs...)
-    colorrange_default = (0.0, maximum(img))
+    colorrange_default = (minimum(img), maximum(img))
     dkwargs = Dict(kwargs)
     crange = get(dkwargs, :colorrange, colorrange_default)
     delete!(dkwargs, :colorrange)
@@ -319,7 +343,7 @@ function _imgviz!(fig, ax, img::IntensityMap{<:StokesParams}; scale_length=field
     else
         plabel = "Fractional Linear Polarization |m|"
     end
-    Colorbar(fig[2, 1], getfield(hm, :plots)[2], label=plabel, vertical=false, flipaxis=false,)
+    Colorbar(fig[2, 1], getfield(hm, :plots)[2], tellwidth=true, tellheight=true, label=plabel, vertical=false, flipaxis=false,)
     colgap!(fig.layout, 5)
     rowgap!(fig.layout, 5)
 
@@ -330,11 +354,11 @@ function add_scalebar!(ax, img, scale_length, color)
     fovx, fovy = map(rad2μas, fieldofview(img))
     dx, dy = map(rad2μas, pixelsizes(img))
     sl = rad2μas(scale_length)
-    barx = [-fovx/2 + fovx/16, -fovx/2 + fovx/16 + sl]
-    bary = fill(-fovy/2 + fovy/16, 2)
+    barx = [-fovx/2 + fovx/32, -fovx/2 + fovx/32 + sl]
+    bary = fill(-fovy/2 + fovy/32, 2)
 
     lines!(ax, -barx, bary, color=color)
-    text!(ax, -(barx[1] + (barx[2]-barx[1])/2), bary[1]+10*dy;
+    text!(ax, -(barx[1] + (barx[2]-barx[1])/2), bary[1]+fovy/64;
             text = "$(round(Int, sl)) μas",
             align=(:center, :bottom), color=color)
 end

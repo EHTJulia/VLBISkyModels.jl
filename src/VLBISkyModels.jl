@@ -61,7 +61,6 @@ include(joinpath(@__DIR__, "models/models.jl"))
 include("utility.jl")
 include("rules.jl")
 include("visualizations/vis.jl")
-include("visualizations/polimage.jl")
 
 if !isdefined(Base, :get_extension)
     using Requires
