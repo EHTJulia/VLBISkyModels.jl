@@ -104,7 +104,14 @@ function visibilities_numeric(m::ModelImage{M,<:SpatialIntensityMap{<:ForwardDif
 end
 
 function nuft(A::NFFTPlan, b)
-    return A*b
+    out = zeros(eltype(b), size(A)[1])
+    _nuft(out, A, b)
+    return out
+end
+
+function _nuft(out, A, b)
+    mul!(out, A, b)
+    return nothing
 end
 
 function ChainRulesCore.rrule(::typeof(nuft), A::NFFTPlan, b)
@@ -118,4 +125,19 @@ function ChainRulesCore.rrule(::typeof(nuft), A::NFFTPlan, b)
         return Δf, NoTangent(), ΔA
     end
     return vis, nuft_pullback
+end
+
+using EnzymeCore: EnzymeRules, Const, Active, Duplicated
+#using EnzymeRules: ConfigWidth, needs_primal
+
+function EnzymeRules.augmented_primal(config::Config{false, false, 1}, ::Const{typeof(_nuft)}, ::Type{<:Const}, out::Duplicated, A::Const, b::Duplicated)
+    println("In custom augmented primal")
+    mul!(out.val, A.val, b.val)
+    return AugmentedReturn(nothing, nothing, out.val)
+end
+
+function EnzymeRules.reverse(config::Config{false, false, 1}, ::Const{typeof(_nuft)}, ::Type{<:Const}, tape, out::Duplicated, A::Const, b::Duplicated)
+    #TODO do I need to accumulate?
+    mul!(b.dval, A.val', out.dval)
+    return (nothing, nothing, nothing)
 end
