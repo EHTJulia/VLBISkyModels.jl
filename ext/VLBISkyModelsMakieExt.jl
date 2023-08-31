@@ -86,7 +86,7 @@ sign of Stokes `V`.
   - `pcolormap`: The colormap used for fractional total/linear polarization markers.
   - `nvec`: The number of polarization vectors to plot
   - `min_frac`: Any markers with `I < min_frac*maximum(I))` will not be plotted
-  - `min_frac`: Any markers with `P < min_frac*maximum(P))` where `P` is the total/linear polarization flux
+  - `min_pol_frac`: Any markers with `P < min_frac*maximum(P))` where `P` is the total/linear polarization flux
                 will not be plotted.
   - `length_norm`: Specifies the normalization used for the ticks. The default is that the pixel
                     with the largest polarization intensity will have a tick length = 10x the
@@ -110,13 +110,13 @@ Makie.@recipe(PolImage, img) do scene
         colormap = Reverse(:bone),
         colorrange = Makie.automatic,
         pcolorrange = Makie.automatic,
-        pcolormap=Makie.automatic,
+        pcolormap = Makie.automatic,
         colorscale = identity,
         alpha = 1.0,
         nan_color = Makie.RGBAf(0,0,0,0),
         nvec = 30,
         min_frac = 0.1,
-        min_pol_frac = 0.2,
+        min_pol_frac = 0.1,
         length_norm = 1.0,
         lowclip = Makie.automatic,
         highclip = Makie.automatic,
@@ -126,24 +126,24 @@ end
 
 Makie.plottype(::SpatialIntensityMap{<:StokesParams}) = PolImage{<:Tuple{SpatialIntensityMap{<:StokesParams}}}
 
-function polparams(x, y, s, ptot)
-    ptot && return ellipse_params(x, y, s)
-    return lin_params(x, y, s)
+function polparams(x, y, s, xmin, ptot)
+    ptot && return ellipse_params(x, y, s, xmin)
+    return lin_params(x, y, s, xmin)
 end
 
-function ellipse_params(x, y, s)
+function ellipse_params(x, y, s, xmin)
     e = polellipse(s)
     p = Point2(rad2μas(x), rad2μas(y))
-    len =  Vec2(e.b + 0.02*e.a, e.a)/2
+    len =  Vec2(max(e.b, e.a/10) , e.a)/2
     col =  polintensity(s)/s.I*sign(s.V)
     rot = evpa(s)
     return p, len, col, rot
 end
 
-function lin_params(x, y, s)
+function lin_params(x, y, s, xmin)
     l = linearpol(s)
     p = Point2(rad2μas(x), rad2μas(y))
-    len =  Vec2f(abs(l)/10, abs(l))
+    len =  Vec2f(xmin/1.5, xmin/1.5 + abs(l))
     col =  abs(l)/s.I
     rot = evpa(s)
     return p, len, col, rot
@@ -198,7 +198,7 @@ function Makie.plot!(plot::PolImage{<:Tuple{IntensityMap{<:StokesParams}}})
         for y in Yvec
             for x in Xvec
                 s = img[X=Near(x), Y=Near(y)]
-                psi, leni, coli, roti = polparams(x, y, s, ptot)
+                psi, leni, coli, roti = polparams(x, y, s, maxL/length_norm/2, ptot)
 
                 if ptot
                     pol = polintensity(s)
@@ -226,10 +226,10 @@ function Makie.plot!(plot::PolImage{<:Tuple{IntensityMap{<:StokesParams}}})
     pc = lift(plot.pcolorrange, plot.plot_total, img) do pc, pt, img
         (pc != Makie.automatic) && return pc
         if pt
-            maxp = maximum(x->polintensity(x)/x.I, img)
+            maxp = min(maximum(x->polintensity(x)/(x.I+eps()), img), 0.9090909)
             return (-1.1*maxp, 1.1*maxp)
         else
-            maxp = maximum(x->abs(linearpol(x))/x.I, img)
+            maxp = min(maximum(x->abs(linearpol(x))/(x.I+eps()), img), 0.9090909)
             return (0.0, 1.1*maxp)
         end
     end
@@ -295,7 +295,8 @@ function imageviz(img::IntensityMap; scale_length = fieldofview(img).X/4, kwargs
     dxdy = prod(rad2μas.(values(pixelsizes(img))))
     imguas = img./dxdy
 
-    return _imgviz!(fig, ax, imguas; scale_length, dkwargs...)
+    pl = _imgviz!(fig, ax, imguas; scale_length, dkwargs...)
+    return pl
 end
 
 function _imgviz!(fig, ax, img::IntensityMap{<:Real}; scale_length=fieldofview(img).X/4, kwargs...)
@@ -308,7 +309,7 @@ function _imgviz!(fig, ax, img::IntensityMap{<:Real}; scale_length=fieldofview(i
 
 
 
-    hm = image!(ax, img, colorrange=crange, colormap=cmap, kwargs...)
+    hm = image!(ax, img; colorrange=crange, colormap=cmap, dkwargs...)
 
     color = Makie.to_colormap(cmap)[end]
     add_scalebar!(ax, img, scale_length, color)
@@ -339,7 +340,7 @@ function _imgviz!(fig, ax, img::IntensityMap{<:StokesParams}; scale_length=field
     Colorbar(fig[1,2], hm, label="Brightness (Jy/μas)")
 
     if pt
-        plabel = "Signed Fractional Total Polarization (sign(V)|p|)"
+        plabel = "Signed Fractional Total Polarization sign(V)|mₜₒₜ|"
     else
         plabel = "Fractional Linear Polarization |m|"
     end
