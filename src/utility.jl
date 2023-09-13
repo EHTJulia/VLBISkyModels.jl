@@ -108,7 +108,9 @@ This method does not automatically pad your image. If there is substantial flux 
 you will start to see artifacts.
 """
 function convolve(img::SpatialIntensityMap, m::AbstractModel)
-    cimg = copy(img)
+    g = axiskeys(img)
+    bimg = baseimage(img)
+    cimg = IntensityMap(StructArray(bimg), g)
     return convolve!(cimg, m)
 end
 
