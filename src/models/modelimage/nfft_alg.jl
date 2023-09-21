@@ -103,13 +103,16 @@ function visibilities_numeric(m::ModelImage{M,<:SpatialIntensityMap{<:ForwardDif
     return conj.(vis).*m.cache.phases
 end
 
-function nuft(A::NFFTPlan, b)
-    out = zeros(eltype(b), size(A)[1])
-    _nuft(out, A, b)
+
+nuft(A::NFFTPlan, b::AbstractArray{<:Real}) = nuft(A, complex(b))
+
+function nuft(A::NFFTPlan, b::AbstractArray{<:Complex})
+    out = similar(b, eltype(A), size(A)[1])
+    _nuft!(out, A, b)
     return out
 end
 
-function _nuft(out, A, b)
+function _nuft!(out, A, b)
     mul!(out, A, b)
     return nothing
 end
@@ -128,16 +131,17 @@ function ChainRulesCore.rrule(::typeof(nuft), A::NFFTPlan, b)
 end
 
 using EnzymeCore: EnzymeRules, Const, Active, Duplicated
-#using EnzymeRules: ConfigWidth, needs_primal
-
-function EnzymeRules.augmented_primal(config::Config{false, false, 1}, ::Const{typeof(_nuft)}, ::Type{<:Const}, out::Duplicated, A::Const, b::Duplicated)
-    println("In custom augmented primal")
-    mul!(out.val, A.val, b.val)
-    return AugmentedReturn(nothing, nothing, out.val)
+#using EnzymeRules: ConfigWidth, needs_prima
+function EnzymeRules.augmented_primal(config::EnzymeRules.ConfigWidth{1}, ::Const{typeof(_nuft!)}, ::Type{<:Const}, out::Duplicated, A::Const, b::Duplicated)
+    # It seems that if we don't change out.val the entire primal is skipped
+    # println("In augmented primal")
+    _nuft!(out.val, A.val, b.val)
+    return EnzymeRules.AugmentedReturn(nothing, nothing, nothing)
 end
 
-function EnzymeRules.reverse(config::Config{false, false, 1}, ::Const{typeof(_nuft)}, ::Type{<:Const}, tape, out::Duplicated, A::Const, b::Duplicated)
-    #TODO do I need to accumulate?
+function EnzymeRules.reverse(config::EnzymeRules.ConfigWidth{1}, ::Const{typeof(_nuft!)}, ::Type{<:Const}, tape, out::Duplicated, A::Const, b::Duplicated)
+    # #TODO do I need to accumulate?
+    # println("In reverse")
     mul!(b.dval, A.val', out.dval)
     return (nothing, nothing, nothing)
 end
