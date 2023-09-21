@@ -63,7 +63,10 @@ function checkuv(uv, u, v)
     @assert v == @view(uv[2,:]) "Specified v don't match uv in cache. Did you pass the correct u,v?"
 end
 
-
+using Enzyme: EnzymeRules
+getplan(m::ModelImage{M, I, <:NUFTCache}) where {M, I} = m.cache.plan
+EnzymeRules.inactive(::typeof(getplan), args...) = nothing
+ChainRulesCore.@non_differentiable getplan(m)
 
 #using ReverseDiff
 #using NFFT
@@ -76,17 +79,17 @@ ChainRulesCore.@non_differentiable checkuv(alg, u::AbstractArray, v::AbstractArr
 function visibilities_numeric(m::ModelImage{M,I,<:NUFTCache{A}},
                       u, v, time, freq) where {M,I<:IntensityMap,A<:ObservedNUFT}
     checkuv(m.cache.alg.uv, u, v)
-    vis =  nuft(m.cache.plan, complex(ComradeBase.baseimage(m.cache.img)))
+    vis =  nuft(getplan(m), complex(ComradeBase.baseimage(m.cache.img)))
     return conj.(vis).*m.cache.phases
 end
 
 function visibilities_numeric(m::ModelImage{M,I,<:NUFTCache{A}},
                       u, v, time, freq) where {M,I<:StokesIntensityMap,A<:ObservedNUFT}
     checkuv(m.cache.alg.uv, u, v)
-    visI =  conj.(nuft(m.cache.plan, complex(ComradeBase.baseimage(stokes(m.cache.img, :I))))).*m.cache.phases
-    visQ =  conj.(nuft(m.cache.plan, complex(ComradeBase.baseimage(stokes(m.cache.img, :Q))))).*m.cache.phases
-    visU =  conj.(nuft(m.cache.plan, complex(ComradeBase.baseimage(stokes(m.cache.img, :U))))).*m.cache.phases
-    visV =  conj.(nuft(m.cache.plan, complex(ComradeBase.baseimage(stokes(m.cache.img, :V))))).*m.cache.phases
+    visI =  conj.(nuft(getplan(m), complex(ComradeBase.baseimage(stokes(m.cache.img, :I))))).*m.cache.phases
+    visQ =  conj.(nuft(getplan(m), complex(ComradeBase.baseimage(stokes(m.cache.img, :Q))))).*m.cache.phases
+    visU =  conj.(nuft(getplan(m), complex(ComradeBase.baseimage(stokes(m.cache.img, :U))))).*m.cache.phases
+    visV =  conj.(nuft(getplan(m), complex(ComradeBase.baseimage(stokes(m.cache.img, :V))))).*m.cache.phases
     r = StructArray{StokesParams{eltype(visI)}}((I=visI, Q=visQ, U=visU, V=visV))
     return r
 end
