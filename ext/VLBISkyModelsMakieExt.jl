@@ -193,7 +193,7 @@ function Makie.plot!(plot::PolImage{<:Tuple{IntensityMap{<:StokesParams}}})
         col = eltype(stokes(img, :I))[]
         rot = eltype(stokes(img, :I))[]
 
-        lenmul = 5*dx/nvec/maxL*length_norm
+        lenmul = 10*dx/nvec/maxL*length_norm
 
         for y in Yvec
             for x in Xvec
@@ -227,10 +227,10 @@ function Makie.plot!(plot::PolImage{<:Tuple{IntensityMap{<:StokesParams}}})
         (pc != Makie.automatic) && return pc
         if pt
             maxp = min(maximum(x->polintensity(x)/(x.I+eps()), img), 0.9090909)
-            return (-1.1*maxp, 1.1*maxp)
+            return (-1.01*maxp, 1.01*maxp)
         else
             maxp = min(maximum(x->abs(linearpol(x))/(x.I+eps()), img), 0.9090909)
-            return (0.0, 1.1*maxp)
+            return (0.0, 1.01*maxp)
         end
     end
     m = lift(plot.plot_total) do pt
