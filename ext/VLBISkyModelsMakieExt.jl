@@ -258,6 +258,8 @@ function Makie.plot!(plot::PolImage{<:Tuple{IntensityMap{<:StokesParams}}})
         colormap = pcm,
     )
 
+    return plot
+
 end
 
 """
@@ -337,7 +339,7 @@ function _imgviz!(fig, ax, img::IntensityMap{<:StokesParams}; scale_length=field
     color = Makie.to_colormap(cmap)[end]
     add_scalebar!(ax, img, scale_length, color)
 
-    Colorbar(fig[1,2], hm, label="Brightness (Jy/μas)")
+    Colorbar(fig[1,2], getfield(hm, :plots)[1], label="Brightness (Jy/μas)")
 
     if pt
         plabel = "Signed Fractional Total Polarization sign(V)|mₜₒₜ|"
