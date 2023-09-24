@@ -67,6 +67,7 @@ using Enzyme: EnzymeRules
 getplan(m::ModelImage{M, I, <:NUFTCache}) where {M, I} = m.cache.plan
 EnzymeRules.inactive(::typeof(getplan), args...) = nothing
 ChainRulesCore.@non_differentiable getplan(m)
+EnzymeRules.inactive(::typeof(checkuv), args...) = nothing
 
 #using ReverseDiff
 #using NFFT
