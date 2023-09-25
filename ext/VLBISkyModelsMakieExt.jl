@@ -198,7 +198,7 @@ function Makie.plot!(plot::PolImage{<:Tuple{IntensityMap{<:StokesParams}}})
         for y in Yvec
             for x in Xvec
                 s = img[X=Near(x), Y=Near(y)]
-                psi, leni, coli, roti = polparams(x, y, s, maxL/length_norm/2, ptot)
+                psi, leni, coli, roti = polparams(x, y, s, maxL/length_norm/5, ptot)
 
                 if ptot
                     pol = polintensity(s)
@@ -243,7 +243,7 @@ function Makie.plot!(plot::PolImage{<:Tuple{IntensityMap{<:StokesParams}}})
         if pt
             return :diverging_bkr_55_10_c35_n256
         else
-            return :viridis
+            return :rainbow1
         end
     end
 
