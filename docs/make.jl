@@ -1,6 +1,6 @@
 using VLBISkyModels
 using Documenter
-using Plots
+using CairoMakie
 using Literate
 using Pkg
 using Glob
