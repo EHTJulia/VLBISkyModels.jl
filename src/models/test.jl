@@ -1,9 +1,7 @@
 
-"""
-    `NonAnalyticTest`
-An internal model used primarly for testing. Any model passed to it will be interpreted
-as not having an analytic Fourier transform.
-"""
+#    `NonAnalyticTest`
+#An internal model used primarly for testing. Any model passed to it will be interpreted
+#as not having an analytic Fourier transform.
 struct NonAnalyticTest{M} <: AbstractModel
     model::M
 end

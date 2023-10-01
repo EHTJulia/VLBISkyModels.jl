@@ -2,15 +2,6 @@ using RecipesBase
 using Printf
 
 
-"""
-    plot(image::IntensityMap)
-
-# Details
-This was created to be close to the ehtim display object. It takes an
-EHTImage object and plots it according to EHT conventions.
-
-Note that is does not save the figure.
-"""
 @recipe function f(image::Union{<:StokesIntensityMap, <:IntensityMap}; uvscale=rad2μas)
     #Define some constants
     #Construct the image grid in μas
@@ -139,11 +130,6 @@ Note that is does not save the figure.
 end
 
 
-"""
-    plot(image::AbstractModel)
-
-
-"""
 @recipe function f(m::AbstractModel; uvscale=rad2μas,
                    fovx = 2*radialextent(m), fovy=2*radialextent(m),
                    nx = 512, ny = 512,

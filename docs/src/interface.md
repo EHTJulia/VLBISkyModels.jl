@@ -61,6 +61,7 @@ This completely defines the model interface for `VLBISkyModels`. With this, you 
 adding multiple Gaussians and modifying them. For instance, suppose you want an elliptical Gaussian with a flux of 2 Jy. This can be created by `VLBISkyModels` as follows:
 
 ```julia
+using Plots
 gauss = MyGaussian()
 ellgauss = 2.0*rotated(stretched(gauss, 1.0, 0.5), π/4)
 fig = plot(gauss, layout=(1,2), size=(800,300))
@@ -70,12 +71,13 @@ plot!(fig[2], ellgauss, size=(800,350))
 
 
 ```julia
+using Plots
 u = rand(100)*0.5; v=rand(100)*0.5
 vg  = visibilities(gauss, u, v)
 veg = visibilities(ellgauss, u, v)
 
-scatter(hypot.(u, v), abs.(vg), label="Gaussian")
-scatter!(hypot.(u, v), abs.(veg), label="Elliptical Gaussian")
+Plots.scatter(hypot.(u, v), abs.(vg), label="Gaussian")
+Plots.scatter!(hypot.(u, v), abs.(veg), label="Elliptical Gaussian")
 ```
 ![Image](assets/vis.png)
 

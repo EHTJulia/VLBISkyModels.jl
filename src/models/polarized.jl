@@ -51,11 +51,6 @@ Base.@constprop :aggressive @inline imanalytic(::Type{PolarizedModel{I,Q,U,V}}) 
 end
 
 
-"""
-    visibility(pimg::PolarizedModel, p)
-
-Computes the visibility in the stokes basis of the polarized model
-"""
 @inline function visibility_point(pimg::PolarizedModel, u, v, time, freq)
     si = visibility_point(stokes(pimg, :I), u, v, time, freq)
     sq = visibility_point(stokes(pimg, :Q), u, v, time, freq)

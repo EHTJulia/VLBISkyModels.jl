@@ -2,15 +2,18 @@
 
 ## Contents
 
+```@contents
+Pages = ["api.md"]
+```
+
 ## Index
+
+```@index
+Pages = ["api.md"]
+```
 
 ## Model Definitions
 
-### Visualization
-```@docs
-VLBISkyModels.imageviz
-VLBISkyModels.polimage
-```
 
 ### Combinators
 
@@ -94,25 +97,36 @@ VLBISkyModels.Renormalize
 
 ### Model Evaluation
 
-For more docstrings on how to evaluate models see [ComradeBase](https://github.com/ptiede/ComradeBase.jl).
+For more docstrings on how to evaluate models see [Base API](@ref).
 
 ```@docs
-VLBISkyModels.amplitude
-VLBISkyModels.amplitudes
-VLBISkyModels.bispectra
-VLBISkyModels.bispectrum
-VLBISkyModels.closure_phase
-VLBISkyModels.closure_phases
-VLBISkyModels.logclosure_amplitude
-VLBISkyModels.logclosure_amplitudes
-VLBISkyModels.visibility
+```
+
+### Visualization
+```@docs
+VLBISkyModels.imageviz
+VLBISkyModels.polimage
+```
+
+
+### Misc.
+```@docs
+VLBISkyModels.center_image
+VLBISkyModels.convolve
+VLBISkyModels.convolve!
+VLBISkyModels.PoincareSphere2Map
+VLBISkyModels.regrid
+VLBISkyModels.rad2μas
+VLBISkyModels.μas2rad
 ```
 
 ## Internal (Not Public API)
 ```@docs
+VLBISkyModels.AbstractCache
 VLBISkyModels.scale_uv
 VLBISkyModels.scale_image
 VLBISkyModels.transform_uv
 VLBISkyModels.transform_image
 VLBISkyModels.ThreadedModel
+VLBISkyModels.unpack
 ```
