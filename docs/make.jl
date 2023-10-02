@@ -3,6 +3,7 @@ script_dir = @__DIR__
 Pkg.activate(script_dir)
 parent_dir = dirname(script_dir)
 Pkg.develop(PackageSpec(path=parent_dir))
+Pkg.instantiate()
 
 using CairoMakie
 using VLBISkyModels
@@ -25,11 +26,13 @@ makedocs(;
     authors="Paul Tiede <ptiede91@gmail.com> and contributors",
     repo="https://github.com/EHTJulia/VLBISkyModels.jl/blob/{commit}{path}#{line}",
     sitename="VLBISkyModels.jl",
-    format=Documenter.HTML(),
-        # prettyurls=get(ENV, "CI", "false") == "true",
-        # edit_link="main",
-        # assets=String[],
-     draft=false,
+    format=Documenter.HTML(;
+        prettyurls=true, # always on, avoids confusion when building locally. If needed, serve the "build" folder locally with LiveServer. #get(ENV, "CI", "false") == "true",
+        canonical="https://ehtjulia.github.io/VLBISkyModels.jl",
+        edit_link="main",
+        assets=String[],
+        )
+ draft=false,
     pages=[
         "Home" => "index.md",
         "interface.md",
@@ -42,5 +45,4 @@ makedocs(;
 deploydocs(;
     repo="github.com/EHTJulia/VLBISkyModels.jl",
     devbranch="main",
-    push_preview=false
 )
