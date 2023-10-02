@@ -67,7 +67,7 @@ ellgauss = 2.0*rotated(stretched(gauss, 1.0, 0.5), π/4)
 fig = plot(gauss, layout=(1,2), size=(800,300))
 plot!(fig[2], ellgauss, size=(800,350))
 ```
-![Image](assets/gauss.png)
+![Image](gauss.png)
 
 
 ```julia
@@ -79,7 +79,7 @@ veg = visibilities(ellgauss, u, v)
 Plots.scatter(hypot.(u, v), abs.(vg), label="Gaussian")
 Plots.scatter!(hypot.(u, v), abs.(veg), label="Elliptical Gaussian")
 ```
-![Image](assets/vis.png)
+![Image](vis.png)
 
 ## Models without an Analytic Fourier Transform
 
