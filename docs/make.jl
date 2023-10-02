@@ -31,7 +31,7 @@ makedocs(;
         canonical="https://ehtjulia.github.io/VLBISkyModels.jl",
         edit_link="main",
         assets=String[],
-        )
+        ),
  draft=false,
     pages=[
         "Home" => "index.md",
