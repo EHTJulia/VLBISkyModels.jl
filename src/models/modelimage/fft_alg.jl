@@ -285,3 +285,20 @@ end
 @inline function visibility_point(mimg::ModelImage{M,I,<:FFTCache}, u, v, time, freq) where {M,I}
     return mimg.cache.sitp(u, v)
 end
+
+
+function Serialization.serialize(s::Serialization.AbstractSerializer, cache::FFTCache)
+    Serialization.writetag(s.io, Serialization.OBJECT_TAG)
+    Serialization.serialize(s, typeof(cache))
+    Serialization.serialize(s, cache.alg)
+    Serialization.serialize(s, cache.img)
+    Serialization.serialize(s, cache.pulse)
+
+end
+
+function Serialization.deserialize(s::AbstractSerializer, ::Type{<:FFTCache})
+    alg = Serialization.deserialize(s)
+    img = Serialization.deserialize(s)
+    pulse = Serialization.deserialize(s)
+    return create_cache(alg, img, pulse)
+end

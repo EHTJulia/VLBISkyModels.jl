@@ -7,6 +7,7 @@ using FFTW
 using Plots
 using Statistics
 using Test
+using Serialization
 import CairoMakie as CM
 
 

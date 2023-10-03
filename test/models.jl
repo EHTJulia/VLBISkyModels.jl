@@ -619,6 +619,27 @@ end
 
 end
 
+@testset "Serialization" begin
+    img = intensitymap(rotated(stretched(Gaussian(), 2.0, 1.0), π/8), 12.0, 12.0, 12, 12)
+    cimg = ContinuousImage(img, BSplinePulse{0}())
+    u = rand(64) .- 0.5
+    v = rand(64) .- 0.5
+    @testset "NFFT" begin
+        m = modelimage(cimg, NFFTAlg(u, v))
+        serialize("foo.jls", m)
+        mr = deserialize("foo.jls")
+        @test visibilities(m, (U=u, V=v)) ≈ visibilities(mr, (U=u, V=v))
+        rm("foo.jls")
+    end
+
+    @testset "FFT" begin
+        m = modelimage(cimg, FFTAlg())
+        serialize("foo.jls", m)
+        mr = deserialize("foo.jls")
+        @test visibilities(m, (U=u, V=v)) ≈ visibilities(mr, (U=u, V=v))
+        rm("foo.jls")
+    end
+end
 
 @testset "ContinuousImage Bspline0" begin
     img = intensitymap(rotated(stretched(Gaussian(), 2.0, 1.0), π/8), 12.0, 12.0, 12, 12)

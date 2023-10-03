@@ -63,6 +63,22 @@ function checkuv(uv, u, v)
     @assert v == @view(uv[2,:]) "Specified v don't match uv in cache. Did you pass the correct u,v?"
 end
 
+function Serialization.serialize(s::Serialization.AbstractSerializer, cache::NUFTCache{<:ObservedNUFT})
+    Serialization.writetag(s.io, Serialization.OBJECT_TAG)
+    Serialization.serialize(s, typeof(cache))
+    Serialization.serialize(s, cache.alg)
+    Serialization.serialize(s, cache.img)
+    Serialization.serialize(s, cache.pulse)
+
+end
+
+function Serialization.deserialize(s::AbstractSerializer, ::Type{<:NUFTCache{<:ObservedNUFT}})
+    alg = Serialization.deserialize(s)
+    img = Serialization.deserialize(s)
+    pulse = Serialization.deserialize(s)
+    return create_cache(alg, img, pulse)
+end
+
 
 
 #using ReverseDiff
