@@ -32,7 +32,7 @@ makedocs(;
         edit_link="main",
         assets=String[],
         ),
- draft=false,
+    draft=false,
     pages=[
         "Home" => "index.md",
         "interface.md",
