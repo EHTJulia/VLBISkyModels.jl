@@ -107,8 +107,15 @@ For the inplace version of the function see [`convolve!`](@ref)
 This method does not automatically pad your image. If there is substantial flux at the boundaries
 you will start to see artifacts.
 """
-function convolve(img::SpatialIntensityMap, m::AbstractModel)
+function convolve(img::SpatialIntensityMap{<:Real}, m::AbstractModel)
     cimg = copy(img)
+    return convolve!(cimg, m)
+end
+
+function convolve(img::SpatialIntensityMap{<:StokesParams}, m::AbstractModel)
+    g = axiskeys(img)
+    bimg = copy(baseimage(img))
+    cimg = IntensityMap(StructArray(bimg), g)
     return convolve!(cimg, m)
 end
 

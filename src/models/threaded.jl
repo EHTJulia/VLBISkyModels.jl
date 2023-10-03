@@ -70,11 +70,12 @@ function fouriermap(::IsAnalytic, m::ThreadedModel, dims::ComradeBase.AbstractDi
     X = dims.X
     Y = dims.Y
     uu,vv = uviterator(length(X), step(X), length(Y), step(Y))
-    uvgrid = ComradeBase.grid(U=uu, V=vv)
-    T = typeof(visibility(m, uvgrid[1]))
-    vis = similar(uvgrid, T)
+    # uvgrid = ComradeBase.grid(U=uu, V=vv)
+    T = typeof(visibility_point(m, uu[1], vv[1], 0, 0))
+    vis = similar(uu, T, (length(uu), length(vv)))
     Threads.@threads for I in CartesianIndices(vis)
-        vis[I] = visibility(m, uvgrid[I])
+        ix, iy = Tuple(I)
+        vis[I] = visibility_point(m, uu[ix], vv[iy], 0, 0)
     end
-    return vis
+    return KeyedArray(vis; U=uu, V=vv)
 end

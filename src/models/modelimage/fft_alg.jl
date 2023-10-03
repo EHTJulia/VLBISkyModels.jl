@@ -233,9 +233,8 @@ function fouriermap(::IsAnalytic, m, dims::ComradeBase.AbstractDims)
     X = dims.X
     Y = dims.Y
     uu,vv = uviterator(length(X), step(X), length(Y), step(Y))
-    uvgrid = ComradeBase.grid(U=uu, V=vv)
-    vis = visibility.(Ref(m), uvgrid)
-    return vis
+    vis = visibility_point.(Ref(m), uu, vv', 0, 0)
+    return KeyedArray(vis; U=uu, V=vv)
 end
 
 
@@ -245,8 +244,8 @@ function fouriermap(::NotAnalytic, m, g::ComradeBase.AbstractDims)
     img = IntensityMap(zeros(map(length, dims(g))), g)
     mimg = modelimage(m, img, FFTAlg(), DeltaPulse())
     uu,vv = uviterator(length(X), step(X), length(Y), step(Y))
-    uvgrid = ComradeBase.grid(U=uu, V=vv)
-    return visibility.(Ref(mimg), uvgrid)
+    # uvgrid = ComradeBase.grid(U=uu, V=vv)
+    return KeyedArray(visibility_point.(Ref(mimg), uu, vv', 0, 0); U=uu, V=vv)
 end
 
 
@@ -285,4 +284,21 @@ end
 
 @inline function visibility_point(mimg::ModelImage{M,I,<:FFTCache}, u, v, time, freq) where {M,I}
     return mimg.cache.sitp(u, v)
+end
+
+
+function Serialization.serialize(s::Serialization.AbstractSerializer, cache::FFTCache)
+    Serialization.writetag(s.io, Serialization.OBJECT_TAG)
+    Serialization.serialize(s, typeof(cache))
+    Serialization.serialize(s, cache.alg)
+    Serialization.serialize(s, cache.img)
+    Serialization.serialize(s, cache.pulse)
+
+end
+
+function Serialization.deserialize(s::AbstractSerializer, ::Type{<:FFTCache})
+    alg = Serialization.deserialize(s)
+    img = Serialization.deserialize(s)
+    pulse = Serialization.deserialize(s)
+    return create_cache(alg, img, pulse)
 end

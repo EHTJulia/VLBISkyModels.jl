@@ -5,7 +5,6 @@ using ArgCheck
 using AbstractFFTs
 using BasicInterpolators
 using ChainRulesCore
-using ComradeBase
 using ForwardDiff
 using DocStringExtensions
 using DelimitedFiles
@@ -22,7 +21,7 @@ using StaticArrays
 using StructArrays
 using LinearAlgebra
 using Printf
-using PolarizedTypes
+using Serialization
 
 @reexport using ComradeBase
 @reexport using PolarizedTypes
@@ -61,7 +60,6 @@ include(joinpath(@__DIR__, "models/models.jl"))
 include("utility.jl")
 include("rules.jl")
 include("visualizations/vis.jl")
-include("visualizations/polimage.jl")
 
 if !isdefined(Base, :get_extension)
     using Requires

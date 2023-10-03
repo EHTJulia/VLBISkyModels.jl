@@ -4,7 +4,7 @@ using VLBISkyModels
 using Pkg #hide
 Pkg.activate(joinpath(dirname(pathof(VLBISkyModels)), "..", "examples")) #hide
 
-using Plots
+using CairoMakie
 
 # While most of the models implemented in `VLBISkyModels` have an analytic
 # Fourier transform this is not required. In this notebook we will
@@ -25,8 +25,10 @@ m = ExtendedRing(8.0)
 
 
 # This is an example of a ring model that has a substantially different flux profile.
-
-plot(m, xlims=(-5.0, 5.0), ylims=(-5.0, 5.0), uvscale=identity)
+# Let's plot the image first giving it some unity by applying `modify`
+muas = modify(m, Stretch(μas2rad(20.0)))
+img = intensitymap(muas, μas2rad(100.0),  μas2rad(100.0), 256, 256)
+imageviz(img)
 
 # This function does not have a simple analytic Fourier transform, e.g.
 
@@ -37,13 +39,13 @@ VLBISkyModels.visanalytic(ExtendedRing)
 # use FFTW. To compute a numerical Fourier transform we first need to specify the image.
 
 
-image = IntensityMap(zeros(256, 256), 10.0, 10.0)
+img = IntensityMap(zeros(256, 256), 10.0, 10.0)
 
 # This will serve as our cache to store the image going forward. The next step is to create
 # a model wrapper that holds the model and the image. `VLBISkyModels` provides the `modelimage`
 # function to do exactly that
 
-mimage = modelimage(m, image, FFTAlg())
+mimage = modelimage(m, img, FFTAlg())
 
 # the `alg` keyword argument then specifies that we want to use an FFT to compute the
 # Fourier transform. When `modelimage` is called, the FFT is performed and then we use
@@ -58,6 +60,8 @@ v = randn(1000)/2
 vis = visibilities(mimage, (U=u, V=v))
 scatter(hypot.(u, v), real.(vis), label="Real")
 scatter!(hypot.(u, v), imag.(vis), label="Imag")
+axislegend()
+current_figure()
 
 # We can also directly get the amplitudes using:
 amp = amplitudes(mimage, (U=u, V=v))
