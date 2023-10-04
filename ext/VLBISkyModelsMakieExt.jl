@@ -355,10 +355,12 @@ end
 
 function add_scalebar!(ax, img, scale_length, color)
     fovx, fovy = map(rad2μas, fieldofview(img))
-    dx, dy = map(rad2μas, pixelsizes(img))
+    x0 = rad2μas(-last(img.X))
+    y0 = rad2μas(first(img.Y))
+
     sl = rad2μas(scale_length)
-    barx = [-fovx/2 + fovx/32, -fovx/2 + fovx/32 + sl]
-    bary = fill(-fovy/2 + fovy/32, 2)
+    barx = [x0 + fovx/32, x0 + fovx/32 + sl]
+    bary = fill(y0 + fovy/32, 2)
 
     lines!(ax, -barx, bary, color=color)
     text!(ax, -(barx[1] + (barx[2]-barx[1])/2), bary[1]+fovy/64;
