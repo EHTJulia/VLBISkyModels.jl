@@ -2,7 +2,7 @@ function ChainRulesCore.rrule(::Type{SA}, t::Tuple) where {SA<:StructArray}
     sa = SA(t)
     pt = ProjectTo(t)
     function _structarray_tuple_pullback(Δ)
-        ps = getproperty.(Ref(Δ), propertynames(Δ))
+        ps = map(x->getproperty(Δ, x), propertynames(Δ))
         return NoTangent(), Tangent{typeof(t)}(ps...)
     end
     return sa, _structarray_tuple_pullback
@@ -49,14 +49,6 @@ function (project::ProjectTo{StructArray})(dx::Tangent{<:StructArray})
     StructArray{project.eltype}(dx.components)
 end
 
-# function (project::ProjectTo{StructArray})(dx::NamedTuple)
-#     @assert project.names == keys(dx) "Key mismatch"
-#     return StructArray(dx)
-# end
-
-
-# (project::ProjectTo{StructArray{T}})(dx::Tuple) where {T} = StructArray{T}(dx)
-
 function (project::ProjectTo{StructArray})(dx::AbstractArray)
     @assert project.eltype === eltype(dx) "The eltype of the array is not the same there is an error in a ChainRule"
     r = StructArray(dx)
@@ -73,7 +65,7 @@ function (project::ProjectTo{StructArray})(dx)
     return dx
 end
 
-function (project::ProjectTo{StructArray})(dx::ChainRulesCore.AbstractZero)
+function (project::ProjectTo{StructArray})(::ChainRulesCore.AbstractZero)
     # @assert project.eltype === eltype(dx) "The eltype of the array is not the same there is an error in a ChainRule"
     return ZeroTangent()
 end
@@ -149,3 +141,24 @@ function ChainRulesCore.rrule(::typeof(visibilities_analytic), m::Union{Geometri
 
     return vis, _composite_visibilities_analytic_pullback
 end
+
+
+# function ChainRulesCore.rrule(::typeof(intensitymap_analytic), m::Union{GeometricModel, PolarizedModel, CompositeModel, ModifiedModel}, p::ComradeBase.GriddedKeys)
+#     img = intensitymap_analytic(m, p)
+#     @info p
+#     function _composite_intensitymap_analytic_pullback(Δ)
+#         n = propertynames(p)
+#         dp = GriddedKeys(NamedTuple{n}(map(x->zero(getproperty(p, x)), propertynames(p))))
+#         dimg = zero(img)
+#         dimg .= unthunk(Δ)
+#         rimg = zero(img)
+#         d = autodiff(Reverse, intensitymap_analytic!, Const, Duplicated(rimg, dimg), Active(m))
+#         dm = getm(d[1])
+#         tm = __extract_tangent(dm)
+
+#         tdp = (map(x->getproperty(dp, x), propertynames(p)))
+#         return NoTangent(), tm, Tangent{typeof(p)}(;dims=tdp, header=NoTangent())
+#     end
+
+#     return img, _composite_intensitymap_analytic_pullback
+# end

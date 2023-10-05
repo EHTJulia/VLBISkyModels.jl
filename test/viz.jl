@@ -3,7 +3,7 @@
     g = imagepixels(10.0, 10.0, 256, 256)
     img = intensitymap(m, g)
 
-    CM.heatmap(g, img)
+    CM.heatmap(img)
     CM.image(img)
     CM.image(g, m)
 
