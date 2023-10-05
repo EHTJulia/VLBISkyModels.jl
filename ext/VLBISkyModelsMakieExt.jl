@@ -285,19 +285,20 @@ be queried by typing `?polimage` in the REPL.
 function imageviz(img::IntensityMap; scale_length = fieldofview(img).X/4, kwargs...)
     dkwargs = Dict(kwargs)
     if eltype(img) <: Real
-        res = get(dkwargs, :resolution, (600, 500))
+        res = get(dkwargs, :resolution, (625, 500))
     else
-        res = get(dkwargs, :resolution, (610, 600))
+        res = get(dkwargs, :resolution, (640, 600))
     end
     delete!(dkwargs, :resolution)
     fig = Figure(;resolution = res)
-    ax = Axis(fig[1,1], xreversed=true, aspect=DataAspect())
+    ax = Axis(fig[1,1], xreversed=true, aspect=DataAspect(), tellheight=true, tellwidth=true)
     hidedecorations!(ax)
 
     dxdy = prod(rad2μas.(values(pixelsizes(img))))
     imguas = img./dxdy
 
     pl = _imgviz!(fig, ax, imguas; scale_length, dkwargs...)
+    resize_to_layout!(fig)
     return pl
 end
 
@@ -317,7 +318,7 @@ function _imgviz!(fig, ax, img::IntensityMap{<:Real}; scale_length=fieldofview(i
     add_scalebar!(ax, img, scale_length, color)
 
 
-    Colorbar(fig[1,2], hm, label="Brightness (Jy/μas)")
+    Colorbar(fig[1,2], hm, label="Brightness Temp (Jy/μas)", tellheight=true)
     colgap!(fig.layout, 15)
 
     return Makie.FigureAxisPlot(fig, ax, hm)
@@ -339,7 +340,7 @@ function _imgviz!(fig, ax, img::IntensityMap{<:StokesParams}; scale_length=field
     color = Makie.to_colormap(cmap)[end]
     add_scalebar!(ax, img, scale_length, color)
 
-    Colorbar(fig[1,2], getfield(hm, :plots)[1], label="Brightness (Jy/μas)")
+    Colorbar(fig[1,2], getfield(hm, :plots)[1], label="Brightness (Jy/μas)", tellheight=true)
 
     if pt
         plabel = "Signed Fractional Total Polarization sign(V)|mₜₒₜ|"
@@ -347,9 +348,11 @@ function _imgviz!(fig, ax, img::IntensityMap{<:StokesParams}; scale_length=field
         plabel = "Fractional Linear Polarization |m|"
     end
     Colorbar(fig[2, 1], getfield(hm, :plots)[2], tellwidth=true, tellheight=true, label=plabel, vertical=false, flipaxis=false,)
-    colgap!(fig.layout, 5)
-    rowgap!(fig.layout, 5)
-
+    colgap!(fig.layout, 15)
+    rowgap!(fig.layout, 15)
+    trim!(fig.layout)
+    xlims!(ax, rad2μas(last(img.X)), rad2μas(first(img.X)))
+    ylims!(ax, rad2μas(first(img.Y)), rad2μas(last(img.Y)))
     return Makie.FigureAxisPlot(fig, ax, hm)
 end
 

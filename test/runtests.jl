@@ -15,4 +15,5 @@ import CairoMakie as CM
     include("models.jl")
     include("polarized.jl")
     include("utility.jl")
+    include("viz.jl")
 end
