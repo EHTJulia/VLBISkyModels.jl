@@ -3,9 +3,9 @@
     g = imagepixels(10.0, 10.0, 256, 256)
     img = intensitymap(m, g)
 
-    heatmap(g, img)
-    image(img)
-    image(g, m)
+    CM.heatmap(g, img)
+    CM.image(img)
+    CM.image(g, m)
 
     imageviz(stokes(img, :I))
     imageviz(img)
