@@ -93,7 +93,8 @@ sign of Stokes `V`.
                     pixel separation. For an image with a maximum polarized intensity of 10Jy/μas²
                     and pixel spacing of 1μas the marker length will be equal to 10μas.
   - `plot_total`: If true plot the total polarization. If false only plot the linear polarization.
-
+  - `adjust_length`: If true the tick lengths will be adjusted according to the total polarized flux.
+                     If false the tick length is fixed and the size can be adjusted with `length_norm`.
 
 ## Generic Attributes
 $(Makie.ATTRIBUTES)
@@ -118,6 +119,7 @@ Makie.@recipe(PolImage, img) do scene
         min_frac = 0.1,
         min_pol_frac = 0.1,
         length_norm = 1.0,
+        adjust_length=false,
         lowclip = Makie.automatic,
         highclip = Makie.automatic,
         plot_total = true
@@ -215,13 +217,14 @@ function Makie.plot!(plot::PolImage{<:Tuple{IntensityMap{<:StokesParams}}})
             end
         end
 
-        return p, len, col, rot
+        return p, len, col, rot, lenmul
     end
 
     p   = lift(x->getindex(x, 1), points)
     len = lift(x->getindex(x, 2), points)
     col = lift(x->getindex(x, 3), points)
     rot = lift(x->getindex(x, 4), points)
+    lenmul = lift(x->getindex(x, 5), points)
 
     pc = lift(plot.pcolorrange, plot.plot_total, img) do pc, pt, img
         (pc != Makie.automatic) && return pc
@@ -248,9 +251,16 @@ function Makie.plot!(plot::PolImage{<:Tuple{IntensityMap{<:StokesParams}}})
     end
 
 
+    len2 = lift(plot.adjust_length, len, plot.length_norm) do al, l, lm
+        !al && return lm*Vec2(80.0, 320.0)
+        return l
+    end
+
+
+
     scatter!(plot, p;
         marker=m,
-        markersize = len,
+        markersize = len2,
         markerspace = :data,
         rotations = rot,
         colorrange = pc,
