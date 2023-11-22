@@ -133,17 +133,12 @@ end
 using EnzymeCore: EnzymeRules, Const, Active, Duplicated
 #using EnzymeRules: ConfigWidth, needs_prima
 function EnzymeRules.augmented_primal(config, ::Const{typeof(_nuft!)}, ::Type{<:Const}, out, A::Const, b)
-    # It seems that if we don't change out.val the entire primal is skipped
-    # println("In augmented primal")
     _nuft!(out.val, A.val, b.val)
-
     cache_A = (EnzymeRules.overwritten(config)[3]) ? copy(A.val) : nothing
-
     return EnzymeRules.AugmentedReturn(nothing, nothing, cache_A)
 end
 
 function EnzymeRules.reverse(config::EnzymeRules.ConfigWidth{1}, ::Const{typeof(_nuft!)}, ::Type{<:Const}, tape, out::Duplicated, A::Const, b::Duplicated)
-    # #TODO do I need to accumulate?
     cache_A = tape
     if !(EnzymeRules.overwritten(config)[3])
         cache_A = A.val
