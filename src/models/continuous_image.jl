@@ -73,6 +73,19 @@ function ContinuousImage(im::AbstractMatrix, fov::Real, x0::Real, y0::Real, puls
     return ContinuousImage(im, fov, fov, x0, y0, pulse, header)
 end
 
+function InterpolatedModel(model::ContinuousImage, cache::FFTCache)
+    img = model.img
+    pimg = padimage(img, cache.alg)
+    vis = applyfft(cache.plan, pimg)
+    (;X, Y) = cache.grid
+    (;U, V) = cache.gridUV
+    vispc = phasecenter(vis, X, Y, U, V)
+    pulse = cache.pulse
+    sitp = create_interpolator(U, V, vispc, stretched(pulse, step(X), step(Y)))
+    return InterpolatedModel{typeof(model), typeof(sitp)}(model, sitp)
+end
+
+
 
 
 ComradeBase.imagepixels(img::ContinuousImage) = axiskeys(img)
@@ -107,7 +120,7 @@ Create a model image directly using an image, i.e. treating it as the model. You
 can optionally specify the Fourier transform algorithm using `alg`
 """
 @inline function modelimage(model::ContinuousImage, alg=NFFTAlg())
-    cache = create_cache(alg, parent(model), model.kernel)
+    cache = create_cache(alg, axiskeys(model), model.kernel)
     return ModelImage(model, parent(model), cache)
 end
 
@@ -119,6 +132,5 @@ reuse a previously compute image `cache`. This can be used when directly modelin
 image of a fixed size and number of pixels.
 """
 @inline function modelimage(img::ContinuousImage, cache::AbstractCache)
-    newcache = update_cache(cache, parent(img), img.kernel)
-    return ModelImage(img, parent(img), newcache)
+    return ModelImage(img, parent(img), cache)
 end

@@ -62,7 +62,6 @@ VLBISkyModels.Butterworth
 
 ```@docs
 VLBISkyModels.create_cache
-VLBISkyModels.update_cache
 VLBISkyModels.modelimage
 VLBISkyModels.uviterator
 VLBISkyModels.fouriermap

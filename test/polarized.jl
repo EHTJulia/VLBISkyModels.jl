@@ -30,9 +30,9 @@ end
     m = PolarizedModel(ExtendedRing(8.0), 0.1*Gaussian(), 0.1*Gaussian(), 0.1*Gaussian())
     g = GriddedKeys(imagepixels(10.0, 10.0, 512, 512))
     s = map(length, dims(g))
-    vff = testpol(modelimage(m, IntensityMap(zeros(StokesParams{Float64}, s), g), FFTAlg()))
-    vnf = testpol(modelimage(m, IntensityMap(zeros(StokesParams{Float64}, s), g), NFFTAlg()))
-    vdf = testpol(modelimage(m, IntensityMap(zeros(StokesParams{Float64}, s), g), DFTAlg()))
+    vff = testpol(modelimage(m, g, FFTAlg()))
+    vnf = testpol(modelimage(m, g, NFFTAlg()))
+    vdf = testpol(modelimage(m, g, DFTAlg()))
 
     @test isapprox(vff, vnf, atol=1e-6)
     @test isapprox(vff, vdf, atol=1e-6)
@@ -44,16 +44,16 @@ end
     s = map(length, dims(g))
     m0 = PolarizedModel(ExtendedRing(2.0), 0.1*Gaussian(), 0.1*Gaussian(), 0.1*Gaussian())
     m = shifted(m0, 0.1 ,0.1)
-    testpol(modelimage(m, IntensityMap(zeros(StokesParams{Float64}, s), g)))
+    testpol(modelimage(m, g))
 
     m = rotated(m0, 0.1)
-    testpol(modelimage(m, IntensityMap(zeros(StokesParams{Float64}, s), g)))
+    testpol(modelimage(m, g))
 
     m = renormed(m0, 0.1)
-    testpol(modelimage(m, IntensityMap(zeros(StokesParams{Float64}, s), g)))
+    testpol(modelimage(m, g))
 
     m = stretched(m0, 0.1, 0.4)
-    testpol(modelimage(m, IntensityMap(zeros(StokesParams{Float64}, s), g)))
+    testpol(modelimage(m, g))
 
 end
 
@@ -69,7 +69,7 @@ end
     m = convolved(m1,m2)+m1
     g = GriddedKeys(imagepixels(5.0, 5.0, 128, 128))
     s = map(length, dims(g))
-    testpol(modelimage(m, IntensityMap(zeros(StokesParams{Float64}, s), g)))
+    testpol(modelimage(m, g))
 end
 
 @testset "Rotation" begin

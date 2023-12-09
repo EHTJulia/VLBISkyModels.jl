@@ -39,69 +39,33 @@ function padimage(alg::NFFTAlg, img::SpatialIntensityMap)
     return SpatialIntensityMap(collect(pimg), dx*size(pimg,2), dy*size(pimg, 1))
 end
 
-function plan_nuft(alg::ObservedNUFT{<:NFFTAlg}, img::IntensityMapTypes{T,2}) where {T}
+function plan_nuft(alg::ObservedNUFT{<:NFFTAlg}, grid::AbstractDims)
     uv2 = similar(alg.uv)
-    dpx = pixelsizes(img)
+    dpx = pixelsizes(grid)
     dx = dpx.X
     dy = dpx.Y
     uv2[1,:] .= alg.uv[1,:]*dx
     uv2[2,:] .= alg.uv[2,:]*dy
     balg = alg.alg
     (;m, σ, window, precompute, blocking, sortNodes, storeDeconvolutionIdx, fftflags) = balg
-    plan = plan_nfft(uv2, size(img); m, σ, window, precompute, blocking, sortNodes, storeDeconvolutionIdx, fftflags)
+    plan = plan_nfft(uv2, size(grid); m, σ, window, precompute, blocking, sortNodes, storeDeconvolutionIdx, fftflags)
     return plan
 end
 
-function make_phases(alg::ObservedNUFT{<:NFFTAlg}, img::IntensityMapTypes, pulse::Pulse=DeltaPulse())
-    dx, dy = pixelsizes(img)
-    x0, y0 = phasecenter(img)
+function make_phases(alg::ObservedNUFT{<:NFFTAlg}, grid::AbstractDims, pulse::Pulse=DeltaPulse())
+    dx, dy = pixelsizes(grid)
+    x0, y0 = phasecenter(grid)
     u = @view alg.uv[1,:]
     v = @view alg.uv[2,:]
     # Correct for the nFFT phase center and the img phase center
     return cispi.((u.*(dx - 2*x0) .+ v.*(dy - 2*y0))).*visibility_point.(Ref(stretched(pulse, dx, dy)), u, v, zero(dx), zero(dy))
 end
 
-@inline function create_cache(alg::ObservedNUFT{<:NFFTAlg}, plan, phases, img::IntensityMapTypes, pulse=DeltaPulse())
-    #timg = #SpatialIntensityMap(transpose(img.im), img.fovx, img.fovy)
-    return NUFTCache(alg, plan, phases, pulse, img)
+@inline function create_cache(alg::ObservedNUFT{<:NFFTAlg}, plan, phases, grid::AbstractDims, pulse=DeltaPulse())
+    return NUFTCache(alg, plan, phases, pulse, grid)
 end
 
 # Allow NFFT to work with ForwardDiff.
-function _frule_vis(m::ModelImage{M,<:SpatialIntensityMap{<:ForwardDiff.Dual{T,V,P}},<:NUFTCache{O}}) where {M,T,V,P,A<:NFFTAlg,O<:ObservedNUFT{A}}
-    p = m.cache.plan
-    # Compute the fft
-    bimg = parent(m.cache.img)
-    buffer = ForwardDiff.value.(bimg)
-    xtil = p*complex.(buffer)
-    out = similar(buffer, Complex{ForwardDiff.Dual{T,V,P}})
-    # Now take the deriv of nuft
-    ndxs = ForwardDiff.npartials(first(m.cache.img))
-    dxtils = ntuple(ndxs) do n
-        buffer .= ForwardDiff.partials.(m.cache.img, n)
-        p * complex.(buffer)
-    end
-    out = similar(xtil, Complex{ForwardDiff.Dual{T,V,P}})
-    for i in eachindex(out)
-        dual = getindex.(dxtils, i)
-        prim = xtil[i]
-        red = ForwardDiff.Dual{T,V,P}(real(prim), ForwardDiff.Partials(real.(dual)))
-        imd = ForwardDiff.Dual{T,V,P}(imag(prim), ForwardDiff.Partials(imag.(dual)))
-        out[i] = Complex(red, imd)
-    end
-    return out
-end
-
-function visibilities_numeric(m::ModelImage{M,<:SpatialIntensityMap{<:ForwardDiff.Dual{T,V,P}},<:NUFTCache{O}},
-    u::AbstractArray,
-    v::AbstractArray,
-    time,
-    freq) where {M,T,V,P,A<:NFFTAlg,O<:ObservedNUFT{A}}
-    checkuv(m.cache.alg.uv, u, v)
-    # Now reconstruct everything
-
-    vis = _frule_vis(m)
-    return conj.(vis).*m.cache.phases
-end
 
 
 nuft(A::NFFTPlan, b::AbstractArray{<:Real}) = nuft(A, complex(b))

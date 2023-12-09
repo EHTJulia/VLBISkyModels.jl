@@ -161,12 +161,12 @@ end
 #     end
 # end
 
-function modelimage(model::PolarizedModel, image::Union{StokesIntensityMap, IntensityMap{<:StokesParams}}, alg::FourierTransform=FFTAlg(), pulse=DeltaPulse(), thread::Bool=false)
+function modelimage(model::PolarizedModel, grid::AbstractDims, alg::FourierTransform=FFTAlg(), pulse=DeltaPulse(), thread::Bool=false)
     return PolarizedModel(
-        modelimage(stokes(model, :I), stokes(image, :I), alg, pulse, thread),
-        modelimage(stokes(model, :Q), stokes(image, :Q), alg, pulse, thread),
-        modelimage(stokes(model, :U), stokes(image, :U), alg, pulse, thread),
-        modelimage(stokes(model, :V), stokes(image, :V), alg, pulse, thread)
+        modelimage(stokes(model, :I), grid, alg, pulse, thread),
+        modelimage(stokes(model, :Q), grid, alg, pulse, thread),
+        modelimage(stokes(model, :U), grid, alg, pulse, thread),
+        modelimage(stokes(model, :V), grid, alg, pulse, thread)
         )
 end
 
