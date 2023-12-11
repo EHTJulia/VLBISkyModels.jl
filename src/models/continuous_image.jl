@@ -59,7 +59,7 @@ function ContinuousImage(img::IntensityMapTypes, pulse::Pulse)
     return ContinuousImage{typeof(img), typeof(pulse)}(img, pulse)
 end
 
-ContinuousImage(img::AbstractArray, cache::AbstractCache) = ContinuousImage(IntensityMap(img, axiskeys(cache.img)), cache)
+ContinuousImage(img::AbstractArray, cache::AbstractCache) = ContinuousImage(IntensityMap(img, cache.grid), cache)
 ContinuousImage(img::IntensityMapTypes, cache::AbstractCache) = modelimage(ContinuousImage(img, cache.pulse), cache)
 
 function ContinuousImage(img::AbstractMatrix, fovx::Real, fovy::Real, x0::Real, y0::Real, pulse, header=ComradeBase.NoHeader())

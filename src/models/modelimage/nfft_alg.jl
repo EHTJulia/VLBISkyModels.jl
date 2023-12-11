@@ -98,7 +98,7 @@ using EnzymeCore: EnzymeRules, Const, Active, Duplicated
 #using EnzymeRules: ConfigWidth, needs_prima
 function EnzymeRules.augmented_primal(config, ::Const{typeof(_nuft!)}, ::Type{<:Const}, out, A::Const, b)
     _nuft!(out.val, A.val, b.val)
-    cache_A = (EnzymeRules.overwritten(config)[3]) ? copy(A.val) : nothing
+    cache_A = (EnzymeRules.overwritten(config)[3]) ? A.val : nothing
     return EnzymeRules.AugmentedReturn(nothing, nothing, cache_A)
 end
 
