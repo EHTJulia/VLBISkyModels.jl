@@ -12,25 +12,39 @@ end
 import VLBISkyModels: polimage, polimage!, imageviz
 
 
-function Makie.convert_arguments(::SurfaceLike, img::IntensityMap{T, 2}) where {T}
+function Makie.convert_arguments(::GridBased, img::IntensityMap{T, 2}) where {T}
     (;X, Y) = img
     return rad2μas(X), rad2μas(Y), VLBISkyModels.baseimage(img)
 end
 
-function Makie.convert_arguments(::DiscreteSurface, img::IntensityMap{T, 2}) where {T}
+function Makie.convert_arguments(::ImageLike, img::IntensityMap{T, 2}) where {T}
     (;X, Y) = img
     return rad2μas(X), rad2μas(Y), VLBISkyModels.baseimage(img)
 end
 
-function Makie.convert_arguments(::SurfaceLike, x::AbstractVector, y::AbstractVector, m::VLBISkyModels.AbstractModel)
+
+
+function Makie.convert_arguments(::GridBased, x::AbstractVector, y::AbstractVector, m::VLBISkyModels.AbstractModel)
     img = intensitymap(m, GriddedKeys((X=x, Y=y)))
     return rad2μas(x), rad2μas(y), VLBISkyModels.baseimage(img)
 end
 
-function Makie.convert_arguments(::SurfaceLike, g::VLBISkyModels.AbstractDims, m::VLBISkyModels.AbstractModel)
+function Makie.convert_arguments(::ImageLike, x::AbstractVector, y::AbstractVector, m::VLBISkyModels.AbstractModel)
+    img = intensitymap(m, GriddedKeys((X=x, Y=y)))
+    return rad2μas(x), rad2μas(y), VLBISkyModels.baseimage(img)
+end
+
+
+function Makie.convert_arguments(::GridBased, g::VLBISkyModels.AbstractDims, m::VLBISkyModels.AbstractModel)
     img = intensitymap(m, g)
     return rad2μas(g.X), rad2μas(g.Y), VLBISkyModels.baseimage(img)
 end
+
+function Makie.convert_arguments(::ImageLike, g::VLBISkyModels.AbstractDims, m::VLBISkyModels.AbstractModel)
+    img = intensitymap(m, g)
+    return rad2μas(g.X), rad2μas(g.Y), VLBISkyModels.baseimage(img)
+end
+
 
 
 function polintensity(s::StokesParams)
@@ -295,12 +309,12 @@ be queried by typing `?polimage` in the REPL.
 function imageviz(img::IntensityMap; scale_length = fieldofview(img).X/4, kwargs...)
     dkwargs = Dict(kwargs)
     if eltype(img) <: Real
-        res = get(dkwargs, :resolution, (625, 500))
+        res = get(dkwargs, :size, (625, 500))
     else
-        res = get(dkwargs, :resolution, (640, 600))
+        res = get(dkwargs, :size, (640, 600))
     end
-    delete!(dkwargs, :resolution)
-    fig = Figure(;resolution = res)
+    delete!(dkwargs, :size)
+    fig = Figure(;size = res)
     ax = Axis(fig[1,1], xreversed=true, aspect=DataAspect(), tellheight=true, tellwidth=true)
     hidedecorations!(ax)
 
@@ -341,7 +355,7 @@ function _imgviz!(fig, ax, img::IntensityMap{<:StokesParams}; scale_length=field
     delete!(dkwargs, :colorrange)
     cmap = get(dkwargs, :colormap, Reverse(:bone))
     delete!(dkwargs, :colormap)
-    delete!(dkwargs, :resolution)
+    delete!(dkwargs, :size)
 
     pt = get(dkwargs, :plot_total, true)
 
