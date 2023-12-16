@@ -19,44 +19,20 @@ end
 padimage(alg::ObservedNUFT, img::IntensityMapTypes) = padimage(alg.alg, img)
 
 
-function create_cache(alg::ObservedNUFT, img::IntensityMapTypes, pulse::Pulse=DeltaPulse())
-    # pimg = padimage(alg, img)
+function create_cache(alg::ObservedNUFT, grid::AbstractDims, pulse::Pulse=DeltaPulse())
 
     # make nuft plan
-    plan = plan_nuft(alg, img)
+    plan = plan_nuft(alg, grid)
     # get phases and pulse functions
-    phases = make_phases(alg, img, pulse)
+    phases = make_phases(alg, grid, pulse)
 
-    return create_cache(alg, plan, phases, img, pulse)
+    return create_cache(alg, plan, phases, grid, pulse)
 end
 
-function create_cache(alg::NUFT, img::IntensityMapTypes, pulse::Pulse=DeltaPulse())
-    # pimg = padimage(alg, img)
-    return NUFTCache(alg, nothing, nothing, pulse, img)
+function create_cache(alg::NUFT, grid::AbstractDims, pulse::Pulse=DeltaPulse())
+    return NUFTCache(alg, nothing, nothing, pulse, grid)
 end
 
-function update_cache(cache::NUFTCache, img::IntensityMapTypes, pulse::Pulse=DeltaPulse())
-    # # pimg = padimage(cache.alg, img)
-    # cache2 = update_phases(cache, img, pulse)
-    return create_cache(cache.alg, cache.plan, cache.phases, img, pulse)
-    # return cache
-end
-
-function update_phases(cache::NUFTCache, img::IntensityMapTypes, pulse::Pulse)
-    #if cache.pulse != pulse
-    #    phases = make_phases(cache.alg, img, pulse)
-    #    return @set cache.phases = phases
-    #else
-        return cache
-    #end
-end
-
-function nocachevis(m::ModelImage{M,I,<:NUFTCache}, u, v, time, freq) where {M,I<:IntensityMap}
-    alg = ObservedNUFT(m.cache.alg, vcat(u', v'))
-    cache = create_cache(alg, m.image)
-    m = @set m.cache = cache
-    return visibilities_numeric(m, u, v, time, freq)
-end
 
 function checkuv(uv, u, v)
     @assert u == @view(uv[1,:]) "Specified u don't match uv in cache. Did you pass the correct u,v?"
@@ -67,54 +43,19 @@ function Serialization.serialize(s::Serialization.AbstractSerializer, cache::NUF
     Serialization.writetag(s.io, Serialization.OBJECT_TAG)
     Serialization.serialize(s, typeof(cache))
     Serialization.serialize(s, cache.alg)
-    Serialization.serialize(s, cache.img)
     Serialization.serialize(s, cache.pulse)
+    Serialization.serialize(s, cache.grid)
 
 end
 
 function Serialization.deserialize(s::AbstractSerializer, ::Type{<:NUFTCache{<:ObservedNUFT}})
     alg = Serialization.deserialize(s)
-    img = Serialization.deserialize(s)
     pulse = Serialization.deserialize(s)
-    return create_cache(alg, img, pulse)
+    grid = Serialization.deserialize(s)
+    return create_cache(alg, grid, pulse)
 end
 
 
-
-#using ReverseDiff
-#using NFFT
-#ReverseDiff.@grad_from_chainrules nuft(A, b::ReverseDiff.TrackedArray)
-#ReverseDiff.@grad_from_chainrules nuft(A, b::Vector{<:ReverseDiff.TrackedReal})
-
-
-ChainRulesCore.@non_differentiable checkuv(alg, u::AbstractArray, v::AbstractArray)
-
-function visibilities_numeric(m::ModelImage{M,I,<:NUFTCache{A}},
-                      u, v, time, freq) where {M,I<:IntensityMap,A<:ObservedNUFT}
-    checkuv(m.cache.alg.uv, u, v)
-    vis =  nuft(m.cache.plan, complex(ComradeBase.baseimage(m.cache.img)))
-    return conj.(vis).*m.cache.phases
-end
-
-function visibilities_numeric(m::ModelImage{M,I,<:NUFTCache{A}},
-                      u, v, time, freq) where {M,I<:StokesIntensityMap,A<:ObservedNUFT}
-    checkuv(m.cache.alg.uv, u, v)
-    visI =  conj.(nuft(m.cache.plan, complex(ComradeBase.baseimage(stokes(m.cache.img, :I))))).*m.cache.phases
-    visQ =  conj.(nuft(m.cache.plan, complex(ComradeBase.baseimage(stokes(m.cache.img, :Q))))).*m.cache.phases
-    visU =  conj.(nuft(m.cache.plan, complex(ComradeBase.baseimage(stokes(m.cache.img, :U))))).*m.cache.phases
-    visV =  conj.(nuft(m.cache.plan, complex(ComradeBase.baseimage(stokes(m.cache.img, :V))))).*m.cache.phases
-    r = StructArray{StokesParams{eltype(visI)}}((I=visI, Q=visQ, U=visU, V=visV))
-    return r
-end
-
-
-
-
-
-function visibilities_numeric(m::ModelImage{M,I,<:NUFTCache{A}},
-                      u, v, time, freq) where {M,I,A<:NUFT}
-    return nocachevis(m, u, v, time, freq)
-end
 
 
 """

@@ -3,33 +3,17 @@ export FFTAlg
 
 
 
-
-
-#function ChainRulesCore.rrule(::typeof(create_interpolator), u, v, vis)
-#    y = create_interpolator(u, v, vis)
-#    function create_interp_pullback(Δy)
-#        Δf = NoTangent()
-#        Δu = ZeroTanget()
-#        Δv = ZeroTangent()
-#        Δvis = Δy*create_interpolator(u, v, vis)
-#        return Δf, Δu, Δv, Δvis
-#    end
-#    return y, create_interp_pullback
-#end
-#
-#@adjoint create_interpolator(u, v, vis) = create_interpolator(u, v, vis), Δy->(u, v, Δy)
-
 """
     $(TYPEDEF)
 The cache used when the `FFT` algorithm is used to compute
 visibilties. This is an internal type and is not part of the public API
 """
-struct FFTCache{A<:FFTAlg,P,I,Pu,S} <: AbstractCache
+struct FFTCache{A<:FFTAlg,P,Pu,G,Guv} <: AbstractCache
     alg::A # FFT algorithm
     plan::P # FFT plan or matrix
-    img::I # image buffer used for FT
     pulse::Pu
-    sitp::S # interpolator function used to find vis at abritrary uv position.
+    grid::G
+    gridUV::Guv
 end
 
 # These are all overloads to allow us to forward propogate ForwardDiff dual numbers through
@@ -84,6 +68,31 @@ function create_interpolator(U, V, vis::StructArray{<:StokesParams}, pulse)
         )
     end
 end
+
+struct InterpolatedModel{M, S} <: AbstractModel
+    model::M
+    sitp::S
+end
+
+function InterpolatedModel(model, cache::FFTCache)
+    img = intensitymap(model, cache.grid)
+    pimg = padimage(img, cache.alg)
+    vis = applyfft(cache.plan, pimg)
+    (;X, Y) = cache.grid
+    (;U, V) = cache.gridUV
+    vispc = phasecenter(vis, X, Y, U, V)
+    pulse = cache.pulse
+    sitp = create_interpolator(U, V, vispc, stretched(pulse, step(X), step(Y)))
+    return InterpolatedModel{typeof(model), typeof(sitp)}(model, sitp)
+end
+
+
+@inline visanalytic(::Type{<:InterpolatedModel}) = IsAnalytic()
+@inline imanalytic(::Type{<:InterpolatedModel})  = IsAnalytic()
+@inline ispolarized(::Type{<:InterpolatedModel{M}}) where {M} = ispolarized(M)
+
+intensity_point(m::InterpolatedModel, p) = intensity_point(m.model, p)
+visibility_point(m::InterpolatedModel, u, v, t, f) = m.sitp(u, v)
 
 #=
 This is so ForwardDiff works with FFTW. I am very harsh on the `x` type because of type piracy.
@@ -162,34 +171,15 @@ end
 
 FFTW.plan_fft(A::AbstractArray{<:StokesParams}, args...) = plan_fft(stokes(A, :I), args...)
 
-function create_cache(alg::FFTAlg, img::IntensityMapTypes, pulse::Pulse=DeltaPulse())
-    pimg = padimage(img, alg)
+function create_cache(alg::FFTAlg, grid::AbstractDims, pulse::Pulse=DeltaPulse())
+    pimg = padimage(IntensityMap(zeros(eltype(grid.X), size(grid)), grid), alg)
     # Do the plan and then fft
     plan = plan_fft(pimg)
-    vis = applyfft(plan, pimg)
 
     #Construct the uv grid
-    (;X, Y) = imagepixels(img)
-    (;U, V) = uviterator(size(pimg, 1), step(X), size(pimg, 2), step(Y))
-
-    vispc = phasecenter(vis, X, Y, U, V)
-    sitp = create_interpolator(U, V, vispc, stretched(pulse, step(X), step(Y)))
-    return FFTCache(alg, plan, img, pulse, sitp)
-end
-
-function update_cache(cache::FFTCache, img::IntensityMapTypes, pulse)
-    plan = cache.plan
-    pimg = padimage(img, cache.alg)
-    vis = applyfft(plan, pimg)
-
-    (;X,Y) = imagepixels(img)
-
-    # Flip U because of radio conventions
-    (;U, V) = uviterator(size(pimg, 1), step(X), size(pimg, 2), step(Y))
-
-    vispc = phasecenter(vis, X, Y, U, V)
-    sitp = create_interpolator(U, V, vispc, pulse)
-    return FFTCache(cache.alg, plan, img, pulse, sitp)
+    (;X, Y) = grid
+    griduv = uviterator(size(pimg, 1), step(X), size(pimg, 2), step(Y))
+    return FFTCache(alg, plan, pulse, grid, griduv)
 end
 
 
@@ -218,35 +208,6 @@ end
 #    end
 #end
 
-"""
-    fouriermap(m, x)
-
-Create a Fourier or visibility map of a model `m`
-where the image is specified in the image domain by the
-pixel locations `x` and `y`
-"""
-function fouriermap(m::M, dims::ComradeBase.AbstractDims) where {M}
-    fouriermap(visanalytic(M), m, dims)
-end
-
-function fouriermap(::IsAnalytic, m, dims::ComradeBase.AbstractDims)
-    X = dims.X
-    Y = dims.Y
-    uu,vv = uviterator(length(X), step(X), length(Y), step(Y))
-    vis = visibility_point.(Ref(m), uu, vv', 0, 0)
-    return KeyedArray(vis; U=uu, V=vv)
-end
-
-
-function fouriermap(::NotAnalytic, m, g::ComradeBase.AbstractDims)
-    X = g.X
-    Y = g.Y
-    img = IntensityMap(zeros(map(length, dims(g))), g)
-    mimg = modelimage(m, img, FFTAlg(), DeltaPulse())
-    uu,vv = uviterator(length(X), step(X), length(Y), step(Y))
-    # uvgrid = ComradeBase.grid(U=uu, V=vv)
-    return KeyedArray(visibility_point.(Ref(mimg), uu, vv', 0, 0); U=uu, V=vv)
-end
 
 
 
@@ -268,8 +229,6 @@ end
 
 # end
 
-# HACK because FFT+interpolation can be evaled pointwise
-visanalytic(::Type{<:ModelImage{M, I, <:FFTCache}}) where {M, I} = IsAnalytic()
 
 @fastmath function phasedecenter!(vis, X, Y, U, V)
     x0 = first(X)
@@ -278,27 +237,26 @@ visanalytic(::Type{<:ModelImage{M, I, <:FFTCache}}) where {M, I} = IsAnalytic()
     return vis
 end
 
-function visibilities_numeric(mimg::ModelImage{M, I, <:FFTCache}, u, v, time, freq) where {M,I}
-    return visibility_point.(Ref(mimg), u, v, time, freq)
-end
+# function visibilities_numeric(mimg::ModelImage{M, I, <:FFTCache}, u, v, time, freq) where {M,I}
+#     return visibility_point.(Ref(mimg), u, v, time, freq)
+# end
 
-@inline function visibility_point(mimg::ModelImage{M,I,<:FFTCache}, u, v, time, freq) where {M,I}
-    return mimg.cache.sitp(u, v)
-end
+# @inline function visibility_point(mimg::ModelImage{M,I,<:FFTCache}, u, v, time, freq) where {M,I}
+#     return mimg.cache.sitp(u, v)
+# end
 
 
 function Serialization.serialize(s::Serialization.AbstractSerializer, cache::FFTCache)
     Serialization.writetag(s.io, Serialization.OBJECT_TAG)
     Serialization.serialize(s, typeof(cache))
     Serialization.serialize(s, cache.alg)
-    Serialization.serialize(s, cache.img)
     Serialization.serialize(s, cache.pulse)
-
+    Serialization.serialize(s, cache.grid)
 end
 
 function Serialization.deserialize(s::AbstractSerializer, ::Type{<:FFTCache})
     alg = Serialization.deserialize(s)
-    img = Serialization.deserialize(s)
     pulse = Serialization.deserialize(s)
-    return create_cache(alg, img, pulse)
+    grid = Serialization.deserialize(s)
+    return create_cache(alg, grid, pulse)
 end

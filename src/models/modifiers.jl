@@ -317,23 +317,13 @@ end
 # end
 
 
-
-# I need some special pass-throughs for the non-analytic FFT transform
-# since you evaluate the visibilities pointwise
-# function modelimage(::NotAnalytic,
-#     model::ModifiedModel,
-#     image::IntensityMap, alg::FFTAlg, pulse = DeltaPulse(), thread::StaticBool=False())
-
-#     @set model.model = modelimage(NotAnalytic(), model.model, image, alg, pulse, thread)
-# end
-
 # I need some special pass-throughs for the non-analytic NUFT transform
 # since you evaluate the visibilities as a vector
 function modelimage(::NotAnalytic,
     model::ModifiedModel,
-    image::IntensityMap, alg::NUFT,
+    grid::AbstractDims, alg::NUFT,
     pulse = DeltaPulse(), thread::StaticBool=False())
-    _modelimage(model, image, alg, pulse, thread)
+    _modelimage(model, grid, alg, pulse, thread)
 end
 
 

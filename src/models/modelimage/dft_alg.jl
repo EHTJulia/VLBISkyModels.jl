@@ -19,27 +19,27 @@ end
 
 
 # internal function that creates an DFT matrix/plan to use used for the img.
-function plan_nuft(alg::ObservedNUFT{<:DFTAlg}, img::Union{IntensityMap{T,2}, StokesIntensityMap{T,2}}) where {T}
+function plan_nuft(alg::ObservedNUFT{<:DFTAlg}, grid::AbstractDims)
     uv = alg.uv
-    xitr, yitr = imagepixels(img)
-    dft = similar(parent(img), Complex{eltype(uv)}, size(uv,2), size(img)...)
-    @fastmath for i in axes(img,2), j in axes(img,1), k in axes(uv,2)
+    (;X, Y) = grid
+    dft = similar(similar(uv), Complex{eltype(uv)}, size(uv,2), size(grid)...)
+    @fastmath for i in eachindex(Y), j in eachindex(X), k in axes(uv,2)
         u = uv[1,k]
         v = uv[2,k]
         # - sign is taken care of in _visibilities
-        dft[k, j, i] = cispi(-2(u*xitr[j] + v*yitr[i]))
+        dft[k, j, i] = cispi(-2(u*X[j] + v*Y[i]))
     end
     # reshape to a matrix so we can take advantage of an easy BLAS call
     return reshape(dft, size(uv,2), :)
 end
 
 # internal function to make the phases to phase center the image.
-function make_phases(alg::ObservedNUFT{<:DFTAlg}, img::IntensityMapTypes, pulse::Pulse)
+function make_phases(alg::ObservedNUFT{<:DFTAlg}, grid::AbstractDims, pulse::Pulse)
     u = @view alg.uv[1,:]
     v = @view alg.uv[2,:]
     # We don't need to correct for the phase offset here since that
     # is taken care of in plan_nuft for DFTAlg
-    dx, dy = pixelsizes(img)
+    dx, dy = pixelsizes(grid)
     return visibilities_analytic(stretched(pulse, dx, dy), u, v, zero(u), zero(u))
 end
 
@@ -49,8 +49,8 @@ end
 Create a cache for the DFT algorithm with precomputed `plan`, `phases` and `img`.
 This is an internal version.
 """
-function create_cache(alg::ObservedNUFT{<:DFTAlg}, plan, phases, img, pulse::Pulse)
-    return NUFTCache(alg, plan, phases, pulse, img)
+function create_cache(alg::ObservedNUFT{<:DFTAlg}, plan, phases, grid, pulse::Pulse)
+    return NUFTCache(alg, plan, phases, pulse, grid)
 end
 
 function nuft(A::AbstractMatrix, b)

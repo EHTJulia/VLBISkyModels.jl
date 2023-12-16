@@ -161,12 +161,12 @@ end
 #     end
 # end
 
-function modelimage(model::PolarizedModel, image::Union{StokesIntensityMap, IntensityMap{<:StokesParams}}, alg::FourierTransform=FFTAlg(), pulse=DeltaPulse(), thread::Bool=false)
+function modelimage(model::PolarizedModel, grid::AbstractDims, alg::FourierTransform=FFTAlg(), pulse=DeltaPulse(), thread::Bool=false)
     return PolarizedModel(
-        modelimage(stokes(model, :I), stokes(image, :I), alg, pulse, thread),
-        modelimage(stokes(model, :Q), stokes(image, :Q), alg, pulse, thread),
-        modelimage(stokes(model, :U), stokes(image, :U), alg, pulse, thread),
-        modelimage(stokes(model, :V), stokes(image, :V), alg, pulse, thread)
+        modelimage(stokes(model, :I), grid, alg, pulse, thread),
+        modelimage(stokes(model, :Q), grid, alg, pulse, thread),
+        modelimage(stokes(model, :U), grid, alg, pulse, thread),
+        modelimage(stokes(model, :V), grid, alg, pulse, thread)
         )
 end
 
@@ -175,6 +175,7 @@ end
 """
     PoincareSphere2Map(I, p, X, grid)
     PoincareSphere2Map(I::IntensityMap, p, X)
+    PoincareSphere2Map(I, p, X, cache::AbstractCache)
 
 Constructs an polarized intensity map model using the Poincare parameterization.
 The arguments are:
@@ -186,11 +187,11 @@ The arguments are:
 
 !!! note
     If `I` is an `IntensityMap` then grid is not required since the same grid that was use
-    for `I` will be used to construct the polarized intensity map
+    for `I` will be used to construct the polarized intensity map. If a cache is passed instead
+    this will return a [`ContinuousImage`](@ref) object.
 
-!!! warning
-    The return type for this function is a polarized image object, however what we return
-    is not considered to be part of the stable API so it may change suddenly.
+
+
 """
 function PoincareSphere2Map(I, p, X, grid)
     pimgI = I.*p
@@ -201,6 +202,8 @@ function PoincareSphere2Map(I, p, X, grid)
     return StokesIntensityMap(stokesI, stokesQ, stokesU, stokesV)
 end
 PoincareSphere2Map(I::IntensityMap, p, X) = PoincareSphere2Map(baseimage(I), p, X, axiskeys(I))
+PoincareSphere2Map(I::AbstractMatrix, p, X, cache::AbstractCache) = ContinuousImage(PoincareSphere2Map(I, p, X, cache.grid), cache)
+
 
 """
     linearpol(pimg::AbstractPolarizedModel, p)

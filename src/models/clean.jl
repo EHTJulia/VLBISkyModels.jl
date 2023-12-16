@@ -8,7 +8,7 @@ using DelimitedFiles
 Build a model with a base model type `beam` where fluxes, x, y corresond to the flux, and positions
 of the components. This can be used to easily construct clean like models.
 """
-struct MultiComponentModel{M, F, V<:AbstractVector} <: AbstractModel
+struct MultiComponentModel{M<:AbstractModel, F, V<:AbstractVector} <: AbstractModel
     base::M
     flux::F
     x::V

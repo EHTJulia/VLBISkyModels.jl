@@ -1,4 +1,5 @@
-function testmodel(m::VLBISkyModels.AbstractModel, npix=1024, atol=1e-4)
+function testmodel(m::VLBISkyModels.AbstractModel, npix=512, atol=1e-4)
+    @info "Testing $(typeof(m))"
     plot(m)
     g = imagepixels(4*VLBISkyModels.radialextent(m), 4*VLBISkyModels.radialextent(m), npix, npix)
     CM.image(g.X, g.Y, m)
@@ -14,11 +15,12 @@ function testmodel(m::VLBISkyModels.AbstractModel, npix=1024, atol=1e-4)
     @test eltype(img) === Float64
     @test isapprox(flux(m), flux(img), atol=atol)
     @test isapprox(maximum(parent(img) .- parent(img2)), 0, atol=1e-8)
-    cache = VLBISkyModels.create_cache(VLBISkyModels.FFTAlg(padfac=3), img/flux(img)*flux(m))
+    cache = VLBISkyModels.create_cache(VLBISkyModels.FFTAlg(padfac=3), axiskeys(img), DeltaPulse())
     dx, dy = pixelsizes(img)
     u = fftshift(fftfreq(size(img,1), 1/dx))./30
     Plots.closeall()
-    @test isapprox(maximum(abs, (visibility.(Ref(m), NamedTuple{(:U, :V)}.(u', u)) .- cache.sitp.(u', u))), 0.0, atol=atol*10)
+    minterp = ContinuousImage(img, cache)
+    @test isapprox(maximum(abs, visibility.(Ref(m), NamedTuple{(:U, :V)}.(u', u)) .- visibility.(Ref(minterp), NamedTuple{(:U, :V)}.(u', u))), 0.0, atol=atol*10)
     img = nothing
     img2 =nothing
     cache = nothing
@@ -32,11 +34,11 @@ function testft(m, npix=256, atol=1e-4)
     uu = 0.25*randn(1000)
     vv = 0.25*randn(1000)
     img = intensitymap(m, 2*VLBISkyModels.radialextent(m), 2*VLBISkyModels.radialextent(m), npix, npix)
-    mimg_ff = modelimage(mn, zero(img), FFTAlg(padfac=4))
-    mimg_nf = modelimage(mn, zero(img), NFFTAlg())
-    mimg_df = modelimage(mn, zero(img), DFTAlg())
-    cache = create_cache(FFTAlg(padfac=4), zero(img))
-    cache_nf = create_cache(NFFTAlg(), zero(img))
+    mimg_ff = modelimage(mn, axiskeys(img), FFTAlg(padfac=4))
+    mimg_nf = modelimage(mn, axiskeys(img), NFFTAlg())
+    mimg_df = modelimage(mn, axiskeys(img), DFTAlg())
+    cache = create_cache(FFTAlg(padfac=4), axiskeys(img))
+    cache_nf = create_cache(NFFTAlg(), axiskeys(img))
     mimg_ff2 = modelimage(mn, cache)
 
     p = (U=uu, V=vv)
@@ -162,7 +164,7 @@ end
         foo(x)
         testgrad(foo, x)
 
-        testmodel(m, 1024, 1e-5)
+        testmodel(m, 128, 1e-5)
     end
 
     @testset "Disk" begin
@@ -324,7 +326,7 @@ end
     @testset "ExtendedRing" begin
         mr = ExtendedRing(8.0)
         rad = 2.5*VLBISkyModels.radialextent(mr)
-        m = modelimage(mr, IntensityMap(zeros(1024,1024), rad, rad), VLBISkyModels.FFTAlg(padfac=4))
+        m = modelimage(mr, imagepixels(rad, rad, 1024, 1024), VLBISkyModels.FFTAlg(padfac=4))
         testmodel(m)
         @inferred VLBISkyModels.intensity_point(mr, (X=0.0, Y=0.0))
     end
@@ -390,9 +392,9 @@ end
         mas = shifted(ma, 0.1, 0.1)
         mbs = shifted(mb, 0.1, 0.1)
         testmodel(mas)
-        testmodel(modelimage(mbs, IntensityMap(zeros(1024, 1024),
-                                               2*VLBISkyModels.radialextent(mbs),
-                                               2*VLBISkyModels.radialextent(mbs))))
+        testmodel(modelimage(mbs, imagepixels(2*VLBISkyModels.radialextent(mbs),
+                                              2*VLBISkyModels.radialextent(mbs),
+                                              1024, 1024)))
 
         foo(x) = sum(abs2, VLBISkyModels.visibilities_analytic(shifted(ma, x[1], x[2]), u, v, t, f))
         x = rand(2)
@@ -409,9 +411,9 @@ end
         @test visibility(m2, p) == visibility(m2inv, p)
         mbs = 3.0*mb
         testmodel(m1)
-        testmodel(modelimage(mbs, IntensityMap(zeros(1024, 1024),
-                                               2.5*VLBISkyModels.radialextent(mbs),
-                                               2.5*VLBISkyModels.radialextent(mbs))))
+        testmodel(modelimage(mbs, imagepixels(2.5*VLBISkyModels.radialextent(mbs),
+                                              2.5*VLBISkyModels.radialextent(mbs),
+                                              1024, 1024)))
 
         foo(x) = sum(abs2, VLBISkyModels.visibilities_analytic(x[1]*ma, u, v, t, f))
         x = rand(1)
@@ -424,9 +426,9 @@ end
         mas = stretched(ma, 5.0, 4.0)
         mbs = stretched(mb, 5.0, 4.0)
         testmodel(mas)
-        testmodel(modelimage(mbs, IntensityMap(zeros(2024, 2024),
-                                               2*VLBISkyModels.radialextent(mbs),
-                                               2*VLBISkyModels.radialextent(mbs))), 1024, 1e-3)
+        testmodel(modelimage(mbs, imagepixels(2*VLBISkyModels.radialextent(mbs),
+                                              2*VLBISkyModels.radialextent(mbs), 2024, 2024)),
+                                              1024, 1e-3)
 
         foo(x) = sum(abs2, VLBISkyModels.visibilities_analytic(stretched(ma, x[1], x[2]), u, v, t, f))
         x = rand(2)
@@ -438,9 +440,9 @@ end
         mas = rotated(ma, π/3)
         mbs = rotated(mb, π/3)
         testmodel(mas)
-        testmodel(modelimage(mbs, IntensityMap(zeros(1024, 1024),
-                                               2*VLBISkyModels.radialextent(mbs),
-                                               2*VLBISkyModels.radialextent(mbs))))
+        testmodel(modelimage(mbs, imagepixels(2*VLBISkyModels.radialextent(mbs),
+                                              2*VLBISkyModels.radialextent(mbs),
+                                              1024, 1024)))
 
         foo(x) = sum(abs2, VLBISkyModels.visibilities_analytic(rotated(ma, x[1]), u, v, t, f))
         x = rand(1)
@@ -454,9 +456,9 @@ end
         @test typeof(mas2) === typeof(mas)
         mbs = rotated(stretched(shifted(mb, 0.5, 0.5), 5.0, 4.0), π/3)
         testmodel(mas)
-        testmodel(modelimage(mbs, IntensityMap(zeros(2024, 2024),
-                                               2*VLBISkyModels.radialextent(mbs),
-                                               2*VLBISkyModels.radialextent(mbs))), 1024, 1e-3)
+        testmodel(modelimage(mbs, imagepixels(2*VLBISkyModels.radialextent(mbs),
+                                              2*VLBISkyModels.radialextent(mbs), 2048, 2048)),
+                                              1024, 1e-3)
 
         foo(x) = sum(abs2, VLBISkyModels.visibilities_analytic(modify(ma, Shift(x[1], x[2]), Stretch(x[3], x[4]), Rotate(x[5]), Renormalize(x[6])), u, v, t, f))
         x = rand(6)
@@ -495,9 +497,9 @@ end
         testgrad(foo, x)
 
 
-        testmodel(modelimage(mt1, img))
-        testmodel(modelimage(mt2, img))
-        testmodel(modelimage(mt3, img))
+        testmodel(modelimage(mt1, axiskeys(img)))
+        testmodel(modelimage(mt2, axiskeys(img)))
+        testmodel(modelimage(mt3, axiskeys(img)))
     end
 
     @testset "Convolved models" begin
@@ -512,9 +514,9 @@ end
         @test mc[1] === m1
         @test mc[2] === m2
 
-        testmodel(modelimage(mt1, img))
-        testmodel(modelimage(mt2, img))
-        testmodel(modelimage(mt3, img))
+        testmodel(modelimage(mt1, axiskeys(img)))
+        testmodel(modelimage(mt2, axiskeys(img)))
+        testmodel(modelimage(mt3, axiskeys(img)))
 
         foo(x) = sum(abs2, VLBISkyModels.visibilities_analytic(convolved(x[1]*stretched(Disk(), x[2], x[3]),stretched(Ring(), x[4], x[4])), u, v, t, f))
         x = rand(4)
@@ -535,7 +537,7 @@ end
         @test mc[2] === m1
         @test mc[3] === m2
 
-        testmodel(modelimage(mt, img))
+        testmodel(modelimage(mt, axiskeys(img)))
 
         foo(x) = sum(abs2, VLBISkyModels.visibilities_analytic(smoothed(x[1]*stretched(Disk(), x[2], x[3]), x[4]) + stretched(Ring(), x[5], x[4]), u, v, t, f))
         x = rand(5)
@@ -656,7 +658,7 @@ end
 end
 
 @testset "ContinuousImage BSpline3" begin
-    img = intensitymap(rotated(stretched(Gaussian(), 2.0, 1.0), π/8), 12.0, 12.0, 12, 12)
+    img = intensitymap(rotated(stretched(Gaussian(), 2.0, 1.0), π/8), 24.0, 24.0, 12, 12)
     cimg = ContinuousImage(img, BSplinePulse{3}())
     testmodel(modelimage(cimg, FFTAlg(padfac=3)), 1024, 1e-3)
     testft_cimg(cimg)
@@ -665,7 +667,7 @@ end
 @testset "ContinuousImage Bicubic" begin
     img = intensitymap(shifted(rotated(stretched(smoothed(Ring(), 0.5), 2.0, 1.0), π/8), 0.1, 0.1), 24.0, 24.0, 12, 12)
     cimg = ContinuousImage(img, BicubicPulse())
-    testmodel(modelimage(cimg, FFTAlg(padfac=3)), 1024, 1e-3)
+    testmodel(modelimage(cimg, FFTAlg(padfac=4)), 1024, 1e-3)
     testft_cimg(cimg)
 end
 
@@ -712,9 +714,9 @@ end
     v4lc = -v1lc - v2lc - v3lc
 
     cimg = ContinuousImage(img, DeltaPulse())
-    cache_nf = create_cache(NFFTAlg(u1cp, v1cp), img, DeltaPulse())
+    cache_nf = create_cache(NFFTAlg(u1cp, v1cp), axiskeys(img), DeltaPulse())
     cimg2 = ContinuousImage(img, cache_nf)
-    cache_df = create_cache(DFTAlg(u1cp, v1cp), img, DeltaPulse())
+    cache_df = create_cache(DFTAlg(u1cp, v1cp), axiskeys(img), DeltaPulse())
     cimg3 = ContinuousImage(img, cache_df)
 
     mimg_nf = modelimage(cimg, cache_nf)

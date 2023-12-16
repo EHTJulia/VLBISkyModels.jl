@@ -1,4 +1,4 @@
-export create_cache, update_cache, DFTAlg
+export create_cache, DFTAlg
 
 abstract type FourierTransform end
 
@@ -14,7 +14,7 @@ abstract type AbstractCache end
 
 
 """
-    create_cache(alg::AbstractFourierTransform, img::AbstractIntensityMap)
+    create_cache(alg::AbstractFourierTransform, img::AbstractDims)
 
 Creates a Fourier transform cache for a img using algorithm `alg`. For non-analytic visibility models this
 can significantly speed up computations.
@@ -23,24 +23,15 @@ can significantly speed up computations.
 
 ```julia-repl
 julia> u,v = rand(100), rand(100)
-julia> cache = create_cache(DFTAlg(u, v), IntensityMap(randn(50,50), 10.0, 10.0))
-julia> cache = create_cache(NFFTAlg(u, v), IntensityMap(randn(50,50), 10.0, 10.0))
-julia> cache = create_cache(FFTAlg(), IntensityMap(randn(50,50), 10.0, 10.0))
+julia> cache = create_cache(DFTAlg(u, v), imagepixels(μas2rad(100.0), μas2rad(100.0), 256, 256))
+julia> cache = create_cache(NFFTAlg(u, v), imagepixels(μas2rad(100.0), μas2rad(100.0), 256, 256))
+julia> cache = create_cache(FFTAlg(), imagepixels(μas2rad(100.0), μas2rad(100.0), 256, 256))
 ```
 """
 function create_cache end
 
-"""
-    update_cache(cache, img)
-
-Update the Fourier transform cache. This will reuse an FFT/NFFT plan saving some computational
-time.
-
-# Note
-
-This is an intenal method than an end user shouldn't have to usually call.
-"""
-function update_cache end
+# To ensure compat with older versions
+@deprecate create_cache(alg, img::IntensityMapTypes, args...) create_cache(alg, axiskeys(img), args...)
 
 """
     $(TYPEDEF)
@@ -92,11 +83,14 @@ Internal type used to store the cache for a non-uniform Fourier transform (NUFT)
 
 The user should instead create this using the [`create_cache`](@ref create_cache) function.
 """
-struct NUFTCache{A,P,M,PI,I} <: AbstractCache
+struct NUFTCache{A,P,M,PI,G} <: AbstractCache
     alg::A # which algorithm to use
     plan::P #NUFT matrix or plan
     phases::M #FT phases needed to phase center things
     pulse::PI #pulse function to make continuous image
-    img::I # image buffer to hold the image of the model that we will take a FT of.
+    grid::G # image grid
 end
 include(joinpath(@__DIR__, "nuft.jl"))
+
+
+include(joinpath(@__DIR__, "modelimage.jl"))

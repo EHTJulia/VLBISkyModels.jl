@@ -32,27 +32,18 @@ abstract type CompositeModel{M1,M2} <: AbstractModel end
 
 function modelimage(::NotAnalytic,
     model::CompositeModel,
-    image::IntensityMap,
+    grid::AbstractDims,
     alg::FourierTransform=FFTAlg(),
     pulse = DeltaPulse(),
     thread::StaticBool = False())
 
-    m1 = @set model.m1 = modelimage(model.m1, image, alg, pulse, thread)
-    @set m1.m2 = modelimage(m1.m2, copy(image), alg, pulse, thread)
+    m1 = @set model.m1 = modelimage(model.m1, grid, alg, pulse, thread)
+    @set m1.m2 = modelimage(m1.m2, grid, alg, pulse, thread)
 end
 
 function modelimage(::NotAnalytic,
     model::CompositeModel,
     cache::AbstractCache,
-    thread::StaticBool = False())
-
-    m1 = @set model.m1 = modelimage(model.m1, cache)
-    @set m1.m2 = modelimage(m1.m2, cache)
-end
-
-function modelimage(::NotAnalytic,
-    model::CompositeModel,
-    cache::FFTCache,
     thread::StaticBool = False())
 
     m1 = @set model.m1 = modelimage(model.m1, cache)
