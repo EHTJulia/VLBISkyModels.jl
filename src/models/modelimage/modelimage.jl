@@ -107,6 +107,8 @@ the non-analytic Fourier transform.
     return modelimage(visanalytic(M), model, grid, alg, pulse, static(thread))
 end
 
+@deprecate modelimage(model, img::IntensityMap, args...) modelimage(model, axiskeys(img), args...)
+
 @inline function modelimage(::IsAnalytic, model, args...; kwargs...)
     return model
 end
