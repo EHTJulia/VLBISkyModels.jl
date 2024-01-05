@@ -171,7 +171,7 @@ end
 
 FFTW.plan_fft(A::AbstractArray{<:StokesParams}, args...) = plan_fft(stokes(A, :I), args...)
 
-function create_cache(alg::FFTAlg, grid::AbstractDims, pulse::Pulse=DeltaPulse())
+function create_cache(alg::FFTAlg, grid::AbstractGrid, pulse::Pulse=DeltaPulse())
     pimg = padimage(IntensityMap(zeros(eltype(grid.X), size(grid)), grid), alg)
     # Do the plan and then fft
     plan = plan_fft(pimg)

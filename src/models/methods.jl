@@ -9,21 +9,14 @@ function intensitymap_numeric!(img::IntensityMap, m)
     (;X, Y) = axisdims(img)
     vis = fouriermap(m, axisdims(img))
     U, V = uviterator(length(X), step(X), length(Y), step(Y))
-    visk = ifftshift(keyless_unname(phasedecenter!(vis, X, Y, U, V)))
+    visk = ifftshift(parent(phasedecenter!(vis, X, Y, U, V)))
     ifft!(visk)
     img .= real.(visk)
     return img
 end
 
-function intensitymap_numeric(m, grid::ComradeBase.AbstractDims)
+function intensitymap_numeric(m, grid::ComradeBase.AbstractGrid)
     img = IntensityMap(zeros(map(length, dims(grid))), grid)
     intensitymap_numeric!(img, m)
     return img
 end
-
-
-# function intensitymap(::NotAnalytic, m, dims)
-#     vis = ifftshift(ComradeBase.AxisKeys.keyless_unname(phasedecenter!(fouriermap(m, dims), dims.X, dims.Y)))
-#     ifft!(vis)
-#     return IntensityMap(real.(vis)./length(vis), dims)
-# end

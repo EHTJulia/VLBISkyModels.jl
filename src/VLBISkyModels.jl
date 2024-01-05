@@ -25,7 +25,7 @@ using Serialization
 
 @reexport using ComradeBase
 @reexport using PolarizedTypes
-@reexport using AxisKeys
+@reexport using DimensionalData
 
 """
     rad2μas(x)
@@ -41,7 +41,7 @@ Converts a number from micro-arcseconds (μas) to rad
 
 export linearpol, mbreve, evpa, rad2μas, μas2rad, create_cache
 
-using ComradeBase: AbstractDims, AbstractModel, AbstractPolarizedModel
+using ComradeBase: AbstractGrid, AbstractModel, AbstractPolarizedModel
 
 import ComradeBase: flux, radialextent, intensitymap, intensitymap!,
                     intensitymap_analytic, intensitymap_analytic!,

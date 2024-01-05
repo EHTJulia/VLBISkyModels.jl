@@ -19,7 +19,7 @@ end
 padimage(alg::ObservedNUFT, img::IntensityMapTypes) = padimage(alg.alg, img)
 
 
-function create_cache(alg::ObservedNUFT, grid::AbstractDims, pulse::Pulse=DeltaPulse())
+function create_cache(alg::ObservedNUFT, grid::AbstractGrid, pulse::Pulse=DeltaPulse())
 
     # make nuft plan
     plan = plan_nuft(alg, grid)
@@ -29,7 +29,7 @@ function create_cache(alg::ObservedNUFT, grid::AbstractDims, pulse::Pulse=DeltaP
     return create_cache(alg, plan, phases, grid, pulse)
 end
 
-function create_cache(alg::NUFT, grid::AbstractDims, pulse::Pulse=DeltaPulse())
+function create_cache(alg::NUFT, grid::AbstractGrid, pulse::Pulse=DeltaPulse())
     return NUFTCache(alg, nothing, nothing, pulse, grid)
 end
 

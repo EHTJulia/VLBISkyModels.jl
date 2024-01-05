@@ -19,7 +19,7 @@ end
 
 
 # internal function that creates an DFT matrix/plan to use used for the img.
-function plan_nuft(alg::ObservedNUFT{<:DFTAlg}, grid::AbstractDims)
+function plan_nuft(alg::ObservedNUFT{<:DFTAlg}, grid::AbstractGrid)
     uv = alg.uv
     (;X, Y) = grid
     dft = similar(similar(uv), Complex{eltype(uv)}, size(uv,2), size(grid)...)
@@ -34,7 +34,7 @@ function plan_nuft(alg::ObservedNUFT{<:DFTAlg}, grid::AbstractDims)
 end
 
 # internal function to make the phases to phase center the image.
-function make_phases(alg::ObservedNUFT{<:DFTAlg}, grid::AbstractDims, pulse::Pulse)
+function make_phases(alg::ObservedNUFT{<:DFTAlg}, grid::AbstractGrid, pulse::Pulse)
     u = @view alg.uv[1,:]
     v = @view alg.uv[2,:]
     # We don't need to correct for the phase offset here since that

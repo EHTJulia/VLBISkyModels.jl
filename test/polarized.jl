@@ -1,5 +1,5 @@
 function testpol(m)
-    g = GriddedKeys(imagepixels(5.0, 5.0, 128, 128))
+    g = imagepixels(5.0, 5.0, 128, 128)
     img = intensitymap(m, g)
     img2 = zero(img)
     intensitymap!(img2, m)
@@ -28,7 +28,7 @@ end
 
 @testset "Polarized Semi Analytic" begin
     m = PolarizedModel(ExtendedRing(8.0), 0.1*Gaussian(), 0.1*Gaussian(), 0.1*Gaussian())
-    g = GriddedKeys(imagepixels(10.0, 10.0, 512, 512))
+    g = imagepixels(10.0, 10.0, 512, 512)
     s = map(length, dims(g))
     vff = testpol(modelimage(m, g, FFTAlg()))
     vnf = testpol(modelimage(m, g, NFFTAlg()))
@@ -40,7 +40,7 @@ end
 end
 
 @testset "Polarized Modified" begin
-    g = GriddedKeys(imagepixels(5.0, 5.0, 128, 128))
+    g = imagepixels(5.0, 5.0, 128, 128)
     s = map(length, dims(g))
     m0 = PolarizedModel(ExtendedRing(2.0), 0.1*Gaussian(), 0.1*Gaussian(), 0.1*Gaussian())
     m = shifted(m0, 0.1 ,0.1)
@@ -67,14 +67,14 @@ end
     m1 = PolarizedModel(Gaussian(), 0.1*Gaussian(), 0.1*Gaussian(), 0.1*Gaussian())
     m2 = PolarizedModel(ExtendedRing(8.0), shifted(Disk(), 0.1, 1.0), ZeroModel(), ZeroModel())
     m = convolved(m1,m2)+m1
-    g = GriddedKeys(imagepixels(5.0, 5.0, 128, 128))
+    g = imagepixels(5.0, 5.0, 128, 128)
     s = map(length, dims(g))
     testpol(modelimage(m, g))
 end
 
 @testset "Rotation" begin
     m = PolarizedModel(Gaussian(), Gaussian(), ZeroModel(), 0.1*Gaussian())
-    g = GriddedKeys(imagepixels(5.0, 5.0, 128, 128))
+    g = imagepixels(5.0, 5.0, 128, 128)
     img1 = intensitymap(m, g)
     @test all(==(1), stokes(img1, :Q) .≈ stokes(img1, :I))
     @test all(==(1), stokes(img1, :U) .≈ 0.0*stokes(img1, :I))
@@ -105,7 +105,7 @@ end
 
 @testset "ContinuousImage" begin
     m = PolarizedModel(Gaussian(), Gaussian(), ZeroModel(), 0.1*Gaussian())
-    g = GriddedKeys(imagepixels(10.0, 10.0, 24, 24))
+    g = imagepixels(10.0, 10.0, 24, 24)
     img = intensitymap(m, g)
     cimg = ContinuousImage(img, BicubicPulse(0.0))
     @test ComradeBase.ispolarized(typeof(cimg)) === ComradeBase.IsPolarized()

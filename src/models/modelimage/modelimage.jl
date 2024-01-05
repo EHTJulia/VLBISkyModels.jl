@@ -81,7 +81,7 @@ flux(mimg::ModelImage) = flux(mimg.image)
 #     mimg.image
 # end
 
-intensitymap(mimg::ModelImage, g::ComradeBase.AbstractDims) = intensitymap(mimg.model, g)
+intensitymap(mimg::ModelImage, g::ComradeBase.AbstractGrid) = intensitymap(mimg.model, g)
 intensitymap!(img::IntensityMap, mimg::ModelImage) = intensitymap!(img, mimg.model)
 
 radialextent(m::ModelImage) = hypot(fieldofview(m.image)...)/2
@@ -103,11 +103,11 @@ For analytic models this is a no-op and returns the model.
 For non-analytic models this creates a `ModelImage` object which uses `alg` to compute
 the non-analytic Fourier transform.
 """
-@inline function modelimage(model::M, grid::AbstractDims, alg::FourierTransform=FFTAlg(), pulse=DeltaPulse(), thread::Union{Bool, StaticBool}=false) where {M}
+@inline function modelimage(model::M, grid::AbstractGrid, alg::FourierTransform=FFTAlg(), pulse=DeltaPulse(), thread::Union{Bool, StaticBool}=false) where {M}
     return modelimage(visanalytic(M), model, grid, alg, pulse, static(thread))
 end
 
-@deprecate modelimage(model, img::IntensityMap, args...) modelimage(model, axiskeys(img), args...)
+@deprecate modelimage(model, img::IntensityMap, args...) modelimage(model, axisdims(img), args...)
 
 @inline function modelimage(::IsAnalytic, model, args...; kwargs...)
     return model
@@ -128,7 +128,7 @@ end
 
 
 @inline function modelimage(::NotAnalytic, model,
-                            grid::AbstractDims,
+                            grid::AbstractGrid,
                             alg::FourierTransform=FFTAlg(),
                             pulse = DeltaPulse(),
                             thread::StaticBool = False()
