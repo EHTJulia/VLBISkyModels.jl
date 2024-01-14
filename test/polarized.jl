@@ -118,4 +118,8 @@ end
     @test all(==(1), isapprox.(stokes(rimg1, :Q), 0.0, atol=1e-16))
     @test all(==(1), stokes(rimg1, :V) .≈ 0.1*stokes(rimg1, :I))
 
+    u, v = rand(32), rand(32)
+    cache = create_cache(NFFTAlg(u, v), g)
+    mimg = ContinuousImage(StokesIntensityMap(img), cache)
+    visibilities(mimg, (U=u, V=v))
 end

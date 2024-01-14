@@ -3,7 +3,7 @@ function ChainRulesCore.rrule(::Type{SA}, t::Tuple) where {SA<:StructArray}
     pt = ProjectTo(t)
     function _structarray_tuple_pullback(Δ)
         ps = map(x->getproperty(Δ, x), propertynames(Δ))
-        return NoTangent(), Tangent{typeof(t)}(ps...)
+        return NoTangent(), pt(Tangent{typeof(t)}(ps...))
     end
     return sa, _structarray_tuple_pullback
 end
@@ -91,32 +91,28 @@ end
 # end
 
 
-
-
-
-# const AxisKeys = ComradeBase.AxisKeys
-# function (project::ChainRulesCore.ProjectTo{AxisKeys.KeyedArray})(dx::ChainRulesCore.Tangent{<:AxisKeys.KeyedArray})
-#     ZeroTangent()
-# end
+__getdata(img::IntensityMap) = DimensionalData.data(img)
+__getdata(img::Tangent{<:IntensityMap}) = img.data
+__getdata(img::ChainRulesCore.Thunk) = img
 
 function ChainRulesCore.rrule(::Type{IntensityMap}, data::AbstractArray, keys...)
     img = IntensityMap(data, keys...)
     pd = ProjectTo(data)
     function _IntensityMap_pullback(Δ)
-        return (NoTangent(), @thunk(pd(Δ)), map(i->NoTangent(), keys)...)
+        return (NoTangent(), @thunk(pd(__getdata(Δ))), map(i->NoTangent(), keys)...)
     end
     return img, _IntensityMap_pullback
 end
 
 
-function ChainRulesCore.rrule(::Type{ContinuousImage}, data::AbstractArray, pulse::AbstractModel)
-    img = ContinuousImage(data, pulse)
-    pd = ProjectTo(data)
-    function _ContinuousImage_pullback(Δ)
-        return (NoTangent(), @thunk(pd(Δ.img)), NoTangent())
-    end
-    return img, _ContinuousImage_pullback
-end
+# function ChainRulesCore.rrule(::Type{ContinuousImage}, data::IntensityMapTypes, pulse::AbstractModel)
+#     img = ContinuousImage(data, pulse)
+#     pd = ProjectTo(data)
+#     function _ContinuousImage_pullback(Δ)
+#         return (NoTangent(), @thunk(pd(Δ.img)), NoTangent())
+#     end
+#     return img, _ContinuousImage_pullback
+# end
 
 
 getm(m::AbstractModel) = m

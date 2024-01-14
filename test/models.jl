@@ -558,6 +558,10 @@ end
     @inferred VLBISkyModels.visibility(m, (U=0.0, V=0.0))
     @inferred VLBISkyModels.intensity_point(m, (X=0.0, Y=0.0))
 
+    @test ComradeBase.visanalytic(typeof(m)) == ComradeBase.visanalytic(typeof(m.base))
+
+    @test convolved(m, Gaussian()) == convolved(Gausian(), m)
+
     foo(fl, x, y) = sum(abs2, VLBISkyModels.visibilities_analytic(MultiComponentModel(Gaussian(), fl, x, y), u, v, t, f))
     x = randn(10)
     y = randn(10)
@@ -628,6 +632,7 @@ end
     v = rand(64) .- 0.5
     @testset "NFFT" begin
         m = modelimage(cimg, NFFTAlg(u, v))
+        show(m)
         serialize("foo.jls", m)
         mr = deserialize("foo.jls")
         @test visibilities(m, (U=u, V=v)) ≈ visibilities(mr, (U=u, V=v))
@@ -758,5 +763,13 @@ end
 
     @test convolved(img, Gaussian()) isa ContinuousImage
     @test convolved(Gaussian(), img) isa ContinuousImage
+
+end
+
+@testset "Rules" begin
+    data = rand(32, 32)
+    g = imagepixels(10.0, 10.0, 32, 32)
+    test_rrule(IntensityMap, data, g⊢NoTangent())
+
 
 end

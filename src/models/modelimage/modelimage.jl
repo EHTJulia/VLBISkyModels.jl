@@ -237,7 +237,7 @@ function visibilities_numeric(m::ModelImage{M,I,<:NUFTCache{A}},
 end
 
 function visibilities_numeric(m::ModelImage{M,I,<:NUFTCache{A}},
-                      u, v, time, freq) where {M,I<:StokesIntensityMap,A<:ObservedNUFT}
+                      u, v, time, freq) where {M,I<:Union{IntensityMap{<:StokesParams}, StokesIntensityMap},A<:ObservedNUFT}
     checkuv(m.cache.alg.uv, u, v)
     visI =  conj.(nuft(getplan(m), complex(ComradeBase.baseimage(stokes(m.image, :I))))).*getphases(m)
     visQ =  conj.(nuft(getplan(m), complex(ComradeBase.baseimage(stokes(m.image, :Q))))).*getphases(m)
