@@ -49,8 +49,7 @@ Base.eltype(::ContinuousImage{A, P}) where {A,P} = eltype(A)
 Base.getindex(img::ContinuousImage, args...) = getindex(parent(img), args...)
 Base.axes(m::ContinuousImage) = axes(parent(m))
 ComradeBase.imagegrid(m::ContinuousImage) = imagegrid(parent(m))
-ComradeBase.AxisKeys.named_axiskeys(m::ContinuousImage) = named_axiskeys(parent(m))
-ComradeBase.AxisKeys.axiskeys(m::ContinuousImage)       = ComradeBase.AxisKeys.axiskeys(parent(m))
+ComradeBase.named_dims(m::ContinuousImage) = named_dims(parent(m))
 ComradeBase.axisdims(m::ContinuousImage) = axisdims(parent(m))
 
 Base.similar(m::ContinuousImage, ::Type{S}, dims) where {S} = ContinuousImage(similar(parent(m), S, dims), m.kernel)
@@ -63,8 +62,8 @@ ContinuousImage(img::AbstractArray, cache::AbstractCache) = ContinuousImage(Inte
 ContinuousImage(img::IntensityMapTypes, cache::AbstractCache) = modelimage(ContinuousImage(img, cache.pulse), cache)
 
 function ContinuousImage(img::AbstractMatrix, fovx::Real, fovy::Real, x0::Real, y0::Real, pulse, header=ComradeBase.NoHeader())
-    xitr, yitr = imagepixels(fovx, fovy, size(img, 1), size(img,2), x0, y0)
-    img = IntensityMap(img, (X=xitr, Y=yitr), header)
+    g = imagepixels(fovx, fovy, size(img, 1), size(img,2), x0, y0; header)
+    img = IntensityMap(img, g)
     # spulse = stretched(pulse, step(xitr), step(yitr))
     return ContinuousImage(img, pulse)
 end
@@ -88,7 +87,7 @@ end
 
 
 
-ComradeBase.imagepixels(img::ContinuousImage) = axiskeys(img)
+ComradeBase.imagepixels(img::ContinuousImage) = axisdims(img)
 
 # IntensityMap will obey the Comrade interface. This is so I can make easy models
 visanalytic(::Type{<:ContinuousImage}) = NotAnalytic() # not analytic b/c we want to hook into FFT stuff
@@ -120,7 +119,7 @@ Create a model image directly using an image, i.e. treating it as the model. You
 can optionally specify the Fourier transform algorithm using `alg`
 """
 @inline function modelimage(model::ContinuousImage, alg=NFFTAlg())
-    cache = create_cache(alg, axiskeys(model), model.kernel)
+    cache = create_cache(alg, axisdims(model), model.kernel)
     return ModelImage(model, parent(model), cache)
 end
 

@@ -113,6 +113,7 @@ VLBISkyModels.polimage
 VLBISkyModels.center_image
 VLBISkyModels.convolve
 VLBISkyModels.convolve!
+VLBISkyModels.smooth
 VLBISkyModels.PoincareSphere2Map
 VLBISkyModels.regrid
 VLBISkyModels.rad2μas

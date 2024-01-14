@@ -3,46 +3,65 @@ module VLBISkyModelsMakieExt
 using VLBISkyModels
 if isdefined(Base, :get_extension)
     using Makie
-    using AxisKeys
+    using DimensionalData
+    using ComradeBase: basedim
 else
     using ..Makie
-    using ..AxisKeys
+    using ..DimensionalData
+    using ..ComradeBase: basedim
 end
+
+const DD = DimensionalData
 
 import VLBISkyModels: polimage, polimage!, imageviz
 
 
-function Makie.convert_arguments(::GridBased, img::IntensityMap{T, 2}) where {T}
+
+function Makie.convert_arguments(::Union{CellGrid,VertexGrid}, img::SpatialIntensityMap{<:Number})
     (;X, Y) = img
-    return rad2μas(X), rad2μas(Y), VLBISkyModels.baseimage(img)
+    return (X), (Y), parent(img)
 end
 
-function Makie.convert_arguments(::ImageLike, img::IntensityMap{T, 2}) where {T}
+function Makie.convert_arguments(::Union{CellGrid,VertexGrid}, img::SpatialIntensityMap{<:StokesParams})
     (;X, Y) = img
-    return rad2μas(X), rad2μas(Y), VLBISkyModels.baseimage(img)
+    return (X), (Y), parent(stokes(img, :I))
 end
 
 
-
-function Makie.convert_arguments(::GridBased, x::AbstractVector, y::AbstractVector, m::VLBISkyModels.AbstractModel)
-    img = intensitymap(m, GriddedKeys((X=x, Y=y)))
-    return rad2μas(x), rad2μas(y), VLBISkyModels.baseimage(img)
+function Makie.convert_arguments(::ImageLike, img::SpatialIntensityMap{<:Number})
+    (;X, Y) = img
+    rX, rY = ((X,Y))
+    return first(rX)..last(rX), first(rY)..last(rY), parent(img)
+end
+function Makie.convert_arguments(::ImageLike, img::SpatialIntensityMap{<:StokesParams})
+    (;X, Y) = img
+    rX, rY = ((X,Y))
+    return first(rX)..last(rX), first(rY)..last(rY), stokes(parent(img), :I)
 end
 
-function Makie.convert_arguments(::ImageLike, x::AbstractVector, y::AbstractVector, m::VLBISkyModels.AbstractModel)
-    img = intensitymap(m, GriddedKeys((X=x, Y=y)))
-    return rad2μas(x), rad2μas(y), VLBISkyModels.baseimage(img)
+
+const VectorDim = Union{AbstractVector, DD.Dimension}
+
+
+function Makie.convert_arguments(t::GridBased, x::VectorDim, y::VectorDim, m::VLBISkyModels.AbstractModel)
+    img = intensitymap(m, RectiGrid((X=x, Y=y)))
+    return Makie.convert_arguments(t, img)
+end
+
+function Makie.convert_arguments(t::ImageLike, x::VectorDim, y::VectorDim, m::VLBISkyModels.AbstractModel)
+    img = intensitymap(m, RectiGrid((X=x, Y=y)))
+    return Makie.convert_arguments(t, img)
 end
 
 
-function Makie.convert_arguments(::GridBased, g::VLBISkyModels.AbstractDims, m::VLBISkyModels.AbstractModel)
+function Makie.convert_arguments(t::GridBased, g::VLBISkyModels.AbstractGrid, m::VLBISkyModels.AbstractModel)
     img = intensitymap(m, g)
-    return rad2μas(g.X), rad2μas(g.Y), VLBISkyModels.baseimage(img)
+    return Makie.convert_arguments(t, img)
 end
 
-function Makie.convert_arguments(::ImageLike, g::VLBISkyModels.AbstractDims, m::VLBISkyModels.AbstractModel)
+function Makie.convert_arguments(t::ImageLike, g::VLBISkyModels.AbstractGrid, m::VLBISkyModels.AbstractModel)
     img = intensitymap(m, g)
-    return rad2μas(g.X), rad2μas(g.Y), VLBISkyModels.baseimage(img)
+    return Makie.convert_arguments(t, img)
 end
 
 
@@ -140,7 +159,13 @@ Makie.@recipe(PolImage, img) do scene
     )
 end
 
-Makie.plottype(::SpatialIntensityMap{<:StokesParams}) = PolImage{<:Tuple{SpatialIntensityMap{<:StokesParams}}}
+# We need this because DimensionalData tries to be too dang smart
+function Makie.convert_arguments(::Type{<:PolImage}, img::IntensityMap{<:StokesParams, 2})
+    return (img,)
+end
+
+
+Makie.plottype(::SpatialIntensityMap{<:StokesParams}) = PolImage{<:Tuple{<:IntensityMap{<:StokesParams}}}
 
 function polparams(x, y, s, xmin, ptot)
     ptot && return ellipse_params(x, y, s, xmin)
@@ -149,7 +174,7 @@ end
 
 function ellipse_params(x, y, s, xmin)
     e = polellipse(s)
-    p = Point2(rad2μas(x), rad2μas(y))
+    p = Point2((x), (y))
     len =  Vec2(max(e.b, e.a/10) , e.a)/2
     col =  polintensity(s)/s.I*sign(s.V)
     rot = evpa(s)
@@ -158,16 +183,15 @@ end
 
 function lin_params(x, y, s, xmin)
     l = linearpol(s)
-    p = Point2(rad2μas(x), rad2μas(y))
+    p = Point2((x), (y))
     len =  Vec2f(xmin/1.5, xmin/1.5 + abs(l))
     col =  abs(l)/s.I
     rot = evpa(s)
     return p, len, col, rot
 end
 
-function Makie.plot!(plot::PolImage{<:Tuple{IntensityMap{<:StokesParams}}})
+function Makie.plot!(plot::PolImage)
     @extract plot (img,)
-    img = plot[:img]
 
     imgI = lift(img) do img
         return stokes(img, :I)
@@ -192,8 +216,10 @@ function Makie.plot!(plot::PolImage{<:Tuple{IntensityMap{<:StokesParams}}})
                  plot.min_frac, plot.min_pol_frac,
                  plot.length_norm,
                  plot.plot_total) do img, nvec, Icut, pcut, length_norm, ptot
-        Xvec = range(img.X[begin+1], img.X[end-1], length=nvec)
-        Yvec = range(img.Y[begin+1], img.Y[end-1], length=nvec)
+        X = img.X
+        Y = img.Y
+        Xvec = range(X[begin+1], X[end-1], length=nvec)
+        Yvec = range(Y[begin+1], Y[end-1], length=nvec)
 
         maxI = maximum((stokes(img, :I)))
         if ptot
@@ -202,7 +228,9 @@ function Makie.plot!(plot::PolImage{<:Tuple{IntensityMap{<:StokesParams}}})
             maxL = maximum(x->abs(linearpol(x)), img)
         end
 
-        dx = max(rad2μas.(values(fieldofview(img)))...)
+        fovx = last(X) - first(X)
+        fovy = last(Y) - first(Y)
+        dx = max(fovx, fovy)
 
         p   = Point2[]
         len = Vec2[]
@@ -211,9 +239,10 @@ function Makie.plot!(plot::PolImage{<:Tuple{IntensityMap{<:StokesParams}}})
 
         lenmul = 10*dx/nvec/maxL.*length_norm
 
+        dimg = IntensityMap(img, (;X, Y))
         for y in Yvec
             for x in Xvec
-                s = img[X=Near(x), Y=Near(y)]
+                s = dimg[X=Near(x), Y=Near(y)]
                 psi, leni, coli, roti = polparams(x, y, s, maxL./length_norm./5, ptot)
 
                 if ptot
@@ -306,7 +335,7 @@ be queried by typing `?polimage` in the REPL.
     `image` and `polimage` directly.
 
 """
-function imageviz(img::IntensityMap; scale_length = fieldofview(img).X/4, kwargs...)
+function imageviz(img::IntensityMap; scale_length = rad2μas(fieldofview(img).X/4), kwargs...)
     dkwargs = Dict(kwargs)
     if eltype(img) <: Real
         res = get(dkwargs, :size, (625, 500))
@@ -319,8 +348,8 @@ function imageviz(img::IntensityMap; scale_length = fieldofview(img).X/4, kwargs
     hidedecorations!(ax)
 
     dxdy = prod(rad2μas.(values(pixelsizes(img))))
-    imguas = img./dxdy
 
+    imguas = IntensityMap(parent(img)./dxdy, (X=rad2μas(img.X), Y=rad2μas(img.Y)))
     pl = _imgviz!(fig, ax, imguas; scale_length, dkwargs...)
     resize_to_layout!(fig)
     return pl
@@ -336,13 +365,13 @@ function _imgviz!(fig, ax, img::IntensityMap{<:Real}; scale_length=fieldofview(i
 
 
 
-    hm = image!(ax, img; colorrange=crange, colormap=cmap, dkwargs...)
+    hm = heatmap!(ax, img; colorrange=crange, colormap=cmap, dkwargs...)
 
     color = Makie.to_colormap(cmap)[end]
     add_scalebar!(ax, img, scale_length, color)
 
 
-    Colorbar(fig[1,2], hm, label="Brightness Temp (Jy/μas)", tellheight=true)
+    Colorbar(fig[1,2], hm, label="Brightness (Jy/μas)", tellheight=true)
     colgap!(fig.layout, 15)
 
     return Makie.FigureAxisPlot(fig, ax, hm)
@@ -358,6 +387,7 @@ function _imgviz!(fig, ax, img::IntensityMap{<:StokesParams}; scale_length=field
     delete!(dkwargs, :size)
 
     pt = get(dkwargs, :plot_total, true)
+
 
     hm = polimage!(ax, img; colorrange=crange, colormap=cmap, dkwargs...)
 
@@ -375,17 +405,18 @@ function _imgviz!(fig, ax, img::IntensityMap{<:StokesParams}; scale_length=field
     colgap!(fig.layout, 15)
     rowgap!(fig.layout, 15)
     trim!(fig.layout)
-    xlims!(ax, rad2μas(last(img.X)), rad2μas(first(img.X)))
-    ylims!(ax, rad2μas(first(img.Y)), rad2μas(last(img.Y)))
+    xlims!(ax, (last(img.X)), (first(img.X)))
+    ylims!(ax, (first(img.Y)), (last(img.Y)))
     return Makie.FigureAxisPlot(fig, ax, hm)
 end
 
 function add_scalebar!(ax, img, scale_length, color)
-    fovx, fovy = map(rad2μas, fieldofview(img))
-    x0 = rad2μas(-last(img.X))
-    y0 = rad2μas(first(img.Y))
+    fovx, fovy = fieldofview(img)
+    x0 = (first(img.X))
+    y0 = (first(img.Y))
 
-    sl = rad2μas(scale_length)
+
+    sl = (scale_length)
     barx = [x0 + fovx/32, x0 + fovx/32 + sl]
     bary = fill(y0 + fovy/32, 2)
 

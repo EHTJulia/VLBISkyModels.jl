@@ -20,7 +20,7 @@ intensity_point(::ZeroModel{T}, args...) where {T} = zero(T)
 
 visibilities_analytic(::ZeroModel{T}, u, v, time, freq) where {T} = Fill(zero(Complex{T}), length(u))
 visibilities_numeric(::ZeroModel{T}, u, v, time, freq) where {T} = Fill(zero(Complex{T}), length(u))
-intensitymap(::ZeroModel{T}, p::ComradeBase.AbstractDims) where {T} = IntensityMap(Fill(zero(T), map(length, dims(p))), p)
+intensitymap(::ZeroModel{T}, p::ComradeBase.AbstractGrid) where {T} = IntensityMap(Fill(zero(T), map(length, dims(p))), p)
 
 @inline AddModel(::ZeroModel, x) = x
 @inline AddModel(x, ::ZeroModel) = x

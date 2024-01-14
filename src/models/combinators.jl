@@ -32,7 +32,7 @@ abstract type CompositeModel{M1,M2} <: AbstractModel end
 
 function modelimage(::NotAnalytic,
     model::CompositeModel,
-    grid::AbstractDims,
+    grid::AbstractGrid,
     alg::FourierTransform=FFTAlg(),
     pulse = DeltaPulse(),
     thread::StaticBool = False())
@@ -50,7 +50,7 @@ function modelimage(::NotAnalytic,
     @set m1.m2 = modelimage(m1.m2, cache)
 end
 
-function fouriermap(m::CompositeModel, dims::ComradeBase.AbstractDims)
+function fouriermap(m::CompositeModel, dims::ComradeBase.AbstractGrid)
     m1 = fouriermap(m.m1, dims)
     m2 = fouriermap(m.m2, dims)
     return uv_combinator(m).(m1,m2)
@@ -152,7 +152,7 @@ components(m::CompositeModel{M1,M2}) where
 flux(m::AddModel) = flux(m.m1) + flux(m.m2)
 
 
-function intensitymap_numeric(m::AddModel, dims::ComradeBase.AbstractDims)
+function intensitymap_numeric(m::AddModel, dims::ComradeBase.AbstractGrid)
     sim1 = intensitymap(m.m1, dims)
     sim2 = intensitymap(m.m2, dims)
     return sim1 + sim2
@@ -272,15 +272,15 @@ smoothed(m, σ::Number) = convolved(m, stretched(Gaussian(), σ, σ))
 
 flux(m::ConvolvedModel) = flux(m.m1)*flux(m.m2)
 
-function intensitymap_numeric(model::ConvolvedModel, dims::ComradeBase.AbstractDims)
+function intensitymap_numeric(model::ConvolvedModel, dims::ComradeBase.AbstractGrid)
     (;X, Y) = dims
     vis1 = fouriermap(model.m1, dims)
     vis2 = fouriermap(model.m2, dims)
     U = vis1.U
     V = vis1.V
-    vis = ifftshift(phasedecenter!(vis1.*vis2, X, Y, U, V))
-    ifft!(keyless_unname(vis))
-    return IntensityMap(real.(keyless_unname(vis)), dims)
+    vis = ifftshift(parent(phasedecenter!(vis1.*vis2, X, Y, U, V)))
+    ifft!(vis)
+    return IntensityMap(real.(vis), dims)
 end
 
 function intensitymap_numeric!(sim::IntensityMap, model::ConvolvedModel)
@@ -290,7 +290,7 @@ function intensitymap_numeric!(sim::IntensityMap, model::ConvolvedModel)
     vis2 = fouriermap(model.m2, dims)
     U = vis1.U
     V = vis1.V
-    vis = ifftshift(phasedecenter!(keyless_unname(vis1.*vis2), X, Y, U, V))
+    vis = ifftshift(parent(phasedecenter!((vis1.*vis2), X, Y, U, V)))
     ifft!(vis)
     sim .= real.(vis)
 end

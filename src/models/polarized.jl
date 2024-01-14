@@ -36,7 +36,7 @@ function Base.show(io::IO, model::PolarizedModel)
     println(io, "\tI: $(summary(model.I))")
     println(io, "\tQ: $(summary(model.Q))")
     println(io, "\tU: $(summary(model.U))")
-    print(io, "\tV: $(summary(model.V))")
+    println(io, "\tV: $(summary(model.V))")
 end
 
 Base.@constprop :aggressive @inline visanalytic(::Type{PolarizedModel{I,Q,U,V}}) where {I,Q,U,V} = visanalytic(I)*visanalytic(Q)*visanalytic(U)*visanalytic(V)
@@ -93,7 +93,7 @@ function intensitymap!(pimg::Union{StokesIntensityMap, IntensityMap{<:StokesPara
     return pimg
 end
 
-function intensitymap(pmodel::PolarizedModel, dims::AbstractDims)
+function intensitymap(pmodel::PolarizedModel, dims::AbstractGrid)
     imgI = baseimage(intensitymap(stokes(pmodel, :I), dims))
     imgQ = baseimage(intensitymap(stokes(pmodel, :Q), dims))
     imgU = baseimage(intensitymap(stokes(pmodel, :U), dims))
@@ -161,7 +161,7 @@ end
 #     end
 # end
 
-function modelimage(model::PolarizedModel, grid::AbstractDims, alg::FourierTransform=FFTAlg(), pulse=DeltaPulse(), thread::Bool=false)
+function modelimage(model::PolarizedModel, grid::AbstractGrid, alg::FourierTransform=FFTAlg(), pulse=DeltaPulse(), thread::Bool=false)
     return PolarizedModel(
         modelimage(stokes(model, :I), grid, alg, pulse, thread),
         modelimage(stokes(model, :Q), grid, alg, pulse, thread),
@@ -201,7 +201,7 @@ function PoincareSphere2Map(I, p, X, grid)
     stokesV = IntensityMap(pimgI .* X[3], grid)
     return StokesIntensityMap(stokesI, stokesQ, stokesU, stokesV)
 end
-PoincareSphere2Map(I::IntensityMap, p, X) = PoincareSphere2Map(baseimage(I), p, X, axiskeys(I))
+PoincareSphere2Map(I::IntensityMap, p, X) = PoincareSphere2Map(baseimage(I), p, X, axisdims(I))
 PoincareSphere2Map(I::AbstractMatrix, p, X, cache::AbstractCache) = ContinuousImage(PoincareSphere2Map(I, p, X, cache.grid), cache)
 
 

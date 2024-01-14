@@ -39,7 +39,7 @@ function padimage(alg::NFFTAlg, img::SpatialIntensityMap)
     return SpatialIntensityMap(collect(pimg), dx*size(pimg,2), dy*size(pimg, 1))
 end
 
-function plan_nuft(alg::ObservedNUFT{<:NFFTAlg}, grid::AbstractDims)
+function plan_nuft(alg::ObservedNUFT{<:NFFTAlg}, grid::AbstractGrid)
     uv2 = similar(alg.uv)
     dpx = pixelsizes(grid)
     dx = dpx.X
@@ -52,7 +52,7 @@ function plan_nuft(alg::ObservedNUFT{<:NFFTAlg}, grid::AbstractDims)
     return plan
 end
 
-function make_phases(alg::ObservedNUFT{<:NFFTAlg}, grid::AbstractDims, pulse::Pulse=DeltaPulse())
+function make_phases(alg::ObservedNUFT{<:NFFTAlg}, grid::AbstractGrid, pulse::Pulse=DeltaPulse())
     dx, dy = pixelsizes(grid)
     x0, y0 = phasecenter(grid)
     u = @view alg.uv[1,:]
@@ -61,7 +61,7 @@ function make_phases(alg::ObservedNUFT{<:NFFTAlg}, grid::AbstractDims, pulse::Pu
     return cispi.((u.*(dx - 2*x0) .+ v.*(dy - 2*y0))).*visibility_point.(Ref(stretched(pulse, dx, dy)), u, v, zero(dx), zero(dy))
 end
 
-@inline function create_cache(alg::ObservedNUFT{<:NFFTAlg}, plan, phases, grid::AbstractDims, pulse=DeltaPulse())
+@inline function create_cache(alg::ObservedNUFT{<:NFFTAlg}, plan, phases, grid::AbstractGrid, pulse=DeltaPulse())
     return NUFTCache(alg, plan, phases, pulse, grid)
 end
 

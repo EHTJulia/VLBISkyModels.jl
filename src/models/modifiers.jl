@@ -321,7 +321,7 @@ end
 # since you evaluate the visibilities as a vector
 function modelimage(::NotAnalytic,
     model::ModifiedModel,
-    grid::AbstractDims, alg::NUFT,
+    grid::AbstractGrid, alg::NUFT,
     pulse = DeltaPulse(), thread::StaticBool=False())
     _modelimage(model, grid, alg, pulse, thread)
 end

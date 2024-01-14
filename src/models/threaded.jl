@@ -26,8 +26,7 @@ Base.@constprop :aggressive @inline ispolarized(::Type{<:ThreadedModel{M}}) wher
 @inline radialextent(m::ThreadedModel) = radialextent(basemodel(m))
 @inline flux(m::ThreadedModel) = flux(basemodel(m))
 
-using AxisKeys: keyless_unname
-function intensitymap_analytic(s::ThreadedModel, g::GriddedKeys)
+function intensitymap_analytic(s::ThreadedModel, g::RectiGrid)
     T = typeof(intensity_point(s, (X=g.X[begin], Y=g.Y[begin])))
     img = IntensityMap(Array{T}(undef, length(g.X), length(g.Y)), g)
     return intensitymap_analytic!(img, s)
@@ -66,7 +65,7 @@ function intensitymap!(::IsAnalytic, img::IntensityMap, s::ThreadedModel)
     return img
 end
 
-function fouriermap(::IsAnalytic, m::ThreadedModel, dims::ComradeBase.AbstractDims)
+function fouriermap(::IsAnalytic, m::ThreadedModel, dims::ComradeBase.AbstractGrid)
     X = dims.X
     Y = dims.Y
     uu,vv = uviterator(length(X), step(X), length(Y), step(Y))
@@ -77,5 +76,5 @@ function fouriermap(::IsAnalytic, m::ThreadedModel, dims::ComradeBase.AbstractDi
         ix, iy = Tuple(I)
         vis[I] = visibility_point(m, uu[ix], vv[iy], 0, 0)
     end
-    return KeyedArray(vis; U=uu, V=vv)
+    return IntensityMap(vis, (U=uu, V=vv))
 end

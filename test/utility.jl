@@ -33,7 +33,7 @@
 
     @testset "Stretch and rotate" begin
         m2 = modify(m, Stretch(2.0, 1.0), Rotate(π/4))
-        imgs = intensitymap(m2, axiskeys(img))
+        imgs = intensitymap(m2, axisdims(img))
         imgs2 = modify(img, Stretch(2.0, 1.0), Rotate(π/4))
         @test isapprox(imgs2, imgs, rtol=1e-4)
 

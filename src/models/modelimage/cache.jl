@@ -14,7 +14,7 @@ abstract type AbstractCache end
 
 
 """
-    create_cache(alg::AbstractFourierTransform, img::AbstractDims)
+    create_cache(alg::AbstractFourierTransform, img::AbstractGrid)
 
 Creates a Fourier transform cache for a img using algorithm `alg`. For non-analytic visibility models this
 can significantly speed up computations.
@@ -31,7 +31,7 @@ julia> cache = create_cache(FFTAlg(), imagepixels(μas2rad(100.0), μas2rad(100.
 function create_cache end
 
 # To ensure compat with older versions
-@deprecate create_cache(alg, img::IntensityMapTypes, args...) create_cache(alg, axiskeys(img), args...)
+@deprecate create_cache(alg, img::IntensityMapTypes, args...) create_cache(alg, axisdims(img), args...)
 
 """
     $(TYPEDEF)

@@ -1,4 +1,4 @@
-export centroid_mean, center_image, convolve!, convolve, regrid
+export centroid_mean, center_image, convolve!, convolve, regrid, smooth
 
 function centroid_mean(imgs::AbstractVector{<:IntensityMap})
     mimg = mapreduce(+, imgs) do img
@@ -41,7 +41,7 @@ function intensity_point(m::InterpolatedImage, p)
 end
 function ModifiedModel(img::SpatialIntensityMap, transforms)
     ms = ModifiedModel(InterpolatedImage(img), transforms)
-    return intensitymap(ms, axiskeys(img))
+    return intensitymap(ms, axisdims(img))
 end
 
 
@@ -113,7 +113,7 @@ function convolve(img::SpatialIntensityMap{<:Real}, m::AbstractModel)
 end
 
 function convolve(img::SpatialIntensityMap{<:StokesParams}, m::AbstractModel)
-    g = axiskeys(img)
+    g = axisdims(img)
     bimg = copy(baseimage(img))
     cimg = IntensityMap(StructArray(bimg), g)
     return convolve!(cimg, m)
@@ -125,6 +125,15 @@ function convolve!(img::SpatialIntensityMap{<:StokesParams}, m)
     convolve!(stokes(img, :U), m)
     convolve!(stokes(img, :V), m)
     return img
+end
+
+"""
+    smooth(img::SpatialIntensityMap)
+
+Smooths the `img` using a symmetric Gaussian with `FWHM`
+"""
+function smooth(img::SpatialIntensityMap, FWHM::Number)
+    return convolve(img, modify(Gaussian(), Stretch(FWHM)))
 end
 
 # function convolve(img::IntensityMap, m::AbstractModel)
@@ -139,7 +148,7 @@ end
 
 # Regrids the spatial parts of an image `img` on the new domain `g`
 # """
-# function regrid(img::IntensityMap, g::GriddedKeys)
+# function regrid(img::IntensityMap, g::RectiGrid)
 #     map(eachslice(img; dims=(:))) do simg
 #         return regrid(simg, g)
 #     end
@@ -155,7 +164,7 @@ function regrid(img::IntensityMap, fovx::Real, fovy::Real, nx::Int, ny::Int, x0=
     return regrid(img, g)
 end
 
-function regrid(img::SpatialIntensityMap, g::GriddedKeys)
+function regrid(img::SpatialIntensityMap, g::RectiGrid)
     fimg = VLBISkyModels.InterpolatedImage(img)
     return intensitymap(fimg, g)
 end

@@ -143,12 +143,12 @@ function ChainRulesCore.rrule(::typeof(visibilities_analytic), m::Union{Geometri
 end
 
 
-# function ChainRulesCore.rrule(::typeof(intensitymap_analytic), m::Union{GeometricModel, PolarizedModel, CompositeModel, ModifiedModel}, p::ComradeBase.GriddedKeys)
+# function ChainRulesCore.rrule(::typeof(intensitymap_analytic), m::Union{GeometricModel, PolarizedModel, CompositeModel, ModifiedModel}, p::ComradeBase.RectiGrid)
 #     img = intensitymap_analytic(m, p)
 #     @info p
 #     function _composite_intensitymap_analytic_pullback(Δ)
 #         n = propertynames(p)
-#         dp = GriddedKeys(NamedTuple{n}(map(x->zero(getproperty(p, x)), propertynames(p))))
+#         dp = RectiGrid(NamedTuple{n}(map(x->zero(getproperty(p, x)), propertynames(p))))
 #         dimg = zero(img)
 #         dimg .= unthunk(Δ)
 #         rimg = zero(img)
