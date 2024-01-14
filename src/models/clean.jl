@@ -6,7 +6,7 @@ using DelimitedFiles
     MultiComponentModel(beam::AbstractModel, fluxes::AbstractVector, x::AbstractVector, y::AbstractVector)
 
 Build a model with a base model type `beam` where fluxes, x, y corresond to the flux, and positions
-of the components. This can be used to easily construct clean like models.
+of the components. This can be used to construct clean like models.
 """
 struct MultiComponentModel{M<:AbstractModel, F, V<:AbstractVector} <: AbstractModel
     base::M
@@ -47,6 +47,7 @@ function load_clean_components(fname, beam=DeltaPulse())
     f, x, y = open(fname, "r") do io
         out = readdlm(io, comments=true, comment_char='!')
         f = out[:, 1]
+        # components are stored in mas
         r = μas2rad(out[:, 2])*1000
         θ = out[:, 3]
         x = r.*sind.(θ)

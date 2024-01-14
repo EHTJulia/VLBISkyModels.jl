@@ -1,4 +1,4 @@
-export centroid_mean, center_image, convolve!, convolve, regrid
+export centroid_mean, center_image, convolve!, convolve, regrid, smooth
 
 function centroid_mean(imgs::AbstractVector{<:IntensityMap})
     mimg = mapreduce(+, imgs) do img
@@ -125,6 +125,15 @@ function convolve!(img::SpatialIntensityMap{<:StokesParams}, m)
     convolve!(stokes(img, :U), m)
     convolve!(stokes(img, :V), m)
     return img
+end
+
+"""
+    smooth(img::SpatialIntensityMap)
+
+Smooths the `img` using a symmetric Gaussian with `FWHM`
+"""
+function smooth(img::SpatialIntensityMap, FWHM::Number)
+    return convolve(img, modify(Gaussian(), Stretch(FWHM)))
 end
 
 # function convolve(img::IntensityMap, m::AbstractModel)
