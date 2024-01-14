@@ -25,28 +25,28 @@ imageviz(img)</code></pre><img src="2fd34ddc.png" alt="Example block output"/><p
 	cache: VLBISkyModels.FFTCache
 </code></pre><p>the <code>alg</code> keyword argument then specifies that we want to use an FFT to compute the Fourier transform. When <code>modelimage</code> is called, the FFT is performed and then we use a bicubic interpolator on the resulting visibilities to construct a continuous representation of the Fourier transform. Once we have this everything else is the same. Namely we can calculatge the VLBI data products in the usual manner i.e.</p><pre><code class="language-julia hljs">u = randn(1000)/2
 v = randn(1000)/2</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">1000-element Vector{Float64}:
-  0.6186641667398944
-  0.5228214562045349
- -0.6012467856439456
-  0.05904329068338425
-  0.6989968189879147
- -0.18560768839608915
- -0.523594469299235
- -0.5556233918876669
- -0.7451801911619736
-  0.013226623702920022
+  0.9097382177288238
+ -0.5409599110206912
+ -0.3423734614731392
+ -0.7964936907170612
+  0.03163221579965903
+  0.2819622973731495
+ -0.15677863178777784
+ -0.12324092997801298
+  0.0986043636618132
+ -0.6308801680174221
   ⋮
-  0.15162947338721497
-  0.1576642169816339
- -1.4951662890150752
- -0.7688136148352398
- -0.18656388515872713
-  0.6013799533366874
- -0.7510197820919776
- -0.11381344974119778
-  0.5010259264287226</code></pre><p>Now we can plot our sampled visibilities</p><pre><code class="language-julia hljs">vis = visibilities(mimage, (U=u, V=v))
+  0.5914429128935914
+  0.14624305875327467
+ -0.32839204052453097
+ -0.27278718775050914
+ -0.9942779550283566
+  0.4092977592676954
+  0.32545317769375515
+  0.3122571803904714
+  0.511898627821009</code></pre><p>Now we can plot our sampled visibilities</p><pre><code class="language-julia hljs">vis = visibilities(mimage, (U=u, V=v))
 scatter(hypot.(u, v), real.(vis), label=&quot;Real&quot;)
 scatter!(hypot.(u, v), imag.(vis), label=&quot;Imag&quot;)
 axislegend()
-current_figure()</code></pre><img src="bd74802f.png" alt="Example block output"/><p>We can also directly get the amplitudes using:</p><pre><code class="language-julia hljs">amp = amplitudes(mimage, (U=u, V=v))
-scatter(hypot.(u, v), amp, label=&quot;Amplitude&quot;)</code></pre><img src="0a6dd9d4.png" alt="Example block output"/><hr/><p><em>This page was generated using <a href="https://github.com/fredrikekre/Literate.jl">Literate.jl</a>.</em></p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../../base_api/">« Base API</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="auto">Automatic (OS)</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.2.1 on <span class="colophon-date" title="Sunday 14 January 2024 16:49">Sunday 14 January 2024</span>. Using Julia version 1.10.0.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
+current_figure()</code></pre><img src="03ea6801.png" alt="Example block output"/><p>We can also directly get the amplitudes using:</p><pre><code class="language-julia hljs">amp = amplitudes(mimage, (U=u, V=v))
+scatter(hypot.(u, v), amp, label=&quot;Amplitude&quot;)</code></pre><img src="9a3dd295.png" alt="Example block output"/><hr/><p><em>This page was generated using <a href="https://github.com/fredrikekre/Literate.jl">Literate.jl</a>.</em></p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../../base_api/">« Base API</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="auto">Automatic (OS)</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.2.1 on <span class="colophon-date" title="Sunday 14 January 2024 17:33">Sunday 14 January 2024</span>. Using Julia version 1.10.0.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
