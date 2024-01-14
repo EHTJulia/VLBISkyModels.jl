@@ -4,55 +4,49 @@
 
 using CairoMakie</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">  Activating project at `~/work/VLBISkyModels.jl/VLBISkyModels.jl/examples`</code></pre><p>While most of the models implemented in <code>VLBISkyModels</code> have an analytic Fourier transform this is not required. In this notebook we will describe how a user can do Bayesian model fitting with a non-analytic model.</p><p>The <code>ExtendedRing</code> model is an example of a non-analytic model. The image structure is given by</p><p class="math-container">\[I(r) = \frac{\beta^\alpha}{2\pi \Gamma(\alpha)} r^{-\alpha-2}e^{-\beta/r}\]</p><p>This can be created as follows</p><pre><code class="language-julia hljs">m = ExtendedRing(8.0)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">ExtendedRing{Float64}(8.0)</code></pre><p>The argument is <code>\alpha</code> in the above equation. <code>beta</code> is given by <span>$(1+\alpha)$</span>.</p><p>This is an example of a ring model that has a substantially different flux profile. Let&#39;s plot the image first giving it some unity by applying <code>modify</code></p><pre><code class="language-julia hljs">muas = modify(m, Stretch(μas2rad(20.0)))
 img = intensitymap(muas, μas2rad(100.0),  μas2rad(100.0), 256, 256)
-imageviz(img)</code></pre><img src="5a287ac3.png" alt="Example block output"/><p>This function does not have a simple analytic Fourier transform, e.g.</p><pre><code class="language-julia hljs">VLBISkyModels.visanalytic(ExtendedRing)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">ComradeBase.NotAnalytic()</code></pre><p>Therefore, to find the Fourier transform of the image we need to revert to numerical methods. For this notebook we will use the <em>fast Fourier transform</em> or FFT. Specifically we will use FFTW. To compute a numerical Fourier transform we first need to specify the image.</p><pre><code class="language-julia hljs">img = IntensityMap(zeros(256, 256), 10.0, 10.0)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">2-dimensional <span class="sgr1">KeyedArray(NamedDimsArray(...))</span> with keys:
-↓   <span class="sgr36">X ∈ 256-element LinRange{Float64,...}</span>
-→   <span class="sgr36">Y ∈ 256-element LinRange{Float64,...}</span>
-And data, <span class="sgr1">256×256 NamedDimsArray(::Matrix{Float64}, (:X, :Y))</span>:
-             <span class="sgr36">(-4.98047)</span>  <span class="sgr36">(-4.94141)</span>  …  <span class="sgr36">(4.90234)</span>  <span class="sgr36">(4.94141)</span>  <span class="sgr36">(4.98047)</span>
- <span class="sgr36">(-4.98047)</span>     0.0         0.0           0.0        0.0        0.0
- <span class="sgr36">(-4.94141)</span>     0.0         0.0           0.0        0.0        0.0
- <span class="sgr36">(-4.90234)</span>     0.0         0.0           0.0        0.0        0.0
- <span class="sgr36">(-4.86328)</span>     0.0         0.0           0.0        0.0        0.0
- <span class="sgr36">(-4.82422)</span>     0.0         0.0      …    0.0        0.0        0.0
- <span class="sgr36">(-4.78516)</span>     0.0         0.0           0.0        0.0        0.0
-    ⋮                                ⋱               ⋮        
-  <span class="sgr36">(4.74609)</span>     0.0         0.0           0.0        0.0        0.0
-  <span class="sgr36">(4.78516)</span>     0.0         0.0           0.0        0.0        0.0
-  <span class="sgr36">(4.82422)</span>     0.0         0.0      …    0.0        0.0        0.0
-  <span class="sgr36">(4.86328)</span>     0.0         0.0           0.0        0.0        0.0
-  <span class="sgr36">(4.90234)</span>     0.0         0.0           0.0        0.0        0.0
-  <span class="sgr36">(4.94141)</span>     0.0         0.0           0.0        0.0        0.0
-  <span class="sgr36">(4.98047)</span>     0.0         0.0           0.0        0.0        0.0</code></pre><p>This will serve as our cache to store the image going forward. The next step is to create a model wrapper that holds the model and the image. <code>VLBISkyModels</code> provides the <code>modelimage</code> function to do exactly that</p><pre><code class="language-julia hljs">mimage = modelimage(m, img, FFTAlg())</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">ModelImage
+imageviz(img)</code></pre><img src="2fd34ddc.png" alt="Example block output"/><p>This function does not have a simple analytic Fourier transform, e.g.</p><pre><code class="language-julia hljs">VLBISkyModels.visanalytic(ExtendedRing)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">ComradeBase.NotAnalytic()</code></pre><p>Therefore, to find the Fourier transform of the image we need to revert to numerical methods. For this notebook we will use the <em>fast Fourier transform</em> or FFT. Specifically we will use FFTW. To compute a numerical Fourier transform we first need to specify the image.</p><pre><code class="language-julia hljs">img = IntensityMap(zeros(256, 256), 10.0, 10.0)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">256×256 IntensityMap{Float64,2}<span class="sgr90"> with dimensions: </span>
+  <span class="sgr31">X</span> Sampled{Float64} <span class="sgr36">LinRange{Float64}(-4.98047, 4.98047, 256)</span> ForwardOrdered Regular Points,
+  <span class="sgr31">Y</span> Sampled{Float64} <span class="sgr36">LinRange{Float64}(-4.98047, 4.98047, 256)</span> ForwardOrdered Regular Points
+           <span class="sgr90">-4.98047</span>  <span class="sgr90">-4.94141</span>  …  <span class="sgr90">4.86328</span>  <span class="sgr90">4.90234</span>  <span class="sgr90">4.94141</span>  <span class="sgr90">4.98047</span>
+ <span class="sgr90">-4.98047</span>   0.0       0.0         0.0      0.0      0.0      0.0
+ <span class="sgr90">-4.94141</span>   0.0       0.0         0.0      0.0      0.0      0.0
+ <span class="sgr90">-4.90234</span>   0.0       0.0         0.0      0.0      0.0      0.0
+ <span class="sgr90">-4.86328</span>   0.0       0.0         0.0      0.0      0.0      0.0
+ <span class="sgr90">-4.82422</span>   0.0       0.0      …  0.0      0.0      0.0      0.0
+  ⋮                            ⋱                    ⋮        
+  <span class="sgr90">4.78516</span>   0.0       0.0         0.0      0.0      0.0      0.0
+  <span class="sgr90">4.82422</span>   0.0       0.0         0.0      0.0      0.0      0.0
+  <span class="sgr90">4.86328</span>   0.0       0.0         0.0      0.0      0.0      0.0
+  <span class="sgr90">4.90234</span>   0.0       0.0      …  0.0      0.0      0.0      0.0
+  <span class="sgr90">4.94141</span>   0.0       0.0         0.0      0.0      0.0      0.0
+  <span class="sgr90">4.98047</span>   0.0       0.0         0.0      0.0      0.0      0.0</code></pre><p>This will serve as our cache to store the image going forward. The next step is to create a model wrapper that holds the model and the image. <code>VLBISkyModels</code> provides the <code>modelimage</code> function to do exactly that</p><pre><code class="language-julia hljs">mimage = modelimage(m, img, FFTAlg())</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">ModelImage
 	model: VLBISkyModels.InterpolatedModel{ExtendedRing{Float64}, VLBISkyModels.var&quot;#2#3&quot;{VLBISkyModels.ModifiedModel{DeltaPulse{Float64}, Tuple{Stretch{Float64}}}, BasicInterpolators.BicubicInterpolator{Float64, BasicInterpolators.NoBoundaries}, BasicInterpolators.BicubicInterpolator{Float64, BasicInterpolators.NoBoundaries}}}
-	image: 2-dimensional KeyedArray(NamedDimsArray(...)) with keys:
-↓   X ∈ 256-element LinRange{Float64,...}
-→   Y ∈ 256-element LinRange{Float64,...}
-And data, 256×256 NamedDimsArray(::Matrix{Float64}, (:X, :Y))
+	image: 256×256 IntensityMap{Float64,2}
 	cache: VLBISkyModels.FFTCache
 </code></pre><p>the <code>alg</code> keyword argument then specifies that we want to use an FFT to compute the Fourier transform. When <code>modelimage</code> is called, the FFT is performed and then we use a bicubic interpolator on the resulting visibilities to construct a continuous representation of the Fourier transform. Once we have this everything else is the same. Namely we can calculatge the VLBI data products in the usual manner i.e.</p><pre><code class="language-julia hljs">u = randn(1000)/2
 v = randn(1000)/2</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">1000-element Vector{Float64}:
- -0.412098171076181
- -0.48525429880719445
-  0.08155932341868631
- -0.14431170105042274
- -0.6308175510376824
- -0.24826468869236587
-  0.29722667668361974
-  0.13288921237674242
- -0.5878536902047402
-  0.1043441555244235
+  0.6186641667398944
+  0.5228214562045349
+ -0.6012467856439456
+  0.05904329068338425
+  0.6989968189879147
+ -0.18560768839608915
+ -0.523594469299235
+ -0.5556233918876669
+ -0.7451801911619736
+  0.013226623702920022
   ⋮
- -0.9191219766133751
- -0.035153613222440476
-  0.7827348908142742
-  1.0871673087348808
- -0.17740090485389795
-  0.06881310151591627
-  0.19037272022635934
- -0.32053809016475443
-  0.36904893567919067</code></pre><p>Now we can plot our sampled visibilities</p><pre><code class="language-julia hljs">vis = visibilities(mimage, (U=u, V=v))
+  0.15162947338721497
+  0.1576642169816339
+ -1.4951662890150752
+ -0.7688136148352398
+ -0.18656388515872713
+  0.6013799533366874
+ -0.7510197820919776
+ -0.11381344974119778
+  0.5010259264287226</code></pre><p>Now we can plot our sampled visibilities</p><pre><code class="language-julia hljs">vis = visibilities(mimage, (U=u, V=v))
 scatter(hypot.(u, v), real.(vis), label=&quot;Real&quot;)
 scatter!(hypot.(u, v), imag.(vis), label=&quot;Imag&quot;)
 axislegend()
-current_figure()</code></pre><img src="8ab62033.png" alt="Example block output"/><p>We can also directly get the amplitudes using:</p><pre><code class="language-julia hljs">amp = amplitudes(mimage, (U=u, V=v))
-scatter(hypot.(u, v), amp, label=&quot;Amplitude&quot;)</code></pre><img src="2f25f75d.png" alt="Example block output"/><hr/><p><em>This page was generated using <a href="https://github.com/fredrikekre/Literate.jl">Literate.jl</a>.</em></p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../../base_api/">« Base API</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="auto">Automatic (OS)</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.2.1 on <span class="colophon-date" title="Saturday 16 December 2023 18:42">Saturday 16 December 2023</span>. Using Julia version 1.9.4.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
+current_figure()</code></pre><img src="bd74802f.png" alt="Example block output"/><p>We can also directly get the amplitudes using:</p><pre><code class="language-julia hljs">amp = amplitudes(mimage, (U=u, V=v))
+scatter(hypot.(u, v), amp, label=&quot;Amplitude&quot;)</code></pre><img src="0a6dd9d4.png" alt="Example block output"/><hr/><p><em>This page was generated using <a href="https://github.com/fredrikekre/Literate.jl">Literate.jl</a>.</em></p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../../base_api/">« Base API</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="auto">Automatic (OS)</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.2.1 on <span class="colophon-date" title="Sunday 14 January 2024 16:49">Sunday 14 January 2024</span>. Using Julia version 1.10.0.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
