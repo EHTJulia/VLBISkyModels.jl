@@ -560,7 +560,7 @@ end
 
     @test ComradeBase.visanalytic(typeof(m)) == ComradeBase.visanalytic(typeof(m.base))
 
-    @test convolved(m, Gaussian()) == convolved(Gausian(), m)
+    @test convolved(m, Gaussian()) == convolved(Gaussian(), m)
 
     foo(fl, x, y) = sum(abs2, VLBISkyModels.visibilities_analytic(MultiComponentModel(Gaussian(), fl, x, y), u, v, t, f))
     x = randn(10)
