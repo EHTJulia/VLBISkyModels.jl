@@ -92,7 +92,7 @@ end
 
 
 __getdata(img::IntensityMap) = DimensionalData.data(img)
-__getdata(img::Tangent{<:IntensityMap}) = img.data
+__getdata(img::Tangent) = img.data
 __getdata(img::ChainRulesCore.Thunk) = img
 
 function ChainRulesCore.rrule(::Type{IntensityMap}, data::AbstractArray, keys...)
