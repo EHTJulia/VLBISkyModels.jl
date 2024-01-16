@@ -699,6 +699,7 @@ end
 
 end
 
+
 @testset "modelimage cache" begin
     img = intensitymap(rotated(stretched(Gaussian(), μas2rad(2.0), μas2rad(1.0)), π/8),
                        μas2rad(12.0), μas2rad(12.0), 24, 12)
@@ -720,6 +721,8 @@ end
 
     cimg = ContinuousImage(img, DeltaPulse())
     cache_nf = create_cache(NFFTAlg(u1cp, v1cp), axisdims(img), DeltaPulse())
+    test_rrule(ContinuousImage, img, DeltaPulse()⊢NoTangent())
+
     cimg2 = ContinuousImage(img, cache_nf)
     cache_df = create_cache(DFTAlg(u1cp, v1cp), axisdims(img), DeltaPulse())
     cimg3 = ContinuousImage(img, cache_df)
@@ -763,6 +766,8 @@ end
 
     @test convolved(img, Gaussian()) isa ContinuousImage
     @test convolved(Gaussian(), img) isa ContinuousImage
+
+    test_rrule(ContinuousImage, IntensityMap(data, g), BSplinePulse{3}()⊢NoTangent())
 
 end
 

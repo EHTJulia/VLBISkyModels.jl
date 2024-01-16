@@ -90,29 +90,30 @@ end
 #     return dx
 # end
 
-
-__getdata(img::IntensityMap) = DimensionalData.data(img)
-__getdata(img::Tangent) = img.data
-__getdata(img::ChainRulesCore.Thunk) = img
-
-function ChainRulesCore.rrule(::Type{IntensityMap}, data::AbstractArray, keys...)
-    img = IntensityMap(data, keys...)
-    pd = ProjectTo(data)
-    function _IntensityMap_pullback(Δ)
-        return (NoTangent(), @thunk(pd(__getdata(Δ))), map(i->NoTangent(), keys)...)
-    end
-    return img, _IntensityMap_pullback
+function _ctsimg_pb(Δ, pr)
+    (NoTangent(), pr(Δ), NoTangent())
 end
 
 
-# function ChainRulesCore.rrule(::Type{ContinuousImage}, data::IntensityMapTypes, pulse::AbstractModel)
-#     img = ContinuousImage(data, pulse)
-#     pd = ProjectTo(data)
-#     function _ContinuousImage_pullback(Δ)
-#         return (NoTangent(), @thunk(pd(Δ.img)), NoTangent())
-#     end
-#     return img, _ContinuousImage_pullback
-# end
+function _ctsimg_pb(Δ::Tangent, pr)
+    pb = _ctsimg_pb(Δ.img, pr)
+    return pb
+end
+
+function _ctsimg_pb(Δ::AbstractThunk, pr)
+    pb = _ctsimg_pb(unthunk(Δ), pr)
+    return pb
+
+end
+
+function ChainRulesCore.rrule(::Type{ContinuousImage}, data::IntensityMapTypes, cache)
+    img = ContinuousImage(data, cache)
+    pd = ProjectTo(data)
+    function pb(Δ)
+        _ctsimg_pb(Δ, pd)
+    end
+    return img, pb
+end
 
 
 getm(m::AbstractModel) = m

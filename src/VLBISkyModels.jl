@@ -26,7 +26,7 @@ using Serialization
 @reexport using ComradeBase
 @reexport using PolarizedTypes
 @reexport using DimensionalData
-
+const DD = DimensionalData
 
 """
     rad2μas(x)
