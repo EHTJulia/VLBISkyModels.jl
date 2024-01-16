@@ -90,14 +90,10 @@ end
 #     return dx
 # end
 
-function _ctsimg_pb(Δ, pr)
-    (NoTangent(), pr(Δ), NoTangent())
-end
-
 
 function _ctsimg_pb(Δ::Tangent, pr)
-    pb = _ctsimg_pb(Δ.img, pr)
-    return pb
+    pb = pr(Δ.img)
+    return NoTangent(), pb, NoTangent()
 end
 
 function _ctsimg_pb(Δ::AbstractThunk, pr)
@@ -106,11 +102,12 @@ function _ctsimg_pb(Δ::AbstractThunk, pr)
 
 end
 
-function ChainRulesCore.rrule(::Type{ContinuousImage}, data::IntensityMapTypes, cache)
-    img = ContinuousImage(data, cache)
+function ChainRulesCore.rrule(::Type{ContinuousImage}, data::IntensityMapTypes, pulse::Pulse)
+    img = ContinuousImage(data, pulse)
     pd = ProjectTo(data)
     function pb(Δ)
-        _ctsimg_pb(Δ, pd)
+        # @info "Input: " Δ
+        return _ctsimg_pb(Δ, pd)
     end
     return img, pb
 end
