@@ -394,7 +394,7 @@ end
         testmodel(mas)
         testmodel(modelimage(mbs, imagepixels(2*VLBISkyModels.radialextent(mbs),
                                               2*VLBISkyModels.radialextent(mbs),
-                                              1024, 1024)))
+                                              1024, 1024), FFTAlg()))
 
         foo(x) = sum(abs2, VLBISkyModels.visibilities_analytic(shifted(ma, x[1], x[2]), u, v, t, f))
         x = rand(2)
@@ -413,7 +413,7 @@ end
         testmodel(m1)
         testmodel(modelimage(mbs, imagepixels(2.5*VLBISkyModels.radialextent(mbs),
                                               2.5*VLBISkyModels.radialextent(mbs),
-                                              1024, 1024)))
+                                              1024, 1024), FFTAlg()))
 
         foo(x) = sum(abs2, VLBISkyModels.visibilities_analytic(x[1]*ma, u, v, t, f))
         x = rand(1)
@@ -427,7 +427,7 @@ end
         mbs = stretched(mb, 5.0, 4.0)
         testmodel(mas)
         testmodel(modelimage(mbs, imagepixels(2*VLBISkyModels.radialextent(mbs),
-                                              2*VLBISkyModels.radialextent(mbs), 2024, 2024)),
+                                              2*VLBISkyModels.radialextent(mbs), 2024, 2024), FFTAlg()),
                                               1024, 1e-3)
 
         foo(x) = sum(abs2, VLBISkyModels.visibilities_analytic(stretched(ma, x[1], x[2]), u, v, t, f))
@@ -442,7 +442,7 @@ end
         testmodel(mas)
         testmodel(modelimage(mbs, imagepixels(2*VLBISkyModels.radialextent(mbs),
                                               2*VLBISkyModels.radialextent(mbs),
-                                              1024, 1024)))
+                                              1024, 1024), FFTAlg()))
 
         foo(x) = sum(abs2, VLBISkyModels.visibilities_analytic(rotated(ma, x[1]), u, v, t, f))
         x = rand(1)
@@ -457,7 +457,8 @@ end
         mbs = rotated(stretched(shifted(mb, 0.5, 0.5), 5.0, 4.0), π/3)
         testmodel(mas)
         testmodel(modelimage(mbs, imagepixels(2*VLBISkyModels.radialextent(mbs),
-                                              2*VLBISkyModels.radialextent(mbs), 2048, 2048)),
+                                              2*VLBISkyModels.radialextent(mbs), 2048, 2048),
+                                              FFTAlg()),
                                               1024, 1e-3)
 
         foo(x) = sum(abs2, VLBISkyModels.visibilities_analytic(modify(ma, Shift(x[1], x[2]), Stretch(x[3], x[4]), Rotate(x[5]), Renormalize(x[6])), u, v, t, f))
@@ -497,9 +498,9 @@ end
         testgrad(foo, x)
 
 
-        testmodel(modelimage(mt1, axisdims(img)))
-        testmodel(modelimage(mt2, axisdims(img)))
-        testmodel(modelimage(mt3, axisdims(img)))
+        testmodel(modelimage(mt1, axisdims(img), FFTAlg()))
+        testmodel(modelimage(mt2, axisdims(img), FFTAlg()))
+        testmodel(modelimage(mt3, axisdims(img), FFTAlg()))
     end
 
     @testset "Convolved models" begin
@@ -514,9 +515,9 @@ end
         @test mc[1] === m1
         @test mc[2] === m2
 
-        testmodel(modelimage(mt1, axisdims(img)))
-        testmodel(modelimage(mt2, axisdims(img)))
-        testmodel(modelimage(mt3, axisdims(img)))
+        testmodel(modelimage(mt1, axisdims(img), FFTAlg()))
+        testmodel(modelimage(mt2, axisdims(img), FFTAlg()))
+        testmodel(modelimage(mt3, axisdims(img), FFTAlg()))
 
         foo(x) = sum(abs2, VLBISkyModels.visibilities_analytic(convolved(x[1]*stretched(Disk(), x[2], x[3]),stretched(Ring(), x[4], x[4])), u, v, t, f))
         x = rand(4)
@@ -537,7 +538,7 @@ end
         @test mc[2] === m1
         @test mc[3] === m2
 
-        testmodel(modelimage(mt, axisdims(img)))
+        testmodel(modelimage(mt, axisdims(img), FFTAlg()))
 
         foo(x) = sum(abs2, VLBISkyModels.visibilities_analytic(smoothed(x[1]*stretched(Disk(), x[2], x[3]), x[4]) + stretched(Ring(), x[5], x[4]), u, v, t, f))
         x = rand(5)
