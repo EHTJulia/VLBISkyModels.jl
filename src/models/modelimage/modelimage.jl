@@ -93,17 +93,20 @@ radialextent(m::ModelImage) = hypot(fieldofview(m.image)...)/2
 using Static
 
 """
-    modelimage(model::AbstractModel, image::AbstractIntensityMap, alg=FFTAlg())
+    modelimage(model::AbstractModel, grid::AbstractGrid; alg=NFTAlg(), pulse=DeltaPulse(), thread=false)
 
-Construct a `ModelImage` from a `model`, `image` and the optionally
-specified visibility algorithm `alg`
+Construct a `ModelImage` from a `model`, `grid` that specifies the domain of the image.
+The keyword arguments are:
+  - `alg`: specify the type of Fourier transform algorithm we will use. Default if the non-uniform FFT
+  - `pulse`: Specify the pulse for the image model, the default is `DeltaPulse`
+  - `thread`: Whether to thread aspects of the construction of the model. Default is `false`.
 
 # Notes
 For analytic models this is a no-op and returns the model.
 For non-analytic models this creates a `ModelImage` object which uses `alg` to compute
 the non-analytic Fourier transform.
 """
-@inline function modelimage(model::M, grid::AbstractGrid, alg::FourierTransform=FFTAlg(), pulse=DeltaPulse(), thread::Union{Bool, StaticBool}=false) where {M}
+@inline function modelimage(model::M, grid::AbstractGrid; alg::FourierTransform=NFTAlg(), pulse=DeltaPulse(), thread::Union{Bool, StaticBool}=false) where {M}
     return modelimage(visanalytic(M), model, grid, alg, pulse, static(thread))
 end
 
@@ -184,6 +187,10 @@ direction. The `pulse` is the pulse used for the image and `alg`
 
 # Notes
 For analytic models this is a no-op and returns the model.
+
+!!! warn
+    We recommend using the more direct `modelimage(m, grid::AbstractGrid)` or
+    `modelimage(m, cache::AbstractCache)` methods since they will precompute more of the transformation.
 
 """
 function modelimage(m::M;
