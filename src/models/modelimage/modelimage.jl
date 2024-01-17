@@ -107,6 +107,10 @@ For non-analytic models this creates a `ModelImage` object which uses `alg` to c
 the non-analytic Fourier transform.
 """
 @inline function modelimage(model::M, grid::AbstractGrid; alg::FourierTransform=NFTAlg(), pulse=DeltaPulse(), thread::Union{Bool, StaticBool}=false) where {M}
+    return modelimage(model, grid, alg, pulse, static(thread))
+end
+
+@inline function modelimage(model::M, grid::AbstractGrid, alg::FourierTransform, pulse=DeltaPulse(), thread::Union{Bool, StaticBool} = false) where {M}
     return modelimage(visanalytic(M), model, grid, alg, pulse, static(thread))
 end
 
