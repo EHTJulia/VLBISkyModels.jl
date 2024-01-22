@@ -137,22 +137,17 @@ function ChainRulesCore.rrule(::typeof(visibilities_analytic), m::Union{Geometri
 end
 
 
-# function ChainRulesCore.rrule(::typeof(intensitymap_analytic), m::Union{GeometricModel, PolarizedModel, CompositeModel, ModifiedModel}, p::ComradeBase.RectiGrid)
-#     img = intensitymap_analytic(m, p)
-#     @info p
-#     function _composite_intensitymap_analytic_pullback(Δ)
-#         n = propertynames(p)
-#         dp = RectiGrid(NamedTuple{n}(map(x->zero(getproperty(p, x)), propertynames(p))))
-#         dimg = zero(img)
-#         dimg .= unthunk(Δ)
-#         rimg = zero(img)
-#         d = autodiff(Reverse, intensitymap_analytic!, Const, Duplicated(rimg, dimg), Active(m))
-#         dm = getm(d[1])
-#         tm = __extract_tangent(dm)
-
-#         tdp = (map(x->getproperty(dp, x), propertynames(p)))
-#         return NoTangent(), tm, Tangent{typeof(p)}(;dims=tdp, header=NoTangent())
-#     end
-
-#     return img, _composite_intensitymap_analytic_pullback
-# end
+function ChainRulesCore.rrule(::typeof(intensitymap_analytic), m::Union{GeometricModel, PolarizedModel, CompositeModel, ModifiedModel}, p::ComradeBase.RectiGrid)
+    img = intensitymap_analytic(m, p)
+    function _composite_intensitymap_analytic_pullback(Δ)
+        dimg = zero(img)
+        dimg .= unthunk(Δ)
+        rimg = zero(img)
+        d = autodiff(Reverse, intensitymap_analytic!, Const, Duplicated(rimg, dimg), Active(m))
+        dm = getm(d[1])
+        tm = __extract_tangent(dm)
+        tandp = Tangent{typeof(p)}(dims=dims(dimg), header=header(dimg))
+        return NoTangent(), tm, tandp
+    end
+    return img, _composite_intensitymap_analytic_pullback
+end
