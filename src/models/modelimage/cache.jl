@@ -123,8 +123,4 @@ function Base.show(io::IO, a::NUFTCache)
     print(io, "\tdomain: $(typeof(a.grid))")
 end
 
-"""
-    $(TYPEDEF)
-
-
 include(joinpath(@__DIR__, "modelimage.jl"))
