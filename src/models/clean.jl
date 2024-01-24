@@ -36,7 +36,7 @@ function intensity_point(m::MultiComponentModel, p)
 end
 
 function visibility_point(m::MultiComponentModel, x, y, t, f)
-    s = mapreduce(+, eachindex(m.x)) do i
+    s = sum(eachindex(m.x)) do i
         ComradeBase.visibility_point(m[i], x, y, t, f)
     end
     return s

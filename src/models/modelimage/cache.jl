@@ -52,6 +52,29 @@ Base.@kwdef struct FFTAlg <: FourierTransform
     """
     padfac::Int = 2
 end
+
+"""
+    $(TYPEDEF)
+The cache used when the `FFT` algorithm is used to compute
+visibilties. This is an internal type and is not part of the public API
+"""
+struct FFTCache{A<:FFTAlg,P,Pu,G,Guv} <: AbstractCache
+    alg::A # FFT algorithm
+    plan::P # FFT plan or matrix
+    pulse::Pu
+    grid::G
+    gridUV::Guv
+end
+
+function Base.show(io::IO, a::FFTCache)
+    println(io, "FFTCache:")
+    as = split("$(typeof(a.alg))", '{')[1]
+    println(io, "\tFT algorithm: $as")
+    println(io, "\tpulse: $(typeof(a.pulse))")
+    print(io, "\tdomain: $(typeof(a.grid))")
+end
+
+
 include(joinpath(@__DIR__, "fft_alg.jl"))
 
 """
@@ -91,6 +114,17 @@ struct NUFTCache{A,P,M,PI,G} <: AbstractCache
     grid::G # image grid
 end
 include(joinpath(@__DIR__, "nuft.jl"))
+
+function Base.show(io::IO, a::NUFTCache)
+    println(io, "NUFTCache:")
+    as = split("$(typeof(a.alg))", '{')[1]
+    println(io, "\tFT algorithm: $as")
+    println(io, "\tpulse: $(typeof(a.pulse))")
+    print(io, "\tdomain: $(typeof(a.grid))")
+end
+
+"""
+    $(TYPEDEF)
 
 
 include(joinpath(@__DIR__, "modelimage.jl"))
