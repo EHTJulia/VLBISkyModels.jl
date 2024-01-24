@@ -379,6 +379,7 @@ end
 
 
 
+
 """
     $(TYPEDEF)
 
@@ -601,3 +602,52 @@ end
     return spinor2_rotate(model.c, model.s)
 end
 @inline radialextent_modified(r::Real, ::Rotate) = r
+
+
+
+const ScalingTransform = Union{Shift, Renormalize}
+function visibilities_numeric(m::ModifiedModel{M, T}, u, v, time, freq) where {M, N, T<: NTuple{N,ScalingTransform}}
+    mbase = m.model
+
+    vbase = visibilities_numeric(mbase, u, v, time, freq)
+    return _apply_scaling(mbase, m.transform, vbase, u, v)
+end
+
+function _apply_scaling(mbase, t::Tuple, vbase, u, v)
+    out = similar(vbase)
+    _apply_scaling!(out, mbase, t, vbase, u, v)
+    return out
+end
+
+function _apply_scaling!(out, mbase, t::Tuple, vbase, u, v)
+    uc = unitscale(Complex{eltype(u)}, typeof(mbase))
+    out .= last.(modify_uv.(Ref(mbase), Ref(t), u, v, Ref(uc))).*vbase
+    return nothing
+end
+
+function ChainRulesCore.rrule(::typeof(_apply_scaling), mbase, t::Tuple, vbase, u, v)
+    vis = _apply_scaling(mbase, t, vbase, u, v)
+    pvbase = ProjectTo(vbase)
+    pu = ProjectTo(u)
+    pv = ProjectTo(v)
+    function _apply_scaling_pullback(Δ)
+        out = similar(vis)
+        Δout = similar(vis)
+        Δout .= unthunk(Δ)
+        Δvbase = zero(vbase)
+        Δu = zero(u)
+        Δv = zero(v)
+        d = autodiff(Reverse, _apply_scaling!, Const,
+                                  Duplicated(out, Δout),
+                                  Const(mbase),
+                                  Active(t),
+                                  Duplicated(vbase, Δvbase),
+                                  Duplicated(u, Δu),
+                                  Duplicated(v, Δv)
+                                  )
+        dt = d[1][3]
+        ttm = map(x->Tangent{typeof(x)}(;ntfromstruct(x)...), dt)
+        return NoTangent(), NoTangent(), ttm, pvbase(Δvbase), pu(Δu), pv(Δv)
+    end
+    return vis, _apply_scaling_pullback
+end

@@ -637,6 +637,7 @@ end
         serialize("foo.jls", m)
         mr = deserialize("foo.jls")
         @test visibilities(m, (U=u, V=v)) ≈ visibilities(mr, (U=u, V=v))
+        @test amplitudes(shifted(m, centroid(img)...), (U=u, V=v)) ≈ amplitudes(m, (U=u, V=v))
         rm("foo.jls")
     end
 
