@@ -66,12 +66,14 @@ struct FFTCache{A<:FFTAlg,P,Pu,G,Guv} <: AbstractCache
     gridUV::Guv
 end
 
-function Base.show(io::IO, a::FFTCache)
-    println(io, "FFTCache:")
+function Base.show(io::IO, a::T) where {T<:AbstractCache}
+    st = split("$T", "{")[1]
+    println(io, st, ": ")
     as = split("$(typeof(a.alg))", '{')[1]
     println(io, "\tFT algorithm: $as")
     println(io, "\tpulse: $(typeof(a.pulse))")
-    print(io, "\tdomain: $(typeof(a.grid))")
+    sg = split("$(typeof(a.grid))", '{')[1]
+    print(io, "\tdomain: ", sg, "$(propertynames(a.grid))")
 end
 
 
@@ -115,12 +117,5 @@ struct NUFTCache{A,P,M,PI,G} <: AbstractCache
 end
 include(joinpath(@__DIR__, "nuft.jl"))
 
-function Base.show(io::IO, a::NUFTCache)
-    println(io, "NUFTCache:")
-    as = split("$(typeof(a.alg))", '{')[1]
-    println(io, "\tFT algorithm: $as")
-    println(io, "\tpulse: $(typeof(a.pulse))")
-    print(io, "\tdomain: $(typeof(a.grid))")
-end
 
 include(joinpath(@__DIR__, "modelimage.jl"))
