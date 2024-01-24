@@ -3,19 +3,6 @@ export FFTAlg
 
 
 
-"""
-    $(TYPEDEF)
-The cache used when the `FFT` algorithm is used to compute
-visibilties. This is an internal type and is not part of the public API
-"""
-struct FFTCache{A<:FFTAlg,P,Pu,G,Guv} <: AbstractCache
-    alg::A # FFT algorithm
-    plan::P # FFT plan or matrix
-    pulse::Pu
-    grid::G
-    gridUV::Guv
-end
-
 # These are all overloads to allow us to forward propogate ForwardDiff dual numbers through
 # an abstract FFT.
 AbstractFFTs.complexfloat(x::AbstractArray{<:ForwardDiff.Dual}) = float.(ForwardDiff.value.(x) .+ 0im)
