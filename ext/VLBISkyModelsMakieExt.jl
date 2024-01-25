@@ -374,6 +374,10 @@ function _imgviz!(fig, ax, img::IntensityMap{<:Real}; scale_length=fieldofview(i
     Colorbar(fig[1,2], hm, label="Brightness (Jy/μas)", tellheight=true)
     colgap!(fig.layout, 15)
 
+    trim!(fig.layout)
+    xlims!(ax, (last(img.X)), (first(img.X)))
+    ylims!(ax, (first(img.Y)), (last(img.Y)))
+
     return Makie.FigureAxisPlot(fig, ax, hm)
 end
 
@@ -412,16 +416,15 @@ end
 
 function add_scalebar!(ax, img, scale_length, color)
     fovx, fovy = fieldofview(img)
-    x0 = (first(img.X))
+    x0 = (last(img.X))
     y0 = (first(img.Y))
 
-
     sl = (scale_length)
-    barx = [x0 + fovx/32, x0 + fovx/32 + sl]
+    barx = [x0 - fovx/32, x0 - fovx/32 - sl]
     bary = fill(y0 + fovy/32, 2)
 
-    lines!(ax, -barx, bary, color=color)
-    text!(ax, -(barx[1] + (barx[2]-barx[1])/2), bary[1]+fovy/64;
+    lines!(ax, barx, bary, color=color)
+    text!(ax, (barx[1] + (barx[2]-barx[1])/2), bary[1]+fovy/64;
             text = "$(round(Int, sl)) μas",
             align=(:center, :bottom), color=color)
 end
