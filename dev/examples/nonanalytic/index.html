@@ -4,7 +4,7 @@
 
 using CairoMakie</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">  Activating project at `~/work/VLBISkyModels.jl/VLBISkyModels.jl/examples`</code></pre><p>While most of the models implemented in <code>VLBISkyModels</code> have an analytic Fourier transform this is not required. In this notebook we will describe how a user can do Bayesian model fitting with a non-analytic model.</p><p>The <code>ExtendedRing</code> model is an example of a non-analytic model. The image structure is given by</p><p class="math-container">\[I(r) = \frac{\beta^\alpha}{2\pi \Gamma(\alpha)} r^{-\alpha-2}e^{-\beta/r}\]</p><p>This can be created as follows</p><pre><code class="language-julia hljs">m = ExtendedRing(8.0)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">ExtendedRing{Float64}(8.0)</code></pre><p>The argument is <code>\alpha</code> in the above equation. <code>beta</code> is given by <span>$(1+\alpha)$</span>.</p><p>This is an example of a ring model that has a substantially different flux profile. Let&#39;s plot the image first giving it some unity by applying <code>modify</code></p><pre><code class="language-julia hljs">muas = modify(m, Stretch(μas2rad(20.0)))
 img = intensitymap(muas, μas2rad(100.0),  μas2rad(100.0), 256, 256)
-imageviz(img)</code></pre><img src="2fd34ddc.png" alt="Example block output"/><p>This function does not have a simple analytic Fourier transform, e.g.</p><pre><code class="language-julia hljs">VLBISkyModels.visanalytic(ExtendedRing)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">ComradeBase.NotAnalytic()</code></pre><p>Therefore, to find the Fourier transform of the image we need to revert to numerical methods. For this notebook we will use the <em>fast Fourier transform</em> or FFT. Specifically we will use FFTW. To compute a numerical Fourier transform we first need to specify the image.</p><pre><code class="language-julia hljs">img = IntensityMap(zeros(256, 256), 10.0, 10.0)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">256×256 IntensityMap{Float64,2}<span class="sgr90"> with dimensions: </span>
+imageviz(img)</code></pre><img src="e55dd7ef.png" alt="Example block output"/><p>This function does not have a simple analytic Fourier transform, e.g.</p><pre><code class="language-julia hljs">VLBISkyModels.visanalytic(ExtendedRing)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">ComradeBase.NotAnalytic()</code></pre><p>Therefore, to find the Fourier transform of the image we need to revert to numerical methods. For this notebook we will use the <em>fast Fourier transform</em> or FFT. Specifically we will use FFTW. To compute a numerical Fourier transform we first need to specify the image.</p><pre><code class="language-julia hljs">img = IntensityMap(zeros(256, 256), 10.0, 10.0)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">256×256 IntensityMap{Float64,2}<span class="sgr90"> with dimensions: </span>
   <span class="sgr31">X</span> Sampled{Float64} <span class="sgr36">LinRange{Float64}(-4.98047, 4.98047, 256)</span> ForwardOrdered Regular Points,
   <span class="sgr31">Y</span> Sampled{Float64} <span class="sgr36">LinRange{Float64}(-4.98047, 4.98047, 256)</span> ForwardOrdered Regular Points
            <span class="sgr90">-4.98047</span>  <span class="sgr90">-4.94141</span>  …  <span class="sgr90">4.86328</span>  <span class="sgr90">4.90234</span>  <span class="sgr90">4.94141</span>  <span class="sgr90">4.98047</span>
@@ -25,28 +25,28 @@ imageviz(img)</code></pre><img src="2fd34ddc.png" alt="Example block output"/><p
 	cache: VLBISkyModels.FFTCache
 </code></pre><p>the <code>alg</code> keyword argument then specifies that we want to use an FFT to compute the Fourier transform. When <code>modelimage</code> is called, the FFT is performed and then we use a bicubic interpolator on the resulting visibilities to construct a continuous representation of the Fourier transform. Once we have this everything else is the same. Namely we can calculatge the VLBI data products in the usual manner i.e.</p><pre><code class="language-julia hljs">u = randn(1000)/2
 v = randn(1000)/2</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">1000-element Vector{Float64}:
- -0.2046365586846131
- -0.09620994604593504
- -0.2140494630166425
-  0.18336359519321327
-  0.23222719208964748
-  0.3778929449260233
- -1.2271041503418312
-  0.33963022669555026
- -0.6371208998102067
-  0.13195572705541667
+  0.28909897552282693
+ -0.5073345018888593
+  0.5009405782519198
+ -0.25008792786450884
+ -0.1730979216518727
+ -0.002675441297988767
+  0.05763435257996212
+  0.05812132978322533
+ -0.4093951878954739
+  0.11234236971423858
   ⋮
- -1.1321192855538251
-  0.5666062602622639
- -0.22818647334799785
-  0.2609278461517423
-  0.21065072294831386
-  0.6416159014526085
-  0.7360809457958987
- -0.5676544407730397
-  0.7565365007838883</code></pre><p>Now we can plot our sampled visibilities</p><pre><code class="language-julia hljs">vis = visibilities(mimage, (U=u, V=v))
+ -0.1576170969493935
+  0.5964847243866035
+  0.06597494732552638
+ -0.0811093450218493
+ -0.07711531215351805
+  0.5590402623136239
+ -0.4428293895075221
+ -0.12876334648854018
+ -0.09526717115607518</code></pre><p>Now we can plot our sampled visibilities</p><pre><code class="language-julia hljs">vis = visibilities(mimage, (U=u, V=v))
 scatter(hypot.(u, v), real.(vis), label=&quot;Real&quot;)
 scatter!(hypot.(u, v), imag.(vis), label=&quot;Imag&quot;)
 axislegend()
-current_figure()</code></pre><img src="0eae14a4.png" alt="Example block output"/><p>We can also directly get the amplitudes using:</p><pre><code class="language-julia hljs">amp = amplitudes(mimage, (U=u, V=v))
-scatter(hypot.(u, v), amp, label=&quot;Amplitude&quot;)</code></pre><img src="dca9f4bd.png" alt="Example block output"/><hr/><p><em>This page was generated using <a href="https://github.com/fredrikekre/Literate.jl">Literate.jl</a>.</em></p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../../base_api/">« Base API</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="auto">Automatic (OS)</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.2.1 on <span class="colophon-date" title="Thursday 25 January 2024 17:53">Thursday 25 January 2024</span>. Using Julia version 1.10.0.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
+current_figure()</code></pre><img src="2dd4449b.png" alt="Example block output"/><p>We can also directly get the amplitudes using:</p><pre><code class="language-julia hljs">amp = amplitudes(mimage, (U=u, V=v))
+scatter(hypot.(u, v), amp, label=&quot;Amplitude&quot;)</code></pre><img src="c3ee1773.png" alt="Example block output"/><hr/><p><em>This page was generated using <a href="https://github.com/fredrikekre/Literate.jl">Literate.jl</a>.</em></p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../../base_api/">« Base API</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="auto">Automatic (OS)</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.2.1 on <span class="colophon-date" title="Thursday 25 January 2024 19:44">Thursday 25 January 2024</span>. Using Julia version 1.10.0.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
