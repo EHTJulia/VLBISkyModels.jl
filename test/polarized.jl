@@ -44,15 +44,19 @@ end
     s = map(length, dims(g))
     m0 = PolarizedModel(ExtendedRing(2.0), 0.1*Gaussian(), 0.1*Gaussian(), 0.1*Gaussian())
     m = shifted(m0, 0.1 ,0.1)
+    @test m isa PolarizedModel
     testpol(modelimage(m, g))
 
     m = rotated(m0, 0.1)
+    @test m isa PolarizedModel
     testpol(modelimage(m, g))
 
     m = renormed(m0, 0.1)
+    @test m isa PolarizedModel
     testpol(modelimage(m, g))
 
     m = stretched(m0, 0.1, 0.4)
+    @test m isa PolarizedModel
     testpol(modelimage(m, g))
 
 end
@@ -61,6 +65,9 @@ end
     m1 = PolarizedModel(Gaussian(), 0.1*Gaussian(), 0.1*Gaussian(), 0.1*Gaussian())
     m2 = PolarizedModel(Disk(), shifted(Disk(), 0.1, 1.0), ZeroModel(), ZeroModel())
     testpol(convolved(m1,m2))
+
+    testpol(convolved(m1,Gaussian()))
+    testpol(convolved(stretched(m1, 0.5, 0.5),Gaussian()))
 end
 
 @testset "Polarized All Mod" begin

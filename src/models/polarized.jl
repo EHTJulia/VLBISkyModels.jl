@@ -148,6 +148,8 @@ end
         )
 end
 
+
+
 # for m in (:renormed, :rotated, :shifted, :stretched)
 #     @eval begin
 #       @inline function $m(z::PolarizedModel, arg::Vararg{X,N}) where {X,N}
@@ -170,7 +172,14 @@ function modelimage(model::PolarizedModel, grid::AbstractGrid, alg::FourierTrans
         )
 end
 
-
+function ModifiedModel(model::PolarizedModel, transforms::NTuple{N, <:ModelModifier}) where {N}
+    return PolarizedModel(
+        ModifiedModel(stokes(model, :I), transforms),
+        ModifiedModel(stokes(model, :Q), transforms),
+        ModifiedModel(stokes(model, :U), transforms),
+        ModifiedModel(stokes(model, :V), transforms)
+        )
+end
 
 """
     PoincareSphere2Map(I, p, X, grid)
