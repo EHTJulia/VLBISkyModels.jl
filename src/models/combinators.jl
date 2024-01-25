@@ -278,8 +278,7 @@ function intensitymap_numeric(model::ConvolvedModel, dims::ComradeBase.AbstractG
     vis2 = fouriermap(model.m2, dims)
     U = vis1.U
     V = vis1.V
-    vis = parent(phasedecenter!(vis1.*vis2, X, Y, U, V))
-    @info typeof(vis)
+    vis = ifftshift(parent(phasedecenter!(vis1.*vis2, X, Y, U, V)))
     ifft!(vis)
     return IntensityMap(real.(vis), dims)
 end
