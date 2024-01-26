@@ -19,34 +19,34 @@ imageviz(img)</code></pre><img src="e55dd7ef.png" alt="Example block output"/><p
   <span class="sgr90">4.86328</span>   0.0       0.0         0.0      0.0      0.0      0.0
   <span class="sgr90">4.90234</span>   0.0       0.0      …  0.0      0.0      0.0      0.0
   <span class="sgr90">4.94141</span>   0.0       0.0         0.0      0.0      0.0      0.0
-  <span class="sgr90">4.98047</span>   0.0       0.0         0.0      0.0      0.0      0.0</code></pre><p>This will serve as our cache to store the image going forward. The next step is to create a model wrapper that holds the model and the image. <code>VLBISkyModels</code> provides the <code>modelimage</code> function to do exactly that</p><pre><code class="language-julia hljs">mimage = modelimage(m, img, FFTAlg())</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">ModelImage
-	model: VLBISkyModels.InterpolatedModel{ExtendedRing{Float64}, VLBISkyModels.var&quot;#2#3&quot;{VLBISkyModels.ModifiedModel{DeltaPulse{Float64}, Tuple{Stretch{Float64}}}, BasicInterpolators.BicubicInterpolator{Float64, BasicInterpolators.NoBoundaries}, BasicInterpolators.BicubicInterpolator{Float64, BasicInterpolators.NoBoundaries}}}
-	image: 256×256 IntensityMap{Float64,2}
+  <span class="sgr90">4.98047</span>   0.0       0.0         0.0      0.0      0.0      0.0</code></pre><p>This will serve as our cache to store the image going forward. The next step is to create a model wrapper that holds the model and the image. <code>VLBISkyModels</code> provides the <code>modelimage</code> function to do exactly that</p><pre><code class="language-julia hljs">mimage = modelimage(m, img, FFTAlg())</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">ModelImage(
+	model: InterpolatedModel(ExtendedRing{Float64}(8.0))
+	image: SpatialIntensityMap{Float64}(256, 256)
 	cache: VLBISkyModels.FFTCache
-</code></pre><p>the <code>alg</code> keyword argument then specifies that we want to use an FFT to compute the Fourier transform. When <code>modelimage</code> is called, the FFT is performed and then we use a bicubic interpolator on the resulting visibilities to construct a continuous representation of the Fourier transform. Once we have this everything else is the same. Namely we can calculatge the VLBI data products in the usual manner i.e.</p><pre><code class="language-julia hljs">u = randn(1000)/2
+)</code></pre><p>the <code>alg</code> keyword argument then specifies that we want to use an FFT to compute the Fourier transform. When <code>modelimage</code> is called, the FFT is performed and then we use a bicubic interpolator on the resulting visibilities to construct a continuous representation of the Fourier transform. Once we have this everything else is the same. Namely we can calculatge the VLBI data products in the usual manner i.e.</p><pre><code class="language-julia hljs">u = randn(1000)/2
 v = randn(1000)/2</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">1000-element Vector{Float64}:
-  0.28909897552282693
- -0.5073345018888593
-  0.5009405782519198
- -0.25008792786450884
- -0.1730979216518727
- -0.002675441297988767
-  0.05763435257996212
-  0.05812132978322533
- -0.4093951878954739
-  0.11234236971423858
+  0.36922593084889965
+ -0.09273742875913696
+  0.31074941569306186
+ -0.035087415285929575
+ -0.6011776811104115
+  0.9358770864113158
+  0.7824578011391592
+  0.273860760401286
+  0.4316334467600062
+  0.3087993113667785
   ⋮
- -0.1576170969493935
-  0.5964847243866035
-  0.06597494732552638
- -0.0811093450218493
- -0.07711531215351805
-  0.5590402623136239
- -0.4428293895075221
- -0.12876334648854018
- -0.09526717115607518</code></pre><p>Now we can plot our sampled visibilities</p><pre><code class="language-julia hljs">vis = visibilities(mimage, (U=u, V=v))
+ -0.5904429517711349
+ -0.8383699311049436
+  0.41026068353887807
+ -0.47813349522456194
+ -0.07857868475304246
+ -0.25545446686899437
+  0.010606507868099723
+  0.839287510580401
+  0.9392769984880287</code></pre><p>Now we can plot our sampled visibilities</p><pre><code class="language-julia hljs">vis = visibilities(mimage, (U=u, V=v))
 scatter(hypot.(u, v), real.(vis), label=&quot;Real&quot;)
 scatter!(hypot.(u, v), imag.(vis), label=&quot;Imag&quot;)
 axislegend()
-current_figure()</code></pre><img src="2dd4449b.png" alt="Example block output"/><p>We can also directly get the amplitudes using:</p><pre><code class="language-julia hljs">amp = amplitudes(mimage, (U=u, V=v))
-scatter(hypot.(u, v), amp, label=&quot;Amplitude&quot;)</code></pre><img src="c3ee1773.png" alt="Example block output"/><hr/><p><em>This page was generated using <a href="https://github.com/fredrikekre/Literate.jl">Literate.jl</a>.</em></p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../../base_api/">« Base API</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="auto">Automatic (OS)</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.2.1 on <span class="colophon-date" title="Thursday 25 January 2024 19:44">Thursday 25 January 2024</span>. Using Julia version 1.10.0.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
+current_figure()</code></pre><img src="11ce2ff3.png" alt="Example block output"/><p>We can also directly get the amplitudes using:</p><pre><code class="language-julia hljs">amp = amplitudes(mimage, (U=u, V=v))
+scatter(hypot.(u, v), amp, label=&quot;Amplitude&quot;)</code></pre><img src="1f96dc53.png" alt="Example block output"/><hr/><p><em>This page was generated using <a href="https://github.com/fredrikekre/Literate.jl">Literate.jl</a>.</em></p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../../base_api/">« Base API</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="auto">Automatic (OS)</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.2.1 on <span class="colophon-date" title="Friday 26 January 2024 00:16">Friday 26 January 2024</span>. Using Julia version 1.10.0.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
