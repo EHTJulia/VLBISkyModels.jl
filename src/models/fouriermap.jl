@@ -41,7 +41,7 @@ function fouriermap(::NotAnalytic, m, g::ComradeBase.AbstractGrid)
     X = g.X
     Y = g.Y
     img = IntensityMap(zeros(map(length, dims(g))), g)
-    mimg = modelimage(m, img, FFTAlg(), DeltaPulse())
+    mimg = modelimage(m, g, FFTAlg(), DeltaPulse())
     uu,vv = uviterator(length(X), step(X), length(Y), step(Y))
     g = RectiGrid((U=uu, V=vv))
     griduv = imagegrid(g)
