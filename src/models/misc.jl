@@ -29,6 +29,6 @@ intensitymap(::ZeroModel{T}, p::ComradeBase.AbstractGrid) where {T} = IntensityM
 @inline ConvolvedModel(::Any, m::ZeroModel) = m
 
 
-@inline ModifiedModel(z::ZeroModel, args...) = z
+@inline ModifiedModel(z::ZeroModel, ::NTuple{N, <:ModelModifier}) where {N} = z
 
 __extract_tangent(::ZeroModel) = ZeroTangent()

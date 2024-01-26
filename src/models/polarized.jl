@@ -33,10 +33,10 @@ end
 
 function Base.show(io::IO, model::PolarizedModel)
     println(io, "PolarizedModel")
-    println(io, "\tI: $(summary(model.I))")
-    println(io, "\tQ: $(summary(model.Q))")
-    println(io, "\tU: $(summary(model.U))")
-    println(io, "\tV: $(summary(model.V))")
+    println(io, "\tI: $(model.I)")
+    println(io, "\tQ: $(model.Q)")
+    println(io, "\tU: $(model.U)")
+    print(io, "\tV: $(model.V)")
 end
 
 Base.@constprop :aggressive @inline visanalytic(::Type{PolarizedModel{I,Q,U,V}}) where {I,Q,U,V} = visanalytic(I)*visanalytic(Q)*visanalytic(U)*visanalytic(V)
@@ -169,15 +169,6 @@ function modelimage(model::PolarizedModel, grid::AbstractGrid, alg::FourierTrans
         modelimage(stokes(model, :Q), grid, alg, pulse, thread),
         modelimage(stokes(model, :U), grid, alg, pulse, thread),
         modelimage(stokes(model, :V), grid, alg, pulse, thread)
-        )
-end
-
-function ModifiedModel(model::PolarizedModel, transforms::NTuple{N, <:ModelModifier}) where {N}
-    return PolarizedModel(
-        ModifiedModel(stokes(model, :I), transforms),
-        ModifiedModel(stokes(model, :Q), transforms),
-        ModifiedModel(stokes(model, :U), transforms),
-        ModifiedModel(stokes(model, :V), transforms)
         )
 end
 

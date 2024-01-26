@@ -62,15 +62,16 @@ end
 
 
 
-
 function Base.show(io::IO, mi::ModelImage)
    #io = IOContext(io, :compact=>true)
    #s = summary(mi)
    ci = first(split(summary(mi.cache), "{"))
-   println(io, "ModelImage")
-   println(io, "\tmodel: ", summary(mi.model))
-   println(io, "\timage: ", summary(mi.image))
+   println(io, "ModelImage(")
+   println(io, "\tmodel: ", mi.model)
+   si = split("$(typeof(mi.image))", ",")[1]*"}"*"$(size(mi.image))"
+   println(io, "\timage: ", si)
    println(io, "\tcache: ", ci)
+   print(io, ")")
 end
 
 model(m::AbstractModelImage) = m.model

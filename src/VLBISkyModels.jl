@@ -1,6 +1,6 @@
 module VLBISkyModels
 
-using Accessors
+using Accessors: @set
 using ArgCheck
 using AbstractFFTs
 using BasicInterpolators

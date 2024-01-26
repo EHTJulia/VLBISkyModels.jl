@@ -39,7 +39,7 @@ function intensity_point(m::InterpolatedImage, p)
     (m.img.Y[begin] > p.Y || p.Y > m.img.Y[end]) && return zero(eltype(m.img))
     return m.itp(p.X, p.Y)/(step(m.img.X)*step(m.img.Y))
 end
-function ModifiedModel(img::SpatialIntensityMap, transforms)
+function ModifiedModel(img::SpatialIntensityMap, transforms::NTuple{N, ModelModifier}) where {N}
     ms = ModifiedModel(InterpolatedImage(img), transforms)
     return intensitymap(ms, axisdims(img))
 end

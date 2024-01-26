@@ -9,12 +9,31 @@ function fouriermap(m::M, dims::ComradeBase.AbstractGrid) where {M}
     fouriermap(visanalytic(M), m, dims)
 end
 
+function vmap(m::M, grid) where {M}
+    return vmap(ispolarized(M), m, grid)
+end
+
+function vmap(::IsPolarized, m, grid)
+    return map(grid) do p
+        T = typeof(p.U)
+        v = visibility_point(m, p.U, p.V, zero(T), zero(T))
+        return v
+    end
+end
+
+function vmap(::NotPolarized, m, grid)
+    return visibility_point.(Ref(m), grid.U, grid.V, 0, 0)
+end
+
+
 function fouriermap(::IsAnalytic, m, dims::ComradeBase.AbstractGrid)
     X = dims.X
     Y = dims.Y
     uu,vv = uviterator(length(X), step(X), length(Y), step(Y))
-    vis = visibility_point.(Ref(m), uu, vv', 0, 0)
-    return IntensityMap(vis, (U=uu, V=vv))
+    g = RectiGrid((U=uu, V=vv))
+    griduv = imagegrid(g)
+    vis = vmap(m, griduv)
+    return IntensityMap(vis, g)
 end
 
 
@@ -24,6 +43,8 @@ function fouriermap(::NotAnalytic, m, g::ComradeBase.AbstractGrid)
     img = IntensityMap(zeros(map(length, dims(g))), g)
     mimg = modelimage(m, img, FFTAlg(), DeltaPulse())
     uu,vv = uviterator(length(X), step(X), length(Y), step(Y))
-    # uvgrid = ComradeBase.grid(U=uu, V=vv)
-    return IntensityMap(visibility_point.(Ref(mimg), uu, vv', 0, 0), (U=uu, V=vv))
+    g = RectiGrid((U=uu, V=vv))
+    griduv = imagegrid(g)
+    vis = vmap(mimg, griduv)
+    return IntensityMap(vis, g)
 end

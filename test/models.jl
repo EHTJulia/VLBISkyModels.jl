@@ -1,5 +1,5 @@
 function testmodel(m::VLBISkyModels.AbstractModel, npix=512, atol=1e-4)
-    @info "Testing $(typeof(m))"
+    @info "Testing $(m)"
     plot(m)
     g = imagepixels(4*VLBISkyModels.radialextent(m), 4*VLBISkyModels.radialextent(m), npix, npix)
     CM.image(g.X, g.Y, m)

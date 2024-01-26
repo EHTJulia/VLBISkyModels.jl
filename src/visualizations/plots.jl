@@ -145,10 +145,10 @@ end
     #Construct the image grid in μas
     fovx, fovy = uvscale.(values(fieldofview(image)))
     xitr, yitr = uvscale.((image.X, image.Y))
+
     tickfontsize --> 11
     guidefontsize --> 14
     if ispolarized(typeof(m)) === IsPolarized()
-
         # get the mean linear pol
         maxI = maximum(stokes(image, :I))
 

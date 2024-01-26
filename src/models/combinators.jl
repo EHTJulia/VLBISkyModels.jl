@@ -29,6 +29,14 @@ In addition there are additional optional methods a person can define if needed:
 """
 abstract type CompositeModel{M1,M2} <: AbstractModel end
 
+function Base.show(io::IO, m::T) where {T<:CompositeModel}
+    si = split("$(T)", "{")[1]
+    println(io, "$(si)(")
+    println(io, "model1: ", m.m1)
+    println(io, "model2: ", m.m2)
+    print(io, ")")
+end
+
 
 function modelimage(::NotAnalytic,
     model::CompositeModel,
@@ -62,7 +70,7 @@ radialextent(m::CompositeModel) = max(radialextent(m.m1), radialextent(m.m2))
 
 @inline visanalytic(::Type{<:CompositeModel{M1,M2}}) where {M1,M2} = visanalytic(M1)*visanalytic(M2)
 @inline imanalytic(::Type{<:CompositeModel{M1,M2}}) where {M1,M2} = imanalytic(M1)*imanalytic(M2)
-
+@inline ispolarized(::Type{<:CompositeModel{M1,M2}}) where {M1,M2} = ispolarized(M1)*ispolarized(M2)
 
 """
     $(TYPEDEF)
@@ -281,6 +289,19 @@ function intensitymap_numeric(model::ConvolvedModel, dims::ComradeBase.AbstractG
     vis = ifftshift(parent(phasedecenter!(vis1.*vis2, X, Y, U, V)))
     ifft!(vis)
     return IntensityMap(real.(vis), dims)
+end
+
+function AbstractFFTs.ifft!(vis::AbstractArray{<:StokesParams}, region)
+    vI = stokes(vis, :I)
+    vQ = stokes(vis, :Q)
+    vU = stokes(vis, :U)
+    vV = stokes(vis, :V)
+    p = plan_ifft!(vI, region)
+    p*vI
+    p*vQ
+    p*vU
+    p*vV
+    return StructArray{StokesParams{eltype(I)}}((vI, vQ, vU, vV))
 end
 
 function intensitymap_numeric!(sim::IntensityMap, model::ConvolvedModel)

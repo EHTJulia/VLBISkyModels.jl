@@ -61,6 +61,10 @@ struct InterpolatedModel{M, S} <: AbstractModel
     sitp::S
 end
 
+function Base.show(io::IO, m::InterpolatedModel)
+    print(io, "InterpolatedModel(", m.model, ")")
+end
+
 function InterpolatedModel(model, cache::FFTCache)
     img = intensitymap(model, cache.grid)
     pimg = padimage(img, cache.alg)

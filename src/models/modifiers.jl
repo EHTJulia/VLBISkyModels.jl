@@ -67,7 +67,6 @@ Returns a transformed `u` and `v` according to the `model` modifier
 """
 function transform_uv end
 
-unitscale(T, ::Type{M}) where {M} = unitscale(T, ispolarized(M))
 unitscale(T, ::NotPolarized) = one(T)
 unitscale(T, ::IsPolarized) = I
 
@@ -92,11 +91,12 @@ function Base.show(io::IO, mi::ModifiedModel)
     #io = IOContext(io, :compact=>true)
     #s = summary(mi)
     println(io, "ModifiedModel")
-    println(io, "  base model: ", summary(mi.model))
+    println(io, "  base model: ", mi.model)
     println(io, "  Modifiers:")
-    for i in eachindex(mi.transform)
+    for i in eachindex(mi.transform)[1:end-1]
         println(io, "    $i. ", summary(mi.transform[i]))
     end
+    print(io, "    $(length(mi.transform)). ", summary(mi.transform[end]))
  end
 
 
@@ -142,7 +142,7 @@ radialextent(m::ModifiedModel) = radialextent_modified(radialextent(m.model), m.
 
 
 
-@inline function ModifiedModel(m::AbstractModel, t::ModelModifier)
+@inline function ModifiedModel(m, t::ModelModifier)
     return ModifiedModel(m, (t,))
 end
 
@@ -327,17 +327,19 @@ function modelimage(::NotAnalytic,
 end
 
 
-@inline function visibility_point(m::ModifiedModel, u, v, time, freq)
+@inline function visibility_point(m::M, u, v, time, freq) where {M<:ModifiedModel}
     mbase = m.model
     transform = m.transform
-    (ut, vt), scale = modify_uv(mbase, transform, u, v, unitscale(Complex{eltype(u)}, typeof(mbase)))
+    ispol = ispolarized(M)
+    (ut, vt), scale = modify_uv(ispol, transform, u, v, unitscale(Complex{eltype(u)}, ispol))
     scale*visibility_point(mbase, ut, vt, time, freq)
 end
 
-@inline function intensity_point(m::ModifiedModel, p)
+@inline function intensity_point(m::M, p) where {M<:ModifiedModel}
     mbase = m.model
     transform = m.transform
-    xt, yt, scale = modify_image(mbase, transform, p.X, p.Y, unitscale(eltype(p.X), typeof(mbase)))
+    ispol = ispolarized(M)
+    xt, yt, scale = modify_image(ispol, transform, p.X, p.Y, unitscale(eltype(p.X), ispol))
     scale*intensity_point(mbase, update_xy(p, (X=xt, Y=yt)))
 end
 
@@ -415,9 +417,9 @@ shifted(model, Δx, Δy) = ModifiedModel(model, Shift(Δx, Δy))
 @inline transform_image(model, transform::Shift, x, y) = (x-transform.Δx, y-transform.Δy)
 @inline transform_uv(model, ::Shift, u, v) = (u, v)
 
-@inline scale_image(::M, transform::Shift, x, y) where {M} = unitscale(typeof(transform.Δx), M)
+@inline scale_image(m, transform::Shift, x, y) = unitscale(typeof(transform.Δx), m)
 # Curently we use exp here because enzyme has an issue with cispi that will be fixed soon.
-@inline scale_uv(::M, transform::Shift{T}, u, v) where {T,M}    = exp(2im*T(π)*(u*transform.Δx + v*transform.Δy))*unitscale(typeof(transform.Δx), M)
+@inline scale_uv(m, transform::Shift{T}, u, v) where {T}    = exp(2im*T(π)*(u*transform.Δx + v*transform.Δy))*unitscale(typeof(transform.Δx), m)
 
 
 
@@ -467,8 +469,8 @@ flux(t::Renormalize) = t.scale
 @inline transform_image(m, ::Renormalize, x, y) = (x, y)
 @inline transform_uv(m, ::Renormalize, u, v) = (u, v)
 
-@inline scale_image(::M, transform::Renormalize, x, y) where {M} = transform.scale*unitscale(typeof(transform.scale), M)
-@inline scale_uv(::M, transform::Renormalize, u, v) where {M}    = transform.scale*unitscale(typeof(transform.scale), M)
+@inline scale_image(m, transform::Renormalize, x, y) = transform.scale*unitscale(typeof(transform.scale), m)
+@inline scale_uv(m, transform::Renormalize, u, v)    = transform.scale*unitscale(typeof(transform.scale), m)
 
 @inline radialextent_modified(r::Real, ::Renormalize) = r
 
@@ -515,8 +517,8 @@ stretched(model, α, β) = ModifiedModel(model, Stretch(α, β))
 @inline transform_image(m, transform::Stretch, x, y) = (x/transform.α, y/transform.β)
 @inline transform_uv(m, transform::Stretch, u, v) = (u*transform.α, v*transform.β)
 
-@inline scale_image(::M, transform::Stretch{T}, x, y) where {M,T} = inv(transform.α*transform.β)*unitscale(T, M)
-@inline scale_uv(::M, ::Stretch{T}, u, v) where {M,T} = unitscale(T, M)
+@inline scale_image(m, transform::Stretch{T}, x, y) where {T} = inv(transform.α*transform.β)*unitscale(T, m)
+@inline scale_uv(m, ::Stretch{T}, u, v) where {T} = unitscale(T, m)
 
 @inline radialextent_modified(r::Real, t::Stretch) = r*max(t.α, t.β)
 
@@ -567,12 +569,6 @@ end
     return c*u - s*v, + s*u + c*v
 end
 
-
-@inline function scale_image(::M, transform::Rotate{T}, x, y) where {M,T}
-    scale_image(ispolarized(M), transform, x, y)
-end
-
-
 @inline scale_image(::NotPolarized, model::Rotate{T}, x, y) where {T} = one(T)
 
 @inline function spinor2_rotate(c, s)
@@ -591,11 +587,6 @@ end
     return spinor2_rotate(model.c, model.s)
 end
 
-@inline function scale_uv(::M, model::Rotate, u, v) where {M}
-    scale_uv(ispolarized(M), model, u, v)
-end
-
-
 @inline scale_uv(::NotPolarized, model::Rotate{T}, u, v) where {T} = one(T)
 
 @inline function scale_uv(::IsPolarized, model::Rotate, x, y)
@@ -606,11 +597,11 @@ end
 
 
 const ScalingTransform = Union{Shift, Renormalize}
-function visibilities_numeric(m::ModifiedModel{M, T}, u, v, time, freq) where {M, N, T<: NTuple{N,ScalingTransform}}
-    mbase = m.model
+function visibilities_numeric(m::ModifiedModel{M, T}, u, v, time, freq) where {M, N, T<: NTuple{N,<:ScalingTransform}}
+    ispol = ispolarized(M)
 
-    vbase = visibilities_numeric(mbase, u, v, time, freq)
-    return _apply_scaling(mbase, m.transform, vbase, u, v)
+    vbase = visibilities_numeric(m.model, u, v, time, freq)
+    return _apply_scaling(ispol, m.transform, vbase, u, v)
 end
 
 function _apply_scaling(mbase, t::Tuple, vbase, u, v)
@@ -620,8 +611,10 @@ function _apply_scaling(mbase, t::Tuple, vbase, u, v)
 end
 
 function _apply_scaling!(out, mbase, t::Tuple, vbase, u, v)
-    uc = unitscale(Complex{eltype(u)}, typeof(mbase))
-    out .= last.(modify_uv.(Ref(mbase), Ref(t), u, v, Ref(uc))).*vbase
+    uc = unitscale(Complex{eltype(u)}, mbase)
+    for i in eachindex(out, u, v, vbase)
+        out[i] = last(modify_uv(mbase, t, u[i], v[i], uc))*vbase[i]
+    end
     return nothing
 end
 

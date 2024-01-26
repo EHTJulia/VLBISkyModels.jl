@@ -27,12 +27,19 @@ struct ContinuousImage{A <: IntensityMapTypes, P} <: AbstractModel
     kernel::P
 end
 
+function Base.show(io::IO, img::ContinuousImage{A, P}) where {A, P}
+    sA = split("$A", ",")[1]
+    sA = sA*"}"
+    print(io, "ContinuousImage{$sA, $P}($(size(img)))")
+end
+
 ComradeBase.ispolarized(::Type{<:ContinuousImage{A}}) where {A<:StokesIntensityMap} = IsPolarized()
 ComradeBase.ispolarized(::Type{<:ContinuousImage{A}}) where {A<:IntensityMap{<:StokesParams}} = IsPolarized()
 ComradeBase.ispolarized(::Type{<:ContinuousImage{A}}) where {A<:IntensityMap{<:Real}} = NotPolarized()
 
 ComradeBase.stokes(cimg::ContinuousImage, v) = ContinuousImage(stokes(parent(cimg), v), cimg.kernel)
-
+ComradeBase.stokes(m::ModelImage{<:ContinuousImage}, p::Symbol) = stokes(m.model, p)
+ComradeBase.centroid(m::ContinuousImage) = centroid(parent(m))
 Base.parent(m::ContinuousImage)         = m.img
 Base.length(m::ContinuousImage)         = length(parent(m))
 Base.size(m::ContinuousImage)           = size(parent(m))
@@ -83,6 +90,7 @@ function InterpolatedModel(model::ContinuousImage, cache::FFTCache)
     sitp = create_interpolator(U, V, vispc, stretched(pulse, step(X), step(Y)))
     return InterpolatedModel{typeof(model), typeof(sitp)}(model, sitp)
 end
+
 
 
 
