@@ -55,7 +55,7 @@ intensitymap!(img::IntensityMapTypes, m, threaded::Bool) = intensitymap!(img, m,
 intensitymap!(img::IntensityMapTypes, m, ::False) = intensitymap!(img, m)
 intensitymap!(img::IntensityMapTypes, m, ::True)  = intensitymap!(img, ThreadedModel(m))
 
-function intensitymap!(::IsAnalytic, img::IntensityMap, s::ThreadedModel)
+function intensitymap_analytic!(img::IntensityMap, s::ThreadedModel)
     dx, dy = pixelsizes(img)
     mm = Base.Fix1(intensity_point, s)
     g = imagegrid(img)
