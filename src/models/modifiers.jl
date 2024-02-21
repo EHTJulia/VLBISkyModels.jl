@@ -141,6 +141,15 @@ radialextent(m::ModifiedModel) = radialextent_modified(radialextent(m.model), m.
 @inline ispolarized(::Type{ModifiedModel{M, T}}) where {M,T} = ispolarized(M)
 
 
+@inline function ModifiedModel(m::ModelImage{M, I, <:NUFTCache}, t::Tuple) where {M, I}
+    doesnot_uv_modify(t) === Static.False() && throw(
+                          ArgumentError(
+                            "ModelImage with NUFTCache does not support modifying the uv plane."*
+                            " Instead of modifying the `modelimage` instead modify the base `model`."
+                            ))
+    return ModifiedModel{typeof(m), typeof(t)}(m, t)
+end
+
 
 @inline function ModifiedModel(m, t::ModelModifier)
     return ModifiedModel(m, (t,))
@@ -152,6 +161,8 @@ end
     return ModifiedModel(model, (t0..., t))
 end
 
+@inline doesnot_uv_modify(t::Tuple) = doesnot_uv_modify(Base.front(t))*doesnot_uv_modify(last(t))
+@inline doesnot_uv_modify(::Tuple{}) = Static.True()
 
 function modify_uv(model, t::Tuple, u, v, scale)
     ut, vt = transform_uv(model, last(t), u, v)
@@ -399,6 +410,7 @@ struct Shift{T} <: ModelModifier{T}
     Δy::T
 end
 
+
 #function ShiftedModel(model::AbstractModel, Δx::Number, Δy::Number)
 #    T =
 #    return ShiftedModel{(model, promote(Δx, Δy)...)
@@ -411,6 +423,9 @@ Shifts the model `m` in the image domain by an amount `Δx,Δy`
 in the x and y directions respectively.
 """
 shifted(model, Δx, Δy) = ModifiedModel(model, Shift(Δx, Δy))
+
+doesnot_uv_modify(::Shift) = Static.True()
+
 # This is a simple overload to simplify the type system
 @inline radialextent_modified(r::Real, t::Shift) = r + max(abs(t.Δx), abs(t.Δy))
 
@@ -455,6 +470,8 @@ true
 ```
 """
 renormed(model::M, f) where {M<:AbstractModel} = ModifiedModel(model, Renormalize(f))
+@inline doesnot_uv_modify(::Renormalize) = Static.True()
+
 Base.:*(model::AbstractModel, f::Number) = renormed(model, f)
 Base.:*(f::Number, model::AbstractModel) = renormed(model, f)
 Base.:/(f::Number, model::AbstractModel) = renormed(model, inv(f))
@@ -502,6 +519,7 @@ struct Stretch{T} <: ModelModifier{T}
 end
 
 
+
 Stretch(r) = Stretch(r, r)
 
 
@@ -514,6 +532,7 @@ where were renormalize the intensity to preserve the models flux.
 """
 stretched(model, α, β) = ModifiedModel(model, Stretch(α, β))
 
+@inline doesnot_uv_modify(::Stretch) = Static.False()
 @inline transform_image(m, transform::Stretch, x, y) = (x/transform.α, y/transform.β)
 @inline transform_uv(m, transform::Stretch, u, v) = (u*transform.α, v*transform.β)
 
@@ -545,6 +564,7 @@ struct Rotate{T} <: ModelModifier{T}
 end
 
 
+
 """
     $(SIGNATURES)
 
@@ -558,6 +578,8 @@ rotated(model, ξ) = ModifiedModel(model, Rotate(ξ))
 Returns the rotation angle of the rotated `model`
 """
 posangle(model::Rotate) = atan(model.s, model.c)
+
+@inline doesnot_uv_modify(::Rotate) = Static.False()
 
 @inline function transform_image(m, transform::Rotate, x, y)
     s,c = transform.s, transform.c
