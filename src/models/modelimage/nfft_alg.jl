@@ -98,15 +98,23 @@ using EnzymeCore: EnzymeRules, Const, Active, Duplicated
 #using EnzymeRules: ConfigWidth, needs_prima
 function EnzymeRules.augmented_primal(config, ::Const{typeof(_nuft!)}, ::Type{<:Const}, out, A::Const, b)
     _nuft!(out.val, A.val, b.val)
-    cache_A = (EnzymeRules.overwritten(config)[3]) ? copy(A.val) : nothing
-    return EnzymeRules.AugmentedReturn(nothing, nothing, cache_A)
+    # I think we don't need to cache this since A just has in internal temporary buffer
+    # that is used to store the results of things like the FFT.
+    # cache_A = (EnzymeRules.overwritten(config)[3]) ? A.val : nothing
+    return EnzymeRules.AugmentedReturn(nothing, nothing, nothing)
 end
 
 function EnzymeRules.reverse(config::EnzymeRules.ConfigWidth{1}, ::Const{typeof(_nuft!)}, ::Type{<:Const}, tape, out::Duplicated, A::Const, b::Duplicated)
-    cache_A = tape
-    if !(EnzymeRules.overwritten(config)[3])
-        cache_A = A.val
-    end
+
+    # I think we don't need to cache this since A just has in internal temporary buffer
+    # that is used to store the results of things like the FFT.
+    # cache_A = (EnzymeRules.overwritten(config)[3]) ? A.val : nothing
+    # cache_A = tape
+    # if !(EnzymeRules.overwritten(config)[3])
+    #     cache_A = A.val
+    # end
+
+    # This is so Enzyme batch mode works
     dbs = if EnzymeRules.width(config) == 1
         (b.dval,)
     else
@@ -119,9 +127,8 @@ function EnzymeRules.reverse(config::EnzymeRules.ConfigWidth{1}, ::Const{typeof(
         out.dval
     end
     for (db, dout) in zip(dbs, douts)
-        db .+= cache_A'*dout
-        # println("db: ", db)
-        # println("dout: ", dout)
+        # TODO open PR on NFFT so we can do this in place.
+        db .+= A.val'*dout
         dout .= 0
     end
     return (nothing, nothing, nothing)
