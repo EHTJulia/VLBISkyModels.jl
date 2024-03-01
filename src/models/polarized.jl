@@ -39,8 +39,10 @@ function Base.show(io::IO, model::PolarizedModel)
     print(io, "\tV: $(model.V)")
 end
 
-Base.@constprop :aggressive @inline visanalytic(::Type{PolarizedModel{I,Q,U,V}}) where {I,Q,U,V} = visanalytic(I)*visanalytic(Q)*visanalytic(U)*visanalytic(V)
-Base.@constprop :aggressive @inline imanalytic(::Type{PolarizedModel{I,Q,U,V}}) where {I,Q,U,V} = imanalytic(I)*imanalytic(Q)*imanalytic(U)*imanalytic(V)
+ChainRulesCore.@non_differentiable visanalytic(::Type)
+ChainRulesCore.@non_differentiable imanalytic(::Type)
+Base.@assume_effects :foldable @inline visanalytic(::Type{PolarizedModel{I,Q,U,V}}) where {I,Q,U,V} = visanalytic(I)*visanalytic(Q)*visanalytic(U)*visanalytic(V)
+Base.@assume_effects :foldable @inline imanalytic(::Type{PolarizedModel{I,Q,U,V}}) where {I,Q,U,V} = imanalytic(I)*imanalytic(Q)*imanalytic(U)*imanalytic(V)
 
 @inline function intensity_point(pmodel::PolarizedModel, p)
     I = intensity_point(stokes(pmodel, :I), p)
