@@ -1,4 +1,4 @@
-function testpol(m)
+function testpol(m, uv)
     g = imagepixels(5.0, 5.0, 128, 128)
     img = intensitymap(m, g)
     img2 = zero(img)
@@ -6,12 +6,9 @@ function testpol(m)
 
     @test all(==(1), img .≈ img2)
 
-    u = fftshift(fftfreq(length(g.X), 1/step(g.X)))
-    uv = (U=u, V=u)
-    v  = visibilities(m, uv)
+    @inferred visibilities(m, uv)
 
-
-
+    v = visibilities(m, uv)
 
     plot(m)
     plot(img)
@@ -23,16 +20,26 @@ end
 
 @testset "Polarized Analytic" begin
     m = PolarizedModel(Gaussian(), 0.1*Gaussian(), 0.1*Gaussian(), 0.1*Gaussian())
-    testpol(m)
+    g = imagepixels(10.0, 10.0, 512, 512)
+    s = map(length, dims(g))
+
+    u = fftshift(fftfreq(length(g.X), 1/step(g.X)))
+    uv = (U=u, V=-u)
+
+    testpol(m, uv)
 end
 
 @testset "Polarized Semi Analytic" begin
     m = PolarizedModel(ExtendedRing(8.0), 0.1*Gaussian(), 0.1*Gaussian(), 0.1*Gaussian())
     g = imagepixels(10.0, 10.0, 512, 512)
     s = map(length, dims(g))
-    vff = testpol(modelimage(m, g, FFTAlg()))
-    vnf = testpol(modelimage(m, g, NFFTAlg()))
-    vdf = testpol(modelimage(m, g, DFTAlg()))
+
+    u = fftshift(fftfreq(length(g.X), 1/step(g.X)))
+    uv = (U=u, V=-u)
+
+    vff = testpol(modelimage(m, g, FFTAlg()), uv)
+    vnf = testpol(modelimage(m, g, NFFTAlg(uv.U, uv.V)), uv)
+    vdf = testpol(modelimage(m, g, DFTAlg(uv.U, uv.V)), uv)
 
     @test isapprox(vff, vnf, atol=1e-6)
     @test isapprox(vff, vdf, atol=1e-6)
@@ -41,29 +48,36 @@ end
 
 @testset "Polarized Modified" begin
     g = imagepixels(5.0, 5.0, 128, 128)
+    u = fftshift(fftfreq(length(g.X), 1/step(g.X)))
+    uv = (U=u, V=-u)
+
     s = map(length, dims(g))
     m0 = PolarizedModel(ExtendedRing(2.0), 0.1*Gaussian(), 0.1*Gaussian(), 0.1*Gaussian())
     m = shifted(m0, 0.1 ,0.1)
-    testpol(modelimage(m, g))
+    testpol(modelimage(m, g, NFFTAlg(uv.U, uv.V)), uv)
 
     m = rotated(m0, 0.1)
-    testpol(modelimage(m, g))
+    testpol(modelimage(m, g, NFFTAlg(uv.U, uv.V)), uv)
 
     m = renormed(m0, 0.1)
-    testpol(modelimage(m, g))
+    testpol(modelimage(m, g, NFFTAlg(uv.U, uv.V)), uv)
 
     m = stretched(m0, 0.1, 0.4)
-    testpol(modelimage(m, g))
+    testpol(modelimage(m, g, NFFTAlg(uv.U, uv.V)), uv)
 
 end
 
 @testset "Polarized Combinators" begin
     m1 = PolarizedModel(Gaussian(), 0.1*Gaussian(), 0.1*Gaussian(), 0.1*Gaussian())
     m2 = PolarizedModel(Disk(), shifted(Disk(), 0.1, 1.0), ZeroModel(), ZeroModel())
-    testpol(convolved(m1,m2))
+    g = imagepixels(5.0, 5.0, 128, 128)
+    u = fftshift(fftfreq(length(g.X), 1/step(g.X)))
+    uv = (U=u, V=-u)
 
-    testpol(convolved(m1,Gaussian()))
-    testpol(convolved(stretched(m1, 0.5, 0.5),Gaussian()))
+    testpol(convolved(m1,m2), uv)
+
+    testpol(convolved(m1,Gaussian()), uv)
+    testpol(convolved(stretched(m1, 0.5, 0.5),Gaussian()), uv)
 end
 
 @testset "Polarized All Mod" begin
@@ -72,7 +86,10 @@ end
     m = convolved(m1,m2)+m1
     g = imagepixels(5.0, 5.0, 128, 128)
     s = map(length, dims(g))
-    testpol(modelimage(m, g))
+    u = fftshift(fftfreq(length(g.X), 1/step(g.X)))
+    uv = (U=u, V=-u)
+
+    testpol(modelimage(m, g), uv)
 end
 
 @testset "Rotation" begin

@@ -39,8 +39,6 @@ function Base.show(io::IO, model::PolarizedModel)
     print(io, "\tV: $(model.V)")
 end
 
-ChainRulesCore.@non_differentiable visanalytic(::Type)
-ChainRulesCore.@non_differentiable imanalytic(::Type)
 Base.@assume_effects :foldable @inline visanalytic(::Type{PolarizedModel{I,Q,U,V}}) where {I,Q,U,V} = visanalytic(I)*visanalytic(Q)*visanalytic(U)*visanalytic(V)
 Base.@assume_effects :foldable @inline imanalytic(::Type{PolarizedModel{I,Q,U,V}}) where {I,Q,U,V} = imanalytic(I)*imanalytic(Q)*imanalytic(U)*imanalytic(V)
 
