@@ -68,20 +68,48 @@ end
 # Allow NFFT to work with ForwardDiff.
 
 
-nuft(A::NFFTPlan, b::AbstractArray{<:Real}) = nuft(A, complex(b))
-
-function nuft(A::NFFTPlan, b::AbstractArray{<:Complex})
+function _nuft(A::NFFTPlan, b::AbstractArray{<:Real})
+    bc = complex(b)
     out = similar(b, eltype(A), size(A)[1])
-    _nuft!(out, A, b)
+    _nuft!(out, A, bc)
     return out
 end
+
+
+function _nuft(A::NFFTPlan, b::AbstractArray{<:ForwardDiff.Dual})
+    return _frule_nuft(A, b)
+end
+
+function _frule_nuft(p::NFFTPlan, b::AbstractArray{<:ForwardDiff.Dual})
+    # Compute the fft
+    buffer = ForwardDiff.value.(b)
+    xtil = p*complex.(buffer)
+    out = similar(buffer, Complex{ForwardDiff.Dual{T,V,P}})
+    # Now take the deriv of nuft
+    ndxs = ForwardDiff.npartials(first(m.image))
+    dxtils = ntuple(ndxs) do n
+        buffer .= ForwardDiff.partials.(m.image, n)
+        p * complex.(buffer)
+    end
+    out = similar(xtil, Complex{ForwardDiff.Dual{T,V,P}})
+    for i in eachindex(out)
+        dual = getindex.(dxtils, i)
+        prim = xtil[i]
+        red = ForwardDiff.Dual{T,V,P}(real(prim), ForwardDiff.Partials(real.(dual)))
+        imd = ForwardDiff.Dual{T,V,P}(imag(prim), ForwardDiff.Partials(imag.(dual)))
+        out[i] = Complex(red, imd)
+    end
+    return out
+end
+
+
 
 function _nuft!(out, A, b)
     mul!(out, A, b)
     return nothing
 end
 
-function ChainRulesCore.rrule(::typeof(nuft), A::NFFTPlan, b)
+function ChainRulesCore.rrule(::typeof(_nuft), A::NFFTPlan, b)
     pr = ChainRulesCore.ProjectTo(b)
     vis = nuft(A, b)
     function nuft_pullback(Δy)

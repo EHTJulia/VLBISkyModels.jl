@@ -14,24 +14,32 @@ abstract type AbstractCache end
 
 
 """
-    create_cache(alg::AbstractFourierTransform, img::AbstractGrid)
+    getgrid(c::AbstractCache)
 
-Creates a Fourier transform cache for a img using algorithm `alg`. For non-analytic visibility models this
+Returns the grid used to compute the image cache
+"""
+getgrid(c::AbstractCache) = c.grid
+
+
+
+"""
+    create_cache(alg::AbstractFourierTransform, grid::AbstractGrid)
+
+Creates a Fourier transform cache for the image grid using algorithm `alg`. For non-analytic visibility models this
 can significantly speed up computations.
 
 # Examples
 
 ```julia-repl
 julia> u,v = rand(100), rand(100)
-julia> cache = create_cache(DFTAlg(u, v), imagepixels(μas2rad(100.0), μas2rad(100.0), 256, 256))
-julia> cache = create_cache(NFFTAlg(u, v), imagepixels(μas2rad(100.0), μas2rad(100.0), 256, 256))
-julia> cache = create_cache(FFTAlg(), imagepixels(μas2rad(100.0), μas2rad(100.0), 256, 256))
+julia> g = imagepixels(μas2rad(100.0), μas2rad(100.0), 256, 256)
+julia> cache = create_cache(NFFTAlg(u, v), g) # create a cache using a NUFFT this is fast and accurate
+julia> cache = create_cache(FFTAlg(), g)      # create a cahce using a FFT. Fast but not as accurate
+julia> cache = create_cache(DFTAlg(u, v), g)  # create a cache using the DTFT. Slow but accurate
 ```
 """
 function create_cache end
 
-# To ensure compat with older versions
-@deprecate create_cache(alg, img::IntensityMapTypes, args...) create_cache(alg, axisdims(img), args...)
 
 """
     $(TYPEDEF)

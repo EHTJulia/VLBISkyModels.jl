@@ -163,12 +163,12 @@ end
 #     end
 # end
 
-function modelimage(model::PolarizedModel, grid::AbstractGrid, alg::FourierTransform=FFTAlg(), pulse=DeltaPulse(), thread::Bool=false)
+function modelimage(model::PolarizedModel, grid::AbstractGrid, alg::FourierTransform=FFTAlg(), pulse=DeltaPulse())
     return PolarizedModel(
-        modelimage(stokes(model, :I), grid, alg, pulse, thread),
-        modelimage(stokes(model, :Q), grid, alg, pulse, thread),
-        modelimage(stokes(model, :U), grid, alg, pulse, thread),
-        modelimage(stokes(model, :V), grid, alg, pulse, thread)
+        modelimage(stokes(model, :I), grid, alg, pulse),
+        modelimage(stokes(model, :Q), grid, alg, pulse),
+        modelimage(stokes(model, :U), grid, alg, pulse),
+        modelimage(stokes(model, :V), grid, alg, pulse)
         )
 end
 

@@ -109,19 +109,6 @@ function Base.:*(p::AbstractFFTs.Plan, x::PaddedView{<:ForwardDiff.Dual{T,V,P},N
     return out
 end
 
-# function padimage(alg::FFTAlg, img)
-#     padfac = alg.padfac
-#     ny,nx = size(img)
-#     nnx = nextpow(2, padfac*nx)
-#     nny = nextpow(2, padfac*ny)
-#     nsx = nnx÷2-nx÷2
-#     nsy = nny÷2-ny÷2
-#     return PaddedView(zero(eltype(img)), img,
-#                       (1:nnx, 1:nny),
-#                       (nsx+1:nsx+nx, nsy+1:nsy+ny)
-#                      )
-# end
-
 function padimage(img::IntensityMap, alg::FFTAlg)
     padfac = alg.padfac
     ny,nx = size(img)
@@ -189,37 +176,6 @@ function uviterator(nx, dx, ny, dy)
     return (;U, V)
 end
 
-#function ChainRulesCore.rrule(::typeof(phasecenter!), vis, uu, vv, x0, y0, dx, dy)
-#    vis = phasecenter!(vis, uu, vv, x0, y0, dx, dy)
-#    function phasecenter!_pullback(Δy)
-#        Δf = NoTangent()
-#        Δvis = @thunk(dx*dy*exp.(2im*π*(uu*x0 + vv'*y0)))
-#        Δu = @thunk(dx*dy*2im*π*x0*exp.(2im*π*(uu*x0 + vv'*y0)))
-#        Δv = @thunk(dx*dy*2im*π*y0*exp.(2im*π*(uu*x0 + vv'*y0)))
-#    end
-#end
-
-
-
-
-# function fouriermap(m::ModelImage, fovx, fovy, x0, y0, nx, ny)
-#     cache = create_cache(FFTAlg(), m.image)
-#     x,y = imagepixels(fovx, fovy, x0, y0, nx, ny)
-#     dx = step(x); dy = step(y)
-#     uu,vv = uviterator(dx, dy, nx, ny)
-
-#     T = Complex{eltype(m.image)}
-#     vis = Matrix{T}(undef, ny, nx)
-
-#     @inbounds for I in CartesianIndices(vis)
-#         iy, ix = Tuple(I)
-#         vp = cache.sitp(uu[ix], vv[iy])
-#         vis[I] = vp
-#     end
-#     return vis
-
-# end
-
 
 @fastmath function phasedecenter!(vis, X, Y, U, V)
     x0 = first(X)
@@ -227,15 +183,6 @@ end
     @.. thread=true vis = conj(vis*cispi(-2 * (U*x0 + V'*y0)))
     return vis
 end
-
-# function visibilities_numeric(mimg::ModelImage{M, I, <:FFTCache}, u, v, time, freq) where {M,I}
-#     return visibility_point.(Ref(mimg), u, v, time, freq)
-# end
-
-# @inline function visibility_point(mimg::ModelImage{M,I,<:FFTCache}, u, v, time, freq) where {M,I}
-#     return mimg.cache.sitp(u, v)
-# end
-
 
 function Serialization.serialize(s::Serialization.AbstractSerializer, cache::FFTCache)
     Serialization.writetag(s.io, Serialization.OBJECT_TAG)

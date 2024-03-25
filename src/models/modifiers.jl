@@ -141,11 +141,16 @@ radialextent(m::ModifiedModel) = radialextent_modified(radialextent(m.model), m.
 @inline ispolarized(::Type{ModifiedModel{M, T}}) where {M,T} = ispolarized(M)
 
 
-@inline function ModifiedModel(m::ModelImage{M, I, <:NUFTCache}, t::Tuple) where {M, I}
+@inline function ModifiedModel(m::ModelImage{M, <:NUFTCache}, t::Tuple) where {M}
     doesnot_uv_modify(t) === Static.False() && throw(
                           ArgumentError(
                             "ModelImage with NUFTCache does not support modifying the uv plane."*
-                            " Instead of modifying the `modelimage` instead modify the base `model`."
+                            " Instead of modifying the `modelimage` instead modify the base `model`."*
+                            " For example instead of
+                                `julia> modify(modelimage(m), Stretch(2.0), cache)`
+                              do
+                                `julia> modelimage(modify(m, Stretch(2.0)), cache)`
+                            "
                             ))
     return ModifiedModel{typeof(m), typeof(t)}(m, t)
 end
@@ -333,7 +338,7 @@ end
 function modelimage(::NotAnalytic,
     model::ModifiedModel,
     grid::AbstractGrid, alg::NUFT,
-    pulse = DeltaPulse(), thread::StaticBool=False())
+    pulse = DeltaPulse())
     _modelimage(model, grid, alg, pulse, thread)
 end
 

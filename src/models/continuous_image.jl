@@ -128,8 +128,11 @@ can optionally specify the Fourier transform algorithm using `alg`
 """
 @inline function modelimage(model::ContinuousImage, alg=NFFTAlg())
     cache = create_cache(alg, axisdims(model), model.kernel)
-    return ModelImage(model, parent(model), cache)
+    return ModelImage(model, cache)
 end
+
+# Special overload for Continuous Image
+intensitymap(m::ModelImage{<:ContinuousImage}) = parent(m.model)
 
 """
     modelimage(img::ContinuousImage, cache::AbstractCache)
@@ -139,5 +142,5 @@ reuse a previously compute image `cache`. This can be used when directly modelin
 image of a fixed size and number of pixels.
 """
 @inline function modelimage(img::ContinuousImage, cache::AbstractCache)
-    return ModelImage(img, parent(img), cache)
+    return ModelImage(img, cache)
 end

@@ -44,7 +44,7 @@ function modelimage(::NotAnalytic,
     grid::AbstractGrid,
     alg::FourierTransform=FFTAlg(),
     pulse = DeltaPulse(),
-    thread::StaticBool = False())
+    )
 
     m1 = @set model.m1 = modelimage(model.m1, grid, alg, pulse, thread)
     @set m1.m2 = modelimage(m1.m2, grid, alg, pulse, thread)
@@ -53,7 +53,7 @@ end
 function modelimage(::NotAnalytic,
     model::CompositeModel,
     cache::AbstractCache,
-    thread::StaticBool = False())
+    )
 
     m1 = @set model.m1 = modelimage(model.m1, cache)
     @set m1.m2 = modelimage(m1.m2, cache)

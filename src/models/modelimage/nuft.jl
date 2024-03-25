@@ -55,6 +55,20 @@ function Serialization.deserialize(s::AbstractSerializer, ::Type{<:NUFTCache{<:O
     return create_cache(alg, grid, pulse)
 end
 
+@inline function nuft(A, b::AbstractArray)
+    return _nuft(A, b)
+end
+
+@inline function nuft(A, b::AbstractArray{<:StokesParams})
+    I = _nuft(A, stokes(b, :I))
+    Q = _nuft(A, stokes(b, :Q))
+    U = _nuft(A, stokes(b, :U))
+    V = _nuft(A, stokes(b, :V))
+    return StructArray{StokesParams{eltype(I)}}((;I, Q, U, V))
+end
+
+
+
 
 
 

@@ -53,6 +53,6 @@ function create_cache(alg::ObservedNUFT{<:DFTAlg}, plan, phases, grid, pulse::Pu
     return NUFTCache(alg, plan, phases, pulse, grid)
 end
 
-function nuft(A::AbstractMatrix, b)
+function _nuft(A::AbstractMatrix, b::AbstractArray)
     return A*reshape(b, :)
 end
