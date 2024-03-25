@@ -10,7 +10,6 @@ export visibility, amplitude, closure_phase, logclosure_amplitude, bispectrum,
        flux, intensitymap, intensitymap!, PolarizedModel, convolve!
 
 
-abstract type AbstractModelImage{M} <: ComradeBase.AbstractModel end
 
 # ChainRulesCore.@non_differentiable visanalytic(M)
 # ChainRulesCore.@non_differentiable imanalytic(M)
