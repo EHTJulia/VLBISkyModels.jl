@@ -30,7 +30,7 @@ cache = create_cache(FFTAlg(), img)
 mimg = modelimage(m, cache)
 ```
 """
-struct ModelImage{M,I,C} <: AbstractModelImage{M}
+struct ModelImage{M,C} <: AbstractModelImage{M}
     model::M
     cache::C
 
@@ -63,7 +63,7 @@ using Enzyme: EnzymeRules
 
 # Now we define a bunch of getters and all set them to be non-differentiable
 # since they should all be static
-getplan(m::ModelImage{M, <:NUFTCache}) where {M, I} = m.cache.plan
+getplan(m::ModelImage{M, <:NUFTCache}) where {M} = m.cache.plan
 EnzymeRules.inactive(::typeof(getplan), args...) = nothing
 ChainRulesCore.@non_differentiable getplan(m)
 
@@ -72,11 +72,11 @@ ChainRulesCore.@non_differentiable getgrid(m::ModelImage)
 EnzymeRules.inactive(::typeof(getgrid), args...) = nothing
 
 
-getphases(m::ModelImage{M, I, <:NUFTCache}) where {M,I} = m.cache.phases
+getphases(m::ModelImage{M, <:NUFTCache}) where {M} = m.cache.phases
 EnzymeRules.inactive(::typeof(getphases), args...) = nothing
 
 
-@inline function visibility_point(mimg::ModelImage{M,<:FFTCache}, u, v, time, freq) where {M,I}
+@inline function visibility_point(mimg::ModelImage{M,<:FFTCache}, u, v, time, freq) where {M}
     return mimg.model.sitp(u, v)
 end
 
@@ -208,20 +208,7 @@ function visibilities_numeric(m::ModelImage{M,<:NUFTCache{A}},
     return conj.(vis).*getphases(m)
 end
 
-function visibilities_numeric(m::ModelImage{M,I,<:NUFTCache{A}},
-                      u, v, time, freq) where {M,I,A<:NUFT}
+function visibilities_numeric(m::ModelImage{M,<:NUFTCache{A}},
+                      u, v, time, freq) where {M,A<:NUFT}
     return nocachevis(m, u, v, time, freq)
-end
-
-
-function visibilities_numeric(m::ModelImage{M,<:SpatialIntensityMap{<:ForwardDiff.Dual{T,V,P}},<:NUFTCache{O}},
-    u::AbstractArray,
-    v::AbstractArray,
-    time,
-    freq) where {M,T,V,P,A<:NFFTAlg,O<:ObservedNUFT{A}}
-    checkuv(m.cache.alg.uv, u, v)
-    # Now reconstruct everything
-
-    vis = _frule_vis(m)
-    return conj.(vis).*m.cache.phases
 end
