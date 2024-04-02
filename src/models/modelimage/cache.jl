@@ -10,7 +10,12 @@ abstract type NUFT <: FourierTransform end
 This defines an abstract cache that can be used to
 hold or precompute some computations.
 """
-abstract type AbstractCache end
+abstract type AbstractFourierPairsDomain end
+
+imagedomain(c::AbstractFourierPairsDomain) = c.imagedomain
+fourierdomain(c::AbstractFourierPairsDomain) = c.fourierdomain
+transformstrategy(c::AbstractFourierPairsDomain) = c.transformstrategy
+
 
 
 """
@@ -19,6 +24,9 @@ abstract type AbstractCache end
 Returns the grid used to compute the image cache
 """
 getgrid(c::AbstractCache) = c.grid
+
+
+fourierpairs(grid::AbstractGrid, )
 
 
 
