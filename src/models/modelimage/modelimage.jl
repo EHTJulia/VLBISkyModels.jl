@@ -36,17 +36,17 @@ struct ModelImage{M,C} <: AbstractModelImage{M}
 
     function ModelImage(model::AbstractModel, cache::FFTCache)
         minterp = InterpolatedModel(model, cache)
-        return new{typeof(minterp), typeof(cache)}(minterp, image, cache)
+        return new{typeof(minterp), typeof(cache)}(minterp, cache)
     end
 
     function ModelImage(model::ModelImage{<:InterpolatedModel}, cache::FFTCache)
         minterp = InterpolatedModel(model.model.model, cache)
-        return new{typeof(minterp), typeof(cache)}(minterp, image, cache)
+        return new{typeof(minterp), typeof(cache)}(minterp, cache)
     end
 
 
     function ModelImage(model::AbstractModel, cache::AbstractCache)
-        return new{typeof(model), typeof(cache)}(model, image, cache)
+        return new{typeof(model), typeof(cache)}(model, cache)
     end
 
 end
@@ -88,8 +88,6 @@ function Base.show(io::IO, mi::ModelImage)
    ci = first(split(summary(mi.cache), "{"))
    println(io, "ModelImage(")
    println(io, "\tmodel: ", mi.model)
-   si = split("$(typeof(mi.image))", ",")[1]*"}"*"$(size(mi.image))"
-   println(io, "\timage: ", si)
    println(io, "\tcache: ", ci)
    print(io, ")")
 end
@@ -114,7 +112,7 @@ radialextent(m::ModelImage) = hypot(fieldofview(getgrid(m))...)/2
 using Static
 
 """
-    modelimage(model::AbstractModel, grid::AbstractGrid; alg=NFTAlg(), pulse=DeltaPulse(), thread=false)
+    modelimage(model::AbstractModel, grid::AbstractGrid; alg=NFTAlg(), pulse=DeltaPulse())
 
 Construct a `ModelImage` from a `model`, `grid` that specifies the domain of the image.
 The keyword arguments are:
@@ -132,6 +130,10 @@ end
 
 @inline function modelimage(model::M, grid::AbstractGrid, alg::FourierTransform, pulse=DeltaPulse()) where {M}
     return modelimage(visanalytic(M), model, grid, alg, pulse)
+end
+
+function modelimage(model::M, args...; kwargs...) where {M}
+    return modelimage(visanalytic(M), model, args...; kwargs...)
 end
 
 @inline function modelimage(::IsAnalytic, model, args...; kwargs...)
@@ -169,8 +171,8 @@ the`.
 
 ```julia-repl
 julia> m = ExtendedRing(10.0)
-julia> cache = create_cache(DFTAlg(), IntensityMap(zeros(128, 128), 50.0, 50.0)) # used threads to make the image
-julia> mimg = modelimage(m, cache, true)
+julia> cache = create_cache(DFTAlg(), IntensityMap(zeros(128, 128), 50.0, 50.0))
+julia> mimg = modelimage(m, cache)
 ```
 
 # Notes
@@ -178,7 +180,7 @@ For analytic models this is a no-op and returns the model.
 
 """
 @inline function modelimage(model::M, cache::AbstractCache) where {M}
-    return modelimage(visanalytic(M), model, cache, static(thread))
+    return modelimage(visanalytic(M), model, cache)
 end
 
 
@@ -186,10 +188,19 @@ end
     return ModelImage(model, cache)
 end
 
+@inline function modelimage(
+            ::NotAnalytic, model;
+            grid = imagepixels(2*radialextent(model), 2*radialextent(model), 128, 128),
+            alg = NFFTAlg(),
+            pulse = DeltaPulse()
+            )
+            return modelimage(model, grid, alg, pulse)
+end
+
 
 function nocachevis(m::ModelImage{M,<:NUFTCache}, u, v, time, freq) where {M}
     alg = ObservedNUFT(m.cache.alg, vcat(u', v'))
-    cache = create_cache(alg, getgrid(grid))
+    cache = create_cache(alg, getgrid(m))
     m = @set m.cache = cache
     return visibilities_numeric(m, u, v, time, freq)
 end
@@ -204,7 +215,7 @@ function visibilities_numeric(m::ModelImage{M,<:NUFTCache{A}},
                       u, v, time, freq) where {M,A<:ObservedNUFT}
     checkuv(m.cache.alg.uv, u, v)
     img = intensitymap(m)
-    vis =  nuft(getplan(m), ComradeBase.baseimage(img))
+    vis =  nuft(getplan(m), img)
     return conj.(vis).*getphases(m)
 end
 

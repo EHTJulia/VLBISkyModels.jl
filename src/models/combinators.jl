@@ -46,8 +46,8 @@ function modelimage(::NotAnalytic,
     pulse = DeltaPulse(),
     )
 
-    m1 = @set model.m1 = modelimage(model.m1, grid, alg, pulse, thread)
-    @set m1.m2 = modelimage(m1.m2, grid, alg, pulse, thread)
+    m1 = @set model.m1 = modelimage(model.m1, grid, alg, pulse)
+    @set m1.m2 = modelimage(m1.m2, grid, alg, pulse)
 end
 
 function modelimage(::NotAnalytic,

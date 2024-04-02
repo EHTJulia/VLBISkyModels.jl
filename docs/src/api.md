@@ -127,6 +127,5 @@ VLBISkyModels.scale_uv
 VLBISkyModels.scale_image
 VLBISkyModels.transform_uv
 VLBISkyModels.transform_image
-VLBISkyModels.ThreadedModel
 VLBISkyModels.unpack
 ```

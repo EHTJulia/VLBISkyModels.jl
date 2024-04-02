@@ -4,10 +4,8 @@ function testmodel(m::VLBISkyModels.AbstractModel, npix=512, atol=1e-4)
     g = imagepixels(4*VLBISkyModels.radialextent(m), 4*VLBISkyModels.radialextent(m), npix, npix)
     CM.image(g.X, g.Y, m)
     img = intensitymap(m, g)
-    imgt = intensitymap(m, g, true)
-    imgt2 = intensitymap(m, g, false)
+    imgt = intensitymap(m, g)
     @test isapprox(maximum(img .- imgt), 0.0, atol=1e-8)
-    @test isapprox(maximum(img .- imgt2), 0.0, atol=1e-8)
     plot(img)
     # CM.image(img)
     img2 = similar(img)
@@ -315,6 +313,10 @@ end
         @inferred VLBISkyModels.visibility(m.m1, (U=0.0, V=0.0))
         @inferred VLBISkyModels.intensity_point(m.m1, (X=0.0, Y=0.0))
 
+        u = randn(50)
+        v = randn(50)
+        t = fill(1.0, 50)
+        f = fill(230.0, 50)
         foo(x) = sum(abs2, VLBISkyModels.visibilities_analytic(Crescent(x[1], x[2], x[3], x[4]), u, v, t, f))
         x = rand(4)
         foo(x)
@@ -371,10 +373,12 @@ end
 
     show(mimg1)
 
-    img = similar(mimg2.image)
-    intensitymap!(img, m2)
+    img = intensitymap(m2, VLBISkyModels.getgrid(mimg2))
+    img2 = similar(img)
+    intensitymap!(img2, m2)
     @test m1 == mimg1
-    @test isapprox(maximum(parent(img) - parent(mimg2.image)), 0.0, atol=1e-8)
+    @test isapprox(maximum(parent(img) - parent(intensitymap(mimg2))), 0.0, atol=1e-8)
+    @test isapprox(maximum(parent(img) - parent(img2)), 0.0, atol=1e-8)
 end
 
 
@@ -741,7 +745,7 @@ end
 
 
     @testset "nuft pullback" begin
-        test_rrule(VLBISkyModels.nuft, cache_nf.plan ⊢ NoTangent(), complex.(parent(parent(img))))
+        test_rrule(VLBISkyModels._nuft, cache_nf.plan ⊢ NoTangent(), baseimage(img))
     end
 end
 

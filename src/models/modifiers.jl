@@ -339,7 +339,7 @@ function modelimage(::NotAnalytic,
     model::ModifiedModel,
     grid::AbstractGrid, alg::NUFT,
     pulse = DeltaPulse())
-    _modelimage(model, grid, alg, pulse, thread)
+    _modelimage(model, grid, alg, pulse)
 end
 
 
