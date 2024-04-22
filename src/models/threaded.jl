@@ -58,7 +58,7 @@ intensitymap!(img::IntensityMapTypes, m, ::True)  = intensitymap!(img, ThreadedM
 function intensitymap_analytic!(img::IntensityMap, s::ThreadedModel)
     dx, dy = pixelsizes(img)
     mm = Base.Fix1(intensity_point, s)
-    g = imagegrid(img)
+    g = domaingrid(img)
     Threads.@threads for I in CartesianIndices(img)
         @inbounds img[I] = mm(g[I])*dx*dy
     end

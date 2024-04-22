@@ -55,7 +55,7 @@ Base.eltype(::ContinuousImage{A, P}) where {A,P} = eltype(A)
 
 Base.getindex(img::ContinuousImage, args...) = getindex(parent(img), args...)
 Base.axes(m::ContinuousImage) = axes(parent(m))
-ComradeBase.imagegrid(m::ContinuousImage) = imagegrid(parent(m))
+ComradeBase.domaingrid(m::ContinuousImage) = domaingrid(parent(m))
 ComradeBase.named_dims(m::ContinuousImage) = named_dims(parent(m))
 ComradeBase.axisdims(m::ContinuousImage) = axisdims(parent(m))
 
@@ -108,7 +108,7 @@ function intensity_point(m::ContinuousImage, p)
     dx, dy = pixelsizes(m.img)
     sum = zero(eltype(m.img))
     ms = stretched(m.kernel, dx, dy)
-    @inbounds for (I, p0) in pairs(imagegrid(m.img))
+    @inbounds for (I, p0) in pairs(domaingrid(m.img))
         dp = (X=(p.X - p0.X), Y=(p.Y - p0.Y))
         k = intensity_point(ms, dp)
         sum += m.img[I]*k

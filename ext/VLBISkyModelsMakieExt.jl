@@ -54,12 +54,12 @@ function Makie.convert_arguments(t::ImageLike, x::VectorDim, y::VectorDim, m::VL
 end
 
 
-function Makie.convert_arguments(t::GridBased, g::VLBISkyModels.AbstractGrid, m::VLBISkyModels.AbstractModel)
+function Makie.convert_arguments(t::GridBased, g::VLBISkyModels.AbstractRectiGrid, m::VLBISkyModels.AbstractModel)
     img = intensitymap(m, g)
     return Makie.convert_arguments(t, img)
 end
 
-function Makie.convert_arguments(t::ImageLike, g::VLBISkyModels.AbstractGrid, m::VLBISkyModels.AbstractModel)
+function Makie.convert_arguments(t::ImageLike, g::VLBISkyModels.AbstractRectiGrid, m::VLBISkyModels.AbstractModel)
     img = intensitymap(m, g)
     return Makie.convert_arguments(t, img)
 end

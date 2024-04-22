@@ -1,5 +1,63 @@
 export FFTAlg
 
+"""
+    $(TYPEDEF)
+
+Use an FFT to compute the approximate numerical visibilities of a model.
+For a DTFT see [`DFTAlg`](@ref DFTAlg) or for an NFFT [`NFFTAlg`](@ref NFFTAlg)
+
+# Fields
+$(FIELDS)
+
+"""
+Base.@kwdef struct FFTAlg{T} <: FourierTransform
+    """
+    The amount to pad the image by.
+    Note we actually round up to the nearest factor
+    of 2, but this will be improved in the future to use
+    small primes
+    """
+    padfac::Int = 2
+    """
+    FFTW flags or wisdom for the transofmration
+    """
+    flags::T = FFTW.ESTIMATE
+end
+
+"""
+    $(TYPEDEF)
+The cache used when the `FFT` algorithm is used to compute
+visibilties. This is an internal type and is not part of the public API
+"""
+struct FFTPlan{A<:FFTAlg,P} <: AbstractPlan
+    alg::A # FFT algorithm
+    plan::P # FFT plan or matrix
+end
+
+function create_forward_plan(imagedomain::AbstractRectiGrid, visdomain::AbstractRectiGrid, alg::FFTAlg, pulse::Pulse)
+    pimg = ComradeBase.allocate_map(imagedomain)
+    plan = plan_fft(pimg; flags = alg.flags)
+    return FFTPlan(alg, plan)
+end
+
+function inverse_plan(plan::FFTPlan)
+    a = zeros(eltype(plan.plan), size(plan.plan))
+    ip = plan_ifft(a; flags = plan.alg.flags)
+    return FFTPlan(plan.alg, ip)
+end
+
+function applyft(plan::FFTPlan, img::AbstractArray{<:Number})
+    pimg = padimage(img, plan.alg)
+    return fftshift(plan.plan*pimg)
+end
+
+function applyft(plan::FFTPlan, img::AbstractArray{<:StokesParams})
+    visI = applyfft(plan.plan, stokes(img, :I))
+    visQ = applyfft(plan.plan, stokes(img, :Q))
+    visU = applyfft(plan.plan, stokes(img, :U))
+    visV = applyfft(plan.plan, stokes(img, :V))
+    return StructArray{StokesParams{eltype(visI)}}((I=visI, Q=visQ, U=visU, V=visV))
+end
 
 
 
@@ -22,11 +80,13 @@ function create_interpolator(U, V, vis::AbstractArray{<:Complex}, pulse)
     #itp = interpolate(vis, BSpline(Cubic(Line(OnGrid()))))
     #etp = extrapolate(itp, zero(eltype(vis)))
     #scale(etp, u, v)
+
     p1 = BicubicInterpolator(U, V, real(vis), NoBoundaries())
     p2 = BicubicInterpolator(U, V, imag(vis), NoBoundaries())
     function (u,v)
         pl = visibility_point(pulse, u, v, zero(u), zero(u))
-        return pl*(p1(u,v) + 1im*p2(u,v))
+        #- sign because AIPSCC is 2pi i
+        return pl*(p1(u,v) - 1im*p2(u,v))
     end
 end
 
@@ -47,43 +107,15 @@ function create_interpolator(U, V, vis::StructArray{<:StokesParams}, pulse)
 
     function (u,v)
         pl = visibility_point(pulse, u, v, zero(u), zero(u))
+        #- sign because AIPSCC is 2pi i
         return StokesParams(
-            pI_real(u,v)*pl + 1im*pI_imag(u,v)*pl,
-            pQ_real(u,v)*pl + 1im*pQ_imag(u,v)*pl,
-            pU_real(u,v)*pl + 1im*pU_imag(u,v)*pl,
-            pV_real(u,v)*pl + 1im*pV_imag(u,v)*pl,
+            pI_real(u,v)*pl - 1im*pI_imag(u,v)*pl,
+            pQ_real(u,v)*pl - 1im*pQ_imag(u,v)*pl,
+            pU_real(u,v)*pl - 1im*pU_imag(u,v)*pl,
+            pV_real(u,v)*pl - 1im*pV_imag(u,v)*pl,
         )
     end
 end
-
-struct InterpolatedModel{M, S} <: AbstractModel
-    model::M
-    sitp::S
-end
-
-function Base.show(io::IO, m::InterpolatedModel)
-    print(io, "InterpolatedModel(", m.model, ")")
-end
-
-function InterpolatedModel(model, cache::FFTCache)
-    img = intensitymap(model, cache.grid)
-    pimg = padimage(img, cache.alg)
-    vis = applyfft(cache.plan, pimg)
-    (;X, Y) = cache.grid
-    (;U, V) = cache.gridUV
-    vispc = phasecenter(vis, X, Y, U, V)
-    pulse = cache.pulse
-    sitp = create_interpolator(U, V, vispc, stretched(pulse, step(X), step(Y)))
-    return InterpolatedModel{typeof(model), typeof(sitp)}(model, sitp)
-end
-
-
-@inline visanalytic(::Type{<:InterpolatedModel}) = IsAnalytic()
-@inline imanalytic(::Type{<:InterpolatedModel})  = IsAnalytic()
-@inline ispolarized(::Type{<:InterpolatedModel{M}}) where {M} = ispolarized(M)
-
-intensity_point(m::InterpolatedModel, p) = intensity_point(m.model, p)
-visibility_point(m::InterpolatedModel, u, v, t, f) = m.sitp(u, v)
 
 #=
 This is so ForwardDiff works with FFTW. I am very harsh on the `x` type because of type piracy.
@@ -127,38 +159,16 @@ end
 
 
 # phasecenter the FFT.
-using FastBroadcast
 @fastmath function ComradeBase.phasecenter(vis, X, Y, U, V)
     x0 = first(X)
     y0 = first(Y)
-    return @.. thread=true conj.(vis).*cispi.(2 * (U.*x0 .+ V'.*y0))
+    return vis.*cispi.(2 * (U.*x0 .+ V'.*y0))
 end
 
 
-function applyfft(plan, img::AbstractArray{<:Number})
-    return fftshift(plan*img)
-end
-
-function applyfft(plan, img::AbstractArray{<:StokesParams})
-    visI = applyfft(plan, stokes(img, :I))
-    visQ = applyfft(plan, stokes(img, :Q))
-    visU = applyfft(plan, stokes(img, :U))
-    visV = applyfft(plan, stokes(img, :V))
-    return StructArray{StokesParams{eltype(visI)}}((I=visI, Q=visQ, U=visU, V=visV))
-end
 
 FFTW.plan_fft(A::AbstractArray{<:StokesParams}, args...) = plan_fft(stokes(A, :I), args...)
 
-function create_cache(alg::FFTAlg, grid::AbstractGrid, pulse::Pulse=DeltaPulse())
-    pimg = padimage(IntensityMap(zeros(eltype(grid.X), size(grid)), grid), alg)
-    # Do the plan and then fft
-    plan = plan_fft(pimg)
-
-    #Construct the uv grid
-    (;X, Y) = grid
-    griduv = uviterator(size(pimg, 1), step(X), size(pimg, 2), step(Y))
-    return FFTCache(alg, plan, pulse, grid, griduv)
-end
 
 
 """
@@ -182,19 +192,4 @@ end
     y0 = first(Y)
     @.. thread=true vis = conj(vis*cispi(-2 * (U*x0 + V'*y0)))
     return vis
-end
-
-function Serialization.serialize(s::Serialization.AbstractSerializer, cache::FFTCache)
-    Serialization.writetag(s.io, Serialization.OBJECT_TAG)
-    Serialization.serialize(s, typeof(cache))
-    Serialization.serialize(s, cache.alg)
-    Serialization.serialize(s, cache.pulse)
-    Serialization.serialize(s, cache.grid)
-end
-
-function Serialization.deserialize(s::AbstractSerializer, ::Type{<:FFTCache})
-    alg = Serialization.deserialize(s)
-    pulse = Serialization.deserialize(s)
-    grid = Serialization.deserialize(s)
-    return create_cache(alg, grid, pulse)
 end

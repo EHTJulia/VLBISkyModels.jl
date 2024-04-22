@@ -1,7 +1,3 @@
-@inline function _visibility_primitive(::NotAnalytic, mimg, u, v, time, freq)
-    return mimg.cache.sitp(u, v)
-end
-
 # internal method for computing an image of a non-analytic image model. The
 # `executor` if for parallelization but is not used for this method.
 function intensitymap_numeric!(img::IntensityMap, m)

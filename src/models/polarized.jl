@@ -51,19 +51,19 @@ Base.@assume_effects :foldable @inline imanalytic(::Type{PolarizedModel{I,Q,U,V}
 end
 
 
-@inline function visibility_point(pimg::PolarizedModel, u, v, time, freq)
-    si = visibility_point(stokes(pimg, :I), u, v, time, freq)
-    sq = visibility_point(stokes(pimg, :Q), u, v, time, freq)
-    su = visibility_point(stokes(pimg, :U), u, v, time, freq)
-    sv = visibility_point(stokes(pimg, :V), u, v, time, freq)
+@inline function visibility_point(pimg::PolarizedModel, p)
+    si = visibility_point(stokes(pimg, :I), p)
+    sq = visibility_point(stokes(pimg, :Q), p)
+    su = visibility_point(stokes(pimg, :U), p)
+    sv = visibility_point(stokes(pimg, :V), p)
     return StokesParams(si, sq, su, sv)
 end
 
-function visibilities_analytic(pimg::PolarizedModel, u, v, t, f)
-    si = visibilities_analytic(stokes(pimg, :I), u, v, t, f)
-    sq = visibilities_analytic(stokes(pimg, :Q), u, v, t, f)
-    su = visibilities_analytic(stokes(pimg, :U), u, v, t, f)
-    sv = visibilities_analytic(stokes(pimg, :V), u, v, t, f)
+function visibilitymap_analytic(pimg::PolarizedModel, p)
+    si = visibilitymap_analytic(stokes(pimg, :I), p)
+    sq = visibilitymap_analytic(stokes(pimg, :Q), p)
+    su = visibilitymap_analytic(stokes(pimg, :U), p)
+    sv = visibilitymap_analytic(stokes(pimg, :V), p)
     return StructArray{StokesParams{eltype(si)}}((si, sq, su, sv))
 end
 
@@ -76,12 +76,12 @@ split_stokes(pimg::PolarizedModel) = (stokes(pimg, :I), stokes(pimg, :Q), stokes
 
 # If the model is numeric we don't know whether just a component is numeric or all of them are so
 # we need to re-dispatch
-function visibilities_numeric(pimg::PolarizedModel, u, v, t, f)
+function visibilitymap_numeric(pimg::PolarizedModel, p)
     mI, mQ, mU, mV = split_stokes(pimg)
-    si = _visibilities(visanalytic(typeof(mI)), mI, u, v, t, f)
-    sq = _visibilities(visanalytic(typeof(mQ)), mQ, u, v, t, f)
-    su = _visibilities(visanalytic(typeof(mU)), mU, u, v, t, f)
-    sv = _visibilities(visanalytic(typeof(mV)), mV, u, v, t, f)
+    si = _visibilitymap(visanalytic(typeof(mI)), mI, p)
+    sq = _visibilitymap(visanalytic(typeof(mQ)), mQ, p)
+    su = _visibilitymap(visanalytic(typeof(mU)), mU, p)
+    sv = _visibilitymap(visanalytic(typeof(mV)), mV, p)
     return StructArray{StokesParams{eltype(si)}}((si, sq, su, sv))
 end
 

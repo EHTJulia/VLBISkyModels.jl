@@ -18,8 +18,8 @@ imanalytic(::Type{<:ZeroModel}) = IsAnalytic()
 visibility_point(::ZeroModel{T}, args...) where {T} = complex(zero(T))
 intensity_point(::ZeroModel{T}, args...) where {T} = zero(T)
 
-visibilities_analytic(::ZeroModel{T}, u, v, time, freq) where {T} = Fill(zero(Complex{T}), length(u))
-visibilities_numeric(::ZeroModel{T}, u, v, time, freq) where {T} = Fill(zero(Complex{T}), length(u))
+visibilities_analytic(::ZeroModel{T}, p) where {T} = Fill(zero(Complex{T}), length(u))
+visibilities_numeric(::ZeroModel{T}, p) where {T} = Fill(zero(Complex{T}), length(u))
 intensitymap(::ZeroModel{T}, p::ComradeBase.AbstractGrid) where {T} = IntensityMap(Fill(zero(T), map(length, dims(p))), p)
 
 @inline AddModel(::ZeroModel, x) = x

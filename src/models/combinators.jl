@@ -59,9 +59,9 @@ function modelimage(::NotAnalytic,
     @set m1.m2 = modelimage(m1.m2, cache)
 end
 
-function fouriermap(m::CompositeModel, dims::ComradeBase.AbstractGrid)
-    m1 = fouriermap(m.m1, dims)
-    m2 = fouriermap(m.m2, dims)
+function visibilitymap(m::CompositeModel, dims::ComradeBase.AbstractGrid)
+    m1 = visibilitymap(m.m1, dims)
+    m2 = visibilitymap(m.m2, dims)
     return uv_combinator(m).(m1,m2)
 end
 
@@ -283,8 +283,8 @@ flux(m::ConvolvedModel) = flux(m.m1)*flux(m.m2)
 
 function intensitymap_numeric(model::ConvolvedModel, dims::ComradeBase.AbstractGrid)
     (;X, Y) = dims
-    vis1 = fouriermap(model.m1, dims)
-    vis2 = fouriermap(model.m2, dims)
+    vis1 = visibilitymap(model.m1, dims)
+    vis2 = visibilitymap(model.m2, dims)
     U = vis1.U
     V = vis1.V
     vis = ifftshift(parent(phasedecenter!(vis1.*vis2, X, Y, U, V)))

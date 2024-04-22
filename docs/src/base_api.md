@@ -71,7 +71,7 @@ ComradeBase.intensitymap_numeric!
 
 ### Image Types
 ```@docs
-ComradeBase.IntensityMap(::AbstractArray, ::AbstractGrid)
+ComradeBase.IntensityMap(::AbstractArray, ::AbstractRGrid)
 ComradeBase.StokesIntensityMap
 ComradeBase.imagepixels
 ComradeBase.RectiGrid
@@ -79,7 +79,7 @@ ComradeBase.dims
 ComradeBase.named_dims
 ComradeBase.axisdims
 ComradeBase.stokes
-ComradeBase.imagegrid
+ComradeBase.domaingrid
 ComradeBase.fieldofview
 ComradeBase.pixelsizes
 ComradeBase.phasecenter

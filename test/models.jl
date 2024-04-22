@@ -764,7 +764,7 @@ end
     @test img[1,1] == data[1,1]
     @test img[1:5,1] == data[1:5,1]
 
-    # @test all(==(1), imagegrid(img) .== ComradeBase.grid(named_dims(axisdims(img))))
+    # @test all(==(1), domaingrid(img) .== ComradeBase.grid(named_dims(axisdims(img))))
     @test VLBISkyModels.axisdims(img) == axisdims(img)
 
     @test g == imagepixels(img)
