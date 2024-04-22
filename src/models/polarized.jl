@@ -93,7 +93,7 @@ function intensitymap!(pimg::Union{StokesIntensityMap, IntensityMap{<:StokesPara
     return pimg
 end
 
-function intensitymap(pmodel::PolarizedModel, dims::AbstractGrid)
+function intensitymap(pmodel::PolarizedModel, dims::AbstractDomain)
     imgI = baseimage(intensitymap(stokes(pmodel, :I), dims))
     imgQ = baseimage(intensitymap(stokes(pmodel, :Q), dims))
     imgU = baseimage(intensitymap(stokes(pmodel, :U), dims))
@@ -163,14 +163,6 @@ end
 #     end
 # end
 
-function modelimage(model::PolarizedModel, grid::AbstractGrid, alg::FourierTransform=FFTAlg(), pulse=DeltaPulse())
-    return PolarizedModel(
-        modelimage(stokes(model, :I), grid, alg, pulse),
-        modelimage(stokes(model, :Q), grid, alg, pulse),
-        modelimage(stokes(model, :U), grid, alg, pulse),
-        modelimage(stokes(model, :V), grid, alg, pulse)
-        )
-end
 
 """
     PoincareSphere2Map(I, p, X, grid)
@@ -202,7 +194,6 @@ function PoincareSphere2Map(I, p, X, grid)
     return StokesIntensityMap(stokesI, stokesQ, stokesU, stokesV)
 end
 PoincareSphere2Map(I::IntensityMap, p, X) = PoincareSphere2Map(baseimage(I), p, X, axisdims(I))
-PoincareSphere2Map(I::AbstractMatrix, p, X, cache::AbstractCache) = ContinuousImage(PoincareSphere2Map(I, p, X, cache.grid), cache)
 
 
 """

@@ -9,13 +9,13 @@ Internal type used to store the cache for a non-uniform Fourier transform (NUFT)
 
 The user should instead create this using the [`create_cache`](@ref create_cache) function.
 """
-struct NUFTPlan{A,P,M,PI,G} <: AbstractNUFTPlan
+struct NUFTPlan{A,P,M} <: AbstractNUFTPlan
     alg::A # which algorithm to use
     plan::P #NUFT matrix or plan
     phases::M #FT phases needed to phase center things
 end
 
-function create_forward_plan(imagedomain::AbstractRectiGrid, visdomain::UnstructuredGrid, algorithm::NUFT, pulse::Pulse)
+function create_forward_plan(algorithm::NUFT, imagedomain::AbstractRectiGrid, visdomain::UnstructuredDomain, pulse)
     plan = plan_nuft(algorithm, imagedomain, visdomain)
     phases = make_phases(algorithm, imagedomain, visdomain, pulse)
     return NUFTPlan(algorithm, plan, phases)

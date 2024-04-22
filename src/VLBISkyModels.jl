@@ -42,25 +42,28 @@ Converts a number from micro-arcseconds (μas) to rad
 
 export linearpol, mbreve, evpa, rad2μas, μas2rad, create_cache
 
-using ComradeBase: AbstractGrid, AbstractModel, AbstractPolarizedModel
+using ComradeBase: AbstractDomain, AbstractRectiGrid,
+                   AbstractModel, AbstractPolarizedModel,
+                   UnstructuredDomain, RectiGrid
 
 import ComradeBase: flux, radialextent, intensitymap, intensitymap!,
                     intensitymap_analytic, intensitymap_analytic!,
                     intensitymap_numeric, intensitymap_numeric!,
-                    visibilities, visibilities!,
-                    _visibilities, _visibilities!,
-                    visibilities_analytic, visibilities_analytic!,
-                    visibilities_numeric, visibilities_numeric!,
-                    closure_phase, closure_phases,
-                    logclosure_amplitude, logclosure_amplitudes,
-                    bispectra, bispectrum
+                    visibilitymap, visibilitymap!,
+                    _visibilitymap, _visibilitymap!,
+                    visibilitymap_analytic, visibilitymap_analytic!,
+                    visibilitymap_numeric, visibilitymap_numeric!,
+                    closure_phase, closure_phasemap,
+                    logclosure_amplitude, logclosure_amplitudemap,
+                    bispectrummap, bispectrum, allocate_immap, allocate_vismap
 
 
 # Write your package code here.
-include(joinpath(@__DIR__, "models/models.jl"))
+include(joinpath("fourierdomain", "fourierdomain.jl"))
+include(joinpath("models", "models.jl"))
 include("utility.jl")
 include("rules.jl")
-include("visualizations/vis.jl")
+include(joinpath("visualizations", "vis.jl"))
 
 if !isdefined(Base, :get_extension)
     using Requires
@@ -68,7 +71,7 @@ end
 
 @static if !isdefined(Base, :get_extension)
     function __init__()
-        @require Makie = "ee78f7c6-11fb-53f2-987a-cfe4a2b5a57a" include(joinpath(@__DIR__, "../ext/VLBISkyModelsMakieExt.jl"))
+        @require Makie = "ee78f7c6-11fb-53f2-987a-cfe4a2b5a57a" include(joinpath(@__DIR__, "..", "ext", "VLBISkyModelsMakieExt.jl"))
     end
 end
 

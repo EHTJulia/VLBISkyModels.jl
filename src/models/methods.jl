@@ -11,7 +11,7 @@ function intensitymap_numeric!(img::IntensityMap, m)
     return img
 end
 
-function intensitymap_numeric(m, grid::ComradeBase.AbstractGrid)
+function intensitymap_numeric(m, grid::ComradeBase.AbstractDomain)
     img = IntensityMap(zeros(map(length, dims(grid))), grid)
     intensitymap_numeric!(img, m)
     return img

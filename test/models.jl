@@ -40,12 +40,12 @@ function testft(m, npix=256, atol=1e-4)
     mimg_ff2 = modelimage(mn, cache)
 
     p = (U=uu, V=vv)
-    va = visibilities(m, p)
-    vff = visibilities(mimg_ff, p)
-    vff2 = visibilities(mimg_ff2, p)
-    vnf = visibilities(mimg_nf, p)
-    vdf = visibilities(mimg_df, p)
-    visibilities(modelimage(mn, cache_nf), p)
+    va = visibilitymap(m, p)
+    vff = visibilitymap(mimg_ff, p)
+    vff2 = visibilitymap(mimg_ff2, p)
+    vnf = visibilitymap(mimg_nf, p)
+    vdf = visibilitymap(mimg_df, p)
+    visibilitymap(modelimage(mn, cache_nf), p)
 
     @test isapprox(maximum(abs, vff2-vff), 0, atol=atol)
     @test isapprox(maximum(abs, va-vff), 0, atol=atol*5)
@@ -68,9 +68,9 @@ function testft_cimg(m, atol=1e-4)
     mimg_df = modelimage(m, DFTAlg(u, v))
 
     p = (U=u, V=v)
-    vff = visibilities(mimg_ff, p)
-    vnf = visibilities(mimg_nf, p)
-    vdf = visibilities(mimg_df, p)
+    vff = visibilitymap(mimg_ff, p)
+    vnf = visibilitymap(mimg_nf, p)
+    vdf = visibilitymap(mimg_df, p)
 
     @test isapprox(maximum(abs, vdf .- vnf), 0, atol=atol)
     @test isapprox(maximum(abs, vff .- vdf), 0, atol=atol)
@@ -157,7 +157,7 @@ end
         @inferred VLBISkyModels.visibility(m, (U=0.0, V=0.0))
         @inferred VLBISkyModels.intensity_point(m, (X=0.0, Y=0.0))
 
-        foo(x) = sum(abs2, VLBISkyModels.visibilities_analytic(x[1]*Gaussian(), u, v, t, f))
+        foo(x) = sum(abs2, VLBISkyModels.visibilitymap_analytic(x[1]*Gaussian(), u, v, t, f))
         x = rand(1)
         foo(x)
         testgrad(foo, x)
@@ -171,7 +171,7 @@ end
         @inferred VLBISkyModels.intensity_point(m.m1, (X=0.0, Y=0.0))
         testmodel(m)
 
-        foo(x) = sum(abs2, VLBISkyModels.visibilities_analytic(x[1]*Disk(), u, v, t, f))
+        foo(x) = sum(abs2, VLBISkyModels.visibilitymap_analytic(x[1]*Disk(), u, v, t, f))
         x = rand(1)
         foo(x)
         testgrad(foo, x)
@@ -184,7 +184,7 @@ end
         @inferred VLBISkyModels.intensity_point(m.m1, (X=0.0, Y=0.0))
         testmodel(m)
 
-        foo(x) = sum(abs2, VLBISkyModels.visibilities_analytic(SlashedDisk(x[1]), u, v, t, f))
+        foo(x) = sum(abs2, VLBISkyModels.visibilitymap_analytic(SlashedDisk(x[1]), u, v, t, f))
         x = rand(1)
         foo(x)
         testgrad(foo, x)
@@ -232,7 +232,7 @@ end
         @inferred VLBISkyModels.intensity_point(m.m1, (X=0.0, Y=0.0))
         testmodel(m, 2048)
 
-        foo(x) = sum(abs2, VLBISkyModels.visibilities_analytic(x[1]*Ring(), u, v, t, f))
+        foo(x) = sum(abs2, VLBISkyModels.visibilitymap_analytic(x[1]*Ring(), u, v, t, f))
         x = rand(1)
         foo(x)
         testgrad(foo, x)
@@ -249,7 +249,7 @@ end
         testmodel(m, 2400, 1e-2)
 
         # TODO why is this broken?
-        # foo(x) = sum(abs2, VLBISkyModels.visibilities_analytic(ParabolicSegment(x[1], x[2]), u, v, t, f))
+        # foo(x) = sum(abs2, VLBISkyModels.visibilitymap_analytic(ParabolicSegment(x[1], x[2]), u, v, t, f))
         # x = rand(2)
         # foo(x)
         # testgrad(foo, x)
@@ -270,7 +270,7 @@ end
 
         testmodel(MRing(0.5, 0.0), 2048, 1e-3)
 
-        foo(x) = sum(abs2, VLBISkyModels.visibilities_analytic(MRing(x[1], x[2]), u, v, t, f))
+        foo(x) = sum(abs2, VLBISkyModels.visibilitymap_analytic(MRing(x[1], x[2]), u, v, t, f))
         x = rand(2)
         foo(x)
         testgrad(foo, x)
@@ -287,7 +287,7 @@ end
         @inferred VLBISkyModels.visibility(m.m1, (U=0.0, V=0.0))
         @inferred VLBISkyModels.intensity_point(m.m1, (X=0.0, Y=0.0))
 
-        foo(x) = sum(abs2, VLBISkyModels.visibilities_analytic(MRing((x[1],x[2]), (x[3], x[4])), u, v, t, f))
+        foo(x) = sum(abs2, VLBISkyModels.visibilitymap_analytic(MRing((x[1],x[2]), (x[3], x[4])), u, v, t, f))
         x = rand(4)
         foo(x)
         testgrad(foo, x)
@@ -300,7 +300,7 @@ end
         @inferred VLBISkyModels.visibility(m, (U=0.0, V=0.0))
         @inferred VLBISkyModels.intensity_point(m, (X=0.0, Y=0.0))
 
-        foo(x) = sum(abs2, VLBISkyModels.visibilities_analytic(ConcordanceCrescent(x[1], x[2], x[3], x[4]), u, v, t, f))
+        foo(x) = sum(abs2, VLBISkyModels.visibilitymap_analytic(ConcordanceCrescent(x[1], x[2], x[3], x[4]), u, v, t, f))
         x = rand(4)
         foo(x)
         testgrad(foo, x)
@@ -317,7 +317,7 @@ end
         v = randn(50)
         t = fill(1.0, 50)
         f = fill(230.0, 50)
-        foo(x) = sum(abs2, VLBISkyModels.visibilities_analytic(Crescent(x[1], x[2], x[3], x[4]), u, v, t, f))
+        foo(x) = sum(abs2, VLBISkyModels.visibilitymap_analytic(Crescent(x[1], x[2], x[3], x[4]), u, v, t, f))
         x = rand(4)
         foo(x)
         testgrad(foo, x)
@@ -358,7 +358,7 @@ end
 
         @inferred VLBISkyModels.visibility(m, (U=0.0, V=0.0))
         # k = keys(xopt)
-        # foo(x) = sum(abs2, VLBISkyModels.visibilities_analytic(model(NamedTuple{k}(Tuple(x))), u, v, t, f))
+        # foo(x) = sum(abs2, VLBISkyModels.visibilitymap_analytic(model(NamedTuple{k}(Tuple(x))), u, v, t, f))
         # x = collect(values(xopt))
         # foo(x)
         # testgrad(foo, x)
@@ -400,7 +400,7 @@ end
                                               2*VLBISkyModels.radialextent(mbs),
                                               1024, 1024), FFTAlg()))
 
-        foo(x) = sum(abs2, VLBISkyModels.visibilities_analytic(shifted(ma, x[1], x[2]), u, v, t, f))
+        foo(x) = sum(abs2, VLBISkyModels.visibilitymap_analytic(shifted(ma, x[1], x[2]), u, v, t, f))
         x = rand(2)
         foo(x)
         testgrad(foo, x)
@@ -419,7 +419,7 @@ end
                                               2.5*VLBISkyModels.radialextent(mbs),
                                               1024, 1024), FFTAlg()))
 
-        foo(x) = sum(abs2, VLBISkyModels.visibilities_analytic(x[1]*ma, u, v, t, f))
+        foo(x) = sum(abs2, VLBISkyModels.visibilitymap_analytic(x[1]*ma, u, v, t, f))
         x = rand(1)
         foo(x)
         testgrad(foo, x)
@@ -434,7 +434,7 @@ end
                                               2*VLBISkyModels.radialextent(mbs), 2024, 2024), FFTAlg()),
                                               1024, 1e-3)
 
-        foo(x) = sum(abs2, VLBISkyModels.visibilities_analytic(stretched(ma, x[1], x[2]), u, v, t, f))
+        foo(x) = sum(abs2, VLBISkyModels.visibilitymap_analytic(stretched(ma, x[1], x[2]), u, v, t, f))
         x = rand(2)
         foo(x)
         testgrad(foo, x)
@@ -448,7 +448,7 @@ end
                                               2*VLBISkyModels.radialextent(mbs),
                                               1024, 1024), FFTAlg()))
 
-        foo(x) = sum(abs2, VLBISkyModels.visibilities_analytic(rotated(ma, x[1]), u, v, t, f))
+        foo(x) = sum(abs2, VLBISkyModels.visibilitymap_analytic(rotated(ma, x[1]), u, v, t, f))
         x = rand(1)
         foo(x)
         testgrad(foo, x)
@@ -465,7 +465,7 @@ end
                                               FFTAlg()),
                                               1024, 1e-3)
 
-        foo(x) = sum(abs2, VLBISkyModels.visibilities_analytic(modify(ma, Shift(x[1], x[2]), Stretch(x[3], x[4]), Rotate(x[5]), Renormalize(x[6])), u, v, t, f))
+        foo(x) = sum(abs2, VLBISkyModels.visibilitymap_analytic(modify(ma, Shift(x[1], x[2]), Stretch(x[3], x[4]), Rotate(x[5]), Renormalize(x[6])), u, v, t, f))
         x = rand(6)
         foo(x)
         testgrad(foo, x)
@@ -496,7 +496,7 @@ end
         @test mc[2] === m2
         @test flux(mt1) ≈ flux(m1) + flux(m2)
 
-        foo(x) = sum(abs2, VLBISkyModels.visibilities_analytic(x[1]*stretched(Disk(), x[2], x[3]) + stretched(Ring(), x[4], x[4]), u, v, t, f))
+        foo(x) = sum(abs2, VLBISkyModels.visibilitymap_analytic(x[1]*stretched(Disk(), x[2], x[3]) + stretched(Ring(), x[4], x[4]), u, v, t, f))
         x = rand(4)
         foo(x)
         testgrad(foo, x)
@@ -523,7 +523,7 @@ end
         testmodel(modelimage(mt2, axisdims(img), FFTAlg()))
         testmodel(modelimage(mt3, axisdims(img), FFTAlg()))
 
-        foo(x) = sum(abs2, VLBISkyModels.visibilities_analytic(convolved(x[1]*stretched(Disk(), x[2], x[3]),stretched(Ring(), x[4], x[4])), u, v, t, f))
+        foo(x) = sum(abs2, VLBISkyModels.visibilitymap_analytic(convolved(x[1]*stretched(Disk(), x[2], x[3]),stretched(Ring(), x[4], x[4])), u, v, t, f))
         x = rand(4)
         foo(x)
         testgrad(foo, x)
@@ -544,7 +544,7 @@ end
 
         testmodel(modelimage(mt, axisdims(img), FFTAlg()))
 
-        foo(x) = sum(abs2, VLBISkyModels.visibilities_analytic(smoothed(x[1]*stretched(Disk(), x[2], x[3]), x[4]) + stretched(Ring(), x[5], x[4]), u, v, t, f))
+        foo(x) = sum(abs2, VLBISkyModels.visibilitymap_analytic(smoothed(x[1]*stretched(Disk(), x[2], x[3]), x[4]) + stretched(Ring(), x[5], x[4]), u, v, t, f))
         x = rand(5)
         foo(x)
         testgrad(foo, x)
@@ -567,7 +567,7 @@ end
 
     @test convolved(m, Gaussian()) == convolved(Gaussian(), m)
 
-    foo(fl, x, y) = sum(abs2, VLBISkyModels.visibilities_analytic(MultiComponentModel(Gaussian(), fl, x, y), u, v, t, f))
+    foo(fl, x, y) = sum(abs2, VLBISkyModels.visibilitymap_analytic(MultiComponentModel(Gaussian(), fl, x, y), u, v, t, f))
     x = randn(10)
     y = randn(10)
     fl = rand(10)
@@ -640,8 +640,8 @@ end
         show(m)
         serialize("foo.jls", m)
         mr = deserialize("foo.jls")
-        @test visibilities(m, (U=u, V=v)) ≈ visibilities(mr, (U=u, V=v))
-        @test amplitudes(shifted(m, centroid(img)...), (U=u, V=v)) ≈ amplitudes(m, (U=u, V=v))
+        @test visibilitymap(m, (U=u, V=v)) ≈ visibilitymap(mr, (U=u, V=v))
+        @test amplitudemap(shifted(m, centroid(img)...), (U=u, V=v)) ≈ amplitudemap(m, (U=u, V=v))
         rm("foo.jls")
     end
 
@@ -649,7 +649,7 @@ end
         m = modelimage(cimg, FFTAlg())
         serialize("foo.jls", m)
         mr = deserialize("foo.jls")
-        @test visibilities(m, (U=u, V=v)) ≈ visibilities(mr, (U=u, V=v))
+        @test visibilitymap(m, (U=u, V=v)) ≈ visibilitymap(mr, (U=u, V=v))
         rm("foo.jls")
     end
 end
@@ -700,8 +700,8 @@ end
     v4lc = -v1lc - v2lc - v3lc
 
     m = rotated(stretched(Gaussian(), μas2rad(2.0), μas2rad(1.0)), π/8)
-    @test closure_phases(m, (U=u1cp, V=v1cp), (U=u2cp, V=v2cp), (U=u3cp, V=v3cp)) ≈ zero(u1cp)
-    logclosure_amplitudes(m, (U=u1lc, V=v1lc), (U=u2lc, V=v2lc), (U=u3lc, V=v3lc), (U=u4lc, V=v4lc))
+    @test closure_phasemap(m, (U=u1cp, V=v1cp), (U=u2cp, V=v2cp), (U=u3cp, V=v3cp)) ≈ zero(u1cp)
+    logclosure_amplitudemap(m, (U=u1lc, V=v1lc), (U=u2lc, V=v2lc), (U=u3lc, V=v3lc), (U=u4lc, V=v4lc))
 
 end
 
@@ -736,8 +736,8 @@ end
     mimg_nf = modelimage(cimg, cache_nf)
     mimg_df = modelimage(cimg, cache_df)
 
-    vnf = visibilities(mimg_nf, (U=u1cp, V=v1cp))
-    vdf = visibilities(mimg_df, (U=u1cp, V=v1cp))
+    vnf = visibilitymap(mimg_nf, (U=u1cp, V=v1cp))
+    vdf = visibilitymap(mimg_df, (U=u1cp, V=v1cp))
 
     atol = 1e-5
 

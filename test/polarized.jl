@@ -6,9 +6,9 @@ function testpol(m, uv)
 
     @test all(==(1), img .≈ img2)
 
-    @inferred visibilities(m, uv)
+    @inferred visibilitymap(m, uv)
 
-    v = visibilities(m, uv)
+    v = visibilitymap(m, uv)
 
     plot(m)
     plot(img)
@@ -141,5 +141,5 @@ end
     u, v = rand(32), rand(32)
     cache = create_cache(NFFTAlg(u, v), g)
     mimg = ContinuousImage(StokesIntensityMap(img), cache)
-    visibilities(mimg, (U=u, V=v))
+    visibilitymap(mimg, (U=u, V=v))
 end

@@ -116,9 +116,9 @@ end
 getm(m::AbstractModel) = m
 getm(m::Tuple) = m[2]
 
-function ChainRulesCore.rrule(::typeof(visibilities_analytic), m::Union{GeometricModel, PolarizedModel, CompositeModel, ModifiedModel}, u::AbstractArray, v::AbstractArray, t::AbstractArray, f::AbstractArray)
-    vis = visibilities_analytic(m, u, v, t, f)
-    function _composite_visibilities_analytic_pullback(Δ)
+function ChainRulesCore.rrule(::typeof(visibilitymap_analytic), m::Union{GeometricModel, PolarizedModel, CompositeModel, ModifiedModel}, u::AbstractArray, v::AbstractArray, t::AbstractArray, f::AbstractArray)
+    vis = visibilitymap_analytic(m, u, v, t, f)
+    function _composite_visibilitymap_analytic_pullback(Δ)
         du = zero(u)
         dv = zero(v)
         df = zero(f)
@@ -127,13 +127,13 @@ function ChainRulesCore.rrule(::typeof(visibilities_analytic), m::Union{Geometri
         dvis = zero(vis)
         dvis .= unthunk(Δ)
         rvis = zero(vis)
-        d = autodiff(Reverse, visibilities_analytic!, Const, Duplicated(rvis, dvis), Active(m), Duplicated(u, du), Duplicated(v, dv), Duplicated(t, dt), Duplicated(f, df))
+        d = autodiff(Reverse, visibilitymap_analytic!, Const, Duplicated(rvis, dvis), Active(m), Duplicated(u, du), Duplicated(v, dv), Duplicated(t, dt), Duplicated(f, df))
         dm = getm(d[1])
         tm = __extract_tangent(dm)
         return NoTangent(), tm, du, dv, df, dt
     end
 
-    return vis, _composite_visibilities_analytic_pullback
+    return vis, _composite_visibilitymap_analytic_pullback
 end
 
 

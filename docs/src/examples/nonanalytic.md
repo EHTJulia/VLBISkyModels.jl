@@ -66,7 +66,7 @@ mimage = modelimage(m, img, FFTAlg())
 
 the `alg` keyword argument then specifies that we want to use an FFT to compute the
 Fourier transform. When `modelimage` is called, the FFT is performed and then we use
-a bicubic interpolator on the resulting visibilities to construct a continuous representation
+a bicubic interpolator on the resulting visibilitymap to construct a continuous representation
 of the Fourier transform. Once we have this everything else is the same. Namely we can
 calculatge the VLBI data products in the usual manner i.e.
 
@@ -75,20 +75,20 @@ u = randn(1000)/2
 v = randn(1000)/2
 ````
 
-Now we can plot our sampled visibilities
+Now we can plot our sampled visibilitymap
 
 ````@example nonanalytic
-vis = visibilities(mimage, (U=u, V=v))
+vis = visibilitymap(mimage, (U=u, V=v))
 scatter(hypot.(u, v), real.(vis), label="Real")
 scatter!(hypot.(u, v), imag.(vis), label="Imag")
 axislegend()
 current_figure()
 ````
 
-We can also directly get the amplitudes using:
+We can also directly get the amplitudemap using:
 
 ````@example nonanalytic
-amp = amplitudes(mimage, (U=u, V=v))
+amp = amplitudemap(mimage, (U=u, V=v))
 scatter(hypot.(u, v), amp, label="Amplitude")
 ````
 

@@ -80,11 +80,11 @@ For a list of potential modifiers or transforms see `subtypes(ModelModifiers)`.
 # Fields
 $(FIELDS)
 """
-struct ModifiedModel{M<:AbstractModel, T<:Tuple}<: AbstractModel
+struct ModifiedModel{M, MT<:Tuple}<: AbstractModel
     """base model"""
     model::M
     """model transforms"""
-    transform::T
+    transform::MT
 end
 
 function Base.show(io::IO, mi::ModifiedModel)
@@ -141,21 +141,6 @@ radialextent(m::ModifiedModel) = radialextent_modified(radialextent(m.model), m.
 @inline ispolarized(::Type{ModifiedModel{M, T}}) where {M,T} = ispolarized(M)
 
 
-@inline function ModifiedModel(m::ModelImage{M, <:NUFTCache}, t::Tuple) where {M}
-    doesnot_uv_modify(t) === Static.False() && throw(
-                          ArgumentError(
-                            "ModelImage with NUFTCache does not support modifying the uv plane."*
-                            " Instead of modifying the `modelimage` instead modify the base `model`."*
-                            " For example instead of
-                                `julia> modify(modelimage(m), Stretch(2.0), cache)`
-                              do
-                                `julia> modelimage(modify(m, Stretch(2.0)), cache)`
-                            "
-                            ))
-    return ModifiedModel{typeof(m), typeof(t)}(m, t)
-end
-
-
 @inline function ModifiedModel(m, t::ModelModifier)
     return ModifiedModel(m, (t,))
 end
@@ -181,7 +166,7 @@ function modify_image(model, t::Tuple, x, y, scale)
     scalet = scale_image(model, last(t), x, y)
     return modify_image(model, Base.front(t), xt, yt, scalet*scale)
 end
-modify_image(model, ::Tuple{}, x, y, scale) = x, y, scale
+modify_image(model, ::Tuple{}, x, y, scale) = (x, y), scale
 
 
 # @inline function transform_uv(model, t::Tuple, u, v)
@@ -252,17 +237,17 @@ end
 #     return (u, v), scale
 # end
 
-# @inline function _visibilities(m::AbstractModifier, u, v, time, freq)
+# @inline function _visibilitymap(m::AbstractModifier, u, v, time, freq)
 #     uv, scale = apply_uv_transform(m, u, v)
 #     ut = first.(uv)
 #     vt = last.(uv)
-#     scale.*_visibilities(unmodified(m), ut, vt, time, freq)
+#     scale.*_visibilitymap(unmodified(m), ut, vt, time, freq)
 # end
 
 
-# # function visibilities(m, p::NamedTuple)
+# # function visibilitymap(m, p::NamedTuple)
 # #     m = Base.Fix1(m∘NamedTuple{keys(p)})
-# #     return visibilities(m, NamedTuple{keys(p)}(p))
+# #     return visibilitymap(m, NamedTuple{keys(p)}(p))
 # # end
 
 # function apply_uv_transform(m::AbstractModifier, u::AbstractVector, v::AbstractVector)
@@ -278,25 +263,25 @@ end
 #     res = apply_uv_transform.(Ref(m), u, v, 1.0)
 #     return getindex.(res,1), getindex.(res,2), getindex.(res,3)
 # end
-# @inline function _visibilities(m::M, p) {M<:AbstractModifier}
+# @inline function _visibilitymap(m::M, p) {M<:AbstractModifier}
 
-# @inline function _visibilities(m::M, p) {M<:AbstractModifier}
+# @inline function _visibilitymap(m::M, p) {M<:AbstractModifier}
 
-#     return _visibilities(visanalytic(M), m, u, v, args...)
+#     return _visibilitymap(visanalytic(M), m, u, v, args...)
 # end
 
-# @inline function _visibilities(m::AbstractModifier{M}, p) where {M}
-#     return _visibilities(ispolarized(M), m, p)
+# @inline function _visibilitymap(m::AbstractModifier{M}, p) where {M}
+#     return _visibilitymap(ispolarized(M), m, p)
 # end
 
 
 
-# @inline function _visibilities(m::AbstractModifier, p)
+# @inline function _visibilitymap(m::AbstractModifier, p)
 #     (;U, V) = p
 #     st = StructArray{TransformState{eltype(U), Complex{eltype(U)}}}(u=U, v=V, scale=fill(one(Complex{eltype(U)}), length(U)))
 #     auv = Base.Fix1(apply_uv_transform, m)
 #     mst = map(auv, st)
-#     mst.scale.*visibilities(unmodified(m), (U=mst.u, V=mst.v))
+#     mst.scale.*visibilitymap(unmodified(m), (U=mst.u, V=mst.v))
 # end
 
 function update_uv(p::NamedTuple, uv)
@@ -312,7 +297,7 @@ function update_xy(p::NamedTuple, xy)
 end
 
 
-# @inline function _visibilities(::IsPolarized, m::AbstractModifier, p)
+# @inline function _visibilitymap(::IsPolarized, m::AbstractModifier, p)
 #     (;U, V) = p
 
 #     S = eltype(U)
@@ -321,41 +306,31 @@ end
 #     mst = apply_uv_transform.(Ref(m), st)
 
 #     pup = update_uv(p, (U=mst.u, V=mst.v))
-#     mst.scale.*visibilities(unmodified(m), pup)
+#     mst.scale.*visibilitymap(unmodified(m), pup)
 # end
 
-# @inline function _visibilities(m::AbstractModifier, p)
+# @inline function _visibilitymap(m::AbstractModifier, p)
 #     (;U, V) = p
 #     st = StructArray{TransformState{eltype(U), Complex{eltype(U)}}}(u=U, v=V, scale=fill(one(Complex{eltype(U)}), length(U)))
 #     mst = apply_uv_transform.(Ref(m), st)
 #     pup = update_uv(p, (U=mst.u, V=mst.v))
-#     mst.scale.*visibilities(unmodified(m), pup)
+#     mst.scale.*visibilitymap(unmodified(m), pup)
 # end
 
 
-# I need some special pass-throughs for the non-analytic NUFT transform
-# since you evaluate the visibilities as a vector
-function modelimage(::NotAnalytic,
-    model::ModifiedModel,
-    grid::AbstractGrid, alg::NUFT,
-    pulse = DeltaPulse())
-    _modelimage(model, grid, alg, pulse)
-end
-
-
-@inline function visibility_point(m::M, u, v, time, freq) where {M<:ModifiedModel}
+@inline function visibility_point(m::M, p) where {M<:ModifiedModel}
     mbase = m.model
     transform = m.transform
     ispol = ispolarized(M)
-    (ut, vt), scale = modify_uv(ispol, transform, u, v, unitscale(Complex{eltype(u)}, ispol))
-    scale*visibility_point(mbase, ut, vt, time, freq)
+    (ut, vt), scale = modify_uv(ispol, transform, p.U, p.V, unitscale(Complex{eltype(p.U)}, ispol))
+    scale*visibility_point(mbase, update_uv(p, (U=ut, V=vt)))
 end
 
 @inline function intensity_point(m::M, p) where {M<:ModifiedModel}
     mbase = m.model
     transform = m.transform
     ispol = ispolarized(M)
-    xt, yt, scale = modify_image(ispol, transform, p.X, p.Y, unitscale(eltype(p.X), ispol))
+    (xt, yt), scale = modify_image(ispol, transform, p.X, p.Y, unitscale(eltype(p.X), ispol))
     scale*intensity_point(mbase, update_xy(p, (X=xt, Y=yt)))
 end
 
@@ -365,10 +340,9 @@ function modify_uv(model, transform::Tuple, u::AbstractVector, v::AbstractVector
 end
 
 
-function visibilities_analytic(m::ModifiedModel, u, v, time, freq)
-    T = typeof(visibility_point(m, first(u), first(v), first(time), first(freq)))
-    vis = similar(u, T)
-    visibilities_analytic!(vis, m, u, v, time, freq)
+function visibilitymap_analytic(m::ModifiedModel, p::AbstractDomain)
+    vis = allocate_vismap(m, p)
+    visibilitymap_analytic!(vis, m)
     return vis
 end
 
@@ -624,10 +598,10 @@ end
 
 
 const ScalingTransform = Union{Shift, Renormalize}
-function visibilities_numeric(m::ModifiedModel{M, T}, u, v, time, freq) where {M, N, T<: NTuple{N,<:ScalingTransform}}
+function visibilitymap_numeric(m::ModifiedModel{M, T}, u, v, time, freq) where {M, N, T<: NTuple{N,<:ScalingTransform}}
     ispol = ispolarized(M)
 
-    vbase = visibilities_numeric(m.model, u, v, time, freq)
+    vbase = visibilitymap_numeric(m.model, u, v, time, freq)
     return _apply_scaling(ispol, m.transform, vbase, u, v)
 end
 

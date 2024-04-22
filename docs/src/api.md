@@ -58,20 +58,16 @@ VLBISkyModels.Butterworth
 ```
 
 
-### Model Image (non analytic FFT)
+### Fourier Duality Models
 
 ```@docs
-VLBISkyModels.create_cache
-VLBISkyModels.modelimage
+VLBISkyModels.FourierDualDomains
+VLBISkyModels.xygrid
+VLBISkyModels.uvgrid
 VLBISkyModels.uviterator
-VLBISkyModels.fouriermap
-VLBISkyModels.ModelImage
 VLBISkyModels.DFTAlg
 VLBISkyModels.FFTAlg
-VLBISkyModels.FFTCache
 VLBISkyModels.NFFTAlg
-VLBISkyModels.NUFTCache
-VLBISkyModels.ObservedNUFT
 ```
 
 

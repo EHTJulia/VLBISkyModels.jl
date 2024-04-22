@@ -2,7 +2,7 @@ export NFFTAlg
 
 """
     NFFTAlg
-Uses a non-uniform FFT to compute the visibilities.
+Uses a non-uniform FFT to compute the visibilitymap.
 You can optionally pass uv which are the uv positions you will
 compute the NFFT at. This can allow for the NFFT plan to be cached improving
 performance
@@ -73,7 +73,7 @@ function plan_nuft(alg::NFFTAlg, imagegrid::AbstractRectiGrid, visdomain::Unstru
     return plan
 end
 
-function make_phases(::NFFTAlg, imagedomain::AbstractRectiGrid, visdomain::UnstructuredDomain, pulse::Pulse=DeltaPulse())
+function make_phases(::NFFTAlg, imagedomain::AbstractRectiGrid, visdomain::UnstructuredDomain, pulse=DeltaPulse())
     dx, dy = pixelsizes(imagedomain)
     x0, y0 = phasecenter(imagedomain)
     visp = domainpoints(visdomain)
