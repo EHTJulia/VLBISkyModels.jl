@@ -26,10 +26,10 @@ end
 function InterpolatedModel(
         model::AbstractModel,
         d::FourierDualDomain{<:AbstractRectiGrid, <:AbstractRectiGrid, <:FFTAlg})
-        img = intensitymap(model, imagedomain(d))
+        img = intensitymap(model, imgdomain(d))
         pimg = padimage(img, algorithm(d))
         vis = applyft(forward_plan(d), pimg)
-        (;X, Y) = imagedomain(d)
+        (;X, Y) = imgdomain(d)
         (;U, V) = visdomain(d)
         sitp = create_interpolator(U, V, vis, stretched(pulse(d), step(X), step(Y)))
         return InterpolatedModel{typeof(model), typeof(sitp)}(model, sitp)

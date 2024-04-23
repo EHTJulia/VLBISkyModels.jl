@@ -55,7 +55,8 @@ import ComradeBase: flux, radialextent, intensitymap, intensitymap!,
                     visibilitymap_numeric, visibilitymap_numeric!,
                     closure_phase, closure_phasemap,
                     logclosure_amplitude, logclosure_amplitudemap,
-                    bispectrummap, bispectrum, allocate_immap, allocate_vismap
+                    bispectrummap, bispectrum, allocate_imgmap, allocate_vismap,
+                    create_vismap, create_imgmap
 
 
 # Write your package code here.

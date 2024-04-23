@@ -42,7 +42,7 @@ end
 function visibilitymap_numeric!(vis::IntensityMap{T}, m::AbstractModel) where {T<:Complex}
     grid = axisdims(vis)
     gridxy = xygrid(grid)
-    img = allocate_immap(m, gridxy)
+    img = allocate_imgmap(m, gridxy)
     intensitymap!(img, m)
     fft!(img)
     vis .= phasecenter!(fftshift(parent(img)), grid, griduv)

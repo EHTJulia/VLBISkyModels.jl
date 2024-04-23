@@ -12,7 +12,7 @@ abstract type AbstractFourierDualDomain end
 
 forward_plan(g::AbstractFourierDualDomain) = getfield(g, :plan_forward)
 reverse_plan(g::AbstractFourierDualDomain) = getfield(g, :plan_reverse)
-imagedomain(g::AbstractFourierDualDomain)  = getfield(g, :imagedomain)
+imgdomain(g::AbstractFourierDualDomain)  = getfield(g, :imgdomain)
 visdomain(g::AbstractFourierDualDomain)    = getfield(g, :visdomain)
 algorithm(g::AbstractFourierDualDomain)    = getfield(g, :algorithm)
 
@@ -21,8 +21,8 @@ abstract type AbstractPlan end
 getplan(p::AbstractPlan) = getfield(p, :plan)
 getphases(p::AbstractPlan) = getfield(p, :phases)
 
-function create_plans(algorithm, imagedomain, visdomain, pulse)
-    plan_forward = create_forward_plan(algorithm, imagedomain, visdomain, pulse)
+function create_plans(algorithm, imgdomain, visdomain, pulse)
+    plan_forward = create_forward_plan(algorithm, imgdomain, visdomain, pulse)
     plan_reverse = inverse_plan(plan_forward)
     return plan_forward, plan_reverse
 end
@@ -30,7 +30,7 @@ end
 
 
 struct FourierDualDomain{ID<:AbstractDomain, VD<:AbstractDomain, A<:FourierTransform, PI<:AbstractPlan, PD<:AbstractPlan, P} <: AbstractFourierDualDomain
-    imagedomain::ID
+    imgdomain::ID
     visdomain::VD
     algorithm::A
     plan_forward::PI
@@ -43,7 +43,7 @@ function Serialization.serialize(s::Serialization.AbstractSerializer, cache::Fou
     Serialization.writetag(s.io, Serialization.OBJECT_TAG)
     Serialization.serialize(s, typeof(cache))
     Serialization.serialize(s, cache.alg)
-    Serialization.serialize(s, cache.imagedomain)
+    Serialization.serialize(s, cache.imgdomain)
     Serialization.serialize(s, cache.visdomain)
     Serialization.serialize(s, cache.pulse)
 
@@ -125,9 +125,17 @@ function xygrid(grid::AbstractRectiGrid)
 end
 
 
-function FourierDualDomain(imagedomain::AbstractDomain, visdomain::AbstractDomain, algorithm, pulse=DeltaPulse())
-    plan_forward, plan_reverse = create_plans(algorithm, imagedomain, visdomain, pulse)
-    return FourierDualDomain(imagedomain, visdomain, algorithm, plan_forward, plan_reverse, pulse)
+function FourierDualDomain(imgdomain::AbstractDomain, visdomain::AbstractDomain, algorithm, pulse=DeltaPulse())
+    plan_forward, plan_reverse = create_plans(algorithm, imgdomain, visdomain, pulse)
+    return FourierDualDomain(imgdomain, visdomain, algorithm, plan_forward, plan_reverse, pulse)
+end
+
+function create_vismap(arr::AbstractArray, g::AbstractFourierDualDomain)
+    return ComradeBase.create_map(arr, visdomain(g))
+end
+
+function create_imgmap(arr::AbstractArray, g::AbstractFourierDualDomain)
+    return ComradeBase.create_map(arr, imgdomain(g))
 end
 
 
@@ -135,14 +143,14 @@ function visibilitymap_analytic(m::AbstractModel, grid::AbstractFourierDualDomai
     return visibilitymap_analytic(m, visdomain(grid))
 end
 
-function intensitymapmap_analytic(m::AbstractModel, grid::AbstractFourierDualDomain)
-    return intensitymap_analytic(m, imagedomain(grid))
-end
-
 function visibilitymap_numeric(m::AbstractModel, grid::AbstractFourierDualDomain)
-    img = intensitymap_analytic(m, imagedomain(grid))
+    img = intensitymap_analytic(m, imgdomain(grid))
     vis = applyft(forward_plan(grid), img)
     return vis
+end
+
+function intensitymap_analytic(m::AbstractModel, grid::AbstractFourierDualDomain)
+    return intensitymap_analytic(m, imgdomain(grid))
 end
 
 function intensitymap_numeric(m::AbstractModel, grid::AbstractFourierDualDomain)

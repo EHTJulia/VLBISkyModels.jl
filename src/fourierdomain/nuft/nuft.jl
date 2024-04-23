@@ -15,9 +15,9 @@ struct NUFTPlan{A,P,M} <: AbstractNUFTPlan
     phases::M #FT phases needed to phase center things
 end
 
-function create_forward_plan(algorithm::NUFT, imagedomain::AbstractRectiGrid, visdomain::UnstructuredDomain, pulse)
-    plan = plan_nuft(algorithm, imagedomain, visdomain)
-    phases = make_phases(algorithm, imagedomain, visdomain, pulse)
+function create_forward_plan(algorithm::NUFT, imgdomain::AbstractRectiGrid, visdomain::UnstructuredDomain, pulse)
+    plan = plan_nuft(algorithm, imgdomain, visdomain)
+    phases = make_phases(algorithm, imgdomain, visdomain, pulse)
     return NUFTPlan(algorithm, plan, phases)
 end
 

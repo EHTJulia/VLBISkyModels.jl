@@ -26,7 +26,7 @@ Base.@kwdef struct FFTAlg{T} <: FourierTransform
     flags::T = FFTW.ESTIMATE
 end
 
-function FourierDualDomain(imagedomain::AbstractRectiGrid, alg::FFTAlg, pulse=DeltaPulse())
+function FourierDualDomain(imgdomain::AbstractRectiGrid, alg::FFTAlg, pulse=DeltaPulse())
     # construct the uvgrid for the padded image
     padfac = alg.padfac
     ny,nx = size(imgdomain)
@@ -35,7 +35,7 @@ function FourierDualDomain(imagedomain::AbstractRectiGrid, alg::FFTAlg, pulse=De
     u, v = uviterator(nnx, step(X), nny, step(Y))
     visd = RectiGrid((U=u, V=v))
     plan_forward, plan_reverse = create_plans(alg, pgrid, visd, pulse)
-    return FourierDualDomain(imagedomain, visdomain, plan_forward, plan_reverse, algorithm, pulse)
+    return FourierDualDomain(imgdomain, visdomain, plan_forward, plan_reverse, algorithm, pulse)
 end
 
 
@@ -50,10 +50,10 @@ struct FFTPlan{A<:FFTAlg,P, PI} <: AbstractPlan
     phases::PI
 end
 
-function create_forward_plan(alg::FFTAlg, imagedomain::AbstractRectiGrid, visdomain::AbstractRectiGrid, pulse)
-    pimg = padimage(ComradeBase.allocate_immap(imagedomain), alg)
+function create_forward_plan(alg::FFTAlg, imgdomain::AbstractRectiGrid, visdomain::AbstractRectiGrid, pulse)
+    pimg = padimage(ComradeBase.allocate_imgmap(imgdomain), alg)
     plan = plan_fft(pimg; flags = alg.flags)
-    (;X, Y) = imagedomain
+    (;X, Y) = imgdomain
     x0 = first(X)
     y0 = first(Y)
     (;U, V) = visdomain
