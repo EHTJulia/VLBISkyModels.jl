@@ -75,7 +75,7 @@ ComradeBase.dims
 ComradeBase.named_dims
 ComradeBase.axisdims
 ComradeBase.stokes
-ComradeBase.domaingrid
+ComradeBase.domainpoints
 ComradeBase.fieldofview
 ComradeBase.pixelsizes
 ComradeBase.phasecenter
