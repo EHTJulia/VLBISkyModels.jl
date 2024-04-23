@@ -54,7 +54,7 @@ Base.eltype(::ContinuousImage{A, P}) where {A,P} = eltype(A)
 
 Base.getindex(img::ContinuousImage, args...) = getindex(parent(img), args...)
 Base.axes(m::ContinuousImage) = axes(parent(m))
-ComradeBase.domainpoints(m::ContinuousImage) = domaingrid(parent(m))
+ComradeBase.domainpoints(m::ContinuousImage) = domainpoints(parent(m))
 ComradeBase.named_dims(m::ContinuousImage) = named_dims(parent(m))
 ComradeBase.axisdims(m::ContinuousImage) = axisdims(parent(m))
 
@@ -98,7 +98,7 @@ function intensity_point(m::ContinuousImage, p)
     dx, dy = pixelsizes(m.img)
     sum = zero(eltype(m.img))
     ms = stretched(m.kernel, dx, dy)
-    @inbounds for (I, p0) in pairs(domaingrid(m.img))
+    @inbounds for (I, p0) in pairs(domainpoints(m.img))
         dp = (X=(p.X - p0.X), Y=(p.Y - p0.Y))
         k = intensity_point(ms, dp)
         sum += m.img[I]*k
@@ -119,3 +119,20 @@ convolved(cimg::AbstractModel, m::ContinuousImage) = convolved(m, cimg)
                             ))
     return ModifiedModel{typeof(m), typeof(t)}(m, t)
 end
+
+function visibilitymap_numeric(m::ContinuousImage, grid::AbstractFourierDualDomain)
+    # We need to make sure that the grid is the same size as the image
+    checkgrid(axisdims(m), imgdomain(grid))
+    img = parent(m)
+    vis = applyft(forward_plan(grid), img)
+    return vis
+end
+
+function checkgrid(imgdims, grid)
+    !(dims(imgdims) == dims(grid)) && throw(ArgumentError(
+        "The image dimensions in `ContinuousImage`\n"*
+        "and the visibility grid passed to `visibilitymap`\n"*
+        "do not match. This is not currently supported."))
+end
+ChainRulesCore.@non_differentiable checkgrid(::Any, ::Any)
+EnzymeRules.inactive(::typeof(checkgrid), args...) = nothing
