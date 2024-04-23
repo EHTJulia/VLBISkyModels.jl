@@ -46,8 +46,7 @@ function create_interpolator(U, V, vis::AbstractArray{<:Complex}, pulse)
     p2 = BicubicInterpolator(U, V, imag(vis), NoBoundaries())
     function (u,v)
         pl = visibility_point(pulse, (U=u, V=v))
-        #- sign because AIPSCC is 2pi i
-        return pl*(p1(u,v) - 1im*p2(u,v))
+        return pl*(p1(u,v) + 1im*p2(u,v))
     end
 end
 
@@ -68,12 +67,11 @@ function create_interpolator(U, V, vis::StructArray{<:StokesParams}, pulse)
 
     function (u,v)
         pl = visibility_point(pulse, (U=u, V=v))
-        #- sign because AIPSCC is 2pi i
         return StokesParams(
-            pI_real(u,v)*pl - 1im*pI_imag(u,v)*pl,
-            pQ_real(u,v)*pl - 1im*pQ_imag(u,v)*pl,
-            pU_real(u,v)*pl - 1im*pU_imag(u,v)*pl,
-            pV_real(u,v)*pl - 1im*pV_imag(u,v)*pl,
+            pI_real(u,v)*pl + 1im*pI_imag(u,v)*pl,
+            pQ_real(u,v)*pl + 1im*pQ_imag(u,v)*pl,
+            pU_real(u,v)*pl + 1im*pU_imag(u,v)*pl,
+            pV_real(u,v)*pl + 1im*pV_imag(u,v)*pl,
         )
     end
 end

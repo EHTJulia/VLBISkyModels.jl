@@ -29,7 +29,6 @@ function unpack(m::ComradeBase.AbstractModel)
     return ntfromstruct(m)
 end
 
-include(joinpath(@__DIR__, "methods.jl"))
 include(joinpath(@__DIR__, "pulse.jl"))
 include(joinpath(@__DIR__, "geometric_models.jl"))
 include(joinpath(@__DIR__, "modifiers.jl"))

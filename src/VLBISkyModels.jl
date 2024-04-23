@@ -17,6 +17,7 @@ using PaddedViews
 using Reexport
 using RecipesBase
 using SpecialFunctions
+import Static
 using StaticArrays
 using StructArrays
 using LinearAlgebra
@@ -42,7 +43,7 @@ Converts a number from micro-arcseconds (μas) to rad
 
 export linearpol, mbreve, evpa, rad2μas, μas2rad, create_cache
 
-using ComradeBase: AbstractDomain, AbstractRectiGrid,
+using ComradeBase: AbstractDomain, AbstractSingleDomain, AbstractRectiGrid,
                    AbstractModel, AbstractPolarizedModel,
                    UnstructuredDomain, RectiGrid
 

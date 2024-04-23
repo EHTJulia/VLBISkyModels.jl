@@ -36,6 +36,7 @@ end
 ComradeBase.ispolarized(::Type{<:ContinuousImage{A}}) where {A<:StokesIntensityMap} = IsPolarized()
 ComradeBase.ispolarized(::Type{<:ContinuousImage{A}}) where {A<:IntensityMap{<:StokesParams}} = IsPolarized()
 ComradeBase.ispolarized(::Type{<:ContinuousImage{A}}) where {A<:IntensityMap{<:Real}} = NotPolarized()
+ComradeBase.flux(m::ContinuousImage) = flux(parent(m))*flux(m.kernel)
 
 ComradeBase.stokes(cimg::ContinuousImage, v) = ContinuousImage(stokes(parent(cimg), v), cimg.kernel)
 ComradeBase.centroid(m::ContinuousImage) = centroid(parent(m))

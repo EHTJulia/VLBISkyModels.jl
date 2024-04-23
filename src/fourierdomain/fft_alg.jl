@@ -100,6 +100,25 @@ function applyft(plan::FFTPlan, img::AbstractArray{<:StokesParams})
     return StructArray{StokesParams{eltype(visI)}}((I=visI, Q=visQ, U=visU, V=visV))
 end
 
+@fastmath function phasedecenter!(vis, grid, griduv)
+    (;X, Y) = grid
+    (;U, V) = griduv
+    x0 = first(X)
+    y0 = first(Y)
+    @. vis = conj(vis*cispi(-2 * (U*x0 + V'*y0)))
+    return vis
+end
+
+@fastmath function phasecenter!(vis, grid, griduv)
+    (;X, Y) = grid
+    (;U, V) = griduv
+    x0 = first(X)
+    y0 = first(Y)
+    @. vis = conj(vis)*cispi(2 * (U*x0 + V'*y0))
+    return vis
+end
+
+
 
 
 

@@ -76,16 +76,19 @@ function convolve!(img::SpatialIntensityMap{<:Real}, m::AbstractModel)
     @assert visanalytic(typeof(m)) isa IsAnalytic "Convolving model must have an analytic Fourier transform currently"
     p = plan_rfft(baseimage(img))
 
-    (;X, Y) = imagepixels(img)
     # plan_rfft uses just the positive first axis to respect real conjugate symmetry
+    (;X, Y) = img
     U = rfftfreq(size(img, 1), inv(step(X)))
     V = fftfreq(size(img, 2), inv(step(Y)))
+
+    griduv = RectiGrid((;U, V))
+    puv = domainpoints(griduv)
 
     # TODO maybe ask a user to pass a vis buffer as well?
     vis = p*baseimage(img)
 
     # Conjugate because Comrade uses +2πi exponent
-    vis .*= conj(visibility_point.(Ref(m), U, V', 0, 0))
+    vis .*= conj.(visibility_point.(Ref(m), puv))
     pinv = plan_irfft(vis, size(img, 1))
     mul!(baseimage(img), pinv, vis)
     return img
@@ -130,10 +133,12 @@ end
 """
     smooth(img::SpatialIntensityMap)
 
-Smooths the `img` using a symmetric Gaussian with `FWHM`
+Smooths the `img` using a symmetric Gaussian with σ standard deviation.
+
+For more flexible convolution please see [`convolve`](@ref).
 """
-function smooth(img::SpatialIntensityMap, FWHM::Number)
-    return convolve(img, modify(Gaussian(), Stretch(FWHM)))
+function smooth(img::SpatialIntensityMap, σ::Number)
+    return convolve(img, modify(Gaussian(), Stretch(σ)))
 end
 
 # function convolve(img::IntensityMap, m::AbstractModel)

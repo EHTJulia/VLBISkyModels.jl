@@ -38,11 +38,6 @@ function Base.show(io::IO, m::T) where {T<:CompositeModel}
     print(io, ")")
 end
 
-function visibilitymap(m::CompositeModel, dims::ComradeBase.AbstractDomain)
-    m1 = visibilitymap(m.m1, dims)
-    m2 = visibilitymap(m.m2, dims)
-    return uv_combinator(m).(m1,m2)
-end
 
 radialextent(m::CompositeModel) = max(radialextent(m.m1), radialextent(m.m2))
 
@@ -137,12 +132,16 @@ components(m::CompositeModel{M1,M2}) where
 
 flux(m::AddModel) = flux(m.m1) + flux(m.m2)
 
+_numeric_add(m1, m2, dims) = intensitymap(m1, dims) + intensitymap(m2, dims)
 
-function intensitymap_numeric(m::AddModel, dims::ComradeBase.AbstractDomain)
-    sim1 = intensitymap(m.m1, dims)
-    sim2 = intensitymap(m.m2, dims)
-    return sim1 + sim2
+function intensitymap_numeric(m::AddModel, dims::AbstractDomain)
+    return _numeric_add(m.m1, m.m2, dims)
 end
+
+function intensitymap_numeric(m::AddModel, dims::AbstractFourierDualDomain)
+    return _numeric_add(m.m1, m.m2, dims)
+end
+
 
 
 function intensitymap_numeric!(sim::IntensityMap, m::AddModel)
@@ -165,12 +164,18 @@ end
 #     return _visibilitymap(visanalytic(M), model, u, v, args...)
 # end
 
-
-@inline function visibilitymap_numeric(model::AddModel{M1,M2}, p) where {M1, M2}
-    #f = uv_combinator(model)
+# TODO the fast thing is to add the intensitymaps together and then FT
+# We currently don't handle this case
+@inline function visibilitymap_numeric(model::AddModel{M1,M2}, p::AbstractDomain) where {M1, M2}
     return _visibilitymap(visanalytic(M1), model.m1, p) .+
            _visibilitymap(visanalytic(M2), model.m2, p)
 end
+
+@inline function visibilitymap_numeric(model::AddModel{M1,M2}, p::AbstractFourierDualDomain) where {M1, M2}
+    return _visibilitymap(visanalytic(M1), model.m1, p) .+
+           _visibilitymap(visanalytic(M2), model.m2, p)
+end
+
 
 # @inline function _visibilitymap(::IsAnalytic, model::CompositeModel, u::AbstractArray, v::AbstractArray, args...)
 #     f = uv_combinator(model)
@@ -258,11 +263,10 @@ smoothed(m, σ::Number) = convolved(m, stretched(Gaussian(), σ, σ))
 
 flux(m::ConvolvedModel) = flux(m.m1)*flux(m.m2)
 
-@inline function visibilitymap_numeric(model::ConvolvedModel{M1,M2}, p) where {M1, M2}
+@inline function visibilitymap_numeric(model::ConvolvedModel{M1,M2}, p::AbstractDomain) where {M1, M2}
     return _visibilitymap(visanalytic(M1), model.m1, p).*
            _visibilitymap(visanalytic(M2), model.m2, p)
 end
-
 
 # function intensitymap_numeric(model::ConvolvedModel, dims::ComradeBase.AbstractDomain)
 #     (;X, Y) = dims

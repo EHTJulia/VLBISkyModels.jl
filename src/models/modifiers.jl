@@ -340,11 +340,18 @@ function modify_uv(model, transform::Tuple, u::AbstractVector, v::AbstractVector
 end
 
 
-function visibilitymap_analytic(m::ModifiedModel, p::AbstractDomain)
+function visibilitymap_analytic(m::ModifiedModel, p::AbstractFourierDualDomain)
+    vis = allocate_vismap(m, visdomain(p))
+    visibilitymap_analytic!(vis, m)
+    return vis
+end
+
+function visibilitymap_analytic(m::ModifiedModel, p::AbstractSingleDomain)
     vis = allocate_vismap(m, p)
     visibilitymap_analytic!(vis, m)
     return vis
 end
+
 
 
 function __extract_tangent(dm::ModifiedModel)
@@ -598,11 +605,11 @@ end
 
 
 const ScalingTransform = Union{Shift, Renormalize}
-function visibilitymap_numeric(m::ModifiedModel{M, T}, u, v, time, freq) where {M, N, T<: NTuple{N,<:ScalingTransform}}
+function visibilitymap_numeric(m::ModifiedModel{M, T}, p::AbstractFourierDualDomain) where {M, N, T<: NTuple{N,<:ScalingTransform}}
     ispol = ispolarized(M)
-
-    vbase = visibilitymap_numeric(m.model, u, v, time, freq)
-    return _apply_scaling(ispol, m.transform, vbase, u, v)
+    vbase = visibilitymap_numeric(m.model, p)
+    puv = visdomain(p)
+    return _apply_scaling(ispol, m.transform, vbase, puv.U, puv.V)
 end
 
 function _apply_scaling(mbase, t::Tuple, vbase, u, v)

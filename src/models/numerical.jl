@@ -11,7 +11,7 @@ function AbstractFFTs.ifft!(vis::AbstractArray{<:StokesParams}, region)
     return StructArray{StokesParams{eltype(I)}}((vI, vQ, vU, vV))
 end
 
-
+# Special because I just want to do the straight FFT thing no matter what
 function intensitymap_numeric!(img::IntensityMap{T}, m::AbstractModel) where {T<:Real}
     grid = axisdims(img)
     griduv = uvgrid(grid)
@@ -34,11 +34,12 @@ end
 
 
 function intensitymap_numeric(m::AbstractModel, grid::AbstractRectiGrid)
-    img = allocate_vismap(m, grid)
+    img = allocate_imgmap(m, grid)
     intensitymap_numeric!(img, m)
     return img
 end
 
+# Special because I just want to do the straight FFT thing no matter what
 function visibilitymap_numeric!(vis::IntensityMap{T}, m::AbstractModel) where {T<:Complex}
     grid = axisdims(vis)
     gridxy = xygrid(grid)

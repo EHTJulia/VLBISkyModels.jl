@@ -8,7 +8,7 @@ abstract type FourierTransform end
 This defines an abstract cache that can be used to
 hold or precompute some computations.
 """
-abstract type AbstractFourierDualDomain end
+abstract type AbstractFourierDualDomain <: AbstractDomain end
 
 forward_plan(g::AbstractFourierDualDomain) = getfield(g, :plan_forward)
 reverse_plan(g::AbstractFourierDualDomain) = getfield(g, :plan_reverse)
@@ -29,7 +29,7 @@ end
 
 
 
-struct FourierDualDomain{ID<:AbstractDomain, VD<:AbstractDomain, A<:FourierTransform, PI<:AbstractPlan, PD<:AbstractPlan, P} <: AbstractFourierDualDomain
+struct FourierDualDomain{ID<:AbstractSingleDomain, VD<:AbstractSingleDomain, A<:FourierTransform, PI<:AbstractPlan, PD<:AbstractPlan, P} <: AbstractFourierDualDomain
     imgdomain::ID
     visdomain::VD
     algorithm::A
@@ -83,9 +83,10 @@ Note the other dimensions are not changed.
 For the inverse see [`xygrid`](@ref)
 """
 function uvgrid(grid::AbstractRectiGrid)
+    (;X, Y) = grid
     uu,vv = uviterator(length(X), step(X), length(Y), step(Y))
     puv = merge((U=uu, V=vv), delete(named_dims(grid), (:X, :Y)))
-    g = RectiGrid(puv, executor(grid), header(grid))
+    g = RectiGrid(puv; executor=executor(grid), header=header(grid))
     return g
 end
 
@@ -125,7 +126,7 @@ function xygrid(grid::AbstractRectiGrid)
 end
 
 
-function FourierDualDomain(imgdomain::AbstractDomain, visdomain::AbstractDomain, algorithm, pulse=DeltaPulse())
+function FourierDualDomain(imgdomain::AbstractSingleDomain, visdomain::AbstractSingleDomain, algorithm, pulse=DeltaPulse())
     plan_forward, plan_reverse = create_plans(algorithm, imgdomain, visdomain, pulse)
     return FourierDualDomain(imgdomain, visdomain, algorithm, plan_forward, plan_reverse, pulse)
 end
@@ -154,8 +155,9 @@ function intensitymap_analytic(m::AbstractModel, grid::AbstractFourierDualDomain
 end
 
 function intensitymap_numeric(m::AbstractModel, grid::AbstractFourierDualDomain)
-    vis = visibilitymap_analytic(m, visdomain(grid))
-    img = applyift(reverse_plan(grid), vis)
+    # This is because I want to make a grid that is the same size as the image
+    # so we revert to the standard method and not what ever was cached
+    img = intensitymap_numeric(m, imgdomain(grid))
     return img
 end
 

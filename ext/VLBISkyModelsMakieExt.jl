@@ -239,7 +239,7 @@ function Makie.plot!(plot::PolImage)
 
         lenmul = 10*dx/nvec/maxL.*length_norm
 
-        dimg = IntensityMap(img, (;X, Y))
+        dimg = IntensityMap(img, RectiGrid((;X, Y)))
         for y in Yvec
             for x in Xvec
                 s = dimg[X=Near(x), Y=Near(y)]
