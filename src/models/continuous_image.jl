@@ -71,15 +71,9 @@ function ContinuousImage(im::AbstractMatrix, g::AbstractRectiGrid, pulse)
     return ContinuousImage(img, pulse)
 end
 
-function InterpolatedModel(model::ContinuousImage, cache)
-    img = model.img
-    pimg = padimage(img, cache.alg)
-    vis = applyfft(cache.plan, pimg)
-    (;X, Y) = cache.grid
-    (;U, V) = cache.gridUV
-    vispc = phasecenter(vis, X, Y, U, V)
-    pulse = cache.pulse
-    sitp = create_interpolator(U, V, vispc, stretched(pulse, step(X), step(Y)))
+function InterpolatedModel(model::ContinuousImage, d::FourierDualDomain{<:AbstractRectiGrid, <:AbstractSingleDomain, <:FFTAlg})
+    img = parent(model)
+    sitp = build_intermodel(img, forward_plan(d), algorithm(d), model.kernel)
     return InterpolatedModel{typeof(model), typeof(sitp)}(model, sitp)
 end
 
@@ -128,6 +122,13 @@ function visibilitymap_numeric(m::ContinuousImage, grid::AbstractFourierDualDoma
     vis = applyft(forward_plan(grid), img)
     return vis
 end
+
+# Make a special pass through for this as well
+function visibilitymap_numeric(m::ContinuousImage, grid::FourierDualDomain{GI, GV, <:FFTAlg}) where {GI, GV}
+    minterp = InterpolatedModel(m, grid)
+    return visibilitymap(minterp, visdomain(grid))
+end
+
 
 function checkgrid(imgdims, grid)
     !(dims(imgdims) == dims(grid)) && throw(ArgumentError(

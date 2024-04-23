@@ -2,7 +2,7 @@ export InterpolatedModel
 
 struct InterpolatedModel{M<:AbstractModel, SI} <: AbstractModel
     model::M
-    sitp::SV
+    sitp::SI
 end
 
 @inline visanalytic(::Type{<:InterpolatedModel}) = IsAnalytic()
@@ -18,20 +18,27 @@ function Base.show(io::IO, m::InterpolatedModel)
 end
 
 
-function InterpolatedModel(model::AbstractModel, grid::AbstractRectiGrid)
-    dual = FourierDualDomain(grid)
+function InterpolatedModel(model::AbstractModel, grid::AbstractRectiGrid; alg::FFTAlg=FFTAlg(), pulse=DeltaPulse())
+    dual = FourierDualDomain(grid, alg, pulse)
     InterpolatedModel(model, dual)
+end
+
+function build_intermodel(img::IntensityMap, plan, alg::FFTAlg, pulse)
+    vis = applyft(plan, img)
+    grid = axisdims(img)
+    griduv = build_padded_uvgrid(grid, alg)
+    phasecenter!(vis, grid, griduv)
+    (;X, Y) = grid
+    (;U, V) = griduv
+    sitp = create_interpolator(U, V, vis, stretched(pulse, step(X), step(Y)))
+    return sitp
 end
 
 function InterpolatedModel(
         model::AbstractModel,
-        d::FourierDualDomain{<:AbstractRectiGrid, <:AbstractRectiGrid, <:FFTAlg})
+        d::FourierDualDomain{<:AbstractRectiGrid, <:AbstractSingleDomain, <:FFTAlg})
         img = intensitymap(model, imgdomain(d))
-        pimg = padimage(img, algorithm(d))
-        vis = applyft(forward_plan(d), pimg)
-        (;X, Y) = imgdomain(d)
-        (;U, V) = visdomain(d)
-        sitp = create_interpolator(U, V, vis, stretched(pulse(d), step(X), step(Y)))
+        sitp = build_intermodel(img, forward_plan(d), algorithm(d), pulse(d))
         return InterpolatedModel{typeof(model), typeof(sitp)}(model, sitp)
 end
 

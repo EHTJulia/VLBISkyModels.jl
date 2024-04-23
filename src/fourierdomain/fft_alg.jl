@@ -26,16 +26,26 @@ Base.@kwdef struct FFTAlg{T} <: FourierTransform
     flags::T = FFTW.ESTIMATE
 end
 
-function FourierDualDomain(imgdomain::AbstractRectiGrid, alg::FFTAlg, pulse=DeltaPulse())
-    # construct the uvgrid for the padded image
+function build_padded_uvgrid(grid::AbstractRectiGrid, alg::FFTAlg)
     padfac = alg.padfac
-    ny,nx = size(imgdomain)
+    (;X, Y) = grid
+    ny,nx = size(grid)
     nnx = nextprod((2,3,5,7), padfac*nx)
     nny = nextprod((2,3,5,7), padfac*ny)
     u, v = uviterator(nnx, step(X), nny, step(Y))
-    visd = RectiGrid((U=u, V=v))
-    plan_forward, plan_reverse = create_plans(alg, pgrid, visd, pulse)
+    return (U=u, V=v)
+end
+
+function FourierDualDomain(imgdomain::AbstractRectiGrid, alg::FFTAlg, pulse=DeltaPulse())
+    # construct the uvgrid for the padded image
+    griduv = uvgrid(imgdomain)
+    plan_forward, plan_reverse = create_plans(alg, imgdomain, griduv, pulse)
     return FourierDualDomain(imgdomain, visdomain, plan_forward, plan_reverse, algorithm, pulse)
+end
+
+function visibilitymap_numeric(m::AbstractModel, grid::FourierDualDomain{GI, GV, <:FFTAlg}) where {GI, GV}
+    minterp = InterpolatedModel(m, grid)
+    return visibilitymap(minterp, visdomain(grid))
 end
 
 
@@ -44,21 +54,15 @@ end
 The cache used when the `FFT` algorithm is used to compute
 visibilties. This is an internal type and is not part of the public API
 """
-struct FFTPlan{A<:FFTAlg,P, PI} <: AbstractPlan
+struct FFTPlan{A<:FFTAlg,P} <: AbstractPlan
     alg::A # FFT algorithm
     plan::P # FFT plan or matrix
-    phases::PI
 end
 
-function create_forward_plan(alg::FFTAlg, imgdomain::AbstractRectiGrid, visdomain::AbstractRectiGrid, pulse)
-    pimg = padimage(ComradeBase.allocate_imgmap(imgdomain), alg)
+function create_forward_plan(alg::FFTAlg, imgdomain::AbstractRectiGrid, ::AbstractSingleDomain, pulse)
+    pimg = padimage(ComradeBase.allocate_map(Array{eltype(imgdomain)}, imgdomain), alg)
     plan = plan_fft(pimg; flags = alg.flags)
-    (;X, Y) = imgdomain
-    x0 = first(X)
-    y0 = first(Y)
-    (;U, V) = visdomain
-    phases = cispi.(2 * (U.*x0 .+ V'.*y0))
-    return FFTPlan(alg, plan, phases)
+    return FFTPlan(alg, plan)
 end
 
 function padimage(img::IntensityMap, alg::FFTAlg)
@@ -84,7 +88,7 @@ FFTW.plan_fft(A::AbstractArray{<:StokesParams}, args...) = plan_fft(stokes(A, :I
 function inverse_plan(plan::FFTPlan)
     a = zeros(eltype(plan.plan), size(plan.plan))
     ip = plan_ifft(a; flags = plan.alg.flags)
-    return FFTPlan(plan.alg, ip, conj.(plan.phases))
+    return FFTPlan(plan.alg, ip)
 end
 
 function applyft(plan::FFTPlan, img::AbstractArray{<:Number})

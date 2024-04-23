@@ -120,8 +120,8 @@ For the inverse see [`uvgrid`](@ref)
 function xygrid(grid::AbstractRectiGrid)
     (;U, V) = grid
     x, y = xyiterator(length(U), step(U), length(V), step(V))
-    puv = merge((X=x, Y=y), delete(named_dims(grid), (:U, :V)))
-    g = RectiGrid(puv, executor(grid), header(grid))
+    pxy = merge((X=x, Y=y), delete(named_dims(grid), (:U, :V)))
+    g = RectiGrid(pxy, executor(grid), header(grid))
     return g
 end
 

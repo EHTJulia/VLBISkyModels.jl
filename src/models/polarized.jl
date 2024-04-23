@@ -59,7 +59,7 @@ end
     return StokesParams(si, sq, su, sv)
 end
 
-function visibilitymap_analytic(pimg::PolarizedModel, p)
+function visibilitymap_analytic(pimg::PolarizedModel, p::AbstractSingleDomain)
     si = visibilitymap_analytic(stokes(pimg, :I), p)
     sq = visibilitymap_analytic(stokes(pimg, :Q), p)
     su = visibilitymap_analytic(stokes(pimg, :U), p)
@@ -76,7 +76,7 @@ split_stokes(pimg::PolarizedModel) = (stokes(pimg, :I), stokes(pimg, :Q), stokes
 
 # If the model is numeric we don't know whether just a component is numeric or all of them are so
 # we need to re-dispatch
-function visibilitymap_numeric(pimg::PolarizedModel, p)
+function visibilitymap_numeric(pimg::PolarizedModel, p::AbstractFourierDualDomain)
     mI, mQ, mU, mV = split_stokes(pimg)
     si = _visibilitymap(visanalytic(typeof(mI)), mI, p)
     sq = _visibilitymap(visanalytic(typeof(mQ)), mQ, p)
@@ -93,12 +93,12 @@ function intensitymap!(pimg::Union{StokesIntensityMap, IntensityMap{<:StokesPara
     return pimg
 end
 
-function intensitymap(pmodel::PolarizedModel, dims::AbstractDomain)
+function intensitymap(pmodel::PolarizedModel, dims::AbstractSingleDomain)
     imgI = baseimage(intensitymap(stokes(pmodel, :I), dims))
     imgQ = baseimage(intensitymap(stokes(pmodel, :Q), dims))
     imgU = baseimage(intensitymap(stokes(pmodel, :U), dims))
     imgV = baseimage(intensitymap(stokes(pmodel, :V), dims))
-    return IntensityMap(StructArray{StokesParams{eltype(imgI)}}((imgI, imgQ, imgU, imgV)), dims)
+    return create_imgmap(StructArray{StokesParams{eltype(imgI)}}((imgI, imgQ, imgU, imgV)), dims)
 end
 
 @inline function convolved(m::PolarizedModel, p::AbstractModel)
