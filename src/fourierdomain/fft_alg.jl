@@ -40,7 +40,7 @@ function FourierDualDomain(imgdomain::AbstractRectiGrid, alg::FFTAlg, pulse=Delt
     # construct the uvgrid for the padded image
     griduv = uvgrid(imgdomain)
     plan_forward, plan_reverse = create_plans(alg, imgdomain, griduv, pulse)
-    return FourierDualDomain(imgdomain, visdomain, plan_forward, plan_reverse, algorithm, pulse)
+    return FourierDualDomain(imgdomain, griduv, alg, plan_forward, plan_reverse, pulse)
 end
 
 function visibilitymap_numeric(m::AbstractModel, grid::FourierDualDomain{GI, GV, <:FFTAlg}) where {GI, GV}

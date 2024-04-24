@@ -18,10 +18,13 @@ function Base.show(io::IO, m::InterpolatedModel)
 end
 
 
-function InterpolatedModel(model::AbstractModel, grid::AbstractRectiGrid; alg::FFTAlg=FFTAlg(), pulse=DeltaPulse())
-    dual = FourierDualDomain(grid, alg, pulse)
+function InterpolatedModel(model::AbstractModel, grid::AbstractRectiGrid; algorithm::FFTAlg=FFTAlg(), pulse=DeltaPulse())
+    dual = FourierDualDomain(grid, algorithm, pulse)
     InterpolatedModel(model, dual)
 end
+
+radialextent(m::InterpolatedModel) = radialextent(m.model)
+flux(m::InterpolatedModel) = flux(m.model)
 
 function build_intermodel(img::IntensityMap, plan, alg::FFTAlg, pulse)
     vis = applyft(plan, img)
