@@ -124,7 +124,7 @@ function ChainRulesCore.rrule(::typeof(visibilitymap_analytic), m::Union{Geometr
 
         dvis = UnstructuredMap(similar(parent(vis)), dg)
         dvis .= unthunk(Δ)
-        rvis = zero(vis)
+        rvis = UnstructuredMap(zero(vis), g)
         d = autodiff(Reverse, visibilitymap_analytic!, Const, Duplicated(rvis, dvis), Active(m))
         dm = getm(d[1])
         tm = __extract_tangent(dm)

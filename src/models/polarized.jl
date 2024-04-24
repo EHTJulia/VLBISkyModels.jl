@@ -76,7 +76,7 @@ split_stokes(pimg::PolarizedModel) = (stokes(pimg, :I), stokes(pimg, :Q), stokes
 
 # If the model is numeric we don't know whether just a component is numeric or all of them are so
 # we need to re-dispatch
-function visibilitymap_numeric(pimg::PolarizedModel, p::AbstractFourierDualDomain)
+function visibilitymap_numeric(pimg::PolarizedModel, p::FourierDualDomain)
     mI, mQ, mU, mV = split_stokes(pimg)
     si = _visibilitymap(visanalytic(typeof(mI)), mI, p)
     sq = _visibilitymap(visanalytic(typeof(mQ)), mQ, p)

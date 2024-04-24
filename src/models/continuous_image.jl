@@ -79,10 +79,6 @@ end
 
 
 
-
-
-ComradeBase.imagepixels(img::ContinuousImage) = axisdims(img)
-
 # IntensityMap will obey the Comrade interface. This is so I can make easy models
 visanalytic(::Type{<:ContinuousImage}) = NotAnalytic() # not analytic b/c we want to hook into FFT stuff
 imanalytic(::Type{<:ContinuousImage}) = IsAnalytic()
@@ -104,16 +100,16 @@ end
 convolved(cimg::ContinuousImage, m::AbstractModel) = ContinuousImage(cimg.img, convolved(cimg.kernel, m))
 convolved(cimg::AbstractModel, m::ContinuousImage) = convolved(m, cimg)
 
-@inline function ModifiedModel(m::ContinuousImage, t::Tuple)
-    doesnot_uv_modify(t) === Static.False() && throw(
-                          ArgumentError(
-                            "ContinuousImage does not support modifying the uv plane."*
-                            "This would require a dynamic grid which is not currently implemented"*
-                            "Transformations like rotations just introduce additional degeneracies,
-                             making imaging more difficult"
-                            ))
-    return ModifiedModel{typeof(m), typeof(t)}(m, t)
-end
+# @inline function ModifiedModel(m::ContinuousImage, t::Tuple)
+#     doesnot_uv_modify(t) === Static.False() && throw(
+#                           ArgumentError(
+#                             "ContinuousImage does not support modifying the uv plane."*
+#                             "This would require a dynamic grid which is not currently implemented"*
+#                             "Transformations like rotations just introduce additional degeneracies,
+#                              making imaging more difficult"
+#                             ))
+#     return ModifiedModel{typeof(m), typeof(t)}(m, t)
+# end
 
 function visibilitymap_numeric(m::ContinuousImage, grid::AbstractFourierDualDomain)
     # We need to make sure that the grid is the same size as the image

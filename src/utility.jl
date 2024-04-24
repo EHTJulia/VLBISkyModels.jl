@@ -118,7 +118,7 @@ end
 function convolve(img::SpatialIntensityMap{<:StokesParams}, m::AbstractModel)
     g = axisdims(img)
     bimg = copy(baseimage(img))
-    cimg = IntensityMap(StructArray(bimg), g)
+    cimg = IntensityMap(StructArray(bimg), g, refdims(img), name(img))
     return convolve!(cimg, m)
 end
 

@@ -2,6 +2,8 @@ export FourierDualDomain
 
 abstract type FourierTransform end
 
+export allocate_imgmap, allocate_vismap
+
 """
     $(TYPEDEF)
 

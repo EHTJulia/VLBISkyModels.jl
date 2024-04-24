@@ -326,7 +326,8 @@ end
     @testset "ExtendedRing" begin
         mr = ExtendedRing(8.0)
         rad = 2.5*VLBISkyModels.radialextent(mr)
-        m = modelimage(mr, imagepixels(rad, rad, 1024, 1024), VLBISkyModels.FFTAlg(padfac=4))
+
+        m = InterpolatedModel(mr, imagepixels(rad, rad, 1024, 1024); algorithm=FFTAlg(padfac=4))
         testmodel(m)
         @inferred VLBISkyModels.intensity_point(mr, (X=0.0, Y=0.0))
     end
@@ -390,9 +391,9 @@ end
         mas = shifted(ma, 0.1, 0.1)
         mbs = shifted(mb, 0.1, 0.1)
         testmodel(mas)
-        testmodel(modelimage(mbs, imagepixels(2*VLBISkyModels.radialextent(mbs),
+        testmodel(InterpolatedModel(mbs, imagepixels(2*VLBISkyModels.radialextent(mbs),
                                               2*VLBISkyModels.radialextent(mbs),
-                                              1024, 1024), FFTAlg()))
+                                              1024, 1024); algorithm=FFTAlg()))
 
         foo(x) = sum(abs2, VLBISkyModels.visibilitymap_analytic(shifted(ma, x[1], x[2]), g))
         x = rand(2)
@@ -409,9 +410,9 @@ end
         @test visibility(m2, p) == visibility(m2inv, p)
         mbs = 3.0*mb
         testmodel(m1)
-        testmodel(modelimage(mbs, imagepixels(2.5*VLBISkyModels.radialextent(mbs),
+        testmodel(InterpolatedModel(mbs, imagepixels(2.5*VLBISkyModels.radialextent(mbs),
                                               2.5*VLBISkyModels.radialextent(mbs),
-                                              1024, 1024), FFTAlg()))
+                                              1024, 1024)))
 
         foo(x) = sum(abs2, VLBISkyModels.visibilitymap_analytic(x[1]*ma, g))
         x = rand(1)
@@ -424,8 +425,8 @@ end
         mas = stretched(ma, 5.0, 4.0)
         mbs = stretched(mb, 5.0, 4.0)
         testmodel(mas)
-        testmodel(modelimage(mbs, imagepixels(2*VLBISkyModels.radialextent(mbs),
-                                              2*VLBISkyModels.radialextent(mbs), 2024, 2024), FFTAlg()),
+        testmodel(InterpolatedModel(mbs, imagepixels(2*VLBISkyModels.radialextent(mbs),
+                                              2*VLBISkyModels.radialextent(mbs), 2024, 2024)),
                                               1024, 1e-3)
 
         foo(x) = sum(abs2, VLBISkyModels.visibilitymap_analytic(stretched(ma, x[1], x[2]), u, v, t, f))
@@ -438,9 +439,9 @@ end
         mas = rotated(ma, π/3)
         mbs = rotated(mb, π/3)
         testmodel(mas)
-        testmodel(modelimage(mbs, imagepixels(2*VLBISkyModels.radialextent(mbs),
+        testmodel(InterpolatedModel(mbs, imagepixels(2*VLBISkyModels.radialextent(mbs),
                                               2*VLBISkyModels.radialextent(mbs),
-                                              1024, 1024), FFTAlg()))
+                                              1024, 1024)))
 
         foo(x) = sum(abs2, VLBISkyModels.visibilitymap_analytic(rotated(ma, x[1]), u, v, t, f))
         x = rand(1)
@@ -454,9 +455,9 @@ end
         @test typeof(mas2) === typeof(mas)
         mbs = rotated(stretched(shifted(mb, 0.5, 0.5), 5.0, 4.0), π/3)
         testmodel(mas)
-        testmodel(modelimage(mbs, imagepixels(2*VLBISkyModels.radialextent(mbs),
+        testmodel(InterpolatedModel(mbs, imagepixels(2*VLBISkyModels.radialextent(mbs),
                                               2*VLBISkyModels.radialextent(mbs), 2048, 2048),
-                                              FFTAlg()),
+                                              ),
                                               1024, 1e-3)
 
         foo(x) = sum(abs2, VLBISkyModels.visibilitymap_analytic(modify(ma, Shift(x[1], x[2]), Stretch(x[3], x[4]), Rotate(x[5]), Renormalize(x[6])), u, v, t, f))
@@ -479,11 +480,9 @@ end
 
 
     @testset "Add models" begin
-        img = IntensityMap(
-                zeros(1024, 1024),
-                20.0,20.0
-                )
+        g = imagepixels(20.0, 20.0, 1024, 1024)
         mt1 = m1 + m2
+        img = allocate_imgmap(mt1, g)
         mt2 = shifted(m1, 1.0, 1.0) + m2
         mt3 = shifted(m1, 1.0, 1.0) + 0.5*stretched(m2, 0.9, 0.8)
         mc = VLBISkyModels.components(mt1)
@@ -497,26 +496,25 @@ end
         testgrad(foo, x)
 
 
-        testmodel(modelimage(mt1, axisdims(img), FFTAlg()))
-        testmodel(modelimage(mt2, axisdims(img), FFTAlg()))
-        testmodel(modelimage(mt3, axisdims(img), FFTAlg()))
+        testmodel(InterpolatedModel(mt1, axisdims(img)))
+        testmodel(InterpolatedModel(mt2, axisdims(img)))
+        testmodel(InterpolatedModel(mt3, axisdims(img)))
     end
 
     @testset "Convolved models" begin
-        img = IntensityMap(
-                zeros(1024, 1024),
-                20.0,20.0
-                )
+        g = imagepixels(20.0, 20.0, 1024, 1024)
         mt1 = convolved(m1, m2)
+        img = allocate_imgmap(mt1, g)
+
         mt2 = convolved(shifted(m1, 1.0, 1.0), m2)
         mt3 = convolved(shifted(m1, 1.0, 1.0), 0.5*stretched(m2, 0.9, 0.8))
         mc = VLBISkyModels.components(mt1)
         @test mc[1] === m1
         @test mc[2] === m2
 
-        testmodel(modelimage(mt1, axisdims(img), FFTAlg()))
-        testmodel(modelimage(mt2, axisdims(img), FFTAlg()))
-        testmodel(modelimage(mt3, axisdims(img), FFTAlg()))
+        testmodel(InterpolatedModel(mt1, axisdims(img)))
+        testmodel(InterpolatedModel(mt2, axisdims(img)))
+        testmodel(InterpolatedModel(mt3, axisdims(img)))
 
         foo(x) = sum(abs2, VLBISkyModels.visibilitymap_analytic(convolved(x[1]*stretched(Disk(), x[2], x[3]),stretched(Ring(), x[4], x[4])), u, v, t, f))
         x = rand(4)
@@ -526,18 +524,17 @@ end
     end
 
     @testset "All composite" begin
-        img = IntensityMap(
-                zeros(1024, 1024),
-                20.0,20.0
-                )
+        g = imagepixels(20.0, 20.0, 1024, 1024)
 
         mt = m1 + convolved(m1, m2)
+        img = allocate_imgmap(mt, g)
+
         mc = VLBISkyModels.components(mt)
         @test mc[1] === m1
         @test mc[2] === m1
         @test mc[3] === m2
 
-        testmodel(modelimage(mt, axisdims(img), FFTAlg()))
+        testmodel(InterpolatedModel(mt, axisdims(img)))
 
         foo(x) = sum(abs2, VLBISkyModels.visibilitymap_analytic(smoothed(x[1]*stretched(Disk(), x[2], x[3]), x[4]) + stretched(Ring(), x[5], x[4]), u, v, t, f))
         x = rand(5)
@@ -612,11 +609,11 @@ end
     @test evpa(m, p0) ≈ evpa(img[64, 64])
     map((x,y)->(@test x≈y), polellipse(m, p0), polellipse(img[64, 64]))
 
-
-    pI = IntensityMap(zeros(1024,1024), 100.0, 100.0)
-    pQ = similar(I)
-    pU = similar(I)
-    pV = similar(I)
+    g = imagepixels(100.0, 100.0, 1024, 1024)
+    pI = IntensityMap(zeros(1024,1024), g)
+    pQ = similar(mI)
+    pU = similar(mI)
+    pV = similar(mI)
     pimg1 = StokesIntensityMap(pI,pQ,pU,pV)
     intensitymap!(pimg1, m)
     pimg2 = intensitymap(m, axisdims(pI))
@@ -720,7 +717,7 @@ end
 end
 
 
-@testset "modelimage cache" begin
+@testset "FourierDualDomain" begin
     g = imagepixels(μas2rad(12.0), μas2rad(12.0), 24, 12)
     img = intensitymap(rotated(stretched(Gaussian(), μas2rad(2.0), μas2rad(1.0)), π/8), g)
     u1 = 10e9*rand(100) .- 5e9
