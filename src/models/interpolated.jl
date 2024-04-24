@@ -27,15 +27,15 @@ This is useful to construct models that aren't directly representable in the Fou
 This is mostly used for testing and debugging purposes. In general people should use the
 [`FourierDualDomain`](@ref) functionality to compute the Fourier transform of a model.
 """
-function InterpolatedModel(model::AbstractModel, grid::AbstractRectiGrid; algorithm::FFTAlg=FFTAlg(), pulse=DeltaPulse())
-    dual = FourierDualDomain(grid, algorithm, pulse)
+function InterpolatedModel(model::AbstractModel, grid::AbstractRectiGrid; algorithm::FFTAlg=FFTAlg())
+    dual = FourierDualDomain(grid, algorithm)
     InterpolatedModel(model, dual)
 end
 
 radialextent(m::InterpolatedModel) = radialextent(m.model)
 flux(m::InterpolatedModel) = flux(m.model)
 
-function build_intermodel(img::IntensityMap, plan, alg::FFTAlg, pulse)
+function build_intermodel(img::IntensityMap, plan, alg::FFTAlg, pulse=DeltaPulse())
     vis = applyft(plan, img)
     grid = axisdims(img)
     griduv = build_padded_uvgrid(grid, alg)
@@ -50,7 +50,7 @@ function InterpolatedModel(
         model::AbstractModel,
         d::FourierDualDomain{<:AbstractRectiGrid, <:AbstractSingleDomain, <:FFTAlg})
         img = intensitymap(model, imgdomain(d))
-        sitp = build_intermodel(img, forward_plan(d), algorithm(d), pulse(d))
+        sitp = build_intermodel(img, forward_plan(d), algorithm(d))
         return InterpolatedModel{typeof(model), typeof(sitp)}(model, sitp)
 end
 

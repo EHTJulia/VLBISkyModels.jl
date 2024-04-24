@@ -23,23 +23,21 @@ abstract type AbstractPlan end
 getplan(p::AbstractPlan) = getfield(p, :plan)
 getphases(p::AbstractPlan) = getfield(p, :phases)
 
-function create_plans(algorithm, imgdomain, visdomain, pulse)
-    plan_forward = create_forward_plan(algorithm, imgdomain, visdomain, pulse)
+function create_plans(algorithm, imgdomain, visdomain)
+    plan_forward = create_forward_plan(algorithm, imgdomain, visdomain)
     plan_reverse = inverse_plan(plan_forward)
     return plan_forward, plan_reverse
 end
 
 
 
-struct FourierDualDomain{ID<:AbstractSingleDomain, VD<:AbstractSingleDomain, A<:FourierTransform, PI<:AbstractPlan, PD<:AbstractPlan, P} <: AbstractFourierDualDomain
+struct FourierDualDomain{ID<:AbstractSingleDomain, VD<:AbstractSingleDomain, A<:FourierTransform, PI<:AbstractPlan, PD<:AbstractPlan} <: AbstractFourierDualDomain
     imgdomain::ID
     visdomain::VD
     algorithm::A
     plan_forward::PI
     plan_reverse::PD
-    pulse::P
 end
-pulse(g::FourierDualDomain)  = getfield(g, :pulse)
 
 function Base.show(io::IO, mime::MIME"text/plain", g::FourierDualDomain)
     printstyled(io, "FourierDualDomain("; bold=true)
@@ -58,16 +56,13 @@ function Serialization.serialize(s::Serialization.AbstractSerializer, cache::Fou
     Serialization.serialize(s, cache.algorithm)
     Serialization.serialize(s, cache.imgdomain)
     Serialization.serialize(s, cache.visdomain)
-    Serialization.serialize(s, cache.pulse)
-
 end
 
 function Serialization.deserialize(s::AbstractSerializer, ::Type{<:FourierDualDomain})
     alg = Serialization.deserialize(s)
     imd = Serialization.deserialize(s)
     vid = Serialization.deserialize(s)
-    pul = Serialization.deserialize(s)
-    return FourierDualDomain(imd, vid, alg, pul)
+    return FourierDualDomain(imd, vid, alg)
 end
 
 """
@@ -139,21 +134,19 @@ function xygrid(grid::AbstractRectiGrid)
 end
 
 """
-    FourierDualDomain(imgdomain::AbstractSingleDomain, visdomain::AbstractSingleDomain, algorithm, pulse=DeltaPulse())
+    FourierDualDomain(imgdomain::AbstractSingleDomain, visdomain::AbstractSingleDomain, algorithm)
 
 Constructs a set of grids that live in the image and visibility domains. The transformation between the grids
 is specified by the `algorithm` which is a subtype of `VLBISkyModels.FourierTransform`.
-The `pulse` is a function that specified the convolution kernel to use in the Fourier transform.
 
 # Arguments
  - `imgdomain`: The image domain grid
  - `visdomain`: The visibility domain grid
  - `algorithm`: The Fourier transform algorithm to use see `subtypes(VLBISkyModels.FourierTransform)` for a list
- - `pulse`: The convolution kernel to use in the Fourier transform. Default is the delta function.
 """
-function FourierDualDomain(imgdomain::AbstractSingleDomain, visdomain::AbstractSingleDomain, algorithm, pulse=DeltaPulse())
-    plan_forward, plan_reverse = create_plans(algorithm, imgdomain, visdomain, pulse)
-    return FourierDualDomain(imgdomain, visdomain, algorithm, plan_forward, plan_reverse, pulse)
+function FourierDualDomain(imgdomain::AbstractSingleDomain, visdomain::AbstractSingleDomain, algorithm)
+    plan_forward, plan_reverse = create_plans(algorithm, imgdomain, visdomain)
+    return FourierDualDomain(imgdomain, visdomain, algorithm, plan_forward, plan_reverse)
 end
 
 function create_vismap(arr::AbstractArray, g::AbstractFourierDualDomain)

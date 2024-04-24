@@ -37,7 +37,7 @@ function build_padded_uvgrid(grid::AbstractRectiGrid, alg::FFTAlg)
 end
 
 """
-    FourierDualDomain(imgdomain::AbstractRectiGrid, alg::FFTAlg, pulse=DeltaPulse())
+    FourierDualDomain(imgdomain::AbstractRectiGrid, alg::FFTAlg)
 
 Constructs a FourierDualDomain that uses the FFT algorithm to compute the transformation.
 For this no visibilty domain is specified since we assume it is the default grid from the
@@ -46,13 +46,12 @@ FFT with padding specified in [`FFTAlg`](@ref).
 ## Arguments
 - `imgdomain`: The image domain grid
 - `alg`: The FFT algorithm to use
-- `pulse`: The convolution kernel to use in the Fourier transform
 """
-function FourierDualDomain(imgdomain::AbstractRectiGrid, alg::FFTAlg, pulse=DeltaPulse())
+function FourierDualDomain(imgdomain::AbstractRectiGrid, alg::FFTAlg)
     # construct the uvgrid for the padded image
     griduv = uvgrid(imgdomain)
-    plan_forward, plan_reverse = create_plans(alg, imgdomain, griduv, pulse)
-    return FourierDualDomain(imgdomain, griduv, alg, plan_forward, plan_reverse, pulse)
+    plan_forward, plan_reverse = create_plans(alg, imgdomain, griduv)
+    return FourierDualDomain(imgdomain, griduv, alg, plan_forward, plan_reverse)
 end
 
 function visibilitymap_numeric(m::AbstractModel, grid::FourierDualDomain{GI, GV, <:FFTAlg}) where {GI, GV}
@@ -71,7 +70,7 @@ struct FFTPlan{A<:FFTAlg,P} <: AbstractPlan
     plan::P # FFT plan or matrix
 end
 
-function create_forward_plan(alg::FFTAlg, imgdomain::AbstractRectiGrid, ::AbstractSingleDomain, pulse)
+function create_forward_plan(alg::FFTAlg, imgdomain::AbstractRectiGrid, ::AbstractSingleDomain)
     pimg = padimage(ComradeBase.allocate_map(Array{eltype(imgdomain)}, imgdomain), alg)
     plan = plan_fft(pimg; flags = alg.flags)
     return FFTPlan(alg, plan)

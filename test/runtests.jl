@@ -17,6 +17,13 @@ function FiniteDifferences.to_vec(k::IntensityMap)
     return v, back
 end
 
+function FiniteDifferences.to_vec(k::UnstructuredMap)
+    v, b = to_vec(parent(k))
+    back(x) = Unstructredmap(b(x), axisdims(k))
+    return v, back
+end
+
+
 
 
 @testset "VLBISkyModels.jl" begin

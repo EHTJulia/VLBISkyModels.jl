@@ -25,10 +25,10 @@ function plan_nuft(::DFTAlg, imagegrid::AbstractRectiGrid, visdomain::Unstructur
     return reshape(dft, length(visp), :)
 end
 
+
 # internal function to make the phases to phase center the image.
-function make_phases(::DFTAlg, imgdomain::AbstractRectiGrid, visdomain::UnstructuredDomain, pulse=DeltaPulse())
-    dx, dy = pixelsizes(imgdomain)
-    return visibilitymap_analytic(stretched(pulse, dx, dy), visdomain)
+function make_phases(::DFTAlg, imgdomain::AbstractRectiGrid, visdomain::UnstructuredDomain)
+    return 1
 end
 
 

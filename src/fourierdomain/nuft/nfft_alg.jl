@@ -73,14 +73,15 @@ function plan_nuft(alg::NFFTAlg, imagegrid::AbstractRectiGrid, visdomain::Unstru
     return plan
 end
 
-function make_phases(::NFFTAlg, imgdomain::AbstractRectiGrid, visdomain::UnstructuredDomain, pulse=DeltaPulse())
+
+function make_phases(::NFFTAlg, imgdomain::AbstractRectiGrid, visdomain::UnstructuredDomain)
     dx, dy = pixelsizes(imgdomain)
     x0, y0 = phasecenter(imgdomain)
     visp = domainpoints(visdomain)
     u = visp.U
     v = visp.V
     # Correct for the nFFT phase center and the img phase center
-    return cispi.((u.*(dx - 2*x0) .+ v.*(dy - 2*y0))).*visibility_point.(Ref(stretched(pulse, dx, dy)), visp)
+    return cispi.((u.*(dx - 2*x0) .+ v.*(dy - 2*y0)))
 end
 
 # Allow NFFT to work with ForwardDiff.

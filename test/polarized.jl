@@ -149,7 +149,7 @@ end
 
     u, v = rand(32), rand(32)
     uv = UnstructuredDomain((U=u, V=v))
-    gnf = FourierDualDomain(g, uv, NFFTAlg(), BSplinePulse{3}())
-    mimg = ContinuousImage(StokesIntensityMap(img), VLBISkyModels.pulse(gnf))
+    gnf = FourierDualDomain(g, uv, NFFTAlg())
+    mimg = ContinuousImage(StokesIntensityMap(img), BSplinePulse{3}())
     visibilitymap(mimg, gnf)
 end
