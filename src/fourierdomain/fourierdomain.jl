@@ -42,7 +42,7 @@ pulse(g::FourierDualDomain)  = getfield(g, :pulse)
 function Serialization.serialize(s::Serialization.AbstractSerializer, cache::FourierDualDomain)
     Serialization.writetag(s.io, Serialization.OBJECT_TAG)
     Serialization.serialize(s, typeof(cache))
-    Serialization.serialize(s, cache.alg)
+    Serialization.serialize(s, cache.algorithm)
     Serialization.serialize(s, cache.imgdomain)
     Serialization.serialize(s, cache.visdomain)
     Serialization.serialize(s, cache.pulse)
@@ -53,7 +53,7 @@ function Serialization.deserialize(s::AbstractSerializer, ::Type{<:FourierDualDo
     alg = Serialization.deserialize(s)
     imd = Serialization.deserialize(s)
     vid = Serialization.deserialize(s)
-    pul = Serialization.serialize(s, cache.pulse)
+    pul = Serialization.deserialize(s)
     return FourierDualDomain(imd, vid, alg, pul)
 end
 
