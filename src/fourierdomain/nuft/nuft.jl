@@ -7,7 +7,7 @@ abstract type NUFT <: FourierTransform end
 
 Internal type used to store the cache for a non-uniform Fourier transform (NUFT).
 
-The user should instead create this using the [`create_cache`](@ref create_cache) function.
+The user should instead create this using the [`FourierDualDomain`](@ref) function.
 """
 struct NUFTPlan{A,P,M} <: AbstractNUFTPlan
     alg::A # which algorithm to use

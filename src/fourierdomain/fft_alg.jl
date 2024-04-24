@@ -36,6 +36,18 @@ function build_padded_uvgrid(grid::AbstractRectiGrid, alg::FFTAlg)
     return (U=u, V=v)
 end
 
+"""
+    FourierDualDomain(imgdomain::AbstractRectiGrid, alg::FFTAlg, pulse=DeltaPulse())
+
+Constructs a FourierDualDomain that uses the FFT algorithm to compute the transformation.
+For this no visibilty domain is specified since we assume it is the default grid from the
+FFT with padding specified in [`FFTAlg`](@ref).
+
+## Arguments
+- `imgdomain`: The image domain grid
+- `alg`: The FFT algorithm to use
+- `pulse`: The convolution kernel to use in the Fourier transform
+"""
 function FourierDualDomain(imgdomain::AbstractRectiGrid, alg::FFTAlg, pulse=DeltaPulse())
     # construct the uvgrid for the padded image
     griduv = uvgrid(imgdomain)

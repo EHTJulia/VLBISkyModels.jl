@@ -138,7 +138,19 @@ function xygrid(grid::AbstractRectiGrid)
     return g
 end
 
+"""
+    FourierDualDomain(imgdomain::AbstractSingleDomain, visdomain::AbstractSingleDomain, algorithm, pulse=DeltaPulse())
 
+Constructs a set of grids that live in the image and visibility domains. The transformation between the grids
+is specified by the `algorithm` which is a subtype of `VLBISkyModels.FourierTransform`.
+The `pulse` is a function that specified the convolution kernel to use in the Fourier transform.
+
+# Arguments
+ - `imgdomain`: The image domain grid
+ - `visdomain`: The visibility domain grid
+ - `algorithm`: The Fourier transform algorithm to use see `subtypes(VLBISkyModels.FourierTransform)` for a list
+ - `pulse`: The convolution kernel to use in the Fourier transform. Default is the delta function.
+"""
 function FourierDualDomain(imgdomain::AbstractSingleDomain, visdomain::AbstractSingleDomain, algorithm, pulse=DeltaPulse())
     plan_forward, plan_reverse = create_plans(algorithm, imgdomain, visdomain, pulse)
     return FourierDualDomain(imgdomain, visdomain, algorithm, plan_forward, plan_reverse, pulse)

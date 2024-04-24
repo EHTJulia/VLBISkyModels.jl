@@ -44,6 +44,7 @@ VLBISkyModels.ParabolicSegment
 VLBISkyModels.ZeroModel
 VLBISkyModels.MultiComponentModel
 VLBISkyModels.PolarizedModel
+VLBISkyModels.AbstractImageTemplate
 VLBISkyModels.RingTemplate
 VLBISkyModels.RadialGaussian
 VLBISkyModels.RadialDblPower
@@ -78,7 +79,7 @@ VLBISkyModels.Butterworth
 ### Fourier Duality Models
 
 ```@docs
-VLBISkyModels.FourierDualDomains
+VLBISkyModels.FourierDualDomain
 VLBISkyModels.xygrid
 VLBISkyModels.uvgrid
 VLBISkyModels.uviterator
@@ -136,9 +137,13 @@ VLBISkyModels.μas2rad
 
 ## Internal (Not Public API)
 ```@docs
+VLBISkyModels.AbstractFourierDualDomain
 VLBISkyModels.scale_uv
 VLBISkyModels.scale_image
 VLBISkyModels.transform_uv
 VLBISkyModels.transform_image
 VLBISkyModels.unpack
+VLBISkyModels.StokesIntensityMap
+VLBISkyModels.FFTPlan
+VLBISkyModels.NUFTPlan
 ```

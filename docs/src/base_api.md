@@ -27,7 +27,10 @@ ComradeBase.visibilitymap
 ComradeBase.visibilitymap!
 ComradeBase.intensitymap
 ComradeBase.intensitymap!
-ComradeBase.IntensityMap
+ComradeBase.allocate_vismap
+ComradeBase.allocate_imgmap
+ComradeBase.create_imgmap
+ComradeBase.create_vismap
 ComradeBase.amplitude(::Any, ::Any)
 ComradeBase.amplitudemap
 ComradeBase.bispectrum
@@ -65,28 +68,36 @@ ComradeBase.intensitymap_numeric
 ComradeBase.intensitymap_numeric!
 ```
 
-### Image Types
+### Image Domain
 ```@docs
-ComradeBase.IntensityMap(::AbstractArray, ::AbstractRectiGrid)
-ComradeBase.UnstructuredMap(::AbstractArray, ::UnstructuredDomain)
 ComradeBase.imagepixels
 ComradeBase.RectiGrid
 ComradeBase.UnstructuredDomain
 ComradeBase.dims
 ComradeBase.named_dims
 ComradeBase.axisdims
-ComradeBase.stokes
 ComradeBase.domainpoints
 ComradeBase.fieldofview
 ComradeBase.pixelsizes
 ComradeBase.phasecenter
-ComradeBase.centroid
-ComradeBase.second_moment
+ComradeBase.executor
+ComradeBase.Serial
+ComradeBase.ThreadsEx
 ComradeBase.header
 ComradeBase.NoHeader
 ComradeBase.MinimalHeader
+```
+
+### Image Types
+```@docs
+ComradeBase.IntensityMap
+ComradeBase.IntensityMap(::AbstractArray, ::AbstractRectiGrid)
+ComradeBase.UnstructuredMap
+ComradeBase.centroid
+ComradeBase.second_moment
 ComradeBase.load
 ComradeBase.save
+ComradeBase.stokes
 ```
 
 
@@ -118,4 +129,5 @@ PolarizedTypes.fracpolarization
 ```@docs
 ComradeBase._visibilitymap
 ComradeBase._visibilitymap!
+ComradeBase.create_map
 ```

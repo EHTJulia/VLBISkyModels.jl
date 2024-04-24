@@ -36,7 +36,7 @@ VLBISkyModels.visanalytic(ExtendedRing)
 gim = imagepixels(10.0, 10.0, 256, 256)
 
 # Second we need to specify the list of points in the uv domain we are interested in.
-# Since VLBI tends sparsely sample the UV plan we provide a specific [`ComradeBase.AbstractSingleDomain`](@ref)
+# Since VLBI tends sparsely sample the UV plan we provide a specific type for this
 # type called [`UnstructuredDomain`](@ref) that can be used to specify the UV points,
 
 u = randn(1000)/2

@@ -41,7 +41,7 @@ Converts a number from micro-arcseconds (μas) to rad
 """
 @inline μas2rad(x) = x/(180*3600*1_000_000)*π
 
-export linearpol, mbreve, evpa, rad2μas, μas2rad, create_cache
+export linearpol, mbreve, evpa, rad2μas, μas2rad
 
 using ComradeBase: AbstractDomain, AbstractSingleDomain, AbstractRectiGrid,
                    AbstractModel, AbstractPolarizedModel,
