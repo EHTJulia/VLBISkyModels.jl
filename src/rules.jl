@@ -106,7 +106,8 @@ function ChainRulesCore.rrule(::Type{ContinuousImage}, data::IntensityMapTypes, 
     img = ContinuousImage(data, pulse)
     pd = ProjectTo(data)
     function pb(Δ)
-        # @info "Input: " Δ
+        # @info "Input: " Δ.img
+        # @info "PT: " pd
         return _ctsimg_pb(Δ, pd)
     end
     return img, pb
@@ -116,21 +117,18 @@ end
 getm(m::AbstractModel) = m
 getm(m::Tuple) = m[2]
 
-function ChainRulesCore.rrule(::typeof(visibilitymap_analytic), m::Union{GeometricModel, PolarizedModel, CompositeModel, ModifiedModel}, u::AbstractArray, v::AbstractArray, t::AbstractArray, f::AbstractArray)
-    vis = visibilitymap_analytic(m, u, v, t, f)
+function ChainRulesCore.rrule(::typeof(visibilitymap_analytic), m::Union{GeometricModel, PolarizedModel, CompositeModel, ModifiedModel}, g::UnstructuredDomain)
+    vis = visibilitymap_analytic(m, g)
     function _composite_visibilitymap_analytic_pullback(Δ)
-        du = zero(u)
-        dv = zero(v)
-        df = zero(f)
-        dt = zero(t)
+        dg = UnstructuredDomain(map(zero, named_dims(g)); executor=executor(g), header=header(g))
 
-        dvis = zero(vis)
+        dvis = UnstructuredMap(similar(parent(vis)), dg)
         dvis .= unthunk(Δ)
         rvis = zero(vis)
-        d = autodiff(Reverse, visibilitymap_analytic!, Const, Duplicated(rvis, dvis), Active(m), Duplicated(u, du), Duplicated(v, dv), Duplicated(t, dt), Duplicated(f, df))
+        d = autodiff(Reverse, visibilitymap_analytic!, Const, Duplicated(rvis, dvis), Active(m))
         dm = getm(d[1])
         tm = __extract_tangent(dm)
-        return NoTangent(), tm, du, dv, df, dt
+        return NoTangent(), tm, Tangent{typeof(g)}(dims=dims(dvis))
     end
 
     return vis, _composite_visibilitymap_analytic_pullback
