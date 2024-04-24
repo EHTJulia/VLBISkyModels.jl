@@ -1,4 +1,4 @@
-export PolarizedModel, coherencymatrix, PoincareSphere2Map
+export PolarizedModel, coherencymatrix, PoincareSphere2Map, PolExp2Map
 
 import ComradeBase: AbstractPolarizedModel, m̆, evpa, CoherencyMatrix, StokesParams
 
@@ -194,6 +194,38 @@ function PoincareSphere2Map(I, p, X, grid)
     return StokesIntensityMap(stokesI, stokesQ, stokesU, stokesV)
 end
 PoincareSphere2Map(I::IntensityMap, p, X) = PoincareSphere2Map(baseimage(I), p, X, axisdims(I))
+
+
+"""
+    PolExp2Map(a, b, c, d, grid::AbstractRectiGrid)
+
+Constructs an polarized intensity map model using the matrix exponential representation from
+[Arras 2021 (Thesis)](https://www.philipp-arras.de/assets/dissertation.pdf).
+
+Each Stokes parameter is parameterized as
+
+    I = exp(a)cosh(p)
+    Q = exp(a)sinh(p)b/p
+    U = exp(a)sinh(p)c/p
+    V = exp(a)sinh(p)d/p
+
+where `a,b,c,d` are real numbers with no conditions. This allows you to encode various
+correlations easily and not on the sphere.
+"""
+function PolExp2Map(a::AbstractArray, b::AbstractArray, c::AbstractArray, d::AbstractArray, grid::AbstractRectiGrid)
+    p = sqrt.(b.^2 .+ c.^2 .+ d.^2)
+    tmp = exp.(a).*sinh.(p).*inv(p)
+    pimgI = exp.(a).*cosh.(b)
+    pimgQ = tmp.*b./p
+    pimgU = tmp.*c./p
+    pimgV = tmp.*d./p
+    stokesI = IntensityMap(pimgI, grid)
+    stokesQ = IntensityMap(pimgQ, grid)
+    stokesU = IntensityMap(pimgU, grid)
+    stokesV = IntensityMap(pimgV, grid)
+    return StokesIntensityMap(stokesI, stokesQ, stokesU, stokesV)
+end
+
 
 
 """
