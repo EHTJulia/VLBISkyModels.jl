@@ -18,7 +18,7 @@ end
 flux(m::MultiComponentModel)  = flux(m.base)*sum(m.flux)
 radialextent(m::MultiComponentModel) = 2*maximum(x->hypot(x...), zip(m.x, m.y)) + radialextent(m.base)
 
-Base.getindex(m::MultiComponentModel, i::Int) = modify(m.base, Shift(m.x[i], m.y[i]), Renormalize(m.flux[i]))
+@inline Base.getindex(m::MultiComponentModel, i::Int) = modify(m.base, Shift(m.x[i], m.y[i]), Renormalize(m.flux[i]))
 
 imanalytic(::Type{<:MultiComponentModel{M}}) where {M} =  imanalytic(M)
 visanalytic(::Type{<:MultiComponentModel{M}}) where {M} = visanalytic(M)
@@ -36,8 +36,9 @@ function intensity_point(m::MultiComponentModel, p)
 end
 
 function visibility_point(m::MultiComponentModel, p)
-    s = sum(eachindex(m.x)) do i
-        ComradeBase.visibility_point(m[i], p)
+    s = zero(Complex{eltype(p.U)})
+    for i in eachindex(m.x, m.y, m.flux)
+        s += ComradeBase.visibility_point(m[i], p)
     end
     return s
 end
@@ -58,14 +59,12 @@ function load_clean_components(fname, beam=DeltaPulse())
 end
 
 function _visibilitymap_multi!(vis, base, flux, x, y)
-    return visibilitymap!(vis, MultiComponentModel(base, flux, x, y))
+    visibilitymap!(vis, MultiComponentModel(base, flux, x, y))
+    return nothing
 end
 
 function ChainRulesCore.rrule(::typeof(visibilitymap_analytic), m::MultiComponentModel, g::UnstructuredDomain)
     vis = visibilitymap_analytic(m, g)
-    pf = ProjectTo(m.f)
-    px = ProjectTo(m.x)
-    py = ProjectTo(m.y)
     function _composite_visibilitymap_analytic_pullback(Δ)
         dg = UnstructuredDomain(map(zero, named_dims(g)); executor=executor(g), header=header(g))
 
@@ -75,7 +74,7 @@ function ChainRulesCore.rrule(::typeof(visibilitymap_analytic), m::MultiComponen
         df = zero(m.flux)
         dx = zero(m.x)
         dy = zero(m.y)
-        d = autodiff(Reverse, _visibilitymap_multi!, Const, Duplicated(rvis, dvis), Active(m), Duplicated(m.flux, df), Duplicated(m.x, dx), Duplicated(m.y, dy))
+        d = autodiff(Reverse, _visibilitymap_multi!, Const, Duplicated(rvis, dvis), Active(m.base), Duplicated(m.flux, df), Duplicated(m.x, dx), Duplicated(m.y, dy))
         dm = getm(d[1])
         tm = __extract_tangent(dm)
         return NoTangent(), Tangent{typeof(m)}(base=tm, flux=df, x=dx, y=dy), Tangent{typeof(g)}(dims=dims(dvis))
