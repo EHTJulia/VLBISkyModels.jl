@@ -45,6 +45,15 @@ function InterpolatedModel(
         return InterpolatedModel{typeof(model), typeof(sitp)}(model, sitp)
 end
 
+function intensitymap(m::InterpolatedModel, grid::AbstractRectiGrid)
+    return intensitymap(m.model, grid)
+end
+
+function intensitymap!(img::IntensityMap, m::InterpolatedModel)
+    return intensitymap!(img, m.model)
+end
+
+
 # internal function that creates the interpolator objector to evaluate the FT.
 function create_interpolator(U, V, vis::AbstractArray{<:Complex}, pulse)
     # Construct the interpolator

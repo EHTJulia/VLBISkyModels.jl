@@ -18,7 +18,7 @@ imanalytic(::Type{<:ZeroModel}) = IsAnalytic()
 visibility_point(::ZeroModel{T}, args...) where {T} = complex(zero(T))
 intensity_point(::ZeroModel{T}, args...) where {T} = zero(T)
 
-visibilitymap_analytic(::ZeroModel{T}, p::AbstractSingleDomain) where {T} = Fill(zero(Complex{T}), length(u))
+visibilitymap_analytic(::ZeroModel{T}, p::AbstractSingleDomain) where {T} = Fill(zero(Complex{T}), length(p.U))
 intensitymap_analytic(::ZeroModel{T}, p::AbstractSingleDomain) where {T} = IntensityMap(Fill(zero(T), map(length, dims(p))), p)
 intensitymap_analytic(::ZeroModel{T}, p::AbstractRectiGrid) where {T} = IntensityMap(Fill(zero(T), map(length, dims(p))), p)
 

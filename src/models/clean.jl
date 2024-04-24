@@ -35,9 +35,9 @@ function intensity_point(m::MultiComponentModel, p)
     return s
 end
 
-function visibility_point(m::MultiComponentModel, x, y, t, f)
+function visibility_point(m::MultiComponentModel, p)
     s = sum(eachindex(m.x)) do i
-        ComradeBase.visibility_point(m[i], x, y, t, f)
+        ComradeBase.visibility_point(m[i], p)
     end
     return s
 end
@@ -55,4 +55,31 @@ function load_clean_components(fname, beam=DeltaPulse())
         return f, x, y
     end
     return MultiComponentModel(beam, f, x, y)
+end
+
+function _visibilitymap_multi!(vis, base, flux, x, y)
+    return visibilitymap!(vis, MultiComponentModel(base, flux, x, y))
+end
+
+function ChainRulesCore.rrule(::typeof(visibilitymap_analytic), m::MultiComponentModel, g::UnstructuredDomain)
+    vis = visibilitymap_analytic(m, g)
+    pf = ProjectTo(m.f)
+    px = ProjectTo(m.x)
+    py = ProjectTo(m.y)
+    function _composite_visibilitymap_analytic_pullback(Δ)
+        dg = UnstructuredDomain(map(zero, named_dims(g)); executor=executor(g), header=header(g))
+
+        dvis = UnstructuredMap(similar(parent(vis)), dg)
+        dvis .= unthunk(Δ)
+        rvis = UnstructuredMap(zero(vis), g)
+        df = zero(m.flux)
+        dx = zero(m.x)
+        dy = zero(m.y)
+        d = autodiff(Reverse, _visibilitymap_multi!, Const, Duplicated(rvis, dvis), Active(m), Duplicated(m.flux, df), Duplicated(m.x, dx), Duplicated(m.y, dy))
+        dm = getm(d[1])
+        tm = __extract_tangent(dm)
+        return NoTangent(), Tangent{typeof(m)}(base=tm, flux=df, x=dx, y=dy), Tangent{typeof(g)}(dims=dims(dvis))
+    end
+
+    return vis, _composite_visibilitymap_analytic_pullback
 end

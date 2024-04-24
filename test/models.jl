@@ -429,7 +429,7 @@ end
                                               2*VLBISkyModels.radialextent(mbs), 2024, 2024)),
                                               1024, 1e-3)
 
-        foo(x) = sum(abs2, VLBISkyModels.visibilitymap_analytic(stretched(ma, x[1], x[2]), u, v, t, f))
+        foo(x) = sum(abs2, VLBISkyModels.visibilitymap_analytic(stretched(ma, x[1], x[2]), g))
         x = rand(2)
         foo(x)
         testgrad(foo, x)
@@ -443,7 +443,7 @@ end
                                               2*VLBISkyModels.radialextent(mbs),
                                               1024, 1024)))
 
-        foo(x) = sum(abs2, VLBISkyModels.visibilitymap_analytic(rotated(ma, x[1]), u, v, t, f))
+        foo(x) = sum(abs2, VLBISkyModels.visibilitymap_analytic(rotated(ma, x[1]), g))
         x = rand(1)
         foo(x)
         testgrad(foo, x)
@@ -460,7 +460,7 @@ end
                                               ),
                                               1024, 1e-3)
 
-        foo(x) = sum(abs2, VLBISkyModels.visibilitymap_analytic(modify(ma, Shift(x[1], x[2]), Stretch(x[3], x[4]), Rotate(x[5]), Renormalize(x[6])), u, v, t, f))
+        foo(x) = sum(abs2, VLBISkyModels.visibilitymap_analytic(modify(ma, Shift(x[1], x[2]), Stretch(x[3], x[4]), Rotate(x[5]), Renormalize(x[6])), g))
         x = rand(6)
         foo(x)
         testgrad(foo, x)
@@ -476,7 +476,7 @@ end
     v = randn(100)*0.5
     t = sort(rand(100)*0.5)
     f = fill(230e9, 100)
-    g = UnstructuredDomain((U=u, V=v, Ti=t, Fr=f))
+    guv = UnstructuredDomain((U=u, V=v, Ti=t, Fr=f))
 
 
     @testset "Add models" begin
@@ -490,7 +490,7 @@ end
         @test mc[2] === m2
         @test flux(mt1) ≈ flux(m1) + flux(m2)
 
-        foo(x) = sum(abs2, VLBISkyModels.visibilitymap_analytic(x[1]*stretched(Disk(), x[2], x[3]) + stretched(Ring(), x[4], x[4]), u, v, t, f))
+        foo(x) = sum(abs2, VLBISkyModels.visibilitymap_analytic(x[1]*stretched(Disk(), x[2], x[3]) + stretched(Ring(), x[4], x[4]), guv))
         x = rand(4)
         foo(x)
         testgrad(foo, x)
@@ -516,7 +516,7 @@ end
         testmodel(InterpolatedModel(mt2, axisdims(img)))
         testmodel(InterpolatedModel(mt3, axisdims(img)))
 
-        foo(x) = sum(abs2, VLBISkyModels.visibilitymap_analytic(convolved(x[1]*stretched(Disk(), x[2], x[3]),stretched(Ring(), x[4], x[4])), u, v, t, f))
+        foo(x) = sum(abs2, VLBISkyModels.visibilitymap_analytic(convolved(x[1]*stretched(Disk(), x[2], x[3]),stretched(Ring(), x[4], x[4])), guv))
         x = rand(4)
         foo(x)
         testgrad(foo, x)
@@ -536,7 +536,7 @@ end
 
         testmodel(InterpolatedModel(mt, axisdims(img)))
 
-        foo(x) = sum(abs2, VLBISkyModels.visibilitymap_analytic(smoothed(x[1]*stretched(Disk(), x[2], x[3]), x[4]) + stretched(Ring(), x[5], x[4]), u, v, t, f))
+        foo(x) = sum(abs2, VLBISkyModels.visibilitymap_analytic(smoothed(x[1]*stretched(Disk(), x[2], x[3]), x[4]) + stretched(Ring(), x[5], x[4]), guv))
         x = rand(5)
         foo(x)
         testgrad(foo, x)
@@ -548,7 +548,7 @@ end
     v = randn(100)*0.5
     t = sort(rand(100)*0.5)
     f = fill(230e9, 100)
-    g = UnstructuredDomain((U=u, V=v, Ti=t, Fr=f))
+    guv = UnstructuredDomain((U=u, V=v, Ti=t, Fr=f))
 
 
     m = MultiComponentModel(Gaussian(), rand(10), randn(10), randn(10))
@@ -560,7 +560,7 @@ end
 
     @test convolved(m, Gaussian()) == convolved(Gaussian(), m)
 
-    foo(fl, x, y) = sum(abs2, VLBISkyModels.visibilitymap_analytic(MultiComponentModel(Gaussian(), fl, x, y), u, v, t, f))
+    foo(fl, x, y) = sum(abs2, VLBISkyModels.visibilitymap_analytic(MultiComponentModel(Gaussian(), fl, x, y), guv))
     x = randn(10)
     y = randn(10)
     fl = rand(10)
@@ -572,12 +572,6 @@ end
 end
 
 @testset "PolarizedModel" begin
-    u = randn(100)*0.5
-    v = randn(100)*0.5
-    t = sort(rand(100)*0.5)
-    f = fill(230e9, 100)
-    g = UnstructuredDomain((U=u, V=v, Ti=t, Fr=f))
-
 
     mI = stretched(MRing((0.2,), (0.1,)), 20.0, 20.0)
     mQ = 0.2*stretched(MRing((0.0,), (0.6,)), 20.0, 20.0)
@@ -611,9 +605,9 @@ end
 
     g = imagepixels(100.0, 100.0, 1024, 1024)
     pI = IntensityMap(zeros(1024,1024), g)
-    pQ = similar(mI)
-    pU = similar(mI)
-    pV = similar(mI)
+    pQ = similar(pI)
+    pU = similar(pI)
+    pV = similar(pI)
     pimg1 = StokesIntensityMap(pI,pQ,pU,pV)
     intensitymap!(pimg1, m)
     pimg2 = intensitymap(m, axisdims(pI))
@@ -755,7 +749,7 @@ end
     # @test all(==(1), domainpoints(img) .== ComradeBase.grid(named_dims(axisdims(img))))
     @test VLBISkyModels.axisdims(img) == axisdims(img)
 
-    @test g == imagepixels(img)
+    @test g == axisdims(img)
     @test VLBISkyModels.radialextent(img) ≈ 10.0/2
 
     @test convolved(img, Gaussian()) isa ContinuousImage

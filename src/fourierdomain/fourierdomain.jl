@@ -123,7 +123,7 @@ function xygrid(grid::AbstractRectiGrid)
     (;U, V) = grid
     x, y = xyiterator(length(U), step(U), length(V), step(V))
     pxy = merge((X=x, Y=y), delete(named_dims(grid), (:U, :V)))
-    g = RectiGrid(pxy, executor(grid), header(grid))
+    g = RectiGrid(pxy; executor=executor(grid), header=header(grid))
     return g
 end
 
