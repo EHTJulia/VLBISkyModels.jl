@@ -9,8 +9,7 @@ function test_template(θ::ComradeBase.AbstractModel; npix=128, fov=120.0, )
     @inferred ComradeBase.radialextent(θ)
     @test ComradeBase.radialextent(θ) isa AbstractFloat
     g = imagepixels(fov, fov, npix, npix)
-    img = intensitymap(θ, g)
-    triptic(img, θ)
+    @inferred intensitymap(θ, g)
 end
 
 
