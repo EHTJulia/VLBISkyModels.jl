@@ -1,6 +1,7 @@
 export RingTemplate,
        RadialGaussian, RadialDblPower, RadialTruncExp,
-       AzimuthalUniform, AzimuthalCosine
+       AzimuthalUniform, AzimuthalCosine,
+       GaussianRing, SlashedGaussianRing, EllipticalGaussianRing
 
 
 # Convience function that creates a phase that matches the EHT convention
