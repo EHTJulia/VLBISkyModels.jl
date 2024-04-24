@@ -24,6 +24,11 @@ abstract type AbstractImageTemplate <: ComradeBase.AbstractModel end
 visanalytic(::Type{<:AbstractImageTemplate}) = NotAnalytic()
 imanalytic(::Type{<:AbstractImageTemplate})  = IsAnalytic()
 
+function flux(m::AbstractImageTemplate)
+    g = imagepixels(radialextent(m), radialextent(m), 512, 512)
+    return flux(intensitymap(m, g))
+end
+
 
 
 include(joinpath(@__DIR__, "image.jl"))

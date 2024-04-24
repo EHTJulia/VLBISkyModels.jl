@@ -74,11 +74,17 @@ function ChainRulesCore.rrule(::typeof(visibilitymap_analytic), m::MultiComponen
         df = zero(m.flux)
         dx = zero(m.x)
         dy = zero(m.y)
-        d = autodiff(Reverse, _visibilitymap_multi!, Const, Duplicated(rvis, dvis), Active(m.base), Duplicated(m.flux, df), Duplicated(m.x, dx), Duplicated(m.y, dy))
+        if fieldnames(typeof(m)) === ()
+            tm = Const(m)
+        else
+            tm = Active(m)
+        end
+        d = autodiff(Reverse, _visibilitymap_multi!, Const, Duplicated(rvis, dvis), Const(m.base), Duplicated(m.flux, df), Duplicated(m.x, dx), Duplicated(m.y, dy))
         dm = getm(d[1])
-        tm = __extract_tangent(dm)
-        return NoTangent(), Tangent{typeof(m)}(base=tm, flux=df, x=dx, y=dy), Tangent{typeof(g)}(dims=dims(dvis))
+        tangentm = __extract_tangent(dm)
+        return NoTangent(), Tangent{typeof(m)}(base=tangentm, flux=df, x=dx, y=dy), Tangent{typeof(g)}(dims=dims(dvis))
     end
 
     return vis, _composite_visibilitymap_analytic_pullback
 end
+__extract_tangent(::Nothing) = ZeroTangent()

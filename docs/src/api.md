@@ -41,10 +41,27 @@ VLBISkyModels.Gaussian
 VLBISkyModels.MRing
 VLBISkyModels.Ring
 VLBISkyModels.ParabolicSegment
-VLBISkyModels.ContinuousImage
 VLBISkyModels.ZeroModel
 VLBISkyModels.MultiComponentModel
 VLBISkyModels.PolarizedModel
+VLBISkyModels.RingTemplate
+VLBISkyModels.RadialGaussian
+VLBISkyModels.RadialDblPower
+VLBISkyModels.RadialTruncExp
+VLBISkyModels.AzimuthalUniform
+VLBISkyModels.AzimuthalCosine
+VLBISkyModels.GaussianRing
+VLBISkyModels.SlashedGaussianRing
+VLBISkyModels.EllipticalGaussianRing
+VLBISkyModels.EllipticalSlashedGaussianRing
+VLBISkyModels.CosineRing
+VLBISkyModels.CosineRingwFloor
+VLBISkyModels.CosineRingwGFloor
+VLBISkyModels.EllipticalCosineRing
+VLBISkyModels.LogSpiral
+VLBISkyModels.Constant
+VLBISkyModels.GaussDisk
+VLBISkyModels.ContinuousImage
 ```
 
 ### Image Pulses
@@ -68,6 +85,7 @@ VLBISkyModels.uviterator
 VLBISkyModels.DFTAlg
 VLBISkyModels.FFTAlg
 VLBISkyModels.NFFTAlg
+VLBISkyModels.InterpolatedModel
 ```
 
 
@@ -118,7 +136,6 @@ VLBISkyModels.μas2rad
 
 ## Internal (Not Public API)
 ```@docs
-VLBISkyModels.AbstractCache
 VLBISkyModels.scale_uv
 VLBISkyModels.scale_image
 VLBISkyModels.transform_uv

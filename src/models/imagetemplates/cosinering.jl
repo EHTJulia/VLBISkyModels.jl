@@ -1,4 +1,4 @@
-export CosineRing, CosineRingwFloor, CosineRingwGFloor, GaussDisk
+export CosineRing, CosineRingwFloor, CosineRingwGFloor, EllipticalCosineRing
 
 """
     $(TYPEDEF)

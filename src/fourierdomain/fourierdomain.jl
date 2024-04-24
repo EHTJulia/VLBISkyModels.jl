@@ -41,6 +41,17 @@ struct FourierDualDomain{ID<:AbstractSingleDomain, VD<:AbstractSingleDomain, A<:
 end
 pulse(g::FourierDualDomain)  = getfield(g, :pulse)
 
+function Base.show(io::IO, mime::MIME"text/plain", g::FourierDualDomain)
+    printstyled(io, "FourierDualDomain("; bold=true)
+    println(io)
+    printstyled(io, "Algorithm: "; bold=true)
+    show(io, mime, algorithm(g))
+    printstyled(io, "\nImage Domain: "; bold=true)
+    show(io, mime, imgdomain(g))
+    printstyled(io, "\nVisibility Domain: "; bold=true)
+    show(io, mime, visdomain(g))
+end
+
 function Serialization.serialize(s::Serialization.AbstractSerializer, cache::FourierDualDomain)
     Serialization.writetag(s.io, Serialization.OBJECT_TAG)
     Serialization.serialize(s, typeof(cache))

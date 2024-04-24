@@ -21,6 +21,7 @@ end
 
 @testset "VLBISkyModels.jl" begin
     include("models.jl")
+    include("templates.jl")
     include("polarized.jl")
     include("utility.jl")
     include("viz.jl")
