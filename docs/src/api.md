@@ -130,6 +130,7 @@ VLBISkyModels.convolve
 VLBISkyModels.convolve!
 VLBISkyModels.smooth
 VLBISkyModels.PoincareSphere2Map
+VLBISkyModels.PolExp2Map
 VLBISkyModels.regrid
 VLBISkyModels.rad2μas
 VLBISkyModels.μas2rad
