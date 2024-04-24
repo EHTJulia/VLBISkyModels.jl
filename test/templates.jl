@@ -8,8 +8,8 @@ function test_template(θ::ComradeBase.AbstractModel; npix=128, fov=120.0, )
     @test ComradeBase.intensity_point(θ, (X=0.0, Y=0.0)) isa AbstractFloat
     @inferred ComradeBase.radialextent(θ)
     @test ComradeBase.radialextent(θ) isa AbstractFloat
-
-    img = intensitymap(θ, fov, fov, npix, npix)
+    g = imagepixels(fov, fov, npix, npix)
+    img = intensitymap(θ, g)
     triptic(img, θ)
 end
 
@@ -46,7 +46,7 @@ end
     azs = (au, ac1, ac2)
 
     for r in rads, a in azs
-        test_template(RingTemplate(gr, a) + 0.1*Constant(1.0))
+        test_template(RingTemplate(gr, a) + 0.1*VLBISkyModels.Constant(1.0))
     end
 
 end
@@ -86,12 +86,12 @@ end
 
 
 @testset "TemplateLogSpiral" begin
-    θ = LogSpiral(r0, τ, σ, δϕ, ξs, x0, y0)
+    θ = VLBISkyModels.LogSpiral(r0, τ, σ, δϕ, ξs, x0, y0)
     test_template(θ)
 end
 
 @testset "TemplateConstant" begin
-    θ = Constant(1.0)
+    θ = VLBISkyModels.Constant(1.0)
     @test ComradeBase.intensity_point(θ, (1.0, 1.0)) == 1.0
     test_template(θ)
 end
