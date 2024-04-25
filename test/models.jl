@@ -735,7 +735,7 @@ end
         @test g2.Y ≈ grid.Y
     end
 
-    ComradeBase.visibilitymap_numeric(m, VLBISkyModels.uvgrid(grid))
+    ComradeBase.visibilitymap_numeric(m, VLBISkyModels.uvgrid(g))
 
     guv = UnstructuredDomain((U=u1, V=v1))
     @test_throws "UnstructuredDomain not supported" ComradeBase.visibilitymap_numeric(m, guv)
@@ -752,6 +752,14 @@ end
     plan = VLBISkyModels.forward_plan(gnf).plan
 
     @testset "nuft pullback" begin
+        x = rand(24, 12)
+        temp(x) = sum(abs2, VLBISkyModels._nuft(plan, x))
+        gfo = ForwardDiff.gradient(temp, x)
+        gz, = Zygote.gradient(temp, x)
+        dx = zero(x)
+        autodiff(Enzyme.Reverse, temp, Active, Duplicated(x, dx))
+        @test gfo ≈ gz
+        @test dx ≈ gz
         test_rrule(VLBISkyModels._nuft, plan ⊢ NoTangent(), baseimage(img))
     end
 end

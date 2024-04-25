@@ -99,15 +99,15 @@ function _nuft(A::NFFTPlan, b::AbstractArray{<:ForwardDiff.Dual})
     return _frule_nuft(A, b)
 end
 
-function _frule_nuft(p::NFFTPlan, b::AbstractArray{<:ForwardDiff.Dual})
+function _frule_nuft(p::NFFTPlan, b::AbstractArray{<:ForwardDiff.Dual{T,V,P}}) where {T, V, P}
     # Compute the fft
     buffer = ForwardDiff.value.(b)
     xtil = p*complex.(buffer)
     out = similar(buffer, Complex{ForwardDiff.Dual{T,V,P}})
     # Now take the deriv of nuft
-    ndxs = ForwardDiff.npartials(first(m.image))
+    ndxs = ForwardDiff.npartials(first(b))
     dxtils = ntuple(ndxs) do n
-        buffer .= ForwardDiff.partials.(m.image, n)
+        buffer .= ForwardDiff.partials.(b, n)
         p * complex.(buffer)
     end
     out = similar(xtil, Complex{ForwardDiff.Dual{T,V,P}})
