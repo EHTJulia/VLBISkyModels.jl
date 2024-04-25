@@ -209,8 +209,7 @@ Each Stokes parameter is parameterized as
     U = exp(a)sinh(p)c/p
     V = exp(a)sinh(p)d/p
 
-where `a,b,c,d` are real numbers with no conditions. This allows you to encode various
-correlations easily and not on the sphere.
+where `a,b,c,d` are real numbers with no conditions, and `p=√(a² + b² + c²)`.
 """
 function PolExp2Map(a::AbstractArray, b::AbstractArray, c::AbstractArray, d::AbstractArray, grid::AbstractRectiGrid)
     p = sqrt.(b.^2 .+ c.^2 .+ d.^2)

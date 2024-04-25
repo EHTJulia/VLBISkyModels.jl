@@ -9,7 +9,10 @@ function test_template(θ::ComradeBase.AbstractModel; npix=128, fov=120.0, )
     @inferred ComradeBase.radialextent(θ)
     @test ComradeBase.radialextent(θ) isa AbstractFloat
     g = imagepixels(fov, fov, npix, npix)
+    VLBISkyModels.__extract_tangent(θ)
     @inferred intensitymap(θ, g)
+    flux(θ)
+    ComradeBase.visanalytic(typeof(θ))
 end
 
 
@@ -45,7 +48,7 @@ end
     azs = (au, ac1, ac2)
 
     for r in rads, a in azs
-        test_template(RingTemplate(gr, a) + 0.1*VLBISkyModels.Constant(1.0))
+        test_template(RingTemplate(r, a) + 0.1*VLBISkyModels.Constant(1.0))
     end
 
 end
@@ -56,6 +59,8 @@ end
     t1 = CosineRing(0.1, (), (), (0.5,), (0.0,))
     test_template(t1)
     t2 = SlashedGaussianRing(0.1, 0.5)
+    test_template(SlashedGaussianRing(10.0, 1.0, 0.5, 0.0, 0.0, 0.0))
+    test_template(EllipticalSlashedGaussianRing(10.0, 1.0, 0.1, 0.5, 0.5, 0.0, 0.0, 0.0))
     t3 = CosineRing(0.1, (0.1,), (0.0,), (), (), )
     test_template(t3)
 

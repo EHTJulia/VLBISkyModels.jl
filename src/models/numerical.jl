@@ -31,6 +31,19 @@ function AbstractFFTs.ifft!(vis::AbstractArray{<:StokesParams}, region)
     return StructArray{StokesParams{eltype(I)}}((vI, vQ, vU, vV))
 end
 
+function AbstractFFTs.fftshift(vis::AbstractArray{<:StokesParams})
+    vI = stokes(vis, :I)
+    vQ = stokes(vis, :Q)
+    vU = stokes(vis, :U)
+    vV = stokes(vis, :V)
+    return StructArray{StokesParams{eltype(I)}}((
+              fftshift(vI),
+              fftshift(vQ),
+              fftshift(vU),
+              fftshift(vV)
+            ))
+end
+
 
 # Special because I just want to do the straight FFT thing no matter what
 function intensitymap_numeric!(img::IntensityMap, m::AbstractModel)
@@ -67,7 +80,7 @@ function visibilitymap_numeric!(vis::IntensityMap, m::AbstractModel)
     img = allocate_imgmap(m, gridxy)
     intensitymap!(img, m)
     tildeI = _fft(parent(img))
-    vis .= fftshift(tildeI)
+    baseimage(vis) .= fftshift(tildeI)
     phasecenter!(vis, gridxy, grid)
     return nothing
 end

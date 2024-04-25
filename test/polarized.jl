@@ -25,6 +25,14 @@ end
 
     u = fftshift(fftfreq(length(g.X), 1/step(g.X)))
     uv = RectiGrid((U=u, V=-u))
+    uvus = UnstructuredDomain((U=randn(32), V=randn(32)))
+    foo(x) = sum(norm, VLBISkyModels.visibilitymap_analytic(
+                            PolarizedModel(Gaussian(), x[1]*Gaussian(), x[2]*Gaussian(), x[3]*Gaussian()),
+                        uvus))
+    x = rand(3)
+    foo(x)
+    testgrad(foo, x)
+
 
     testpol(m, uv)
 end
@@ -90,10 +98,10 @@ end
 @testset "Polarized All Mod" begin
     m1 = PolarizedModel(Gaussian(), 0.1*Gaussian(), 0.1*Gaussian(), 0.1*Gaussian())
     m2 = PolarizedModel(ExtendedRing(8.0), shifted(Disk(), 0.1, 1.0), ZeroModel(), ZeroModel())
-    m = convolved(m1,m2)+m1
+    m = convolved(convolved(m1, Gaussian()),m2)+convolved(g, m1)
     g = imagepixels(5.0, 5.0, 128, 128)
     s = map(length, dims(g))
-    u = fftshift(fftfreq(length(g.X), 1/step(g.X)))
+    u = fftshift(fftfreq(length(g.X), 1/step(g.X)))./40
     uv = UnstructuredDomain((U=u, V=-u))
     gnf = FourierDualDomain(g, uv, NFFTAlg())
 
@@ -147,9 +155,54 @@ end
     @test all(==(1), isapprox.(stokes(rimg1, :Q), 0.0, atol=1e-16))
     @test all(==(1), stokes(rimg1, :V) .≈ 0.1*stokes(rimg1, :I))
 
-    u, v = rand(32), rand(32)
+    u, v = randn(32)/5, randn(32)/5
     uv = UnstructuredDomain((U=u, V=v))
     gnf = FourierDualDomain(g, uv, NFFTAlg())
+    gdf = FourierDualDomain(g, uv, DFTAlg())
+    gff = FourierDualDomain(g, uv, FFTAlg(padfac=8))
     mimg = ContinuousImage(StokesIntensityMap(img), BSplinePulse{3}())
-    visibilitymap(mimg, gnf)
+    vnf = visibilitymap(mimg, gnf)
+    vdf = visibilitymap(mimg, gdf)
+    vff = visibilitymap(mimg, gff)
+
+    @test isapprox(maximum(norm, vnf .- vdf), 0.0, atol=1e-6)
+    @test isapprox(maximum(norm, vff .- vdf), 0.0, atol=1e-5)
+end
+
+@testset "PoincareSphere2Map" begin
+    m = PolarizedModel(Gaussian(), Gaussian(), ZeroModel(), 0.1*Gaussian())
+    g = imagepixels(5.0, 5, 24, 24)
+
+    img = intensitymap(m, g)
+
+    sI = stokes(img, :I) |> baseimage
+    sQ = stokes(img, :Q) |> baseimage
+    sU = stokes(img, :U) |> baseimage
+    sV = stokes(img, :V) |> baseimage
+
+    p = sqrt.(sQ^2 + sU^2 + sV^2)
+    Χ = (sQ./p, sU./p, sV./p)
+
+    pimg = PoincareSphere2Map(sI, p./sI, Χ, g)
+    @test (stokes(pimg, :I) |> baseimage) ≈ sI
+    @test (stokes(pimg, :Q) |> baseimage) ≈ sQ
+    @test (stokes(pimg, :U) |> baseimage) ≈ sU
+    @test (stokes(pimg, :V) |> baseimage) ≈ sV
+end
+
+@testset "PolExp2Map" begin
+    m = PolarizedModel(Gaussian(), Gaussian(), ZeroModel(), 0.1*Gaussian())
+    g = imagepixels(5.0, 5, 24, 24)
+
+    img = intensitymap(m, g)
+
+    sI = stokes(img, :I) |> baseimage
+    sQ = stokes(img, :Q) |> baseimage
+    sU = stokes(img, :U) |> baseimage
+    sV = stokes(img, :V) |> baseimage
+
+    p = sqrt.(sQ^2 + sU^2 + sV^2)
+    Χ = (sQ./p, sU./p, sV./p)
+
+    pimg = PolExp2Map(randn(24, 24), randn(24, 24), randn(24, 24), randn(24, 24), g)
 end

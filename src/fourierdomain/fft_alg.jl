@@ -13,11 +13,10 @@ $(FIELDS)
 Base.@kwdef struct FFTAlg{T} <: FourierTransform
     """
     The amount to pad the image by.
-    Note we actually round up to the nearest factor
-    of 2, but this will be improved in the future to use
-    small primes
+    Note we actually round up to use
+    small prime factor.
     """
-    padfac::Int = 2
+    padfac::Int = 4
     """
     FFTW flags or wisdom for the transformation. The default is `FFTW.ESTIMATE`,
     but you can use `FFTW.MEASURE` for better performance if you plan on evaluating
@@ -107,11 +106,11 @@ function applyft(plan::FFTPlan, img::AbstractArray{<:Number})
     return fftshift(plan.plan*pimg)
 end
 
-function applyft(plan::FFTPlan, img::AbstractArray{<:StokesParams})
-    visI = applyfft(plan.plan, stokes(img, :I))
-    visQ = applyfft(plan.plan, stokes(img, :Q))
-    visU = applyfft(plan.plan, stokes(img, :U))
-    visV = applyfft(plan.plan, stokes(img, :V))
+function applyft(plan::FFTPlan, img::Union{AbstractArray{<:StokesParams}, StokesIntensityMap})
+    visI = applyft(plan, stokes(img, :I))
+    visQ = applyft(plan, stokes(img, :Q))
+    visU = applyft(plan, stokes(img, :U))
+    visV = applyft(plan, stokes(img, :V))
     return StructArray{StokesParams{eltype(visI)}}((I=visI, Q=visQ, U=visU, V=visV))
 end
 

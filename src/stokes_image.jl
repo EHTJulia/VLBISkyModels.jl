@@ -112,13 +112,13 @@ end
 function _summary(io, x::StokesIntensityMap{T,N}) where {T,N}
     println(io, ndims(x), "-dimensional")
     println(io, "StokesIntensityMap{$T, $N}")
-    println(io, "   Stokes I: ")
+    print(io, "   Stokes I: ")
     summary(io, x.I)
-    println(io, "   Stokes Q: ")
+    print(io, "\n   Stokes Q: ")
     summary(io, x.Q)
-    println(io, "   Stokes U: ")
+    print(io, "\n   Stokes U: ")
     summary(io, x.U)
-    println(io, "   Stokes V: ")
+    print(io, "\n   Stokes V: ")
     summary(io, x.V)
 end
 

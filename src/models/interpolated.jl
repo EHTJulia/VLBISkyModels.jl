@@ -35,7 +35,7 @@ end
 radialextent(m::InterpolatedModel) = radialextent(m.model)
 flux(m::InterpolatedModel) = flux(m.model)
 
-function build_intermodel(img::IntensityMap, plan, alg::FFTAlg, pulse=DeltaPulse())
+function build_intermodel(img::IntensityMapTypes, plan, alg::FFTAlg, pulse=DeltaPulse())
     vis = applyft(plan, img)
     grid = axisdims(img)
     griduv = build_padded_uvgrid(grid, alg)
@@ -81,16 +81,16 @@ end
 function create_interpolator(U, V, vis::StructArray{<:StokesParams}, pulse)
     # Construct the interpolator
     pI_real = BicubicInterpolator(U, V, real(vis.I), NoBoundaries())
-    pI_imag = BicubicInterpolator(U, V, real(vis.I), NoBoundaries())
+    pI_imag = BicubicInterpolator(U, V, imag(vis.I), NoBoundaries())
 
     pQ_real = BicubicInterpolator(U, V, real(vis.Q), NoBoundaries())
-    pQ_imag = BicubicInterpolator(U, V, real(vis.Q), NoBoundaries())
+    pQ_imag = BicubicInterpolator(U, V, imag(vis.Q), NoBoundaries())
 
     pU_real = BicubicInterpolator(U, V, real(vis.U), NoBoundaries())
-    pU_imag = BicubicInterpolator(U, V, real(vis.U), NoBoundaries())
+    pU_imag = BicubicInterpolator(U, V, imag(vis.U), NoBoundaries())
 
     pV_real = BicubicInterpolator(U, V, real(vis.V), NoBoundaries())
-    pV_imag = BicubicInterpolator(U, V, real(vis.V), NoBoundaries())
+    pV_imag = BicubicInterpolator(U, V, imag(vis.V), NoBoundaries())
 
 
     function (u,v)

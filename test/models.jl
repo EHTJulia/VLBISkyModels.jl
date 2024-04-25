@@ -332,6 +332,7 @@ end
         rad = 2.5*VLBISkyModels.radialextent(mr)
 
         m = InterpolatedModel(mr, imagepixels(rad, rad, 1024, 1024); algorithm=FFTAlg(padfac=4))
+        @test ComradeBase.intensity_point(m, (X=0.0, Y=0.0)) == ComradeBase.intensity_point(mr, (X=0.0, Y=0.0))
         testmodel(m)
         @inferred VLBISkyModels.intensity_point(mr, (X=0.0, Y=0.0))
     end
@@ -717,14 +718,33 @@ end
 
 @testset "FourierDualDomain" begin
     g = imagepixels(μas2rad(12.0), μas2rad(12.0), 24, 12)
-    img = intensitymap(rotated(stretched(Gaussian(), μas2rad(2.0), μas2rad(1.0)), π/8), g)
+    m = rotated(stretched(Gaussian(), μas2rad(2.0), μas2rad(1.0)), π/8)
+    img = intensitymap(m, g)
     u1 = 10e9*rand(100) .- 5e9
     v1 = 10e9*rand(100) .- 5e9
 
+    @testset "Dual domain test" begin
+        grid = imagepixels(10.0, 10.0, 12, 12)
+        g2 = VLBISkyModels.xygrid(VLBISkyModels.uvgrid(grid))
+        @test g2.X ≈ grid.X
+        @test g2.Y ≈ grid.Y
+
+        grid = imagepixels(10.0, 10.0, 13, 13)
+        g2 = VLBISkyModels.xygrid(VLBISkyModels.uvgrid(grid))
+        @test g2.X ≈ grid.X
+        @test g2.Y ≈ grid.Y
+    end
+
+    ComradeBase.visibilitymap_numeric(m, VLBISkyModels.uvgrid(grid))
+
     guv = UnstructuredDomain((U=u1, V=v1))
+    @test_throws "UnstructuredDomain not supported" ComradeBase.visibilitymap_numeric(m, guv)
+    @test_throws "UnstructuredDomain not supported" ComradeBase.intensitymap_numeric(m, guv)
 
     gnf = FourierDualDomain(g, guv, NFFTAlg())
+    @test intensitymap(m, gnf) ≈ img
 
+    show(gnf)
     cimg = ContinuousImage(img, DeltaPulse())
     test_rrule(ContinuousImage, img, DeltaPulse()⊢NoTangent())
 
@@ -763,10 +783,24 @@ end
 
 end
 
+using ForwardDiff
 @testset "Rules" begin
     data = rand(32, 32)
     g = imagepixels(10.0, 10.0, 32, 32)
     test_rrule(IntensityMap, data, g⊢NoTangent())
 
+    gfour = FourierDualDomain(g, FFTAlg(padfac=8))
+    plan = VLBISkyModels.forward_plan(gfour)
 
+    data = rand(8, 8)
+    g = imagepixels(10.0, 10.0, 8, 8)
+    gfour = FourierDualDomain(g, FFTAlg(padfac=8))
+    plan = VLBISkyModels.forward_plan(gfour)
+
+    x = rand(8, 8)
+    temp(x) = sum(abs2, VLBISkyModels.applyft(plan, IntensityMap(x, g)))
+    gfo = ForwardDiff.gradient(temp, x)
+    fdm = central_fdm(5,1)
+    gfd, = grad(fdm, temp, x)
+    @test gfo ≈ gfd
 end
