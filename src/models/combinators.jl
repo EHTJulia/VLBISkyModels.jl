@@ -164,10 +164,16 @@ end
 
 # TODO the fast thing is to add the intensitymaps together and then FT
 # We currently don't handle this case
-@inline function visibilitymap_numeric(model::AddModel{M1,M2}, p::AbstractDomain) where {M1, M2}
+@inline function visibilitymap_numeric(model::AddModel{M1,M2}, p::AbstractSingleDomain) where {M1, M2}
     return _visibilitymap(visanalytic(M1), model.m1, p) .+
            _visibilitymap(visanalytic(M2), model.m2, p)
 end
+
+@inline function visibilitymap_numeric(model::AddModel{M1,M2}, p::AbstractRectiGrid) where {M1, M2}
+    return _visibilitymap(visanalytic(M1), model.m1, p) .+
+           _visibilitymap(visanalytic(M2), model.m2, p)
+end
+
 
 @inline function visibilitymap_numeric(model::AddModel{M1,M2}, p::AbstractFourierDualDomain) where {M1, M2}
     return _visibilitymap(visanalytic(M1), model.m1, p) .+
