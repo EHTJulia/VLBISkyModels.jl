@@ -305,7 +305,7 @@ end
         foo(x) = sum(abs2, VLBISkyModels.visibilitymap_analytic(ConcordanceCrescent(x[1], x[2], x[3], x[4]), g))
         x = rand(4)
         foo(x)
-        testgrad(foo, x)
+        testgrad(foo, x; atol=0)
     end
 
 

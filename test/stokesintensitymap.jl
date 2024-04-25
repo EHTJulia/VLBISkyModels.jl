@@ -36,4 +36,7 @@
 
     @test IntensityMap(simg) == img
 
+    pimg = VLBISkyModels.padimage(simg, FFTAlg())
+    pimgI = VLBISkyModels.padimage(stokes(simg, :I), FFTAlg())
+    @test size(pimg) == size(pimgI)
 end

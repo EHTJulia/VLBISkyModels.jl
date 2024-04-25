@@ -60,10 +60,10 @@ end
 end
 
 function visibilitymap_analytic(pimg::PolarizedModel, p::AbstractSingleDomain)
-    si = visibilitymap_analytic(stokes(pimg, :I), p)
-    sq = visibilitymap_analytic(stokes(pimg, :Q), p)
-    su = visibilitymap_analytic(stokes(pimg, :U), p)
-    sv = visibilitymap_analytic(stokes(pimg, :V), p)
+    si = baseimage(visibilitymap_analytic(stokes(pimg, :I), p))
+    sq = baseimage(visibilitymap_analytic(stokes(pimg, :Q), p))
+    su = baseimage(visibilitymap_analytic(stokes(pimg, :U), p))
+    sv = baseimage(visibilitymap_analytic(stokes(pimg, :V), p))
     return StructArray{StokesParams{eltype(si)}}((si, sq, su, sv))
 end
 

@@ -95,6 +95,16 @@ end
     testpol(convolved(stretched(m1, 0.5, 0.5),Gaussian()), uv)
 end
 
+@testset "Polarized NonAnalytic" begin
+    m = PolarizedModel(Gaussian(), 0.1*Gaussian(), 0.1*Gaussian(), 0.1*Gaussian())
+    mna = VLBISkyModels.NonAnalyticTest(m)
+    g = imagepixels(10.0, 10.0, 128, 128)
+    guv = VLBISkyModels.uvgrid(g)
+    v = visibilitymap(mna, guv)
+    van = visibilitymap(m, guv)
+    @test isapprox(maximum(norm, v .- van), 0.0, atol=1e-5)
+end
+
 @testset "Polarized All Mod" begin
     m1 = PolarizedModel(Gaussian(), 0.1*Gaussian(), 0.1*Gaussian(), 0.1*Gaussian())
     m2 = PolarizedModel(ExtendedRing(8.0), shifted(Disk(), 0.1, 1.0), ZeroModel(), ZeroModel())
