@@ -1,11 +1,12 @@
 @testset "image modifiers" begin
 
     m = Gaussian()
-    img = intensitymap(m, 20.0, 20.0, 128, 128)
+    g = imagepixels(20.0, 20.0, 128, 128)
+    img = intensitymap(m, g)
 
     mp = PolarizedModel(Gaussian(), Gaussian(), ZeroModel(), Gaussian())
 
-    pimg = intensitymap(mp, 20.0, 20.0, 128, 128)
+    pimg = intensitymap(mp, g)
 
     @testset "Rotate invariant" begin
         img2 = rotated(img, pi/4)
@@ -20,25 +21,28 @@
     end
 
     @testset "Stretched" begin
+        g = imagepixels(20.0, 20.0, 128, 128)
         m2 = stretched(m, 2.0, 1.0)
-        imgs  = intensitymap(m2, 20.0, 20.0, 128, 128)
+        imgs  = intensitymap(m2, g)
         imgs2 = stretched(img, 2.0, 1.0)
         @test isapprox(imgs2, imgs, rtol=1e-4)
 
         pm2 = stretched(mp, 2.0, 1.0)
-        pimgs = intensitymap(pm2, 20.0, 20.0, 128, 128)
+        pimgs = intensitymap(pm2, g)
         pimg2 = stretched(pimg, 2.0, 1.0)
         @test isapprox(pimg2, pimgs, rtol=1e-4)
     end
 
     @testset "Stretch and rotate" begin
+        g = imagepixels(20.0, 20.0, 128, 128)
+
         m2 = modify(m, Stretch(2.0, 1.0), Rotate(π/4))
         imgs = intensitymap(m2, axisdims(img))
         imgs2 = modify(img, Stretch(2.0, 1.0), Rotate(π/4))
         @test isapprox(imgs2, imgs, rtol=1e-4)
 
         pm2 = modify(mp, Stretch(2.0, 1.0), Rotate(π/4))
-        pimgs = intensitymap(pm2, 20.0, 20.0, 128, 128)
+        pimgs = intensitymap(pm2, g)
         pimg2 = modify(pimg, Stretch(2.0, 1.0), Rotate(π/4))
         @test isapprox(pimg2, pimgs, rtol=1e-4)
     end
@@ -51,13 +55,17 @@
         cpimg = VLBISkyModels.convolve(pimg, Gaussian())
         pimg2 = modify(pimg, Stretch(sqrt(2)))
         @test isapprox(cpimg, pimg2, rtol=1e-4)
+
+        simg = VLBISkyModels.smooth(img, 1.0)
+        @test isapprox(simg, cimg, rtol=1e-4)
     end
 
     @testset "regrid" begin
-        rimg = regrid(img, 10.0, 10.0, 64, 64)
+        g = imagepixels(10.0, 10.0, 64, 64)
+        rimg = regrid(img, g)
         @test size(rimg) == (64, 64)
 
-        rpimg = regrid(pimg, 10.0, 10.0, 64, 64)
+        rpimg = regrid(pimg, g)
         @test size(rpimg) == (64, 64)
     end
 

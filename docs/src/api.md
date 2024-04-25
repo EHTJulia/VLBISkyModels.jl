@@ -41,10 +41,28 @@ VLBISkyModels.Gaussian
 VLBISkyModels.MRing
 VLBISkyModels.Ring
 VLBISkyModels.ParabolicSegment
-VLBISkyModels.ContinuousImage
 VLBISkyModels.ZeroModel
 VLBISkyModels.MultiComponentModel
 VLBISkyModels.PolarizedModel
+VLBISkyModels.AbstractImageTemplate
+VLBISkyModels.RingTemplate
+VLBISkyModels.RadialGaussian
+VLBISkyModels.RadialDblPower
+VLBISkyModels.RadialTruncExp
+VLBISkyModels.AzimuthalUniform
+VLBISkyModels.AzimuthalCosine
+VLBISkyModels.GaussianRing
+VLBISkyModels.SlashedGaussianRing
+VLBISkyModels.EllipticalGaussianRing
+VLBISkyModels.EllipticalSlashedGaussianRing
+VLBISkyModels.CosineRing
+VLBISkyModels.CosineRingwFloor
+VLBISkyModels.CosineRingwGFloor
+VLBISkyModels.EllipticalCosineRing
+VLBISkyModels.LogSpiral
+VLBISkyModels.Constant
+VLBISkyModels.GaussDisk
+VLBISkyModels.ContinuousImage
 ```
 
 ### Image Pulses
@@ -58,20 +76,17 @@ VLBISkyModels.Butterworth
 ```
 
 
-### Model Image (non analytic FFT)
+### Fourier Duality Models
 
 ```@docs
-VLBISkyModels.create_cache
-VLBISkyModels.modelimage
+VLBISkyModels.FourierDualDomain
+VLBISkyModels.xygrid
+VLBISkyModels.uvgrid
 VLBISkyModels.uviterator
-VLBISkyModels.fouriermap
-VLBISkyModels.ModelImage
 VLBISkyModels.DFTAlg
 VLBISkyModels.FFTAlg
-VLBISkyModels.FFTCache
 VLBISkyModels.NFFTAlg
-VLBISkyModels.NUFTCache
-VLBISkyModels.ObservedNUFT
+VLBISkyModels.InterpolatedModel
 ```
 
 
@@ -115,6 +130,7 @@ VLBISkyModels.convolve
 VLBISkyModels.convolve!
 VLBISkyModels.smooth
 VLBISkyModels.PoincareSphere2Map
+VLBISkyModels.PolExp2Map
 VLBISkyModels.regrid
 VLBISkyModels.rad2μas
 VLBISkyModels.μas2rad
@@ -122,10 +138,13 @@ VLBISkyModels.μas2rad
 
 ## Internal (Not Public API)
 ```@docs
-VLBISkyModels.AbstractCache
+VLBISkyModels.AbstractFourierDualDomain
 VLBISkyModels.scale_uv
 VLBISkyModels.scale_image
 VLBISkyModels.transform_uv
 VLBISkyModels.transform_image
 VLBISkyModels.unpack
+VLBISkyModels.StokesIntensityMap
+VLBISkyModels.FFTPlan
+VLBISkyModels.NUFTPlan
 ```

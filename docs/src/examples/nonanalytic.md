@@ -33,16 +33,7 @@ m = ExtendedRing(8.0)
 The argument is `\alpha` in the above
 equation. `beta` is given by ``(1+\alpha)``.
 
-This is an example of a ring model that has a substantially different flux profile.
-Let's plot the image first giving it some unity by applying `modify`
-
-````@example nonanalytic
-muas = modify(m, Stretch(μas2rad(20.0)))
-img = intensitymap(muas, μas2rad(100.0),  μas2rad(100.0), 256, 256)
-imageviz(img)
-````
-
-This function does not have a simple analytic Fourier transform, e.g.
+This model does not have a simple analytic Fourier transform, e.g.
 
 ````@example nonanalytic
 VLBISkyModels.visanalytic(ExtendedRing)
@@ -50,46 +41,71 @@ VLBISkyModels.visanalytic(ExtendedRing)
 
 Therefore, to find the Fourier transform of the image we need to revert to numerical methods.
 For this notebook we will use the *fast Fourier transform* or FFT. Specifically we will
-use FFTW. To compute a numerical Fourier transform we first need to specify the image.
+use FFTW. To compute a numerical Fourier transform we first need to specify the image domain
 
 ````@example nonanalytic
-img = IntensityMap(zeros(256, 256), 10.0, 10.0)
+gim = imagepixels(10.0, 10.0, 256, 256)
 ````
 
-This will serve as our cache to store the image going forward. The next step is to create
-a model wrapper that holds the model and the image. `VLBISkyModels` provides the `modelimage`
-function to do exactly that
-
-````@example nonanalytic
-mimage = modelimage(m, img, FFTAlg())
-````
-
-the `alg` keyword argument then specifies that we want to use an FFT to compute the
-Fourier transform. When `modelimage` is called, the FFT is performed and then we use
-a bicubic interpolator on the resulting visibilities to construct a continuous representation
-of the Fourier transform. Once we have this everything else is the same. Namely we can
-calculatge the VLBI data products in the usual manner i.e.
+Second we need to specify the list of points in the uv domain we are interested in.
+Since VLBI tends sparsely sample the UV plan we provide a specific type for this
+type called [`UnstructuredDomain`](@ref) that can be used to specify the UV points,
 
 ````@example nonanalytic
 u = randn(1000)/2
 v = randn(1000)/2
+guv = UnstructuredDomain((U=u, V=v))
 ````
 
-Now we can plot our sampled visibilities
+We can now create a *dual domain* that contains both the image and the UV points and
+the specific Fourier transform algorithm we want to use. The options for algorithms are:
+
+ 1. [`NFFTAlg`](@ref): Uses the Non-Uniform Fast Fourier Transform. Fast and accurate, this is the recommended algorithm for most cases.
+ 2. [`DFTAlg`](@ref): Uses the Discrete Time Non-Uniform Fourier transform. Slow but exact, so only use for small image grids.
+ 3. [`FFTAlg`](@ref): Moderately fast and moderately accurate. Typically only used internally for testing.
+For this example we will use `NFFTAlg` since it is the recommended algorithm for most cases.
 
 ````@example nonanalytic
-vis = visibilities(mimage, (U=u, V=v))
-scatter(hypot.(u, v), real.(vis), label="Real")
-scatter!(hypot.(u, v), imag.(vis), label="Imag")
-axislegend()
-current_figure()
+gfour = FourierDualDomain(gim, guv, NFFTAlg())
 ````
 
-We can also directly get the amplitudes using:
+Given this `FourierDualDomain` everything now works as before with analytic models. For example
+we can compute the intensitymap of the model as
 
 ````@example nonanalytic
-amp = amplitudes(mimage, (U=u, V=v))
-scatter(hypot.(u, v), amp, label="Amplitude")
+img = intensitymap(m, gfour)
+imageviz(img)
+````
+
+and the visibility map using
+
+````@example nonanalytic
+vis = visibilitymap(m, gfour)
+fig, ax = scatter(hypot.(vis.U, vis.V), real.(vis), label="Real")
+scatter!(ax, hypot.(vis.U, vis.V), imag.(vis), label="Imag")
+axislegend(ax)
+ax.xlabel = "uv-dist"
+ax.ylabel = "Flux"
+fig
+````
+
+Additionally, you can also modify the models and add them in complete generality. For example
+
+````@example nonanalytic
+mmod = modify(m, Shift(2.0, 2.0)) + Gaussian()
+mimg = intensitymap(mmod, gfour)
+mvis = visibilitymap(mmod, gfour)
+````
+
+Plotting everything give for images
+
+````@example nonanalytic
+fig = Figure(;size=(800, 400))
+ax1 = Axis(fig[1, 1]; xreversed=true, xlabel="RA (radians)", ylabel="Dec (radians)", aspect=1)
+ax2 = Axis(fig[1, 2]; xlabel="uv-dist", ylabel="Amplitude")
+image!(ax1, mimg, colormap=:afmhot)
+scatter!(ax2, hypot.(mvis.U, mvis.V), abs.(mvis), label="Real")
+fig
 ````
 
 ---

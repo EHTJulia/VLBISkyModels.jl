@@ -18,12 +18,6 @@ Notice that we don't provide any more information about the model, e.g., *size, 
 Now a `Gaussian` is the simplest model structure we can consider. We can consider this Gaussian to be a **primitive** model. That means a Gaussian is not a combination or modification of
 an existing model. To tell `VLBISkyModels` that this is the case, we define the following method:
 
-```julia
-# Tell Comrade Gaussian is a primitive model
-ComradeBase.isprimitive(::Type{<:MyGaussian}) = IsPrimitive()
-```
-
-Note that if the Gaussian wasn't a primitive model, we could've used `NotPrimitive()` instead.
 Now a Gaussian has an analytic expression in the image and Fourier domain. We can tell `VLBISkyModels` this by setting:
 
 ```julia
@@ -73,8 +67,8 @@ plot!(fig[2], ellgauss, size=(800,350))
 ```julia
 using Plots
 u = rand(100)*0.5; v=rand(100)*0.5
-vg  = visibilities(gauss, u, v)
-veg = visibilities(ellgauss, u, v)
+vg  = visibilitymap(gauss, u, v)
+veg = visibilitymap(ellgauss, u, v)
 
 Plots.scatter(hypot.(u, v), abs.(vg), label="Gaussian")
 Plots.scatter!(hypot.(u, v), abs.(veg), label="Elliptical Gaussian")
@@ -83,5 +77,3 @@ Plots.scatter!(hypot.(u, v), abs.(veg), label="Elliptical Gaussian")
 
 ## Models without an Analytic Fourier Transform
 
-Now suppose your model does not have an analytic Fourier transform. In this case, the procedure is very similar to the above, except you define `visanalytic(::Type{<:MyModel}) = NotAnalytic()`.
-However, everything else is the same. To compute visibilities, you just then create a `ModelImage` type using the [`modelimage`](@ref) function. To see how this see [Modeling with non-analytic Fourier transforms](@ref).

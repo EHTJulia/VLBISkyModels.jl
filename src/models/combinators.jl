@@ -22,10 +22,10 @@ In addition there are additional optional methods a person can define if needed:
 
 - intensitymap_analytic! if model intensity is `IsAnalytic`  (optional)
 - intensitymap_analytic if model intensity is `IsAnalytic` (optional)
-- visibilities_analytic if visanalytic is `IsAnalytic` (optional)
-- visibilities_numeric  if visanalytic is `Not Analytic` (optional)
-- visibilities_analytic! if visanalytic is `IsAnalytic` (optional)
-- visibilities_numeric!  if visanalytic is `Not Analytic` (optional)
+- visibilitymap_analytic if visanalytic is `IsAnalytic` (optional)
+- visibilitymap_numeric  if visanalytic is `Not Analytic` (optional)
+- visibilitymap_analytic! if visanalytic is `IsAnalytic` (optional)
+- visibilitymap_numeric!  if visanalytic is `Not Analytic` (optional)
 """
 abstract type CompositeModel{M1,M2} <: AbstractModel end
 
@@ -37,34 +37,6 @@ function Base.show(io::IO, m::T) where {T<:CompositeModel}
     println(io, "model2: ", m.m2)
     print(io, ")")
 end
-
-
-function modelimage(::NotAnalytic,
-    model::CompositeModel,
-    grid::AbstractGrid,
-    alg::FourierTransform=FFTAlg(),
-    pulse = DeltaPulse(),
-    )
-
-    m1 = @set model.m1 = modelimage(model.m1, grid, alg, pulse)
-    @set m1.m2 = modelimage(m1.m2, grid, alg, pulse)
-end
-
-function modelimage(::NotAnalytic,
-    model::CompositeModel,
-    cache::AbstractCache,
-    )
-
-    m1 = @set model.m1 = modelimage(model.m1, cache)
-    @set m1.m2 = modelimage(m1.m2, cache)
-end
-
-function fouriermap(m::CompositeModel, dims::ComradeBase.AbstractGrid)
-    m1 = fouriermap(m.m1, dims)
-    m2 = fouriermap(m.m2, dims)
-    return uv_combinator(m).(m1,m2)
-end
-
 
 
 radialextent(m::CompositeModel) = max(radialextent(m.m1), radialextent(m.m2))
@@ -130,8 +102,8 @@ Base.:-(m1::AbstractModel, m2::AbstractModel) = added(m1, -1.0*m2)
 #     m::V{M}
 # end
 
-# function visibilities(m::NModel, u, v)
-#     f(x) = visibilities(x, u, v)
+# function visibilitymap(m::NModel, u, v)
+#     f(x) = visibilitymap(x, u, v)
 #     return sum(f, m.m)
 # end
 
@@ -160,42 +132,56 @@ components(m::CompositeModel{M1,M2}) where
 
 flux(m::AddModel) = flux(m.m1) + flux(m.m2)
 
+_numeric_add(m1, m2, dims) = intensitymap(m1, dims) + intensitymap(m2, dims)
 
-function intensitymap_numeric(m::AddModel, dims::ComradeBase.AbstractGrid)
-    sim1 = intensitymap(m.m1, dims)
-    sim2 = intensitymap(m.m2, dims)
-    return sim1 + sim2
+function intensitymap_numeric(m::AddModel, dims::AbstractRectiGrid)
+    return _numeric_add(m.m1, m.m2, dims)
 end
 
+function intensitymap_numeric(m::AddModel, dims::AbstractFourierDualDomain)
+    return _numeric_add(m.m1, m.m2, dims)
+end
 
 function intensitymap_numeric!(sim::IntensityMap, m::AddModel)
-    csim = deepcopy(sim)
+    csim = copy(sim)
     intensitymap!(csim, m.m1)
     sim .= csim
     intensitymap!(csim, m.m2)
     sim .= sim .+ csim
-    return sim
+    return nothing
 end
 
 @inline uv_combinator(::AddModel) = Base.:+
 @inline xy_combinator(::AddModel) = Base.:+
 
-# @inline function _visibilities(model::CompositeModel{M1,M2}, u, v, t, ν, cache) where {M1,M2}
+# @inline function _visibilitymap(model::CompositeModel{M1,M2}, u, v, t, ν, cache) where {M1,M2}
 #     _combinatorvis(visanalytic(M1), visanalytic(M2), uv_combinator(model), model, u, v, t, ν, cache)
 # end
 
-# @inline function _visibilities(model::M, u::AbstractArray, v::AbstractArray, args...) where {M <: CompositeModel}
-#     return _visibilities(visanalytic(M), model, u, v, args...)
+# @inline function _visibilitymap(model::M, u::AbstractArray, v::AbstractArray, args...) where {M <: CompositeModel}
+#     return _visibilitymap(visanalytic(M), model, u, v, args...)
 # end
 
-
-@inline function visibilities_numeric(model::AddModel{M1,M2}, u, v, time, freq) where {M1, M2}
-    #f = uv_combinator(model)
-    return _visibilities(visanalytic(M1), model.m1, u, v, time, freq) .+
-           _visibilities(visanalytic(M2), model.m2, u, v, time, freq)
+# TODO the fast thing is to add the intensitymaps together and then FT
+# We currently don't handle this case
+@inline function visibilitymap_numeric(model::AddModel{M1,M2}, p::AbstractSingleDomain) where {M1, M2}
+    return _visibilitymap(visanalytic(M1), model.m1, p) .+
+           _visibilitymap(visanalytic(M2), model.m2, p)
 end
 
-# @inline function _visibilities(::IsAnalytic, model::CompositeModel, u::AbstractArray, v::AbstractArray, args...)
+@inline function visibilitymap_numeric(model::AddModel{M1,M2}, p::AbstractRectiGrid) where {M1, M2}
+    return _visibilitymap(visanalytic(M1), model.m1, p) .+
+           _visibilitymap(visanalytic(M2), model.m2, p)
+end
+
+
+@inline function visibilitymap_numeric(model::AddModel{M1,M2}, p::AbstractFourierDualDomain) where {M1, M2}
+    return _visibilitymap(visanalytic(M1), model.m1, p) .+
+           _visibilitymap(visanalytic(M2), model.m2, p)
+end
+
+
+# @inline function _visibilitymap(::IsAnalytic, model::CompositeModel, u::AbstractArray, v::AbstractArray, args...)
 #     f = uv_combinator(model)
 #     return f.(visibility_point.(Ref(model.m1), u, v), visibility_point.(Ref(model.m2), u, v))
 # end
@@ -212,15 +198,15 @@ end
 
 
 
-# function _visibilities(model::AddModel, u::AbstractArray, v::AbstractArray, args...)
-#     return visibilities(model.m1, u, v) + visibilities(model.m2, u, v)
+# function _visibilitymap(model::AddModel, u::AbstractArray, v::AbstractArray, args...)
+#     return visibilitymap(model.m1, u, v) + visibilitymap(model.m2, u, v)
 # end
 
 
-@inline function visibility_point(model::CompositeModel{M1,M2}, u, v, time, freq) where {M1,M2}
+@inline function visibility_point(model::CompositeModel{M1,M2}, p) where {M1,M2}
     f = uv_combinator(model)
-    v1 = visibility_point(model.m1, u, v, time, freq)
-    v2 = visibility_point(model.m2, u, v, time, freq)
+    v1 = visibility_point(model.m1, p)
+    v2 = visibility_point(model.m2, p)
     return f(v1,v2)
 end
 
@@ -241,7 +227,7 @@ An end user should instead call [`convolved`](@ref convolved).
 Also see [`smoothed(m, σ)`](@ref smoothed) for a simplified function that convolves
 a model `m` with a Gaussian with standard deviation `σ`.
 """
-struct ConvolvedModel{M1, M2} <: CompositeModel{M1,M2}
+struct ConvolvedModel{M1,M2} <: CompositeModel{M1,M2}
     m1::M1
     m2::M2
 end
@@ -281,71 +267,47 @@ smoothed(m, σ::Number) = convolved(m, stretched(Gaussian(), σ, σ))
 
 flux(m::ConvolvedModel) = flux(m.m1)*flux(m.m2)
 
-function intensitymap_numeric(model::ConvolvedModel, dims::ComradeBase.AbstractGrid)
-    (;X, Y) = dims
-    vis1 = fouriermap(model.m1, dims)
-    vis2 = fouriermap(model.m2, dims)
-    U = vis1.U
-    V = vis1.V
-    vis = ifftshift(parent(phasedecenter!(vis1.*vis2, X, Y, U, V)))
-    ifft!(vis)
-    return IntensityMap(real.(vis), dims)
+@inline function visibilitymap_numeric(model::ConvolvedModel{M1,M2}, p::AbstractRectiGrid) where {M1, M2}
+    return _visibilitymap(visanalytic(M1), model.m1, p).*
+           _visibilitymap(visanalytic(M2), model.m2, p)
 end
 
-function AbstractFFTs.ifft!(vis::AbstractArray{<:StokesParams}, region)
-    vI = stokes(vis, :I)
-    vQ = stokes(vis, :Q)
-    vU = stokes(vis, :U)
-    vV = stokes(vis, :V)
-    p = plan_ifft!(vI, region)
-    p*vI
-    p*vQ
-    p*vU
-    p*vV
-    return StructArray{StokesParams{eltype(I)}}((vI, vQ, vU, vV))
+@inline function visibilitymap_numeric(model::ConvolvedModel{M1,M2}, p::AbstractFourierDualDomain) where {M1, M2}
+    return _visibilitymap(visanalytic(M1), model.m1, p).*
+           _visibilitymap(visanalytic(M2), model.m2, p)
 end
 
-function intensitymap_numeric!(sim::IntensityMap, model::ConvolvedModel)
-    dims = axisdims(sim)
-    (;X, Y) = dims
-    vis1 = fouriermap(model.m1, dims)
-    vis2 = fouriermap(model.m2, dims)
-    U = vis1.U
-    V = vis1.V
-    vis = ifftshift(parent(phasedecenter!((vis1.*vis2), X, Y, U, V)))
-    ifft!(vis)
-    sim .= real.(vis)
-end
 
-@inline function visibilities_numeric(model::ConvolvedModel{M1,M2}, u, v, time, freq) where {M1, M2}
-    return _visibilities(visanalytic(M1), model.m1, u, v, time, freq).*
-           _visibilities(visanalytic(M2), model.m2, u, v, time, freq)
+@inline function visibilitymap_numeric!(vis::IntensityMap, m::ConvolvedModel{M1,M2}) where {M1, M2}
+    cvis = copy(vis)
+    visibilitymap!(cvis, m.m1)
+    vis .= cvis
+    visibilitymap!(cvis, m.m2)
+    vis .= cvis
+    return nothing
 end
 
 
 
-# function _combinatorvis(::IsAnalytic, ::IsAnalytic, f::F, m, u, v, t, ν, cache) where {F}
-#     @assert length(u) == length(u) "Number of visibilities must equal number of points"
-#     ff(u, v, t, ν) = f(visibility_point(m.m1, u, v, t, ν, cache), visibility_point(m.m2, u, v, t, ν, cache))
-#     return mappedarray(ff, u, v, t, ν)
+# function intensitymap_numeric(model::ConvolvedModel, dims::ComradeBase.AbstractDomain)
+#     (;X, Y) = dims
+#     vis1 = visibilitymap(model.m1, dims)
+#     vis2 = visibilitymap(model.m2, dims)
+#     U = vis1.U
+#     V = vis1.V
+#     vis = ifftshift(parent(phasedecenter!(vis1.*vis2, X, Y, U, V)))
+#     ifft!(vis)
+#     return IntensityMap(real.(vis), dims)
 # end
 
-# function _combinatorvis(::IsAnalytic, ::NotAnalytic, f::F, m, u, v, args...) where {F}
-#     vis = _visibilities(m.m1, u, v, args...)
-#     for i in eachindex(vis)
-#         vis[i] = f(visibility_point(m.m2, u[i], v[i], args...), vis[i])
-#     end
-# end
-
-# function _combinatorvis(::NotAnalytic, ::IsAnalytic, f::F, m, u, v, args...) where {F}
-#     vis = _visibilities(m.m2, u, v, args...)
-#     for i in eachindex(vis)
-#         vis[i] = f(vis[i], visibility_point(m.m1, u[i], v[i], args...))
-#     end
-# end
-
-# function _combinatorvis(::NotAnalytic, ::NotAnalytic, m, f::F, u, v, args...) where {F}
-#     vis1 = _visibilities(m.m1, u, v, args...)
-#     vis2 = _visibilities(m.m2, u, v, args...)
-#     vis1 .= f.(vis1, vis2)
+# function intensitymap_numeric!(sim::IntensityMap, model::ConvolvedModel)
+#     dims = axisdims(sim)
+#     (;X, Y) = dims
+#     vis1 = fouriermap(model.m1, dims)
+#     vis2 = fouriermap(model.m2, dims)
+#     U = vis1.U
+#     V = vis1.V
+#     vis = ifftshift(parent(phasedecenter!((vis1.*vis2), X, Y, U, V)))
+#     ifft!(vis)
+#     sim .= real.(vis)
 # end

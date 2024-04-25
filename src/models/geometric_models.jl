@@ -11,7 +11,7 @@ export Gaussian,
         SlashedDisk
 
 # helper functions for below
-# @inline _getuv(p) = (p.U, p.V)
+@inline _getuv(p) = (p.U, p.V)
 @inline _getxy(p) = (p.X, p.Y)
 
 
@@ -30,8 +30,6 @@ in [`ComradeBase.AbstractModel`](@ref) for non-analytic models need to be implem
 """
 abstract type GeometricModel{T} <: AbstractModel end
 @inline flux(::GeometricModel{T}) where {T} = one(T)
-
-@inline isprimitive(::Type{<:GeometricModel}) = IsPrimitive()
 
 @inline visanalytic(::Type{<:GeometricModel}) = IsAnalytic()
 @inline imanalytic(::Type{<:GeometricModel}) = IsAnalytic()
@@ -55,7 +53,8 @@ radialextent(::Gaussian{T}) where {T} = convert(T, 5)
     return exp(-(x^2+y^2)/2)/T(2*pi)
 end
 
-@inline function visibility_point(::Gaussian{T}, u, v, time, freq) where {T}
+@inline function visibility_point(::Gaussian{T}, p) where {T}
+    u, v = _getuv(p)
     return exp(-2*T(π)^2*(u^2 + v^2)) + zero(T)im
 end
 
@@ -82,7 +81,8 @@ Disk() = Disk{Float64}()
     return r < 1 ?  one(T)/(π) : zero(T)
 end
 
-@inline function visibility_point(::Disk{T}, u, v, time, freq) where {T}
+@inline function visibility_point(::Disk{T}, p) where {T}
+    u, v = _getuv(p)
     ur = 2*T(π)*(sqrt(u^2 + v^2) + eps(T))
     return 2*besselj1(ur)/(ur) + zero(T)im
 end
@@ -118,7 +118,8 @@ function intensity_point(m::SlashedDisk{T}, p) where {T}
     end
 end
 
-function visibility_point(m::SlashedDisk{T}, u, v, time, freq) where {T}
+function visibility_point(m::SlashedDisk{T}, p) where {T}
+    u, v = _getuv(p)
     k = 2*T(π)*sqrt(u^2 + v^2) + eps(T)
     s = 1-m.slash
     norm = 2/(1+s)/k
@@ -163,7 +164,8 @@ end
 
 
 
-@inline function visibility_point(::Ring{T}, u, v, time, freq) where {T}
+@inline function visibility_point(::Ring{T}, p) where {T}
+    u, v = _getuv(p)
     k = 2*T(π)*sqrt(u^2 + v^2) + eps(T)
     vis = besselj0(k) + zero(T)*im
     return vis
@@ -186,7 +188,8 @@ flux(::Butterworth{N,T}) where {N,T} = one(T)
 visanalytic(::Type{<:Butterworth}) = IsAnalytic()
 imanalytic(::Type{<:Butterworth}) = NotAnalytic()
 
-function visibility_point(::Butterworth{N,T}, u, v, time, freq) where {N,T}
+function visibility_point(::Butterworth{N,T}, p) where {N,T}
+    u, v = _getuv(p)
     b = hypot(u,v) + eps(T)
     return complex(inv(sqrt(1 + b^(2*N))))
 end
@@ -269,7 +272,8 @@ radialextent(::MRing{T}) where {T} = convert(T, 3/2)
 end
 
 
-@inline function visibility_point(m::MRing{T}, u, v, time, freq) where {T}
+@inline function visibility_point(m::MRing{T}, p) where {T}
+    u, v = _getuv(p)
     return _mring_vis(m, u, v)
 end
 
@@ -416,7 +420,8 @@ function intensity_point(m::ConcordanceCrescent{T}, p) where {T}
     end
 end
 
-function visibility_point(m::ConcordanceCrescent{T}, u, v, time, freq) where {T}
+function visibility_point(m::ConcordanceCrescent{T}, p) where {T}
+    u, v = _getuv(p)
     k = 2*T(π)*sqrt(u^2 + v^2) + eps(T)
     norm = T(π)*_crescentnorm(m)/k
     phaseshift = exp(2*m.shift*u*T(π)*1im)
@@ -466,7 +471,7 @@ visanalytic(::Type{<:ExtendedRing}) = NotAnalytic()
 
 radialextent(::ExtendedRing{T}) where {T} = convert(T, 6)
 
-function intensity_point(m::ExtendedRing{T}, p) where {T}
+@fastmath function intensity_point(m::ExtendedRing{T}, p) where {T}
     x,y = _getxy(p)
     r = hypot(x, y) + eps(T)
     β = (m.shape + 1)
@@ -510,7 +515,8 @@ function intensity_point(::ParabolicSegment{T}, p) where {T}
     end
 end
 
-function visibility_point(::ParabolicSegment{T}, u, v, time, freq) where {T}
+function visibility_point(::ParabolicSegment{T}, p) where {T}
+    u, v = _getuv(p)
     ϵ = sqrt(eps(T))
     vϵ = complex(v + ϵ)
     phase = cispi(T(3)/4 + 2*vϵ + u^2/(2*vϵ))

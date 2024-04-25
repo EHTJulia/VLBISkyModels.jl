@@ -1,68 +1,87 @@
 export NFFTAlg
 
-using NFFT
+"""
+    NFFTAlg
+Uses a non-uniform FFT to compute the visibilitymap.
+You can optionally pass uv which are the uv positions you will
+compute the NFFT at. This can allow for the NFFT plan to be cached improving
+performance
 
+# Fields
+$(FIELDS)
 
 """
-    NFFTAlg(u::AbstractArray, v::AbstractArray; kwargs...)
-
-Create an algorithm object using the non-unform Fourier transform object from uv positions
-`u`, `v`. This will extract the uv positions from the observation to allow for a more efficient
-FT cache.
-
-The optional arguments are: `padfac` specifies how much to pad the image by, and `m`
-is an internal variable for `NFFT.jl`.
-"""
-function NFFTAlg(u::AbstractArray, v::AbstractArray; kwargs...)
-    uv = Matrix{eltype(u)}(undef, 2, length(u))
-    uv[1,:] .= u
-    uv[2,:] .= v
-    return ObservedNUFT(NFFTAlg(;kwargs...), uv)
+Base.@kwdef struct NFFTAlg{T,N,F} <: NUFT
+    """
+    Amount to pad the image
+    """
+    padfac::Int = 1
+    """
+    Kernel size parameters. This controls the accuracy of NFFT you do not usually need to change this
+    """
+    m::Int = 4
+    """
+    Over sampling factor. This controls the accuracy of NFFT you do not usually need to change this.
+    """
+    σ::T = 2.0
+    """
+    Window function for the NFFT. You do not usually need to change this
+    """
+    window::Symbol = :kaiser_bessel
+    """
+    NFFT interpolation algorithm.
+    """
+    precompute::N=NFFT.POLYNOMIAL
+    """
+    Flag block partioning should be used to speed up computation
+    """
+    blocking::Bool = true
+    """
+    Flag if the node should be sorted in a lexicographic way
+    """
+    sortNodes::Bool = false
+    """
+    Flag if the deconvolve indices should be stored, Currently required for GPU
+    """
+    storeDeconvolutionIdx::Bool = true
+    """
+    Flag passed to inner AbstractFFT. The fastest FFTW is FFTW.MEASURE but takes the longest
+    to precompute
+    """
+    fftflags::F = FFTW.MEASURE
 end
 
-# pad from the center of the position.
-function padimage(alg::NFFTAlg, img::SpatialIntensityMap)
-    padfac = alg.padfac
-    # if no padding exit now
-    (padfac == 1) && return img
 
-    ny,nx = size(img)
-    nnx = nextprod((2,3,5,7), padfac*nx)
-    nny = nextprod((2,3,5,7), padfac*ny)
-    nsx = nnx÷2-nx÷2
-    nsy = nny÷2-ny÷2
-    pimg =  PaddedView(zero(eltype(img)), img.img,
-                      (1:nnx, 1:nny),
-                      (nsx+1:nsx+nx, nsy+1:nsy+ny)
-                     )
-    dx, dy = pixelsizes(img)
-    return SpatialIntensityMap(collect(pimg), dx*size(pimg,2), dy*size(pimg, 1))
+
+function applyft(p::AbstractNUFTPlan, img::Union{AbstractArray, StokesIntensityMap})
+    vis =  nuft(getplan(p), img)
+    return vis.*getphases(p)
 end
 
-function plan_nuft(alg::ObservedNUFT{<:NFFTAlg}, grid::AbstractGrid)
-    uv2 = similar(alg.uv)
-    dpx = pixelsizes(grid)
+
+function plan_nuft(alg::NFFTAlg, imagegrid::AbstractRectiGrid, visdomain::UnstructuredDomain)
+    visp = domainpoints(visdomain)
+    uv2 = similar(visp.U, (2, length(visdomain)))
+    dpx = pixelsizes(imagegrid)
     dx = dpx.X
     dy = dpx.Y
-    uv2[1,:] .= alg.uv[1,:]*dx
-    uv2[2,:] .= alg.uv[2,:]*dy
-    balg = alg.alg
-    (;m, σ, window, precompute, blocking, sortNodes, storeDeconvolutionIdx, fftflags) = balg
-    plan = plan_nfft(uv2, size(grid); m, σ, window, precompute, blocking, sortNodes, storeDeconvolutionIdx, fftflags)
+    # Here we flip the sign because the NFFT uses the -2pi convention
+    uv2[1,:] .= -visp.U*dx
+    uv2[2,:] .= -visp.V*dy
+    (;m, σ, window, precompute, blocking, sortNodes, storeDeconvolutionIdx, fftflags) = alg
+    plan = plan_nfft(uv2, size(imagegrid); m, σ, window, precompute, blocking, sortNodes, storeDeconvolutionIdx, fftflags)
     return plan
 end
 
-function make_phases(alg::ObservedNUFT{<:NFFTAlg}, grid::AbstractGrid, pulse::Pulse=DeltaPulse())
-    dx, dy = pixelsizes(grid)
-    x0, y0 = phasecenter(grid)
-    u = @view alg.uv[1,:]
-    v = @view alg.uv[2,:]
-    # Correct for the nFFT phase center and the img phase center
-    return cispi.((u.*(dx - 2*x0) .+ v.*(dy - 2*y0))).*visibility_point.(Ref(stretched(pulse, dx, dy)), u, v, zero(dx), zero(dy))
-end
 
-@inline function create_cache(alg::ObservedNUFT{<:NFFTAlg}, plan, phases, grid::AbstractGrid, pulse=DeltaPulse())
-    return NUFTCache(alg, plan, phases, pulse, grid)
+function make_phases(::NFFTAlg, imgdomain::AbstractRectiGrid, visdomain::UnstructuredDomain)
+    dx, dy = pixelsizes(imgdomain)
+    x0, y0 = phasecenter(imgdomain)
+    visp = domainpoints(visdomain)
+    u = visp.U
+    v = visp.V
+    # Correct for the nFFT phase center and the img phase center
+    return cispi.((u.*(dx - 2*x0) .+ v.*(dy - 2*y0)))
 end
 
 # Allow NFFT to work with ForwardDiff.
@@ -80,15 +99,15 @@ function _nuft(A::NFFTPlan, b::AbstractArray{<:ForwardDiff.Dual})
     return _frule_nuft(A, b)
 end
 
-function _frule_nuft(p::NFFTPlan, b::AbstractArray{<:ForwardDiff.Dual})
+function _frule_nuft(p::NFFTPlan, b::AbstractArray{<:ForwardDiff.Dual{T,V,P}}) where {T, V, P}
     # Compute the fft
     buffer = ForwardDiff.value.(b)
     xtil = p*complex.(buffer)
     out = similar(buffer, Complex{ForwardDiff.Dual{T,V,P}})
     # Now take the deriv of nuft
-    ndxs = ForwardDiff.npartials(first(m.image))
+    ndxs = ForwardDiff.npartials(first(b))
     dxtils = ntuple(ndxs) do n
-        buffer .= ForwardDiff.partials.(m.image, n)
+        buffer .= ForwardDiff.partials.(b, n)
         p * complex.(buffer)
     end
     out = similar(xtil, Complex{ForwardDiff.Dual{T,V,P}})

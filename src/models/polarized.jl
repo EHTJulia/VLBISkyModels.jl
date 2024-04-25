@@ -1,4 +1,4 @@
-export PolarizedModel, coherencymatrix, PoincareSphere2Map
+export PolarizedModel, coherencymatrix, PoincareSphere2Map, PolExp2Map
 
 import ComradeBase: AbstractPolarizedModel, m̆, evpa, CoherencyMatrix, StokesParams
 
@@ -51,19 +51,19 @@ Base.@assume_effects :foldable @inline imanalytic(::Type{PolarizedModel{I,Q,U,V}
 end
 
 
-@inline function visibility_point(pimg::PolarizedModel, u, v, time, freq)
-    si = visibility_point(stokes(pimg, :I), u, v, time, freq)
-    sq = visibility_point(stokes(pimg, :Q), u, v, time, freq)
-    su = visibility_point(stokes(pimg, :U), u, v, time, freq)
-    sv = visibility_point(stokes(pimg, :V), u, v, time, freq)
+@inline function visibility_point(pimg::PolarizedModel, p)
+    si = visibility_point(stokes(pimg, :I), p)
+    sq = visibility_point(stokes(pimg, :Q), p)
+    su = visibility_point(stokes(pimg, :U), p)
+    sv = visibility_point(stokes(pimg, :V), p)
     return StokesParams(si, sq, su, sv)
 end
 
-function visibilities_analytic(pimg::PolarizedModel, u, v, t, f)
-    si = visibilities_analytic(stokes(pimg, :I), u, v, t, f)
-    sq = visibilities_analytic(stokes(pimg, :Q), u, v, t, f)
-    su = visibilities_analytic(stokes(pimg, :U), u, v, t, f)
-    sv = visibilities_analytic(stokes(pimg, :V), u, v, t, f)
+function visibilitymap_analytic(pimg::PolarizedModel, p::AbstractSingleDomain)
+    si = baseimage(visibilitymap_analytic(stokes(pimg, :I), p))
+    sq = baseimage(visibilitymap_analytic(stokes(pimg, :Q), p))
+    su = baseimage(visibilitymap_analytic(stokes(pimg, :U), p))
+    sv = baseimage(visibilitymap_analytic(stokes(pimg, :V), p))
     return StructArray{StokesParams{eltype(si)}}((si, sq, su, sv))
 end
 
@@ -76,12 +76,12 @@ split_stokes(pimg::PolarizedModel) = (stokes(pimg, :I), stokes(pimg, :Q), stokes
 
 # If the model is numeric we don't know whether just a component is numeric or all of them are so
 # we need to re-dispatch
-function visibilities_numeric(pimg::PolarizedModel, u, v, t, f)
+function visibilitymap_numeric(pimg::PolarizedModel, p::FourierDualDomain)
     mI, mQ, mU, mV = split_stokes(pimg)
-    si = _visibilities(visanalytic(typeof(mI)), mI, u, v, t, f)
-    sq = _visibilities(visanalytic(typeof(mQ)), mQ, u, v, t, f)
-    su = _visibilities(visanalytic(typeof(mU)), mU, u, v, t, f)
-    sv = _visibilities(visanalytic(typeof(mV)), mV, u, v, t, f)
+    si = _visibilitymap(visanalytic(typeof(mI)), mI, p)
+    sq = _visibilitymap(visanalytic(typeof(mQ)), mQ, p)
+    su = _visibilitymap(visanalytic(typeof(mU)), mU, p)
+    sv = _visibilitymap(visanalytic(typeof(mV)), mV, p)
     return StructArray{StokesParams{eltype(si)}}((si, sq, su, sv))
 end
 
@@ -93,12 +93,12 @@ function intensitymap!(pimg::Union{StokesIntensityMap, IntensityMap{<:StokesPara
     return pimg
 end
 
-function intensitymap(pmodel::PolarizedModel, dims::AbstractGrid)
+function intensitymap(pmodel::PolarizedModel, dims::AbstractSingleDomain)
     imgI = baseimage(intensitymap(stokes(pmodel, :I), dims))
     imgQ = baseimage(intensitymap(stokes(pmodel, :Q), dims))
     imgU = baseimage(intensitymap(stokes(pmodel, :U), dims))
     imgV = baseimage(intensitymap(stokes(pmodel, :V), dims))
-    return IntensityMap(StructArray{StokesParams{eltype(imgI)}}((imgI, imgQ, imgU, imgV)), dims)
+    return create_imgmap(StructArray{StokesParams{eltype(imgI)}}((imgI, imgQ, imgU, imgV)), dims)
 end
 
 @inline function convolved(m::PolarizedModel, p::AbstractModel)
@@ -163,14 +163,6 @@ end
 #     end
 # end
 
-function modelimage(model::PolarizedModel, grid::AbstractGrid, alg::FourierTransform=FFTAlg(), pulse=DeltaPulse())
-    return PolarizedModel(
-        modelimage(stokes(model, :I), grid, alg, pulse),
-        modelimage(stokes(model, :Q), grid, alg, pulse),
-        modelimage(stokes(model, :U), grid, alg, pulse),
-        modelimage(stokes(model, :V), grid, alg, pulse)
-        )
-end
 
 """
     PoincareSphere2Map(I, p, X, grid)
@@ -202,7 +194,37 @@ function PoincareSphere2Map(I, p, X, grid)
     return StokesIntensityMap(stokesI, stokesQ, stokesU, stokesV)
 end
 PoincareSphere2Map(I::IntensityMap, p, X) = PoincareSphere2Map(baseimage(I), p, X, axisdims(I))
-PoincareSphere2Map(I::AbstractMatrix, p, X, cache::AbstractCache) = ContinuousImage(PoincareSphere2Map(I, p, X, cache.grid), cache)
+
+
+"""
+    PolExp2Map(a, b, c, d, grid::AbstractRectiGrid)
+
+Constructs an polarized intensity map model using the matrix exponential representation from
+[Arras 2021 (Thesis)](https://www.philipp-arras.de/assets/dissertation.pdf).
+
+Each Stokes parameter is parameterized as
+
+    I = exp(a)cosh(p)
+    Q = exp(a)sinh(p)b/p
+    U = exp(a)sinh(p)c/p
+    V = exp(a)sinh(p)d/p
+
+where `a,b,c,d` are real numbers with no conditions, and `p=√(a² + b² + c²)`.
+"""
+function PolExp2Map(a::AbstractArray, b::AbstractArray, c::AbstractArray, d::AbstractArray, grid::AbstractRectiGrid)
+    p = sqrt.(b.^2 .+ c.^2 .+ d.^2)
+    tmp = exp.(a).*sinh.(p).*inv(p)
+    pimgI = exp.(a).*cosh.(b)
+    pimgQ = tmp.*b./p
+    pimgU = tmp.*c./p
+    pimgV = tmp.*d./p
+    stokesI = IntensityMap(pimgI, grid)
+    stokesQ = IntensityMap(pimgQ, grid)
+    stokesU = IntensityMap(pimgU, grid)
+    stokesV = IntensityMap(pimgV, grid)
+    return StokesIntensityMap(stokesI, stokesQ, stokesU, stokesV)
+end
+
 
 
 """

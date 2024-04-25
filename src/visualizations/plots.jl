@@ -5,11 +5,13 @@ using Printf
 @recipe function f(image::Union{<:StokesIntensityMap, <:IntensityMap}; uvscale=rad2μas)
     #Define some constants
     #Construct the image grid in μas
-    xitr, yitr = imagepixels(image)
+    (;X, Y) = image
+    xitr, yitr = uvscale.((X, Y))
     x0, x1 = uvscale.(extrema(xitr))
     y0, y1 = uvscale.(extrema(yitr))
 
-    xitr, yitr = uvscale.(values(imagepixels(image)))
+    (;X, Y) = image
+    xitr, yitr = uvscale.((X, Y))
     tickfontsize --> 11
     guidefontsize --> 14
 
@@ -137,7 +139,8 @@ end
 
     grid = imagepixels(fovx, fovy, nx, ny, x0, y0)
     image = intensitymap(m, grid)
-    xitr, yitr = values(imagepixels(image))
+    (;X, Y) = image
+    xitr, yitr = uvscale.((X, Y))
     x0, x1 = uvscale.(extrema(xitr))
     y0, y1 = uvscale.(extrema(yitr))
 

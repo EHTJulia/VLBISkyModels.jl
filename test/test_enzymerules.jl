@@ -6,7 +6,6 @@ u = rand(10_000) .- 0.5
 v = rand(10_000) .- 0.5
 
 buffer = IntensityMap(zeros(4, 4), 1.0, 1.0)
-cache = create_cache(NFFTAlg(u, v), buffer, DeltaPulse())
 
 
 f = let p = cache.plan

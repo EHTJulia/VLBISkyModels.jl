@@ -6,12 +6,12 @@ function testpol(m, uv)
 
     @test all(==(1), img .≈ img2)
 
-    @inferred visibilities(m, uv)
+    @inferred visibilitymap(m, uv)
 
-    v = visibilities(m, uv)
+    v = visibilitymap(m, uv)
 
-    plot(m)
-    plot(img)
+    Plots.plot(m)
+    Plots.plot(img)
     polimage(img)
     polimage(img; plot_total=false)
     Plots.closeall()
@@ -24,7 +24,15 @@ end
     s = map(length, dims(g))
 
     u = fftshift(fftfreq(length(g.X), 1/step(g.X)))
-    uv = (U=u, V=-u)
+    uv = RectiGrid((U=u, V=-u))
+    uvus = UnstructuredDomain((U=randn(32), V=randn(32)))
+    foo(x) = sum(norm, VLBISkyModels.visibilitymap_analytic(
+                            PolarizedModel(Gaussian(), x[1]*Gaussian(), x[2]*Gaussian(), x[3]*Gaussian()),
+                        uvus))
+    x = rand(3)
+    foo(x)
+    testgrad(foo, x)
+
 
     testpol(m, uv)
 end
@@ -35,11 +43,15 @@ end
     s = map(length, dims(g))
 
     u = fftshift(fftfreq(length(g.X), 1/step(g.X)))
-    uv = (U=u, V=-u)
+    uv = UnstructuredDomain((U=u, V=-u))
 
-    vff = testpol(modelimage(m, g, FFTAlg()), uv)
-    vnf = testpol(modelimage(m, g, NFFTAlg(uv.U, uv.V)), uv)
-    vdf = testpol(modelimage(m, g, DFTAlg(uv.U, uv.V)), uv)
+    gff = FourierDualDomain(g, uv, FFTAlg())
+    gnf = FourierDualDomain(g, uv, NFFTAlg())
+    gdf = FourierDualDomain(g, uv, DFTAlg())
+
+    vff = testpol(m, gff)
+    vnf = testpol(m, gnf)
+    vdf = testpol(m, gdf)
 
     @test isapprox(vff, vnf, atol=1e-6)
     @test isapprox(vff, vdf, atol=1e-6)
@@ -49,21 +61,24 @@ end
 @testset "Polarized Modified" begin
     g = imagepixels(5.0, 5.0, 128, 128)
     u = fftshift(fftfreq(length(g.X), 1/step(g.X)))
-    uv = (U=u, V=-u)
+    uv = UnstructuredDomain((U=u, V=-u))
+
 
     s = map(length, dims(g))
     m0 = PolarizedModel(ExtendedRing(2.0), 0.1*Gaussian(), 0.1*Gaussian(), 0.1*Gaussian())
     m = shifted(m0, 0.1 ,0.1)
-    testpol(modelimage(m, g, NFFTAlg(uv.U, uv.V)), uv)
+    gnf = FourierDualDomain(g, uv, NFFTAlg())
+
+    testpol(m, gnf)
 
     m = rotated(m0, 0.1)
-    testpol(modelimage(m, g, NFFTAlg(uv.U, uv.V)), uv)
+    testpol(m, gnf)
 
     m = renormed(m0, 0.1)
-    testpol(modelimage(m, g, NFFTAlg(uv.U, uv.V)), uv)
+    testpol(m, gnf)
 
     m = stretched(m0, 0.1, 0.4)
-    testpol(modelimage(m, g, NFFTAlg(uv.U, uv.V)), uv)
+    testpol(m, gnf)
 
 end
 
@@ -72,7 +87,7 @@ end
     m2 = PolarizedModel(Disk(), shifted(Disk(), 0.1, 1.0), ZeroModel(), ZeroModel())
     g = imagepixels(5.0, 5.0, 128, 128)
     u = fftshift(fftfreq(length(g.X), 1/step(g.X)))
-    uv = (U=u, V=-u)
+    uv = UnstructuredDomain((U=u, V=-u))
 
     testpol(convolved(m1,m2), uv)
 
@@ -80,16 +95,28 @@ end
     testpol(convolved(stretched(m1, 0.5, 0.5),Gaussian()), uv)
 end
 
+@testset "Polarized NonAnalytic" begin
+    m = PolarizedModel(Gaussian(), 0.1*Gaussian(), 0.1*Gaussian(), 0.1*Gaussian())
+    mna = VLBISkyModels.NonAnalyticTest(m)
+    g = imagepixels(10.0, 10.0, 128, 128)
+    guv = VLBISkyModels.uvgrid(g)
+    v = visibilitymap(mna, guv)
+    van = visibilitymap(m, guv)
+    @test isapprox(maximum(norm, v .- van), 0.0, atol=1e-5)
+end
+
 @testset "Polarized All Mod" begin
     m1 = PolarizedModel(Gaussian(), 0.1*Gaussian(), 0.1*Gaussian(), 0.1*Gaussian())
     m2 = PolarizedModel(ExtendedRing(8.0), shifted(Disk(), 0.1, 1.0), ZeroModel(), ZeroModel())
-    m = convolved(m1,m2)+m1
+    m = convolved(convolved(m1, Gaussian()),m2)+convolved(Gaussian(), m1)
     g = imagepixels(5.0, 5.0, 128, 128)
     s = map(length, dims(g))
-    u = fftshift(fftfreq(length(g.X), 1/step(g.X)))
-    uv = (U=u, V=-u)
+    u = fftshift(fftfreq(length(g.X), 1/step(g.X)))./40
+    uv = UnstructuredDomain((U=u, V=-u))
+    gnf = FourierDualDomain(g, uv, NFFTAlg())
 
-    testpol(modelimage(m, g), uv)
+
+    testpol(m, gnf)
 end
 
 @testset "Rotation" begin
@@ -138,8 +165,54 @@ end
     @test all(==(1), isapprox.(stokes(rimg1, :Q), 0.0, atol=1e-16))
     @test all(==(1), stokes(rimg1, :V) .≈ 0.1*stokes(rimg1, :I))
 
-    u, v = rand(32), rand(32)
-    cache = create_cache(NFFTAlg(u, v), g)
-    mimg = ContinuousImage(StokesIntensityMap(img), cache)
-    visibilities(mimg, (U=u, V=v))
+    u, v = randn(32)/5, randn(32)/5
+    uv = UnstructuredDomain((U=u, V=v))
+    gnf = FourierDualDomain(g, uv, NFFTAlg())
+    gdf = FourierDualDomain(g, uv, DFTAlg())
+    gff = FourierDualDomain(g, uv, FFTAlg(padfac=8))
+    mimg = ContinuousImage(StokesIntensityMap(img), BSplinePulse{3}())
+    vnf = visibilitymap(mimg, gnf)
+    vdf = visibilitymap(mimg, gdf)
+    vff = visibilitymap(mimg, gff)
+
+    @test isapprox(maximum(norm, vnf .- vdf), 0.0, atol=1e-6)
+    @test isapprox(maximum(norm, vff .- vdf), 0.0, atol=1e-5)
+end
+
+@testset "PoincareSphere2Map" begin
+    m = PolarizedModel(Gaussian(), Gaussian(), ZeroModel(), 0.1*Gaussian())
+    g = imagepixels(5.0, 5, 24, 24)
+
+    img = intensitymap(m, g)
+
+    sI = stokes(img, :I) |> baseimage
+    sQ = stokes(img, :Q) |> baseimage
+    sU = stokes(img, :U) |> baseimage
+    sV = stokes(img, :V) |> baseimage
+
+    p = sqrt.(sQ^2 + sU^2 + sV^2)
+    Χ = (sQ./p, sU./p, sV./p)
+
+    pimg = PoincareSphere2Map(sI, p./sI, Χ, g)
+    @test (stokes(pimg, :I) |> baseimage) ≈ sI
+    @test (stokes(pimg, :Q) |> baseimage) ≈ sQ
+    @test (stokes(pimg, :U) |> baseimage) ≈ sU
+    @test (stokes(pimg, :V) |> baseimage) ≈ sV
+end
+
+@testset "PolExp2Map" begin
+    m = PolarizedModel(Gaussian(), Gaussian(), ZeroModel(), 0.1*Gaussian())
+    g = imagepixels(5.0, 5, 24, 24)
+
+    img = intensitymap(m, g)
+
+    sI = stokes(img, :I) |> baseimage
+    sQ = stokes(img, :Q) |> baseimage
+    sU = stokes(img, :U) |> baseimage
+    sV = stokes(img, :V) |> baseimage
+
+    p = sqrt.(sQ^2 + sU^2 + sV^2)
+    Χ = (sQ./p, sU./p, sV./p)
+
+    pimg = PolExp2Map(randn(24, 24), randn(24, 24), randn(24, 24), randn(24, 24), g)
 end

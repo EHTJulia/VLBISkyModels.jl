@@ -10,6 +10,8 @@ using Test
 using Serialization
 import DimensionalData as DD
 import CairoMakie as CM
+using ForwardDiff
+using Enzyme
 
 function FiniteDifferences.to_vec(k::IntensityMap)
     v, b = to_vec(DD.data(k))
@@ -17,11 +19,20 @@ function FiniteDifferences.to_vec(k::IntensityMap)
     return v, back
 end
 
+function FiniteDifferences.to_vec(k::UnstructuredMap)
+    v, b = to_vec(parent(k))
+    back(x) = UnstructuredMap(b(x), axisdims(k))
+    return v, back
+end
+
+
 
 
 @testset "VLBISkyModels.jl" begin
     include("models.jl")
+    include("templates.jl")
     include("polarized.jl")
     include("utility.jl")
     include("viz.jl")
+    include("stokesintensitymap.jl")
 end
