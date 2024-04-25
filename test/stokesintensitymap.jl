@@ -25,7 +25,7 @@
     @test ndims(simg) == ndims(img)
     @test ndims(typeof(simg)) == ndims(img)
     @test simg[1] == img[1]
-    @test simg[2,5] == img[2,5]
+    @test simg[2,2] == img[2,2]
     @test pixelsizes(img) == pixelsizes(simg)
     @test fieldofview(img) == fieldofview(simg)
     @test domainpoints(simg) == domainpoints(g)
