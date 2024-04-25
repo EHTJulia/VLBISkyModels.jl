@@ -5,7 +5,12 @@
 
     CM.heatmap(img)
     CM.image(img)
+    CM.image(stokes(img, :I))
     CM.image(g, m)
+    CM.image(g.X, g.Y, m)
+    CM.heatmap(g, m)
+    CM.heatmap(g.X, g.Y, m)
+
 
     imageviz(stokes(img, :I))
     imageviz(img)

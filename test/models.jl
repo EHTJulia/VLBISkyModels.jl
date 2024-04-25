@@ -508,8 +508,11 @@ end
 
     @testset "Convolved models" begin
         g = imagepixels(20.0, 20.0, 1024, 1024)
+        guv = UnstructuredDomain((U=randn(32), V=randn(32)))
+        gfour = FourierDualDomain(g, guv, NFFTAlg())
         mt1 = convolved(m1, m2)
         img = allocate_imgmap(mt1, g)
+        @test intensitymap(mt1, g) ≈ intensitymap(mt1, gfour)
 
         mt2 = convolved(shifted(m1, 1.0, 1.0), m2)
         mt3 = convolved(shifted(m1, 1.0, 1.0), 0.5*stretched(m2, 0.9, 0.8))
@@ -530,9 +533,15 @@ end
 
     @testset "All composite" begin
         g = imagepixels(20.0, 20.0, 1024, 1024)
+        guv = UnstructuredDomain((U=randn(32), V=randn(32)))
+        gfour = FourierDualDomain(g, guv, NFFTAlg())
+
 
         mt = m1 + convolved(m1, m2)
         img = allocate_imgmap(mt, g)
+        @test intensitymap(mt, g) ≈ intensitymap(mt, gfour)
+
+        @test VLBISkyModels.visibilitymap_numeric(mt, gfour) ≈ visibilitymap(mt, gfour)
 
         mc = VLBISkyModels.components(mt)
         @test mc[1] === m1

@@ -55,6 +55,9 @@
         cpimg = VLBISkyModels.convolve(pimg, Gaussian())
         pimg2 = modify(pimg, Stretch(sqrt(2)))
         @test isapprox(cpimg, pimg2, rtol=1e-4)
+
+        simg = VLBISkyModels.smooth(img, 1.0)
+        @test isapprox(simg, cimg, rtol=1e-4)
     end
 
     @testset "regrid" begin
