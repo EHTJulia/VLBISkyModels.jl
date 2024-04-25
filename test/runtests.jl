@@ -19,7 +19,7 @@ end
 
 function FiniteDifferences.to_vec(k::UnstructuredMap)
     v, b = to_vec(parent(k))
-    back(x) = Unstructuredmap(b(x), axisdims(k))
+    back(x) = UnstructuredMap(b(x), axisdims(k))
     return v, back
 end
 
