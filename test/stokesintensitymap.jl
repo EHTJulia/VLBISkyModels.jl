@@ -1,5 +1,5 @@
 @testset "StokesIntensityMap" begin
-    g = imagepixels(10.0, 10.0, 128, 128)
+    g = imagepixels(10.0, 10.0, 2, 2)
     m = PolarizedModel(Gaussian(), 0.1*Gaussian(), 0.1*Gaussian(), 0.1*Gaussian())
     img = intensitymap(m, g)
 

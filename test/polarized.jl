@@ -98,7 +98,7 @@ end
 @testset "Polarized All Mod" begin
     m1 = PolarizedModel(Gaussian(), 0.1*Gaussian(), 0.1*Gaussian(), 0.1*Gaussian())
     m2 = PolarizedModel(ExtendedRing(8.0), shifted(Disk(), 0.1, 1.0), ZeroModel(), ZeroModel())
-    m = convolved(convolved(m1, Gaussian()),m2)+convolved(g, m1)
+    m = convolved(convolved(m1, Gaussian()),m2)+convolved(Gaussian(), m1)
     g = imagepixels(5.0, 5.0, 128, 128)
     s = map(length, dims(g))
     u = fftshift(fftfreq(length(g.X), 1/step(g.X)))./40
