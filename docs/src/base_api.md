@@ -93,6 +93,7 @@ ComradeBase.MinimalHeader
 ComradeBase.IntensityMap
 ComradeBase.IntensityMap(::AbstractArray, ::AbstractRectiGrid)
 ComradeBase.UnstructuredMap
+ComradeBase.baseimage
 ComradeBase.centroid
 ComradeBase.second_moment
 ComradeBase.load
