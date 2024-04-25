@@ -744,7 +744,7 @@ end
     gnf = FourierDualDomain(g, guv, NFFTAlg())
     @test intensitymap(m, gnf) ≈ img
 
-    show(gnf)
+    show(MIME"text/plain"(), gnf)
     cimg = ContinuousImage(img, DeltaPulse())
     test_rrule(ContinuousImage, img, DeltaPulse()⊢NoTangent())
 
