@@ -2,51 +2,101 @@
 <html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>Modeling with non-analytic Fourier transforms · VLBISkyModels.jl</title><meta name="title" content="Modeling with non-analytic Fourier transforms · VLBISkyModels.jl"/><meta property="og:title" content="Modeling with non-analytic Fourier transforms · VLBISkyModels.jl"/><meta property="twitter:title" content="Modeling with non-analytic Fourier transforms · VLBISkyModels.jl"/><meta name="description" content="Documentation for VLBISkyModels.jl."/><meta property="og:description" content="Documentation for VLBISkyModels.jl."/><meta property="twitter:description" content="Documentation for VLBISkyModels.jl."/><meta property="og:url" content="https://ehtjulia.github.io/VLBISkyModels.jl/examples/nonanalytic/"/><meta property="twitter:url" content="https://ehtjulia.github.io/VLBISkyModels.jl/examples/nonanalytic/"/><link rel="canonical" href="https://ehtjulia.github.io/VLBISkyModels.jl/examples/nonanalytic/"/><script data-outdated-warner src="../../assets/warner.js"></script><link href="https://cdnjs.cloudflare.com/ajax/libs/lato-font/3.0.0/css/lato-font.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/juliamono/0.050/juliamono.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/fontawesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/solid.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/brands.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.8/katex.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL="../.."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" data-main="../../assets/documenter.js"></script><script src="../../search_index.js"></script><script src="../../siteinfo.js"></script><script src="../../../versions.js"></script><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/documenter-dark.css" data-theme-name="documenter-dark" data-theme-primary-dark/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/documenter-light.css" data-theme-name="documenter-light" data-theme-primary/><script src="../../assets/themeswap.js"></script></head><body><div id="documenter"><nav class="docs-sidebar"><div class="docs-package-name"><span class="docs-autofit"><a href="../../">VLBISkyModels.jl</a></span></div><button class="docs-search-query input is-rounded is-small is-clickable my-2 mx-auto py-1 px-2" id="documenter-search-query">Search docs (Ctrl + /)</button><ul class="docs-menu"><li><a class="tocitem" href="../../">Home</a></li><li><a class="tocitem" href="../../interface/">Model Interface</a></li><li><a class="tocitem" href="../../api/">API</a></li><li><a class="tocitem" href="../../base_api/">Base API</a></li><li class="is-active"><a class="tocitem" href>Modeling with non-analytic Fourier transforms</a></li></ul><div class="docs-version-selector field has-addons"><div class="control"><span class="docs-label button is-static is-size-7">Version</span></div><div class="docs-selector control is-expanded"><div class="select is-fullwidth is-size-7"><select id="documenter-version-selector"></select></div></div></div></nav><div class="docs-main"><header class="docs-navbar"><a class="docs-sidebar-button docs-navbar-link fa-solid fa-bars is-hidden-desktop" id="documenter-sidebar-button" href="#"></a><nav class="breadcrumb"><ul class="is-hidden-mobile"><li class="is-active"><a href>Modeling with non-analytic Fourier transforms</a></li></ul><ul class="is-hidden-tablet"><li class="is-active"><a href>Modeling with non-analytic Fourier transforms</a></li></ul></nav><div class="docs-right"><a class="docs-navbar-link" href="https://github.com/EHTJulia/VLBISkyModels.jl/blob/main/examples/nonanalytic.jl#" title="Edit source on GitHub"><span class="docs-icon fa-solid"></span></a><a class="docs-settings-button docs-navbar-link fa-solid fa-gear" id="documenter-settings-button" href="#" title="Settings"></a><a class="docs-article-toggle-button fa-solid fa-chevron-up" id="documenter-article-toggle-button" href="javascript:;" title="Collapse all docstrings"></a></div></header><article class="content" id="documenter-page"><h1 id="Modeling-with-non-analytic-Fourier-transforms"><a class="docs-heading-anchor" href="#Modeling-with-non-analytic-Fourier-transforms">Modeling with non-analytic Fourier transforms</a><a id="Modeling-with-non-analytic-Fourier-transforms-1"></a><a class="docs-heading-anchor-permalink" href="#Modeling-with-non-analytic-Fourier-transforms" title="Permalink"></a></h1><pre><code class="language-julia hljs">using VLBISkyModels
 
 
-using CairoMakie</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">  Activating project at `~/work/VLBISkyModels.jl/VLBISkyModels.jl/examples`</code></pre><p>While most of the models implemented in <code>VLBISkyModels</code> have an analytic Fourier transform this is not required. In this notebook we will describe how a user can do Bayesian model fitting with a non-analytic model.</p><p>The <code>ExtendedRing</code> model is an example of a non-analytic model. The image structure is given by</p><p class="math-container">\[I(r) = \frac{\beta^\alpha}{2\pi \Gamma(\alpha)} r^{-\alpha-2}e^{-\beta/r}\]</p><p>This can be created as follows</p><pre><code class="language-julia hljs">m = ExtendedRing(8.0)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">ExtendedRing{Float64}(8.0)</code></pre><p>The argument is <code>\alpha</code> in the above equation. <code>beta</code> is given by <span>$(1+\alpha)$</span>.</p><p>This is an example of a ring model that has a substantially different flux profile. Let&#39;s plot the image first giving it some unity by applying <code>modify</code></p><pre><code class="language-julia hljs">muas = modify(m, Stretch(μas2rad(20.0)))
-img = intensitymap(muas, μas2rad(100.0),  μas2rad(100.0), 256, 256)
-imageviz(img)</code></pre><img src="ad23c8aa.png" alt="Example block output"/><p>This function does not have a simple analytic Fourier transform, e.g.</p><pre><code class="language-julia hljs">VLBISkyModels.visanalytic(ExtendedRing)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">ComradeBase.NotAnalytic()</code></pre><p>Therefore, to find the Fourier transform of the image we need to revert to numerical methods. For this notebook we will use the <em>fast Fourier transform</em> or FFT. Specifically we will use FFTW. To compute a numerical Fourier transform we first need to specify the image.</p><pre><code class="language-julia hljs">img = IntensityMap(zeros(256, 256), 10.0, 10.0)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">256×256 IntensityMap{Float64,2}<span class="sgr90"> with dimensions: </span>
-  <span class="sgr31">X</span> Sampled{Float64} <span class="sgr36">LinRange{Float64}(-4.98047, 4.98047, 256)</span> ForwardOrdered Regular Points,
-  <span class="sgr31">Y</span> Sampled{Float64} <span class="sgr36">LinRange{Float64}(-4.98047, 4.98047, 256)</span> ForwardOrdered Regular Points
-           <span class="sgr90">-4.98047</span>  <span class="sgr90">-4.94141</span>  …  <span class="sgr90">4.86328</span>  <span class="sgr90">4.90234</span>  <span class="sgr90">4.94141</span>  <span class="sgr90">4.98047</span>
- <span class="sgr90">-4.98047</span>   0.0       0.0         0.0      0.0      0.0      0.0
- <span class="sgr90">-4.94141</span>   0.0       0.0         0.0      0.0      0.0      0.0
- <span class="sgr90">-4.90234</span>   0.0       0.0         0.0      0.0      0.0      0.0
- <span class="sgr90">-4.86328</span>   0.0       0.0         0.0      0.0      0.0      0.0
- <span class="sgr90">-4.82422</span>   0.0       0.0      …  0.0      0.0      0.0      0.0
-  ⋮                            ⋱                    ⋮        
-  <span class="sgr90">4.78516</span>   0.0       0.0         0.0      0.0      0.0      0.0
-  <span class="sgr90">4.82422</span>   0.0       0.0         0.0      0.0      0.0      0.0
-  <span class="sgr90">4.86328</span>   0.0       0.0         0.0      0.0      0.0      0.0
-  <span class="sgr90">4.90234</span>   0.0       0.0      …  0.0      0.0      0.0      0.0
-  <span class="sgr90">4.94141</span>   0.0       0.0         0.0      0.0      0.0      0.0
-  <span class="sgr90">4.98047</span>   0.0       0.0         0.0      0.0      0.0      0.0</code></pre><p>This will serve as our cache to store the image going forward. The next step is to create a model wrapper that holds the model and the image. <code>VLBISkyModels</code> provides the <code>modelimage</code> function to do exactly that</p><pre><code class="language-julia hljs">mimage = modelimage(m, img, FFTAlg())</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">ModelImage(
-	model: InterpolatedModel(ExtendedRing{Float64}(8.0))
-	image: SpatialIntensityMap{Float64}(256, 256)
-	cache: VLBISkyModels.FFTCache
-)</code></pre><p>the <code>alg</code> keyword argument then specifies that we want to use an FFT to compute the Fourier transform. When <code>modelimage</code> is called, the FFT is performed and then we use a bicubic interpolator on the resulting visibilities to construct a continuous representation of the Fourier transform. Once we have this everything else is the same. Namely we can calculatge the VLBI data products in the usual manner i.e.</p><pre><code class="language-julia hljs">u = randn(1000)/2
-v = randn(1000)/2</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">1000-element Vector{Float64}:
- -0.8479640253471344
- -0.7651379747706621
-  0.6535285439535423
-  0.3008489652049152
-  0.5229523431649855
-  0.6055878829802374
-  0.4099453086673708
- -0.11798670856826399
- -0.11729864404271353
-  0.033453524241138635
-  ⋮
-  0.14667448500605887
- -0.9360517747385957
- -0.5839682755565716
- -0.04007798474948429
- -0.3290225659882218
- -0.44819504327204673
- -0.37896958394242625
-  0.49667409099491505
- -0.18789407942206893</code></pre><p>Now we can plot our sampled visibilities</p><pre><code class="language-julia hljs">vis = visibilities(mimage, (U=u, V=v))
-scatter(hypot.(u, v), real.(vis), label=&quot;Real&quot;)
-scatter!(hypot.(u, v), imag.(vis), label=&quot;Imag&quot;)
-axislegend()
-current_figure()</code></pre><img src="1bcc1e3e.png" alt="Example block output"/><p>We can also directly get the amplitudes using:</p><pre><code class="language-julia hljs">amp = amplitudes(mimage, (U=u, V=v))
-scatter(hypot.(u, v), amp, label=&quot;Amplitude&quot;)</code></pre><img src="9ec8fd72.png" alt="Example block output"/><hr/><p><em>This page was generated using <a href="https://github.com/fredrikekre/Literate.jl">Literate.jl</a>.</em></p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../../base_api/">« Base API</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.3.0 on <span class="colophon-date" title="Sunday 17 March 2024 23:59">Sunday 17 March 2024</span>. Using Julia version 1.10.2.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
+using CairoMakie</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">  Activating project at `~/work/VLBISkyModels.jl/VLBISkyModels.jl/examples`</code></pre><p>While most of the models implemented in <code>VLBISkyModels</code> have an analytic Fourier transform this is not required. In this notebook we will describe how a user can do Bayesian model fitting with a non-analytic model.</p><p>The <code>ExtendedRing</code> model is an example of a non-analytic model. The image structure is given by</p><p class="math-container">\[I(r) = \frac{\beta^\alpha}{2\pi \Gamma(\alpha)} r^{-\alpha-2}e^{-\beta/r}\]</p><p>This can be created as follows</p><pre><code class="language-julia hljs">m = ExtendedRing(8.0)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">ExtendedRing{Float64}(8.0)</code></pre><p>The argument is <code>\alpha</code> in the above equation. <code>beta</code> is given by <span>$(1+\alpha)$</span>.</p><p>This model does not have a simple analytic Fourier transform, e.g.</p><pre><code class="language-julia hljs">VLBISkyModels.visanalytic(ExtendedRing)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">ComradeBase.NotAnalytic()</code></pre><p>Therefore, to find the Fourier transform of the image we need to revert to numerical methods. For this notebook we will use the <em>fast Fourier transform</em> or FFT. Specifically we will use FFTW. To compute a numerical Fourier transform we first need to specify the image domain</p><pre><code class="language-julia hljs">gim = imagepixels(10.0, 10.0, 256, 256)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">RectiGrid(
+executor: Serial()
+Dimensions: 
+<span class="sgr38_5" style="color:#ff875f">↓ X</span> Sampled{Float64} <span class="sgr38_5" style="color:#ff875f">LinRange{Float64}(-4.98046875, 4.98046875, 256)</span> <span class="sgr38_5" style="color:#808080">ForwardOrdered</span> <span class="sgr38_5" style="color:#808080">Regular</span> <span class="sgr38_5" style="color:#808080">Points</span>,
+<span class="sgr38_5" style="color:#0087d7">→ Y</span> Sampled{Float64} <span class="sgr38_5" style="color:#0087d7">LinRange{Float64}(-4.98046875, 4.98046875, 256)</span> <span class="sgr38_5" style="color:#808080">ForwardOrdered</span> <span class="sgr38_5" style="color:#808080">Regular</span> <span class="sgr38_5" style="color:#808080">Points</span>
+)</code></pre><p>Second we need to specify the list of points in the uv domain we are interested in. Since VLBI tends sparsely sample the UV plan we provide a specific type for this type called <a href="../../base_api/#ComradeBase.UnstructuredDomain"><code>UnstructuredDomain</code></a> that can be used to specify the UV points,</p><pre><code class="language-julia hljs">u = randn(1000)/2
+v = randn(1000)/2
+guv = UnstructuredDomain((U=u, V=v))</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">UnstructredGrid(
+executor: Serial()
+Dimensions: 
+1000-element StructArray(::Vector{Float64}, ::Vector{Float64}) with eltype @NamedTuple{U::Float64, V::Float64}:
+ (U = -0.3171018200329806, V = -0.11887760716050814)
+ (U = -0.40431764700318074, V = -0.019384599961426593)
+ (U = 0.20702422837647608, V = -0.23967833352839157)
+ (U = 0.09714762519738837, V = 0.0751497363071677)
+ (U = -0.4961649119390804, V = 0.005581108926203569)
+ (U = 0.48586404794161225, V = -0.39214499728852337)
+ (U = -0.47075750291984036, V = -0.9105036557941322)
+ (U = -0.4260274232701774, V = -0.1486455248264259)
+ (U = 0.47870181821519403, V = 0.521589952718477)
+ (U = -0.09737512791532552, V = -0.1747886986013766)
+ ⋮
+ (U = -0.2573728946728308, V = 0.3080877953746816)
+ (U = -0.1997485743894281, V = 0.8910826541699232)
+ (U = -0.18651693508299588, V = 0.5628523624248569)
+ (U = -0.1398502888043422, V = 0.7355430048660985)
+ (U = -0.4032383106200497, V = 0.5651436522127312)
+ (U = 0.4893838198153966, V = -0.8406304483145753)
+ (U = 0.2572680726281085, V = 0.26766627956200933)
+ (U = 0.06296664517048386, V = 0.20517595768327265)
+ (U = -0.2734914584283714, V = -0.2432011476303557)
+)</code></pre><p>We can now create a <em>dual domain</em> that contains both the image and the UV points and the specific Fourier transform algorithm we want to use. The options for algorithms are:</p><ol><li><a href="../../api/#VLBISkyModels.NFFTAlg"><code>NFFTAlg</code></a>: Uses the Non-Uniform Fast Fourier Transform. Fast and accurate, this is the recommended algorithm for most cases.</li><li><a href="../../api/#VLBISkyModels.DFTAlg"><code>DFTAlg</code></a>: Uses the Discrete Time Non-Uniform Fourier transform. Slow but exact, so only use for small image grids.</li><li><a href="../../api/#VLBISkyModels.FFTAlg"><code>FFTAlg</code></a>: Moderately fast and moderately accurate. Typically only used internally for testing.</li></ol><p>For this example we will use <code>NFFTAlg</code> since it is the recommended algorithm for most cases.</p><pre><code class="language-julia hljs">gfour = FourierDualDomain(gim, guv, NFFTAlg())</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi"><span class="sgr1">FourierDualDomain(</span>
+<span class="sgr1">Algorithm: </span>NFFTAlg{Float64, AbstractNFFTs.PrecomputeFlags, UInt32}(1, 4, 2.0, :kaiser_bessel, AbstractNFFTs.POLYNOMIAL, true, false, true, 0x00000000)
+<span class="sgr1">Image Domain: </span>RectiGrid(
+executor: Serial()
+Dimensions: 
+<span class="sgr38_5" style="color:#ff875f">↓ X</span> Sampled{Float64} <span class="sgr38_5" style="color:#ff875f">LinRange{Float64}(-4.98046875, 4.98046875, 256)</span> <span class="sgr38_5" style="color:#808080">ForwardOrdered</span> <span class="sgr38_5" style="color:#808080">Regular</span> <span class="sgr38_5" style="color:#808080">Points</span>,
+<span class="sgr38_5" style="color:#0087d7">→ Y</span> Sampled{Float64} <span class="sgr38_5" style="color:#0087d7">LinRange{Float64}(-4.98046875, 4.98046875, 256)</span> <span class="sgr38_5" style="color:#808080">ForwardOrdered</span> <span class="sgr38_5" style="color:#808080">Regular</span> <span class="sgr38_5" style="color:#808080">Points</span>
+)
+<span class="sgr1">Visibility Domain: </span>UnstructredGrid(
+executor: Serial()
+Dimensions: 
+1000-element StructArray(::Vector{Float64}, ::Vector{Float64}) with eltype @NamedTuple{U::Float64, V::Float64}:
+ (U = -0.3171018200329806, V = -0.11887760716050814)
+ (U = -0.40431764700318074, V = -0.019384599961426593)
+ (U = 0.20702422837647608, V = -0.23967833352839157)
+ (U = 0.09714762519738837, V = 0.0751497363071677)
+ (U = -0.4961649119390804, V = 0.005581108926203569)
+ (U = 0.48586404794161225, V = -0.39214499728852337)
+ (U = -0.47075750291984036, V = -0.9105036557941322)
+ (U = -0.4260274232701774, V = -0.1486455248264259)
+ (U = 0.47870181821519403, V = 0.521589952718477)
+ (U = -0.09737512791532552, V = -0.1747886986013766)
+ ⋮
+ (U = -0.2573728946728308, V = 0.3080877953746816)
+ (U = -0.1997485743894281, V = 0.8910826541699232)
+ (U = -0.18651693508299588, V = 0.5628523624248569)
+ (U = -0.1398502888043422, V = 0.7355430048660985)
+ (U = -0.4032383106200497, V = 0.5651436522127312)
+ (U = 0.4893838198153966, V = -0.8406304483145753)
+ (U = 0.2572680726281085, V = 0.26766627956200933)
+ (U = 0.06296664517048386, V = 0.20517595768327265)
+ (U = -0.2734914584283714, V = -0.2432011476303557)
+)</code></pre><p>Given this <code>FourierDualDomain</code> everything now works as before with analytic models. For example we can compute the intensitymap of the model as</p><pre><code class="language-julia hljs">img = intensitymap(m, gfour)
+imageviz(img)</code></pre><img src="d605dd2b.png" alt="Example block output"/><p>and the visibility map using</p><pre><code class="language-julia hljs">vis = visibilitymap(m, gfour)
+fig, ax = scatter(hypot.(vis.U, vis.V), real.(vis), label=&quot;Real&quot;)
+scatter!(ax, hypot.(vis.U, vis.V), imag.(vis), label=&quot;Imag&quot;)
+axislegend(ax)
+ax.xlabel = &quot;uv-dist&quot;
+ax.ylabel = &quot;Flux&quot;
+fig</code></pre><img src="5cd9b010.png" alt="Example block output"/><p>Additionally, you can also modify the models and add them in complete generality. For example</p><pre><code class="language-julia hljs">mmod = modify(m, Shift(2.0, 2.0)) + Gaussian()
+mimg = intensitymap(mmod, gfour)
+mvis = visibilitymap(mmod, gfour)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">1000-element UnstructuredMap{ComplexF64, StructArrays.StructVector{ComplexF64, @NamedTuple{re::Vector{Float64}, im::Vector{Float64}}, Int64}, UnstructuredDomain{StructArrays.StructVector{@NamedTuple{U::Float64, V::Float64}, @NamedTuple{U::Vector{Float64}, V::Vector{Float64}}, Int64}, Serial, ComradeBase.NoHeader}}:
+    0.11016779640172518 + 0.006455190977802456im
+  -0.021652779347754364 - 0.08696614848547896im
+    0.19480370054313867 - 0.024677908869180375im
+     0.3226029519337771 + 0.6212168285540401im
+   -0.16123657296866292 - 0.020089645848672608im
+   -0.05459622437820937 - 0.13275940310212472im
+  0.0018453815160560155 + 0.023405821455830148im
+   -0.07109685126755466 + 0.12154258214423042im
+   -0.09735007554457231 - 0.0003571211479508095im
+   0.018900170858925147 + 0.12434449474737624im
+                        ⋮
+   -0.04039337031906274 - 0.06065854746710758im
+ 0.00023617487076127105 - 0.00021438240982376888im
+ -0.0016778597494523386 + 0.15765898081363272im
+  -0.026610352897822865 - 0.06899842131385625im
+    0.04721314667954784 - 0.09425073650321245im
+  -0.004376770399432054 + 0.014224795269576224im
+   0.012580812003683266 - 0.01725279553956487im
+   0.017011171049909124 - 0.08951922334673579im
+   0.025531225918065184 + 0.009697107877807042im</code></pre><p>Plotting everything give for images</p><pre><code class="language-julia hljs">fig = Figure(;size=(800, 400))
+ax1 = Axis(fig[1, 1]; xreversed=true, xlabel=&quot;RA (radians)&quot;, ylabel=&quot;Dec (radians)&quot;, aspect=1)
+ax2 = Axis(fig[1, 2]; xlabel=&quot;uv-dist&quot;, ylabel=&quot;Amplitude&quot;)
+image!(ax1, mimg, colormap=:afmhot)
+scatter!(ax2, hypot.(mvis.U, mvis.V), abs.(mvis), label=&quot;Real&quot;)
+fig</code></pre><img src="6e1807ec.png" alt="Example block output"/><hr/><p><em>This page was generated using <a href="https://github.com/fredrikekre/Literate.jl">Literate.jl</a>.</em></p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../../base_api/">« Base API</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.4.0 on <span class="colophon-date" title="Thursday 25 April 2024 22:28">Thursday 25 April 2024</span>. Using Julia version 1.10.2.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
