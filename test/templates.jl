@@ -25,6 +25,9 @@ end
 
     @test intensitymap(modify(GaussianRing(0.1/5), Stretch(5.0), Shift(0.1, 0.1)), g) ≈
           intensitymap(GaussianRing(5.0, 0.1, 0.1, 0.1), g)
+
+    foo(x) = sum(abs2, VLBISkyModels.intensitymap_analytic(GaussianRing(x[1], x[2], x[3], x[4]), g))
+    testgrad(foo, rand(4))
 end
 
 @testset "EllipticalGaussianRing" begin
@@ -34,6 +37,9 @@ end
     g = imagepixels(fovx, fovy, npix, npix)
     # @test intensitymap(modify(GaussianRing(0.1/5), Stretch(5.0), Shift(0.1, 0.1)), g) ==
     #       intensitymap(GaussianRing(5.0, 0.1, 0.1, 0.1), g)
+    foo(x) = sum(abs2, VLBISkyModels.intensitymap_analytic(EllipticalGaussianRing(x[1], x[2], x[3], x[4], x[5], x[6]), g))
+    testgrad(foo, rand(6))
+
 end
 
 @testset "RingTemplate" begin
@@ -41,6 +47,8 @@ end
     dr = RadialDblPower(3.00, 5.0)
     tr = RadialTruncExp(1.0)
     rads = (gr, dr, tr)
+    g = imagepixels(fovx, fovy, npix, npix)
+
 
     au = AzimuthalUniform()
     ac1 = AzimuthalCosine(0.5, π/2)
@@ -51,6 +59,11 @@ end
         test_template(RingTemplate(r, a) + 0.1*VLBISkyModels.Constant(1.0))
     end
 
+    foo(x) = sum(abs2, VLBISkyModels.intensitymap_analytic(RingTemplate(RadialDblPower(x[1], x[2]), AzimuthalCosine(x[3], x[4])), g))
+    testgrad(foo, rand(4))
+
+    foo2(x) = sum(abs2, VLBISkyModels.intensitymap_analytic(RingTemplate(RadialDblPower(x[1], x[2]), AzimuthalCosine((x[3], x[4]), (x[5], x[6]))), g))
+    testgrad(foo2, rand(6))
 end
 
 @testset "CosineRing" begin

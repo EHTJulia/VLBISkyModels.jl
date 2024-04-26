@@ -501,6 +501,12 @@ end
         foo(x)
         testgrad(foo, x)
 
+        fooi(x) = sum(abs2, VLBISkyModels.intensitymap_analytic(x[1]*stretched(Disk(), x[2], x[3]) + stretched(Ring(), x[4], x[4]), g))
+        x = rand(4)
+        fooi(x)
+        testgrad(fooi, x)
+
+
 
         testmodel(InterpolatedModel(mt1, axisdims(img)))
         testmodel(InterpolatedModel(mt2, axisdims(img)))
@@ -595,7 +601,13 @@ end
     m = PolarizedModel(mI, mQ, mU, mV)
     @inferred visibility(m, (U=0.0, V=0.0))
     @inferred ComradeBase.intensity_point(m, (X=0.0, Y=0.0))
+    guv = UnstructuredDomain((U=randn(64), V=randn(64)))
+    g = imagepixels(10.0, 10.0, 64, 64)
 
+    foo(x) = sum(norm, VLBISkyModels.visibilitymap_analytic(PolarizedModel(Gaussian(), x[1]*Gaussian(), x[2]*Gaussian(), x[3]*Gaussian()), guv))
+    testgrad(foo, rand(3))
+    fooi(x) = sum(norm, VLBISkyModels.intensitymap_analytic(PolarizedModel(Gaussian(), x[1]*Gaussian(), x[2]*Gaussian(), x[3]*Gaussian()), g))
+    testgrad(fooi, rand(3))
 
     mG = PolarizedModel(Gaussian(), Gaussian(), Gaussian(), Gaussian())
     cm = convolved(m, Gaussian())

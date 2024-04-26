@@ -135,7 +135,7 @@ function ChainRulesCore.rrule(::typeof(visibilitymap_analytic), m::Union{Geometr
 end
 
 
-function ChainRulesCore.rrule(::typeof(intensitymap_analytic), m::Union{GeometricModel, PolarizedModel, CompositeModel, ModifiedModel}, p::ComradeBase.RectiGrid)
+function ChainRulesCore.rrule(::typeof(intensitymap_analytic), m::Union{GeometricModel, AbstractImageTemplate, PolarizedModel, CompositeModel, ModifiedModel}, p::ComradeBase.RectiGrid)
     img = intensitymap_analytic(m, p)
     function _composite_intensitymap_analytic_pullback(Δ)
         dimg = zero(img)
