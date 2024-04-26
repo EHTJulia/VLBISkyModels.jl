@@ -604,10 +604,10 @@ end
     guv = UnstructuredDomain((U=randn(64), V=randn(64)))
     g = imagepixels(10.0, 10.0, 64, 64)
 
-    foo(x) = sum(norm, VLBISkyModels.visibilitymap_analytic(PolarizedModel(Gaussian(), x[1]*Gaussian(), x[2]*Gaussian(), x[3]*Gaussian()), guv))
-    testgrad(foo, rand(3))
-    fooi(x) = sum(norm, VLBISkyModels.intensitymap_analytic(PolarizedModel(Gaussian(), x[1]*Gaussian(), x[2]*Gaussian(), x[3]*Gaussian()), g))
-    testgrad(fooi, rand(3))
+    foo(x) = sum(norm, VLBISkyModels.visibilitymap_analytic(rotated(PolarizedModel(Gaussian(), x[1]*Gaussian(), x[2]*Gaussian(), x[3]*Gaussian()), x[4]), guv))
+    testgrad(foo, rand(4))
+    fooi(x) = sum(norm, VLBISkyModels.intensitymap_analytic(rotated(PolarizedModel(Gaussian(), x[1]*Gaussian(), x[2]*Gaussian(), x[3]*Gaussian()), x[4]), g))
+    testgrad(fooi, rand(4))
 
     mG = PolarizedModel(Gaussian(), Gaussian(), Gaussian(), Gaussian())
     cm = convolved(m, Gaussian())
@@ -702,6 +702,14 @@ end
     cimg = ContinuousImage(img, BSplinePulse{3}())
     testmodel(InterpolatedModel(cimg, g; algorithm=FFTAlg(padfac=4)), 1024, 1e-3)
     testft_cimg(cimg)
+    guv = UnstructuredDomain((U=randn(32)/10, V=randn(32)/10))
+    gfour = FourierDualDomain(g, guv, NFFTAlg())
+    foo(x) = sum(abs2, VLBISkyModels.visibilitymap(ContinuousImage(IntensityMap(x, g), BSplinePulse{3}()), gfour))
+    testgrad(foo, rand(12, 12))
+
+    foos(x) = sum(abs2, VLBISkyModels.visibilitymap(modify(ContinuousImage(IntensityMap(reshape(@view(x[1:end-1]), size(g)), g), BSplinePulse{3}()), Shift(x[end], -x[end])), gfour))
+    foos(rand(12*12+1))
+    testgrad(foos, rand(12*12+1))
 end
 
 @testset "ContinuousImage Bicubic" begin
