@@ -501,7 +501,7 @@ end
         foo(x)
         testgrad(foo, x)
 
-        fooi(x) = sum(abs2, VLBISkyModels.intensitymap_analytic(x[1]*stretched(Disk(), x[2], x[3]) + stretched(Ring(), x[4], x[4]), g))
+        fooi(x) = sum(abs2, VLBISkyModels.intensitymap_analytic(x[1]*stretched(Gaussian(), x[2], x[3]) + stretched(GaussRing(1.0), x[4], x[4]), g))
         x = rand(4)
         fooi(x)
         testgrad(fooi, x)
