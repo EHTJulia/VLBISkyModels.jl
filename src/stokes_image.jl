@@ -131,5 +131,5 @@ function IntensityMap(img::StokesIntensityMap)
     V = stokes(img, :V) |> baseimage
 
     simg = StructArray{StokesParams{eltype(I)}}(;I, Q, U, V)
-    return IntensityMap(simg, axisdims(stokes(img, :I)), refdims(I), name(I))
+    return IntensityMap(simg, axisdims(stokes(img, :I)), refdims(I), name(stokes(img, :I)))
 end

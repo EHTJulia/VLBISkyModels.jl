@@ -56,18 +56,18 @@ const VectorDim = Union{AbstractVector, DD.Dimension}
 
 
 function Makie.convert_arguments(t::CellGrid, x::VectorDim, y::VectorDim, m::VLBISkyModels.AbstractModel)
-    img = intensitymap(m, RectiGrid((X=x, Y=y)))
+    img = intensitymap(m, RectiGrid((X(x), Y(y))))
     return Makie.convert_arguments(t, img)
 end
 
 function Makie.convert_arguments(t::VertexGrid, x::VectorDim, y::VectorDim, m::VLBISkyModels.AbstractModel)
-    img = intensitymap(m, RectiGrid((X=x, Y=y)))
+    img = intensitymap(m, RectiGrid((X(x), Y(y))))
     return Makie.convert_arguments(t, img)
 end
 
 
 function Makie.convert_arguments(t::ImageLike, x::VectorDim, y::VectorDim, m::VLBISkyModels.AbstractModel)
-    img = intensitymap(m, RectiGrid((X=x, Y=y)))
+    img = intensitymap(m, RectiGrid((X(x), Y(y))))
     return Makie.convert_arguments(t, img)
 end
 
@@ -373,7 +373,7 @@ function imageviz(img::IntensityMap; scale_length = rad2μas(fieldofview(img).X/
 
     dxdy = prod(rad2μas.(values(pixelsizes(img))))
 
-    imguas = IntensityMap(parent(img)./dxdy, RectiGrid((X=rad2μas(img.X), Y=rad2μas(img.Y))))
+    imguas = IntensityMap(parent(img)./dxdy, RectiGrid((X(rad2μas(img.X)), Y(rad2μas(img.Y)))))
     pl = _imgviz!(fig, ax, imguas; scale_length, dkwargs...)
     resize_to_layout!(fig)
     return pl

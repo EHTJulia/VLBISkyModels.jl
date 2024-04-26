@@ -24,7 +24,7 @@ end
     s = map(length, dims(g))
 
     u = fftshift(fftfreq(length(g.X), 1/step(g.X)))
-    uv = RectiGrid((U=u, V=-u))
+    uv = RectiGrid((U(u), V(-u)))
     uvus = UnstructuredDomain((U=randn(32), V=randn(32)))
     foo(x) = sum(norm, VLBISkyModels.visibilitymap_analytic(
                             PolarizedModel(Gaussian(), x[1]*Gaussian(), x[2]*Gaussian(), x[3]*Gaussian()),
