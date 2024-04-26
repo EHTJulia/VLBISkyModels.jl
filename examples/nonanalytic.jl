@@ -76,7 +76,7 @@ mimg = intensitymap(mmod, gfour)
 mvis = visibilitymap(mmod, gfour)
 
 
-# Plotting everything give for images
+# Plotting everything gives
 fig = Figure(;size=(800, 400))
 ax1 = Axis(fig[1, 1]; xreversed=true, xlabel="RA (radians)", ylabel="Dec (radians)", aspect=1)
 ax2 = Axis(fig[1, 2]; xlabel="uv-dist", ylabel="Amplitude")
