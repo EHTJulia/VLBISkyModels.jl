@@ -1,35 +1,33 @@
-function ChainRulesCore.rrule(::Type{SA}, t::Tuple) where {SA<:StructArray}
-    sa = SA(t)
-    pt = ProjectTo(t)
-    function _structarray_tuple_pullback(Δ)
-        ps = map(x->getproperty(Δ, x), propertynames(Δ))
-        return NoTangent(), pt(Tangent{typeof(t)}(ps...))
-    end
-    return sa, _structarray_tuple_pullback
-end
+# function ChainRulesCore.rrule(::Type{SA}, t::Tuple) where {SA<:StructArray}
+#     sa = SA(t)
+#     pt = ProjectTo(t)
+#     function _structarray_tuple_pullback(Δ)
+#         @info "Δ: " Δ
+#         ps = map(x->getproperty(Δ, x), propertynames(Δ))
+#         @info ps
+#         return NoTangent(), pt(ps)
+#     end
+#     return sa, _structarray_tuple_pullback
+# end
 
 
-function ChainRulesCore.rrule(::Type{SA}, t::NamedTuple{Na}) where {Na, SA<:StructArray}
-    sa = SA(t)
-    pt = ProjectTo(t)
-    function _structarray_tuple_pullback(Δd)
-        Δ = unthunk(Δd)
-        ps = getproperty.(Ref(Δ), Na)
-        nps = NamedTuple{Na}(ps)
-        return NoTangent(), pt(Tangent{typeof(t)}(;nps...))
-    end
-    return sa, _structarray_tuple_pullback
-end
-
-# function (::ChainRulesCore.ProjectTo{T})(dx::ChainRulesCore.Tangent{<:T}) where T<:ComradeBase.AxisKeys.NamedDims.NamedDimsArray
-#     println(typeof(dx.data))
-#     throw("HERE")
+# function ChainRulesCore.rrule(::Type{SA}, t::NamedTuple{Na}) where {Na, SA<:StructArray}
+#     sa = SA(t)
+#     pt = ProjectTo(t)
+#     function _structarray_tuple_pullback(Δd)
+#         Δ = unthunk(Δd)
+#         @info "Δ: " Δ
+#         ps = getproperty.(Ref(Δ), Na)
+#         nps = NamedTuple{Na}(ps)
+#         return NoTangent(), pt(Tangent{typeof(t)}(;nps...))
+#     end
+#     return sa, _structarray_tuple_pullback
 # end
 
 # using StructArrays
-function ChainRulesCore.ProjectTo(x::StructArray)
-    ProjectTo{StructArray}(;eltype = eltype(x), names=propertynames(x), dims=size(x))
-end
+# function ChainRulesCore.ProjectTo(x::StructArray)
+#     ProjectTo{StructArray}(;eltype = eltype(x), names=propertynames(x), dims=size(x))
+# end
 
 # function extract_components(len, comp, names)
 #     map(names) do n
@@ -39,36 +37,38 @@ end
 #     end
 # end
 
-# function (project::ProjectTo{StructArray{T}})(dx::Tangent{<:StructArray}) where {T}
+# function (project::ProjectTo{StructArray})(dx::Tangent{<:StructArray})
 #     comp = dx.components
 #     tcomp = extract_components(project.dims, comp, propertynames(comp))
-#     ret =  StructArray{T}(tcomp)
+#     ret =  StructArray{project.eltype}(tcomp)
 #     return ret
 # end
-function (project::ProjectTo{StructArray})(dx::Tangent{<:StructArray})
-    StructArray{project.eltype}(dx.components)
-end
+# function (project::ProjectTo{StructArray})(dx::Tangent{<:StructArray})
+#     StructArray{project.eltype}(dx.components)
+# end
 
-function (project::ProjectTo{StructArray})(dx::AbstractArray)
-    @assert project.eltype === eltype(dx) "The eltype of the array is not the same there is an error in a ChainRule"
-    r = StructArray(dx)
-    return r
-end
+# function (project::ProjectTo{StructArray})(dx::AbstractArray)
+#     @assert project.eltype === eltype(dx) "The eltype of the array is not the same there is an error in a ChainRule"
+#     r = StructArray(dx)
+#     return r
+# end
 
-function (project::ProjectTo{StructArray})(dx::StructArray)
-    @assert project.eltype === eltype(dx) "The eltype of the array is not the same there is an error in a ChainRule"
-    return dx
-end
+# function (project::ProjectTo{StructArray})(dx::StructArray)
+#     println(project.eltype)
+#     println(eltype(dx))
+#     @assert project.eltype === eltype(dx) "The eltype of the array is not the same there is an error in a ChainRule"
+#     return dx
+# end
 
-function (project::ProjectTo{StructArray})(dx)
-    @assert project.eltype === eltype(dx) "The eltype of the array is not the same there is an error in a ChainRule"
-    return dx
-end
+# function (project::ProjectTo{StructArray})(dx)
+#     @assert project.eltype === eltype(dx) "The eltype of the array is not the same there is an error in a ChainRule"
+#     return dx
+# end
 
-function (project::ProjectTo{StructArray})(::ChainRulesCore.AbstractZero)
-    # @assert project.eltype === eltype(dx) "The eltype of the array is not the same there is an error in a ChainRule"
-    return ZeroTangent()
-end
+# function (project::ProjectTo{StructArray})(::ChainRulesCore.AbstractZero)
+#     # @assert project.eltype === eltype(dx) "The eltype of the array is not the same there is an error in a ChainRule"
+#     return ZeroTangent()
+# end
 
 
 
