@@ -12,6 +12,7 @@ import DimensionalData as DD
 import CairoMakie as CM
 using ForwardDiff
 using Enzyme
+using LinearAlgebra
 
 function FiniteDifferences.to_vec(k::IntensityMap)
     v, b = to_vec(DD.data(k))

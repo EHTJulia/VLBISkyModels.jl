@@ -702,7 +702,7 @@ end
     cimg = ContinuousImage(img, BSplinePulse{3}())
     testmodel(InterpolatedModel(cimg, g; algorithm=FFTAlg(padfac=4)), 1024, 1e-3)
     testft_cimg(cimg)
-    guv = UnstructuredDomain((U=randn(32)/10, V=randn(32)/10))
+    guv = UnstructuredDomain((U=randn(32)/40, V=randn(32)/40))
     gfour = FourierDualDomain(g, guv, NFFTAlg())
     foo(x) = sum(abs2, VLBISkyModels.visibilitymap(ContinuousImage(IntensityMap(x, g), BSplinePulse{3}()), gfour))
     testgrad(foo, rand(12, 12))
@@ -798,15 +798,20 @@ end
     g = imagepixels(10.0, 10.0, 128, 128)
     data = rand(128, 128)
     img = ContinuousImage(IntensityMap(data, g), BSplinePulse{3}())
+    @test img == ContinuousImage(data, g, BSplinePulse{3}())
 
     @test length(img) == length(data)
     @test size(img) == size(data)
     @test firstindex(img) == firstindex(data)
     @test lastindex(img) == lastindex(img)
-    collect(iterate(img))
     @test eltype(img) == eltype(data)
     @test img[1,1] == data[1,1]
     @test img[1:5,1] == data[1:5,1]
+
+    centroid(img)
+    @test size(img, 1) == 128
+    @test axes(img) == axes(parent(img))
+    @test domainpoints(img) == domainpoints(parent(img))
 
     # @test all(==(1), domainpoints(img) .== ComradeBase.grid(named_dims(axisdims(img))))
     @test VLBISkyModels.axisdims(img) == axisdims(img)

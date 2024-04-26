@@ -46,20 +46,14 @@ Base.size(m::ContinuousImage)           = size(parent(m))
 Base.size(m::ContinuousImage, i::Int)   = size(parent(m), i::Int)
 Base.firstindex(m::ContinuousImage)     = firstindex(parent(m))
 Base.lastindex(m::ContinuousImage)      = lastindex(parent(m))
-Base.iterate(m::ContinuousImage)        = iterate(parent(m))
-Base.iterate(m::ContinuousImage, state) = iterate(parent(m), state)
 
-Base.IteratorSize(::ContinuousImage{A, P}) where {A,P} = Base.IteratorSize(M)
-Base.IteratorEltype(::ContinuousImage{A, P}) where {A,P} = Base.IteratorEltype(M)
 Base.eltype(::ContinuousImage{A, P}) where {A,P} = eltype(A)
 
 Base.getindex(img::ContinuousImage, args...) = getindex(parent(img), args...)
 Base.axes(m::ContinuousImage) = axes(parent(m))
 ComradeBase.domainpoints(m::ContinuousImage) = domainpoints(parent(m))
-ComradeBase.named_dims(m::ContinuousImage) = named_dims(parent(m))
 ComradeBase.axisdims(m::ContinuousImage) = axisdims(parent(m))
 
-Base.similar(m::ContinuousImage, ::Type{S}, dims) where {S} = ContinuousImage(similar(parent(m), S, dims), m.kernel)
 
 function ContinuousImage(img::IntensityMapTypes, pulse::Pulse)
     return ContinuousImage{typeof(img), typeof(pulse)}(img, pulse)
