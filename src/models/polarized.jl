@@ -214,10 +214,10 @@ where `a,b,c,d` are real numbers with no conditions, and `p=√(a² + b² + c²)
 function PolExp2Map(a::AbstractArray, b::AbstractArray, c::AbstractArray, d::AbstractArray, grid::AbstractRectiGrid)
     p = sqrt.(b.^2 .+ c.^2 .+ d.^2)
     tmp = exp.(a).*sinh.(p).*inv(p)
-    pimgI = exp.(a).*cosh.(b)
-    pimgQ = tmp.*b./p
-    pimgU = tmp.*c./p
-    pimgV = tmp.*d./p
+    pimgI = exp.(a).*cosh.(p)
+    pimgQ = tmp.*b
+    pimgU = tmp.*c
+    pimgV = tmp.*d
     stokesI = IntensityMap(pimgI, grid)
     stokesQ = IntensityMap(pimgQ, grid)
     stokesU = IntensityMap(pimgU, grid)

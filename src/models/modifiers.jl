@@ -152,7 +152,7 @@ end
 end
 
 @inline doesnot_uv_modify(t::Tuple) = doesnot_uv_modify(Base.front(t))*doesnot_uv_modify(last(t))
-@inline doesnot_uv_modify(::Tuple{}) = Static.True()
+@inline doesnot_uv_modify(::Tuple{}) = true
 
 function modify_uv(model, t::Tuple, u, v, scale)
     ut, vt = transform_uv(model, last(t), u, v)
@@ -339,12 +339,7 @@ function modify_uv(model, transform::Tuple, u::AbstractVector, v::AbstractVector
     return first.(uvscale), last.(uvscale)
 end
 
-
-function visibilitymap_analytic(m::ModifiedModel, p::AbstractFourierDualDomain)
-    vis = allocate_vismap(m, visdomain(p))
-    visibilitymap_analytic!(vis, m)
-    return vis
-end
+visibilitymap_analytic(m::ModifiedModel, p::AbstractFourierDualDomain) = visibilitymap_analytic(m, visdomain(p))
 
 function visibilitymap_analytic(m::ModifiedModel, p::AbstractSingleDomain)
     vis = allocate_vismap(m, p)
@@ -410,7 +405,7 @@ in the x and y directions respectively.
 """
 shifted(model, Δx, Δy) = ModifiedModel(model, Shift(Δx, Δy))
 
-doesnot_uv_modify(::Shift) = Static.True()
+doesnot_uv_modify(::Shift) = true
 
 # This is a simple overload to simplify the type system
 @inline radialextent_modified(r::Real, t::Shift) = r + max(abs(t.Δx), abs(t.Δy))
@@ -456,7 +451,7 @@ true
 ```
 """
 renormed(model::M, f) where {M<:AbstractModel} = ModifiedModel(model, Renormalize(f))
-@inline doesnot_uv_modify(::Renormalize) = Static.True()
+@inline doesnot_uv_modify(::Renormalize) = true
 
 Base.:*(model::AbstractModel, f::Number) = renormed(model, f)
 Base.:*(f::Number, model::AbstractModel) = renormed(model, f)
@@ -518,7 +513,7 @@ where were renormalize the intensity to preserve the models flux.
 """
 stretched(model, α, β) = ModifiedModel(model, Stretch(α, β))
 
-@inline doesnot_uv_modify(::Stretch) = Static.False()
+@inline doesnot_uv_modify(::Stretch) = false
 @inline transform_image(m, transform::Stretch, x, y) = (x/transform.α, y/transform.β)
 @inline transform_uv(m, transform::Stretch, u, v) = (u*transform.α, v*transform.β)
 
@@ -565,7 +560,7 @@ Returns the rotation angle of the rotated `model`
 """
 posangle(model::Rotate) = atan(model.s, model.c)
 
-@inline doesnot_uv_modify(::Rotate) = Static.False()
+@inline doesnot_uv_modify(::Rotate) = false
 
 @inline function transform_image(m, transform::Rotate, x, y)
     s,c = transform.s, transform.c

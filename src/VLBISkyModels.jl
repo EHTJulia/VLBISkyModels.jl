@@ -17,7 +17,6 @@ using PaddedViews
 using Reexport
 using RecipesBase
 using SpecialFunctions
-import Static
 using StaticArrays
 using StructArrays
 using LinearAlgebra

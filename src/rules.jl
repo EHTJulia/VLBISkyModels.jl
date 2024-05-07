@@ -1,33 +1,33 @@
-# function ChainRulesCore.rrule(::Type{SA}, t::Tuple) where {SA<:StructArray}
-#     sa = SA(t)
-#     pt = ProjectTo(t)
-#     function _structarray_tuple_pullback(Δ)
-#         @info "Δ: " Δ
-#         ps = map(x->getproperty(Δ, x), propertynames(Δ))
-#         @info ps
-#         return NoTangent(), pt(ps)
-#     end
-#     return sa, _structarray_tuple_pullback
-# end
+function ChainRulesCore.rrule(::Type{SA}, t::Tuple) where {SA<:StructArray}
+    sa = SA(t)
+    pt = ProjectTo(t)
+    function _structarray_tuple_pullback(Δ)
+        # @info "Δ: " Δ
+        ps = map(x->getproperty(Δ, x), propertynames(Δ))
+        @info ps
+        return NoTangent(), pt(ps)
+    end
+    return sa, _structarray_tuple_pullback
+end
 
 
-# function ChainRulesCore.rrule(::Type{SA}, t::NamedTuple{Na}) where {Na, SA<:StructArray}
-#     sa = SA(t)
-#     pt = ProjectTo(t)
-#     function _structarray_tuple_pullback(Δd)
-#         Δ = unthunk(Δd)
-#         @info "Δ: " Δ
-#         ps = getproperty.(Ref(Δ), Na)
-#         nps = NamedTuple{Na}(ps)
-#         return NoTangent(), pt(Tangent{typeof(t)}(;nps...))
-#     end
-#     return sa, _structarray_tuple_pullback
-# end
+function ChainRulesCore.rrule(::Type{SA}, t::NamedTuple{Na}) where {Na, SA<:StructArray}
+    sa = SA(t)
+    pt = ProjectTo(t)
+    function _structarray_tuple_pullback(Δd)
+        Δ = unthunk(Δd)
+        # @info "Δ: " Δ
+        ps = getproperty.(Ref(Δ), Na)
+        nps = NamedTuple{Na}(ps)
+        return NoTangent(), pt(nps)
+    end
+    return sa, _structarray_tuple_pullback
+end
 
 # using StructArrays
-# function ChainRulesCore.ProjectTo(x::StructArray)
-#     ProjectTo{StructArray}(;eltype = eltype(x), names=propertynames(x), dims=size(x))
-# end
+function ChainRulesCore.ProjectTo(x::StructArray)
+    ProjectTo{StructArray}(;eltype = eltype(x), names=propertynames(x), dims=size(x))
+end
 
 # function extract_components(len, comp, names)
 #     map(names) do n
@@ -37,21 +37,20 @@
 #     end
 # end
 
-# function (project::ProjectTo{StructArray})(dx::Tangent{<:StructArray})
-#     comp = dx.components
-#     tcomp = extract_components(project.dims, comp, propertynames(comp))
-#     ret =  StructArray{project.eltype}(tcomp)
-#     return ret
-# end
-# function (project::ProjectTo{StructArray})(dx::Tangent{<:StructArray})
+function (project::ProjectTo{StructArray})(dx::StructArray)
+    return dx
+end
+# function (project::ProjectTo{StructArray})(dx::Tangent)
+#     @info typeof(dx)
+#     @info typeof(dx.components)
 #     StructArray{project.eltype}(dx.components)
 # end
 
-# function (project::ProjectTo{StructArray})(dx::AbstractArray)
-#     @assert project.eltype === eltype(dx) "The eltype of the array is not the same there is an error in a ChainRule"
-#     r = StructArray(dx)
-#     return r
-# end
+function (project::ProjectTo{StructArray})(dx::AbstractArray)
+    @assert project.eltype === eltype(dx) "The eltype of the array is not the same there is an error in a ChainRule"
+    r = StructArray(dx)
+    return r
+end
 
 # function (project::ProjectTo{StructArray})(dx::StructArray)
 #     println(project.eltype)
@@ -117,7 +116,7 @@ end
 getm(m::AbstractModel) = m
 getm(m::Tuple) = m[2]
 
-function ChainRulesCore.rrule(::typeof(visibilitymap_analytic), m::Union{GeometricModel, PolarizedModel, CompositeModel, ModifiedModel}, g::UnstructuredDomain)
+function ChainRulesCore.rrule(::typeof(visibilitymap_analytic), m::Union{GeometricModel, PolarizedModel, CompositeModel, ModifiedModel}, g::AbstractSingleDomain)
     vis = visibilitymap_analytic(m, g)
     function _composite_visibilitymap_analytic_pullback(Δ)
         dg = UnstructuredDomain(map(zero, named_dims(g)); executor=executor(g), header=header(g))
