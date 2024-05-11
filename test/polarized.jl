@@ -170,7 +170,7 @@ end
     gnf = FourierDualDomain(g, uv, NFFTAlg())
     gdf = FourierDualDomain(g, uv, DFTAlg())
     gff = FourierDualDomain(g, uv, FFTAlg(padfac=8))
-    mimg = ContinuousImage(StokesIntensityMap(img), BSplinePulse{3}())
+    mimg = ContinuousImage(img, BSplinePulse{3}())
     vnf = visibilitymap(mimg, gnf)
     vdf = visibilitymap(mimg, gdf)
     vff = visibilitymap(mimg, gff)

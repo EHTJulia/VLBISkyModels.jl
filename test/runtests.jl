@@ -8,6 +8,7 @@ using Plots
 using Statistics
 using Test
 using Serialization
+using StructArrays
 import DimensionalData as DD
 import CairoMakie as CM
 using ForwardDiff
