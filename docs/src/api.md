@@ -144,7 +144,6 @@ VLBISkyModels.scale_image
 VLBISkyModels.transform_uv
 VLBISkyModels.transform_image
 VLBISkyModels.unpack
-VLBISkyModels.StokesIntensityMap
 VLBISkyModels.FFTPlan
 VLBISkyModels.NUFTPlan
 ```

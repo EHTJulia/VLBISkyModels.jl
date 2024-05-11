@@ -635,7 +635,7 @@ end
     pQ = similar(pI)
     pU = similar(pI)
     pV = similar(pI)
-    pimg1 = StokesIntensityMap(pI,pQ,pU,pV)
+    pimg1 = IntensityMap(StructArray{StokesParams{eltype(pI)}}((pI, pQ, pU, pV)), g)
     intensitymap!(pimg1, m)
     pimg2 = intensitymap(m, axisdims(pI))
     @test isapprox(sum(abs, (stokes(pimg1, :I) .- stokes(pimg2, :I))), 0.0, atol=1e-12)
