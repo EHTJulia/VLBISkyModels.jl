@@ -123,7 +123,7 @@ end
     m = PolarizedModel(Gaussian(), Gaussian(), ZeroModel(), 0.1*Gaussian())
     g = imagepixels(5.0, 5.0, 128, 128)
     img1 = intensitymap(m, g)
-    @test VLBISkyModels.padimage(img1, FFTAlg(;padfac=2)) == 2 .* size(img1)
+    @test size(VLBISkyModels.padimage(img1, FFTAlg(;padfac=2))) == 2 .* size(img1)
     @test all(==(1), stokes(img1, :Q) .≈ stokes(img1, :I))
     @test all(==(1), stokes(img1, :U) .≈ 0.0*stokes(img1, :I))
     @test all(==(1), stokes(img1, :V) .≈ 0.1*stokes(img1, :I))
