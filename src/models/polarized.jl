@@ -85,7 +85,7 @@ function visibilitymap_numeric(pimg::PolarizedModel, p::FourierDualDomain)
     return StructArray{StokesParams{eltype(si)}}((si, sq, su, sv))
 end
 
-function intensitymap!(pimg::IntensityMap{<:StokesParams}, pmodel::PolarizedModel)
+function intensitymap!(pimg::Union{StokesIntensityMap, IntensityMap{<:StokesParams}}, pmodel::PolarizedModel)
     intensitymap!(stokes(pimg, :I), pmodel.I)
     intensitymap!(stokes(pimg, :Q), pmodel.Q)
     intensitymap!(stokes(pimg, :U), pmodel.U)
@@ -187,11 +187,11 @@ The arguments are:
 """
 function PoincareSphere2Map(I, p, X, grid)
     pimgI = I.*p
-    stokesI = I
-    stokesQ = pimgI .* X[1]
-    stokesU = pimgI .* X[2]
-    stokesV = pimgI .* X[3]
-    return IntensityMap(StructArray{StokesParams{eltype(I)}}((stokesI, stokesQ, stokesU, stokesV)), grid)
+    stokesI = IntensityMap(I, grid)
+    stokesQ = IntensityMap(pimgI .* X[1], grid)
+    stokesU = IntensityMap(pimgI .* X[2], grid)
+    stokesV = IntensityMap(pimgI .* X[3], grid)
+    return StokesIntensityMap(stokesI, stokesQ, stokesU, stokesV)
 end
 PoincareSphere2Map(I::IntensityMap, p, X) = PoincareSphere2Map(baseimage(I), p, X, axisdims(I))
 
@@ -218,7 +218,11 @@ function PolExp2Map(a::AbstractArray, b::AbstractArray, c::AbstractArray, d::Abs
     pimgQ = tmp.*b
     pimgU = tmp.*c
     pimgV = tmp.*d
-    return IntensityMap(StructArray{StokesParams{eltype(a)}}((pimgI, pimgQ, pimgU, pimgV)), grid)
+    stokesI = IntensityMap(pimgI, grid)
+    stokesQ = IntensityMap(pimgQ, grid)
+    stokesU = IntensityMap(pimgU, grid)
+    stokesV = IntensityMap(pimgV, grid)
+    return StokesIntensityMap(stokesI, stokesQ, stokesU, stokesV)
 end
 
 

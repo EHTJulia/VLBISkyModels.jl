@@ -53,7 +53,7 @@ end
 
 
 
-function applyft(p::AbstractNUFTPlan, img::AbstractArray)
+function applyft(p::AbstractNUFTPlan, img::Union{AbstractArray, StokesIntensityMap})
     vis =  nuft(getplan(p), img)
     return vis.*getphases(p)
 end

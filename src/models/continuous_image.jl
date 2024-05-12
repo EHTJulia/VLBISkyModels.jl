@@ -33,7 +33,7 @@ function Base.show(io::IO, img::ContinuousImage{A, P}) where {A, P}
     print(io, "ContinuousImage{$sA, $P}($(size(img)))")
 end
 
-# ComradeBase.ispolarized(::Type{<:ContinuousImage{A}}) where {A<:StokesIntensityMap} = IsPolarized()
+ComradeBase.ispolarized(::Type{<:ContinuousImage{A}}) where {A<:StokesIntensityMap} = IsPolarized()
 ComradeBase.ispolarized(::Type{<:ContinuousImage{A}}) where {A<:IntensityMap{<:StokesParams}} = IsPolarized()
 ComradeBase.ispolarized(::Type{<:ContinuousImage{A}}) where {A<:IntensityMap{<:Real}} = NotPolarized()
 ComradeBase.flux(m::ContinuousImage) = flux(parent(m))*flux(m.kernel)

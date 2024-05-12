@@ -83,7 +83,7 @@ function padimage(img::IntensityMap, alg::FFTAlg)
     PaddedView(zero(eltype(img)), img, (nny, nnx))
 end
 
-function padimage(img::IntensityMap{<:StokesParams}, alg::FFTAlg)
+function padimage(img::Union{StokesIntensityMap, IntensityMap{<:StokesParams}}, alg::FFTAlg)
     pI = padimage(stokes(img, :I), alg)
     pQ = padimage(stokes(img, :Q), alg)
     pU = padimage(stokes(img, :U), alg)
@@ -106,7 +106,7 @@ function applyft(plan::FFTPlan, img::AbstractArray{<:Number})
     return fftshift(plan.plan*pimg)
 end
 
-function applyft(plan::FFTPlan, img::Union{AbstractArray{<:StokesParams}})
+function applyft(plan::FFTPlan, img::Union{AbstractArray{<:StokesParams}, StokesIntensityMap})
     visI = applyft(plan, stokes(img, :I))
     visQ = applyft(plan, stokes(img, :Q))
     visU = applyft(plan, stokes(img, :U))
