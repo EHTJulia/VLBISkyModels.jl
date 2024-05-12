@@ -18,10 +18,21 @@ imgdomain(g::AbstractFourierDualDomain)  = getfield(g, :imgdomain)
 visdomain(g::AbstractFourierDualDomain)    = getfield(g, :visdomain)
 algorithm(g::AbstractFourierDualDomain)    = getfield(g, :algorithm)
 
+# EnzymeRules.inactive(::typeof(forward_plan), args...) = nothing
+# EnzymeRules.inactive(::typeof(reverse_plan), args...) = nothing
+# ChainRulesCore.@non_differentiable getplan(p)
+# ChainRulesCore.@non_differentiable getphases(p)
+
+
 
 abstract type AbstractPlan end
 getplan(p::AbstractPlan) = getfield(p, :plan)
 getphases(p::AbstractPlan) = getfield(p, :phases)
+EnzymeRules.inactive(::typeof(getplan), args...) = nothing
+# EnzymeRules.inactive(::typeof(getphases), args...) = nothing
+ChainRulesCore.@non_differentiable getplan(p)
+# ChainRulesCore.@non_differentiable getphases(p)
+
 
 function create_plans(algorithm, imgdomain, visdomain)
     plan_forward = create_forward_plan(algorithm, imgdomain, visdomain)
