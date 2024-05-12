@@ -12,10 +12,6 @@ export visibility, amplitude, closure_phase, logclosure_amplitude, bispectrum,
 
 
 
-# ChainRulesCore.@non_differentiable visanalytic(M)
-# ChainRulesCore.@non_differentiable imanalytic(M)
-# ChainRulesCore.@non_differentiable isprimitive(M)
-#
 
 export unpack
 
