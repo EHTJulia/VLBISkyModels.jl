@@ -185,14 +185,6 @@ The arguments are:
 
 
 """
-# function PoincareSphere2Map(I, p, X, grid)
-#     pimgI = I.*p
-#     stokesI = I
-#     stokesQ = pimgI .* X[1]
-#     stokesU = pimgI .* X[2]
-#     stokesV = pimgI .* X[3]
-#     return IntensityMap(StructArray{StokesParams{eltype(I)}}((I=stokesI, Q=stokesQ, U=stokesU, V=stokesV)), grid)
-# end
 function PoincareSphere2Map(I, p, X, grid)
     pimgI = I.*p
     stokesI = IntensityMap(I, grid)
@@ -201,6 +193,14 @@ function PoincareSphere2Map(I, p, X, grid)
     stokesV = IntensityMap(pimgI .* X[3], grid)
     return StokesIntensityMap(stokesI, stokesQ, stokesU, stokesV)
 end
+# function PoincareSphere2Map(I, p, X, grid)
+#     pimgI = I.*p
+#     stokesI = I
+#     stokesQ = pimgI .* X[1]
+#     stokesU = pimgI .* X[2]
+#     stokesV = pimgI .* X[3]
+#     return IntensityMap(StructArray{StokesParams{eltype(I)}}((I=stokesI, Q=stokesQ, U=stokesU, V=stokesV)), grid)
+# end
 
 PoincareSphere2Map(I::IntensityMap, p, X) = PoincareSphere2Map(baseimage(I), p, X, axisdims(I))
 

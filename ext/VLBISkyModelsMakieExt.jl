@@ -28,14 +28,16 @@ function Makie.convert_arguments(::VertexGrid, img::SpatialIntensityMap{<:Number
 end
 
 
-function Makie.convert_arguments(::VertexGrid, img::SpatialIntensityMap{<:StokesParams})
-    (;X, Y) = img
-    return (X), (Y), parent(stokes(img, :I))
+function Makie.convert_arguments(::VertexGrid, img::Union{SpatialIntensityMap{<:StokesParams}, StokesIntensityMap})
+    imgI = stokes(img, :I)
+    (;X, Y) = imgI
+    return (X), (Y), parent(imgI)
 end
 
-function Makie.convert_arguments(::CellGrid, img::SpatialIntensityMap{<:StokesParams})
-    (;X, Y) = img
-    return (X), (Y), parent(stokes(img, :I))
+function Makie.convert_arguments(::CellGrid, img::Union{SpatialIntensityMap{<:StokesParams}, StokesIntensityMap})
+    imgI = stokes(img, :I)
+    (;X, Y) = imgI
+    return (X), (Y), parent(imgI)
 end
 
 
@@ -45,10 +47,11 @@ function Makie.convert_arguments(::ImageLike, img::SpatialIntensityMap{<:Number}
     rX, rY = ((X,Y))
     return first(rX)..last(rX), first(rY)..last(rY), parent(img)
 end
-function Makie.convert_arguments(::ImageLike, img::SpatialIntensityMap{<:StokesParams})
-    (;X, Y) = img
+function Makie.convert_arguments(::ImageLike, img::Union{SpatialIntensityMap{<:StokesParams}, StokesIntensityMap})
+    imgI = stokes(img, :I)
+    (;X, Y) = imgI
     rX, rY = ((X,Y))
-    return first(rX)..last(rX), first(rY)..last(rY), stokes(parent(img), :I)
+    return first(rX)..last(rX), first(rY)..last(rY), parent(imgI)
 end
 
 
@@ -187,6 +190,10 @@ end
 function Makie.convert_arguments(::Type{<:PolImage}, img::IntensityMap{<:StokesParams, 2})
     return (img,)
 end
+function Makie.convert_arguments(::Type{<:PolImage}, img::StokesIntensityMap)
+    return (IntensityMap(img),)
+end
+
 
 
 Makie.plottype(::SpatialIntensityMap{<:StokesParams}) = PolImage{<:Tuple{<:IntensityMap{<:StokesParams}}}
@@ -359,7 +366,10 @@ be queried by typing `?polimage` in the REPL.
     `image` and `polimage` directly.
 
 """
-function imageviz(img::IntensityMap; scale_length = rad2μas(fieldofview(img).X/4), kwargs...)
+function imageviz(img::Union{IntensityMap, StokesIntensityMap}; scale_length = rad2μas(fieldofview(img).X/4), kwargs...)
+    if img isa StokesIntensityMap
+        img = IntensityMap(img)
+    end
     dkwargs = Dict(kwargs)
     if eltype(img) <: Real
         res = get(dkwargs, :size, (625, 500))
@@ -405,7 +415,7 @@ function _imgviz!(fig, ax, img::IntensityMap{<:Real}; scale_length=fieldofview(i
     return Makie.FigureAxisPlot(fig, ax, hm)
 end
 
-function _imgviz!(fig, ax, img::IntensityMap{<:StokesParams}; scale_length=fieldofview(img).X/4, kwargs...)
+function _imgviz!(fig, ax, img::Union{StokesIntensityMap, IntensityMap{<:StokesParams}}; scale_length=fieldofview(img).X/4, kwargs...)
     colorrange_default = (0.0, maximum(stokes(img, :I)))
     dkwargs = Dict(kwargs)
     crange = get(dkwargs, :colorrange, colorrange_default)

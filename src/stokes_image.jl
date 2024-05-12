@@ -78,7 +78,7 @@ ComradeBase.flux(img::StokesIntensityMap{T}) where {T} = StokesParams(flux(stoke
                                              flux(stokes(img, :U)),
                                              flux(stokes(img, :V)),
                                              )
-
+VLBISkyModels.centroid(m::StokesIntensityMap) = centroid(stokes(m, :I))
 
 function StokesIntensityMap(
     I::AbstractArray{T,N}, Q::AbstractArray{T,N},

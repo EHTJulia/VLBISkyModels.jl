@@ -20,6 +20,10 @@
     summary(simg)
     show(img)
 
+    imageviz(simg)
+    CM.image(simg)
+    polimage(simg)
+    @test centroid(simg) == centroid(img)
     @test size(simg) == size(img)
     @test eltype(simg) == eltype(img)
     @test ndims(simg) == ndims(img)
