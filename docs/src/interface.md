@@ -74,6 +74,3 @@ Plots.scatter(hypot.(u, v), abs.(vg), label="Gaussian")
 Plots.scatter!(hypot.(u, v), abs.(veg), label="Elliptical Gaussian")
 ```
 ![Image](vis.png)
-
-## Models without an Analytic Fourier Transform
-
