@@ -195,6 +195,9 @@ end
     Χ = (sQ./p, sU./p, sV./p)
 
     pimg = PoincareSphere2Map(sI, p./sI, Χ, g)
+    cimg = ContinuousImage(pimg, BSplinePulse{3}())
+    gfour = FourierDualDomain(g, UnstructuredDomain((U=randn(32)/5, V=randn(32)/5)), NFFTAlg())
+    visibilitymap(cimg, gfour)
     @test (stokes(pimg, :I) |> baseimage) ≈ sI
     @test (stokes(pimg, :Q) |> baseimage) ≈ sQ
     @test (stokes(pimg, :U) |> baseimage) ≈ sU
@@ -206,14 +209,9 @@ end
     g = imagepixels(5.0, 5, 24, 24)
 
     img = intensitymap(m, g)
-
-    sI = stokes(img, :I) |> baseimage
-    sQ = stokes(img, :Q) |> baseimage
-    sU = stokes(img, :U) |> baseimage
-    sV = stokes(img, :V) |> baseimage
-
-    p = sqrt.(sQ^2 + sU^2 + sV^2)
-    Χ = (sQ./p, sU./p, sV./p)
-
     pimg = PolExp2Map(randn(24, 24), randn(24, 24), randn(24, 24), randn(24, 24), g)
+
+    @test mapreduce(*, IntensityMap(pimg)) do x
+        x.I^2 ≥ x.Q^2 + x.U^2 + x.V^2
+    end
 end
