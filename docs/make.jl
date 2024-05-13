@@ -38,7 +38,7 @@ makedocs(;
         "interface.md",
         "api.md",
         "base_api.md",
-        joinpath("examples", "nonanalytic.md"),
+        "nonanalytic"=>joinpath("examples", "nonanalytic.md"),
     ],
 )
 
