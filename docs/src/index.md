@@ -18,7 +18,7 @@ The minimum Julia version we require is 1.7. In the future we may increase this 
 Pages = [
     "index.md",
     "interface.md",
+    "examples/nonanalytic.md",
     "api.md",
-    "nonanalytic"
 ]
 ```

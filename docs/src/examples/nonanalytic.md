@@ -97,7 +97,7 @@ mimg = intensitymap(mmod, gfour)
 mvis = visibilitymap(mmod, gfour)
 ````
 
-Plotting everything give for images
+Plotting everything gives
 
 ````@example nonanalytic
 fig = Figure(;size=(800, 400))

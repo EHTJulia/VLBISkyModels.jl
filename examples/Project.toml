@@ -1,4 +1,5 @@
 [deps]
 CairoMakie = "13f3f980-e62b-5c42-98c6-ff1f3baf88f0"
 ComradeBase = "6d8c423b-a35f-4ef1-850c-862fe21f82c4"
+PolarizedTypes = "d3c5d4cd-a8ee-40d6-aac7-e34df5a20044"
 VLBISkyModels = "d6343c73-7174-4e0f-bb64-562643efbeca"

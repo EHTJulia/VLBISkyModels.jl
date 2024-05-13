@@ -24,7 +24,7 @@ foreach(fn -> Literate.markdown(fn, OUTDIR, documenter=true), SOURCE_FILES)
 makedocs(;
     modules=[VLBISkyModels, ComradeBase, PolarizedTypes],
     authors="Paul Tiede <ptiede91@gmail.com> and contributors",
-    repo="https://github.com/EHTJulia/VLBISkyModels.jl/blob/{commit}{path}#{line}",
+    # repo="https://github.com/EHTJulia/VLBISkyModels.jl/blob/{commit}{path}#{line}",
     sitename="VLBISkyModels.jl",
     format=Documenter.HTML(;
         prettyurls=true, # always on, avoids confusion when building locally. If needed, serve the "build" folder locally with LiveServer. #get(ENV, "CI", "false") == "true",
@@ -38,8 +38,9 @@ makedocs(;
         "interface.md",
         "api.md",
         "base_api.md",
-        "nonanalytic"=>joinpath("examples", "nonanalytic.md"),
+        "Non-Analytic Modeling"=>joinpath("examples", "nonanalytic.md"),
     ],
+
 )
 
 deploydocs(;
