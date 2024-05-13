@@ -20,7 +20,7 @@ OUTDIR = joinpath(@__DIR__, "src", "examples")
 SOURCE_FILES = Glob.glob("*.jl", GENERATED)
 foreach(fn -> Literate.markdown(fn, OUTDIR, documenter=true), SOURCE_FILES)
 
-
+Pkg.activate(@__DIR__)
 makedocs(;
     modules=[VLBISkyModels, ComradeBase, PolarizedTypes],
     authors="Paul Tiede <ptiede91@gmail.com> and contributors",
