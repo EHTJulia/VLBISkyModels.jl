@@ -19,5 +19,6 @@ Pages = [
     "index.md",
     "interface.md",
     "api.md"
+    "examples/nonanalytic.md"
 ]
 ```
