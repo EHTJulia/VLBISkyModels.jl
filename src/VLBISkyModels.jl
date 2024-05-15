@@ -6,6 +6,7 @@ using AbstractFFTs
 using BasicInterpolators
 using ChainRulesCore
 using ForwardDiff
+using FITSIO
 using DocStringExtensions
 using DelimitedFiles
 using Enzyme, EnzymeCore
