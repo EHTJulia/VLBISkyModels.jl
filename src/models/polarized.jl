@@ -187,11 +187,11 @@ The arguments are:
 """
 function PoincareSphere2Map(I, p, X, grid)
     pimgI = I.*p
-    stokesI = IntensityMap(I, grid)
-    stokesQ = IntensityMap(pimgI .* X[1], grid)
-    stokesU = IntensityMap(pimgI .* X[2], grid)
-    stokesV = IntensityMap(pimgI .* X[3], grid)
-    return StokesIntensityMap(stokesI, stokesQ, stokesU, stokesV)
+    stokesI = I
+    stokesQ = pimgI .* X[1]
+    stokesU = pimgI .* X[2]
+    stokesV = pimgI .* X[3]
+    return StokesIntensityMap(stokesI, stokesQ, stokesU, stokesV, grid)
 end
 # function PoincareSphere2Map(I, p, X, grid)
 #     pimgI = I.*p
@@ -228,11 +228,11 @@ function PolExp2Map(a::AbstractArray, b::AbstractArray, c::AbstractArray, d::Abs
     pimgQ = tmp.*b
     pimgU = tmp.*c
     pimgV = tmp.*d
-    stokesI = IntensityMap(pimgI, grid)
-    stokesQ = IntensityMap(pimgQ, grid)
-    stokesU = IntensityMap(pimgU, grid)
-    stokesV = IntensityMap(pimgV, grid)
-    return StokesIntensityMap(stokesI, stokesQ, stokesU, stokesV)
+    stokesI = pimgI
+    stokesQ = pimgQ
+    stokesU = pimgU
+    stokesV = pimgV
+    return StokesIntensityMap(stokesI, stokesQ, stokesU, stokesV, grid)
 end
 
 

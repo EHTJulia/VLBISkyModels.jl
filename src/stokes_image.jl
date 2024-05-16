@@ -24,7 +24,7 @@ in Julia. The following methods have been implemented:
     This may eventually be phased out for `IntensityMaps` whose base types are `StokesParams`,
     but currently we use this for speed reasons with Zygote.
 """
-struct StokesIntensityMap{T, N, SI, SQ, SU, SV}
+struct StokesIntensityMap{T, N, SI<:AbstractArray{T,N}, SQ<:AbstractArray{T,N}, SU<:AbstractArray{T, N}, SV<:AbstractArray{T, N}, G<:AbstractRectiGrid}
     """
     Stokes I image
     """
@@ -41,16 +41,23 @@ struct StokesIntensityMap{T, N, SI, SQ, SU, SV}
     Stokes V image
     """
     V::SV
-    function StokesIntensityMap(
-        I::IntensityMap{T,N},
-        Q::IntensityMap{T,N},
-        U::IntensityMap{T,N},
-        V::IntensityMap{T,N}) where {T<:Real, N}
-
-        check_grid(I, Q, U, V)
-        return new{T, N, typeof(I), typeof(Q), typeof(U), typeof(V)}(I, Q, U, V)
-    end
+    """
+    grid
+    """
+    grid::G
 end
+
+function StokesIntensityMap(
+    I::IntensityMap{T,N},
+    Q::IntensityMap{T,N},
+    U::IntensityMap{T,N},
+    V::IntensityMap{T,N}) where {T<:Real, N}
+
+    check_grid(I, Q, U, V)
+    g = axisdims(I)
+    return StokesIntensityMap(baseimage(I), baseimage(Q), baseimage(U), baseimage(V), g)
+end
+
 
 function StokesIntensityMap(img::IntensityMap{<:StokesParams})
     return StokesIntensityMap(stokes(img, :I), stokes(img, :Q), stokes(img, :U), stokes(img, :V))
@@ -69,7 +76,10 @@ function Base.setindex!(im::StokesIntensityMap, x::StokesParams, inds...)
     setindex!(im.U, x.U, inds...)
     setindex!(im.V, x.V, inds...)
 end
-ComradeBase.axisdims(img::StokesIntensityMap) = axisdims(stokes(img, :I))
+
+Enzyme.EnzymeRules.inactive(::typeof(axisdims), ::StokesIntensityMap) = nothing
+ComradeBase.axisdims(img::StokesIntensityMap) = img.grid
+ChainRulesCore.@non_differentiable ComradeBase.axisdims(::StokesIntensityMap)
 ComradeBase.pixelsizes(img::StokesIntensityMap)  = pixelsizes(img.I)
 ComradeBase.fieldofview(img::StokesIntensityMap) = fieldofview(img.I)
 ComradeBase.domainpoints(img::StokesIntensityMap)   = domainpoints(img.I)
@@ -80,18 +90,6 @@ ComradeBase.flux(img::StokesIntensityMap{T}) where {T} = StokesParams(flux(stoke
                                              )
 VLBISkyModels.centroid(m::StokesIntensityMap) = centroid(stokes(m, :I))
 
-function StokesIntensityMap(
-    I::AbstractArray{T,N}, Q::AbstractArray{T,N},
-    U::AbstractArray{T,N}, V::AbstractArray{T,N},
-    dims::AbstractSingleDomain) where {T, N}
-
-    imgI = IntensityMap(I, dims)
-    imgQ = IntensityMap(Q, dims)
-    imgU = IntensityMap(U, dims)
-    imgV = IntensityMap(V, dims)
-    return StokesIntensityMap(imgI, imgQ, imgU, imgV)
-end
-
 
 # simple check to ensure that the four grids are equal across stokes parameters
 function check_grid(I::IntensityMap, Q::IntensityMap,U::IntensityMap ,V::IntensityMap)
@@ -101,7 +99,7 @@ end
 ChainRulesCore.@non_differentiable check_grid(IntensityMap...)
 
 @inline function ComradeBase.stokes(pimg::StokesIntensityMap, v::Symbol)
-    return getproperty(pimg, v)
+    return IntensityMap(getfield(pimg, v), axisdims(pimg))
 end
 
 
