@@ -43,7 +43,61 @@ function visibility_point(m::MultiComponentModel, p)
     return s
 end
 
-function load_clean_components(fname, beam=DeltaPulse())
+function load_clean_components(fname, beam=nothing)
+    endswith(fname, ".mod") && return load_clean_components_mod_file(fname, beam)
+    load_clean_components_fits(fname, beam)
+end
+
+function load_clean_components_fits(fname, beam=nothing)
+    FITS(fname) do fid
+        cc = fid["AIPS CC"]
+        fl = read(cc, "FLUX")
+        x  = read(cc, "DELTAX")
+        y  = read(cc, "DELTAY")
+
+        # get units
+        TU = read_header(cc)["TUNIT2"]
+        if TU == "DEGREES"
+            x .= deg2rad.(x)
+            y .= deg2rad.(y)
+        else
+            @warn "Unknown unit $TU for DELTAX and DELTAY"
+        end
+
+        try
+            obj = read(cc, "TYPE OBJ")
+            uo = unique(obj)
+            if length(unique(obj)) != 1
+                @warn "Multiple object types found only using a delta function"
+            end
+
+            if any(!=(0.0), uo)
+                @warn "Only delta functions are supported"
+            end
+        catch e
+            @warn "No object type found, assuming delta functions"
+        end
+
+        if isnothing(beam)
+            hdr = read_header(fid[1])
+            if haskey(hdr, "BUNIT")
+                if hdr["BUNIT"] == "JY/BEAM"
+                    @info "Using CLEAN beam from FITS file"
+                    fwhmfac = convert(eltype(fl), 2*sqrt(2*log(2)))
+                    bmaj = hdr["BMAJ"]*π/180/fwhmfac
+                    bmin = hdr["BMIN"]*π/180/fwhmfac
+                    bpa  = hdr["BPA"]*π/180
+                    beam = modify(Gaussian(), Stretch(bmin, bmaj), Rotate(bpa))
+                end
+            end
+
+        end
+        return MultiComponentModel(beam, fl, x, y)
+    end
+end
+
+function load_clean_components_mod_file(fname, beam0=DeltaPulse())
+    beam = isnothing(beam) ? DeltaPulse() : beam0
     !endswith(fname, ".mod") && @warn "File doesn't end with .mod are you sure this is a clean MOD file?"
     f, x, y = open(fname, "r") do io
         out = readdlm(io, comments=true, comment_char='!')
