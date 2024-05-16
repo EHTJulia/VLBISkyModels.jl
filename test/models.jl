@@ -565,6 +565,11 @@ end
 end
 
 @testset "Multicomponent" begin
+
+    fname = Downloads.download("http://www.cv.nrao.edu/2cmVLBA/data/0003-066/2012_03_04/0003-066.u.2012_03_04.icn.fits.gz", joinpath(@__DIR__, "test.fits"))
+    mod = VLBISkyModels.load_clean_components(fname)
+    mod2 = VLBISkyModels.load_clean_components(fname, modify(Gaussian(), μas2rad(100.0)))
+    rm(fname)
     u = randn(100)*0.5
     v = randn(100)*0.5
     t = sort(rand(100)*0.5)
