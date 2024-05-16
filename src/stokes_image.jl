@@ -80,9 +80,9 @@ end
 Enzyme.EnzymeRules.inactive(::typeof(axisdims), ::StokesIntensityMap) = nothing
 ComradeBase.axisdims(img::StokesIntensityMap) = img.grid
 ChainRulesCore.@non_differentiable ComradeBase.axisdims(::StokesIntensityMap)
-ComradeBase.pixelsizes(img::StokesIntensityMap)  = pixelsizes(img.I)
-ComradeBase.fieldofview(img::StokesIntensityMap) = fieldofview(img.I)
-ComradeBase.domainpoints(img::StokesIntensityMap)   = domainpoints(img.I)
+ComradeBase.pixelsizes(img::StokesIntensityMap)  = pixelsizes(axisdims(img))
+ComradeBase.fieldofview(img::StokesIntensityMap) = fieldofview(axisdims(img))
+ComradeBase.domainpoints(img::StokesIntensityMap)   = domainpoints(axisdims(img))
 ComradeBase.flux(img::StokesIntensityMap{T}) where {T} = StokesParams(flux(stokes(img, :I)),
                                              flux(stokes(img, :Q)),
                                              flux(stokes(img, :U)),
@@ -129,5 +129,5 @@ function IntensityMap(img::StokesIntensityMap)
     V = stokes(img, :V) |> baseimage
 
     simg = StructArray{StokesParams{eltype(I)}}(;I, Q, U, V)
-    return IntensityMap(simg, axisdims(stokes(img, :I)), refdims(I), name(stokes(img, :I)))
+    return IntensityMap(simg, axisdims(img), refdims(I), name(stokes(img, :I)))
 end
