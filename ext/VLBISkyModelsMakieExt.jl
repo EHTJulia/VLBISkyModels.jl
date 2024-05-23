@@ -27,31 +27,28 @@ function Makie.convert_arguments(::VertexGrid, img::SpatialIntensityMap{<:Number
     return (X), (Y), parent(img)
 end
 
-
-function Makie.convert_arguments(::VertexGrid, img::Union{SpatialIntensityMap{<:StokesParams}, StokesIntensityMap})
-    imgI = stokes(img, :I)
-    (;X, Y) = imgI
-    return (X), (Y), parent(imgI)
-end
-
-function Makie.convert_arguments(::CellGrid, img::Union{SpatialIntensityMap{<:StokesParams}, StokesIntensityMap})
-    imgI = stokes(img, :I)
-    (;X, Y) = imgI
-    return (X), (Y), parent(imgI)
-end
-
-
-
 function Makie.convert_arguments(::ImageLike, img::SpatialIntensityMap{<:Number})
     (;X, Y) = img
     rX, rY = ((X,Y))
     return first(rX)..last(rX), first(rY)..last(rY), parent(img)
 end
-function Makie.convert_arguments(::ImageLike, img::Union{SpatialIntensityMap{<:StokesParams}, StokesIntensityMap})
+
+
+
+function Makie.convert_arguments(g::VertexGrid, img::Union{SpatialIntensityMap{<:StokesParams}, StokesIntensityMap})
     imgI = stokes(img, :I)
-    (;X, Y) = imgI
-    rX, rY = ((X,Y))
-    return first(rX)..last(rX), first(rY)..last(rY), parent(imgI)
+    return Makie.convert_arguments(g, imgI)
+end
+
+function Makie.convert_arguments(g::CellGrid, img::Union{SpatialIntensityMap{<:StokesParams}, StokesIntensityMap})
+    imgI = stokes(img, :I)
+    return Makie.convert_arguments(g, imgI)
+end
+
+
+function Makie.convert_arguments(g::ImageLike, img::SpatialIntensityMap{<:StokesParams})
+    imgI = stokes(img, :I)
+    return Makie.convert_arguments(g, imgI)
 end
 
 
@@ -186,7 +183,7 @@ Makie.@recipe(PolImage, img) do scene
     )
 end
 
-# We need this because DimensionalData tries to be too dang smart
+# # We need this because DimensionalData tries to be too dang smart
 function Makie.convert_arguments(::Type{<:PolImage}, img::IntensityMap{<:StokesParams, 2})
     return (img,)
 end
@@ -224,17 +221,16 @@ end
 function Makie.plot!(plot::PolImage)
     @extract plot (img,)
 
-    imgI = lift(img) do img
-        return stokes(img, :I)
-    end
+    # imgI = lift(img) do img
+    #     return (stokes(img, :I))
+    # end
 
     # plot the stokes I image
     # cr = lift(plot.colorrange, imgI) do crange, imgI
     #     (crange == Makie.automatic) && return (0.0, maximum(imgI)*1.01)
     #     return crange
     # end
-
-    image!(plot, imgI;
+    image!(plot, Makie.convert_arguments(ImageLike(), img[])...;
         colormap=plot.colormap,
         colorscale = plot.colorscale,
         colorrange = plot.colorrange,
@@ -336,7 +332,7 @@ function Makie.plot!(plot::PolImage)
         marker=m,
         markersize = len2,
         markerspace = :data,
-        rotations = rot,
+        rotation = rot,
         colorrange = pc,
         color = col,
         colormap = pcm,
