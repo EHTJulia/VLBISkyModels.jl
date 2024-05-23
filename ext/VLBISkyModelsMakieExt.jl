@@ -46,7 +46,7 @@ function Makie.convert_arguments(g::CellGrid, img::Union{SpatialIntensityMap{<:S
 end
 
 
-function Makie.convert_arguments(g::ImageLike, img::SpatialIntensityMap{<:StokesParams})
+function Makie.convert_arguments(g::ImageLike, img::Union{SpatialIntensityMap{<:StokesParams}, StokesIntensityMap})
     imgI = stokes(img, :I)
     return Makie.convert_arguments(g, imgI)
 end
