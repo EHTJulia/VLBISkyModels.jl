@@ -12,7 +12,7 @@
     CM.heatmap(g.X, g.Y, m)
 
 
-    imageviz(stokes(img, :I))
-    imageviz(img)
-    imageviz(img, plot_total=false)
+    display(imageviz(stokes(img, :I)))
+    display(imageviz(img))
+    display(imageviz(img, plot_total=false))
 end
