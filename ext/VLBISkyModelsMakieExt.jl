@@ -23,10 +23,16 @@ import VLBISkyModels: polimage, polimage!, imageviz
 # end
 
 
-function Makie.convert_arguments(::Union{CellGrid, VertexGrid}, img::SpatialIntensityMap)
+function Makie.convert_arguments(::CellGrid, img::SpatialIntensityMap)
     (;X, Y) = img
     return (X), (Y), parent(img)
 end
+
+function Makie.convert_arguments(::VertexGrid, img::SpatialIntensityMap)
+    (;X, Y) = img
+    return (X), (Y), parent(img)
+end
+
 
 function Makie.convert_arguments(::ImageLike, img::SpatialIntensityMap{<:Number})
     (;X, Y) = img
@@ -70,11 +76,6 @@ end
 function Makie.convert_arguments(t::ImageLike, x::VectorDim, y::VectorDim, m::VLBISkyModels.AbstractModel)
     img = intensitymap(m, RectiGrid((X(x), Y(y))))
     return Makie.convert_arguments(t, img)
-end
-
-function Makie.convert_arguments(::PolImage, img::SpatialIntensityMap)
-    @info "HERE"
-    return Makie.convert_arguments(ImageLike(), img)
 end
 
 
