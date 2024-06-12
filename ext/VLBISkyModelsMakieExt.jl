@@ -17,12 +17,13 @@ import VLBISkyModels: polimage, polimage!, imageviz
 
 
 
-function Makie.convert_arguments(::CellGrid, img::SpatialIntensityMap{<:Number})
-    (;X, Y) = img
-    return (X), (Y), parent(img)
-end
+# function Makie.convert_arguments(::GridBased, img::SpatialIntensityMap)
+#     (;X, Y) = img
+#     return (X), (Y), parent(img)
+# end
 
-function Makie.convert_arguments(::VertexGrid, img::SpatialIntensityMap{<:Number})
+
+function Makie.convert_arguments(::Union{CellGrid, VertexGrid}, img::SpatialIntensityMap)
     (;X, Y) = img
     return (X), (Y), parent(img)
 end
@@ -69,6 +70,11 @@ end
 function Makie.convert_arguments(t::ImageLike, x::VectorDim, y::VectorDim, m::VLBISkyModels.AbstractModel)
     img = intensitymap(m, RectiGrid((X(x), Y(y))))
     return Makie.convert_arguments(t, img)
+end
+
+function Makie.convert_arguments(::PolImage, img::SpatialIntensityMap)
+    @info "HERE"
+    return Makie.convert_arguments(ImageLike(), img)
 end
 
 
@@ -221,16 +227,16 @@ end
 function Makie.plot!(plot::PolImage)
     @extract plot (img,)
 
-    # imgI = lift(img) do img
-    #     return (stokes(img, :I))
-    # end
+    imgI = lift(img) do img
+        return (stokes(img, :I))
+    end
 
     # plot the stokes I image
     # cr = lift(plot.colorrange, imgI) do crange, imgI
     #     (crange == Makie.automatic) && return (0.0, maximum(imgI)*1.01)
     #     return crange
     # end
-    image!(plot, Makie.convert_arguments(ImageLike(), img[])...;
+    image!(plot, Makie.convert_arguments(ImageLike(), imgI[])...;
         colormap=plot.colormap,
         colorscale = plot.colorscale,
         colorrange = plot.colorrange,
@@ -266,7 +272,7 @@ function Makie.plot!(plot::PolImage)
 
         lenmul = 10*dx/nvec/maxL.*length_norm
 
-        dimg = IntensityMap(img, RectiGrid((;X, Y)))
+        dimg = img
         for y in Yvec
             for x in Xvec
                 s = dimg[X=Near(x), Y=Near(y)]
