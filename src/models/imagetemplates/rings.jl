@@ -160,13 +160,6 @@ end
 
 radialextent(d::RadialJohnsonSU) = 1 + 5*d.σ
 
-"""
-    RadialJohnsonSU(r0, σ, γ)
-
-Creates a profile with the JohnsonSU radial profile with a radius of `r0` thickness σ and asymmetry γ.
-"""
-RadialJohnsonSU(r0, σ, γ) = modify(RadialJohnsonSU(σ/r0, γ), Stretch(r0))
-
 
 @inline @fastmath function radial_profile(d::RadialJohnsonSU, r)
     (;σ, γ,) = d

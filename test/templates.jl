@@ -50,13 +50,6 @@ end
     rads = (gr, dr, tr, jr)
     g = imagepixels(fovx, fovy, npix, npix)
 
-    @testset "RadialJohnsonSU" begin
-        jr1 = RadialJohnsonSU(1.0, 0.5, 1.0)
-        g = imagepixels(10.0, 10.0, 128, 128)
-        @test intensitymap(jr, g) ≈ intensitymap(jr1, g)
-    end
-
-
     au = AzimuthalUniform()
     ac1 = AzimuthalCosine(0.5, π/2)
     ac2 = AzimuthalCosine((0.5, 0.1), (0.0, π/3))
