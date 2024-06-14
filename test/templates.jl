@@ -45,9 +45,16 @@ end
 @testset "RingTemplate" begin
     gr = RadialGaussian(0.1)
     dr = RadialDblPower(3.00, 5.0)
+    jr = RadialJohnsonSU(0.5, 1.0)
     tr = RadialTruncExp(1.0)
-    rads = (gr, dr, tr)
+    rads = (gr, dr, tr, jr)
     g = imagepixels(fovx, fovy, npix, npix)
+
+    @testset "RadialJohnsonSU" begin
+        jr1 = RadialJohnsonSU(1.0, 0.5, 1.0)
+        g = imagepixels(10.0, 10.0, 128, 128)
+        @test intensitymap(jr, g) ≈ intensitymap(jr1, g)
+    end
 
 
     au = AzimuthalUniform()
