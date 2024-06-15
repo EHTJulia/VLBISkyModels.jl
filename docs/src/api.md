@@ -49,6 +49,7 @@ VLBISkyModels.RingTemplate
 VLBISkyModels.RadialGaussian
 VLBISkyModels.RadialDblPower
 VLBISkyModels.RadialTruncExp
+VLBISkyModels.RadialJohnsonSU
 VLBISkyModels.AzimuthalUniform
 VLBISkyModels.AzimuthalCosine
 VLBISkyModels.GaussianRing
