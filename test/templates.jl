@@ -45,10 +45,10 @@ end
 @testset "RingTemplate" begin
     gr = RadialGaussian(0.1)
     dr = RadialDblPower(3.00, 5.0)
+    jr = RadialJohnsonSU(0.5, 1.0)
     tr = RadialTruncExp(1.0)
-    rads = (gr, dr, tr)
+    rads = (gr, dr, tr, jr)
     g = imagepixels(fovx, fovy, npix, npix)
-
 
     au = AzimuthalUniform()
     ac1 = AzimuthalCosine(0.5, π/2)

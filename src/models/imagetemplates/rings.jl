@@ -1,5 +1,6 @@
 export RingTemplate,
        RadialGaussian, RadialDblPower, RadialTruncExp,
+       RadialJohnsonSU,
        AzimuthalUniform, AzimuthalCosine,
        GaussianRing, SlashedGaussianRing,
        EllipticalGaussianRing, EllipticalSlashedGaussianRing
@@ -125,6 +126,47 @@ radialextent(d::RadialDblPower{T}) where {T} = 1 + convert(T, 50^(1/d.αouter))
     (;αinner, αouter,) = d
     return r^αinner/(1 + r^(αouter + αinner + 1))
 end
+
+
+"""
+    RadialJohnsonSU(αinner, αouter)
+
+Radial profile that given by positive unit radius Johnson SU distributions with the functional form
+
+```julia
+    exp[-1/2(γ + arcsinh((r - μ)/σ)]^2*inv(1 + (r - 1)² + σ²)
+```
+
+where controls σ ≥ 0 the width, and γ the asymmetry.
+
+## Notes
+This is usually couple with a azimuthal profile to create a general ring template
+
+```julia-repl
+julia> rad = RadialJohnsonSU(1/2, -3/2)
+julia> azi = AzimuthalUniform()
+julia> t = RingTemplate(rad, azi)
+```
+
+## Arguments
+  - `σ` : the width of the ring
+  - `γ` : the asymmetry of the ring
+
+"""
+struct RadialJohnsonSU{T} <: AbstractRadial
+    σ::T
+    γ::T
+end
+
+radialextent(d::RadialJohnsonSU) = 1 + 5*d.σ
+
+
+@inline @fastmath function radial_profile(d::RadialJohnsonSU, r)
+    (;σ, γ,) = d
+    norm = inv(sqrt((r - 1)^2 + σ^2))
+    return norm*exp(-1/2*(γ + asinh((r - 1)/σ))^2)
+end
+
 
 
 """
