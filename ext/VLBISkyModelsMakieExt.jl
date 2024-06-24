@@ -23,39 +23,43 @@ import VLBISkyModels: polimage, polimage!, imageviz
 # end
 
 
-function Makie.convert_arguments(::CellGrid, img::SpatialIntensityMap)
+function Makie.expand_dimensions(::CellGrid, img::SpatialIntensityMap)
     (;X, Y) = img
     return (X), (Y), parent(img)
 end
 
-function Makie.convert_arguments(::VertexGrid, img::SpatialIntensityMap)
+function Makie.expand_dimensions(::VertexGrid, img::SpatialIntensityMap)
     (;X, Y) = img
     return (X), (Y), parent(img)
 end
 
 
-function Makie.convert_arguments(::ImageLike, img::SpatialIntensityMap{<:Number})
+function Makie.expand_dimensions(::ImageLike, img::SpatialIntensityMap)
     (;X, Y) = img
     rX, rY = ((X,Y))
     return first(rX)..last(rX), first(rY)..last(rY), parent(img)
 end
 
+Makie.convert_arguments(::CellGrid, x, y, img::AbstractMatrix{<:StokesParams}) = x, y, stokes(img, :I)
+Makie.convert_arguments(::VertexGrid, x, y, img::AbstractMatrix{<:StokesParams}) = x, y, stokes(img, :I)
+Makie.convert_arguments(::ImageLike, x, y, img::AbstractMatrix{<:StokesParams}) = x, y, stokes(img, :I)
 
 
-function Makie.convert_arguments(g::VertexGrid, img::Union{SpatialIntensityMap{<:StokesParams}, StokesIntensityMap})
+
+function Makie.expand_dimensions(g::VertexGrid, img::Union{SpatialIntensityMap{<:StokesParams}, StokesIntensityMap})
     imgI = stokes(img, :I)
-    return Makie.convert_arguments(g, imgI)
+    return Makie.expand_dimensions(g, imgI)
 end
 
-function Makie.convert_arguments(g::CellGrid, img::Union{SpatialIntensityMap{<:StokesParams}, StokesIntensityMap})
+function Makie.expand_dimensions(g::CellGrid, img::Union{SpatialIntensityMap{<:StokesParams}, StokesIntensityMap})
     imgI = stokes(img, :I)
-    return Makie.convert_arguments(g, imgI)
+    return Makie.expand_dimensions(g, imgI)
 end
 
 
-function Makie.convert_arguments(g::ImageLike, img::Union{SpatialIntensityMap{<:StokesParams}, StokesIntensityMap})
+function Makie.expand_dimensions(g::ImageLike, img::Union{SpatialIntensityMap{<:StokesParams}, StokesIntensityMap})
     imgI = stokes(img, :I)
-    return Makie.convert_arguments(g, imgI)
+    return Makie.expand_dimensions(g, imgI)
 end
 
 
@@ -237,7 +241,7 @@ function Makie.plot!(plot::PolImage)
     #     (crange == Makie.automatic) && return (0.0, maximum(imgI)*1.01)
     #     return crange
     # end
-    image!(plot, Makie.convert_arguments(ImageLike(), imgI[])...;
+    image!(plot, imgI;
         colormap=plot.colormap,
         colorscale = plot.colorscale,
         colorrange = plot.colorrange,
