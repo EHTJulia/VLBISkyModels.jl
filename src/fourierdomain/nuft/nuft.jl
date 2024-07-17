@@ -1,7 +1,6 @@
 abstract type AbstractNUFTPlan <: AbstractPlan end
 abstract type NUFT <: FourierTransform end
 
-
 """
     $(TYPEDEF)
 
@@ -134,7 +133,7 @@ end
     Q = _nuft(A, stokes(b, :Q))
     U = _nuft(A, stokes(b, :U))
     V = _nuft(A, stokes(b, :V))
-    return StructArray{StokesParams{eltype(I)}}((;I, Q, U, V))
+    return StructArray{StokesParams{eltype(I)}}((; I, Q, U, V))
 end
 
 @inline function nuft(A, b::StokesIntensityMap)
@@ -142,17 +141,8 @@ end
     Q = _nuft(A, stokes(b, :Q))
     U = _nuft(A, stokes(b, :U))
     V = _nuft(A, stokes(b, :V))
-    return StructArray{StokesParams{eltype(I)}}((;I, Q, U, V))
+    return StructArray{StokesParams{eltype(I)}}((; I, Q, U, V))
 end
-
-
-
-
-
-
-
-
-
 
 include(joinpath(@__DIR__, "nfft_alg.jl"))
 

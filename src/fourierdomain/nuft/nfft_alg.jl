@@ -31,7 +31,7 @@ Base.@kwdef struct NFFTAlg{T,N,F} <: NUFT
     """
     NFFT interpolation algorithm.
     """
-    precompute::N=NFFT.POLYNOMIAL
+    precompute::N = NFFT.POLYNOMIAL
     """
     Flag block partioning should be used to speed up computation
     """
@@ -92,7 +92,6 @@ function applyft(p::AbstractNUFTPlan, img::Union{AbstractArray, StokesIntensityM
     vis =  nuft(getplan(p), img)
     return vis.*getphases(p)
 end
-
 """
 This a new function is overloaded to handle when NUFTPlan has plans
 as dictionaries in the case of Ti or Fr case
@@ -119,7 +118,8 @@ end
 """
 plan_nuft for only spatial part, no Ti or Fr
 """
-function plan_nuft_spatial(alg::NFFTAlg, imagegrid::AbstractRectiGrid, visdomain::UnstructuredDomain)
+function plan_nuft_spatial(alg::NFFTAlg, imagegrid::AbstractRectiGrid,
+                   visdomain::UnstructuredDomain)
     visp = domainpoints(visdomain)
     uv2 = similar(visp.U, (2, length(visdomain)))
     dpx = pixelsizes(imagegrid)
@@ -129,7 +129,8 @@ function plan_nuft_spatial(alg::NFFTAlg, imagegrid::AbstractRectiGrid, visdomain
     uv2[1, :] .= -visp.U * dx
     uv2[2, :] .= -visp.V * dy
     (; m, σ, window, precompute, blocking, sortNodes, storeDeconvolutionIdx, fftflags) = alg
-    plan = plan_nfft(uv2, (size(imagegrid)[1],size(imagegrid)[2]); m, σ, window, precompute, blocking, sortNodes, storeDeconvolutionIdx, fftflags)
+    plan = plan_nfft(uv2, size(imagegrid); m, σ, window, precompute, blocking, sortNodes,
+                     storeDeconvolutionIdx, fftflags)
     return plan
 end
 
@@ -163,11 +164,10 @@ function make_phases(::NFFTAlg, imgdomain::AbstractRectiGrid, visdomain::Unstruc
     u = visp.U
     v = visp.V
     # Correct for the nFFT phase center and the img phase center
-    return cispi.((u.*(dx - 2*x0) .+ v.*(dy - 2*y0)))
+    return cispi.((u .* (dx - 2 * x0) .+ v .* (dy - 2 * y0)))
 end
 
 # Allow NFFT to work with ForwardDiff.
-
 
 function _nuft(A::NFFTPlan, b::AbstractArray{<:Real})
     bc = complex(b)
@@ -176,21 +176,20 @@ function _nuft(A::NFFTPlan, b::AbstractArray{<:Real})
     return out
 end
 
-
 function _nuft(A::NFFTPlan, b::AbstractArray{<:ForwardDiff.Dual})
     return _frule_nuft(A, b)
 end
 
-function _frule_nuft(p::NFFTPlan, b::AbstractArray{<:ForwardDiff.Dual{T,V,P}}) where {T, V, P}
+function _frule_nuft(p::NFFTPlan, b::AbstractArray{<:ForwardDiff.Dual{T,V,P}}) where {T,V,P}
     # Compute the fft
     buffer = ForwardDiff.value.(b)
-    xtil = p*complex.(buffer)
+    xtil = p * complex.(buffer)
     out = similar(buffer, Complex{ForwardDiff.Dual{T,V,P}})
     # Now take the deriv of nuft
     ndxs = ForwardDiff.npartials(first(b))
     dxtils = ntuple(ndxs) do n
         buffer .= ForwardDiff.partials.(b, n)
-        p * complex.(buffer)
+        return p * complex.(buffer)
     end
     out = similar(xtil, Complex{ForwardDiff.Dual{T,V,P}})
     for i in eachindex(out)
@@ -202,8 +201,6 @@ function _frule_nuft(p::NFFTPlan, b::AbstractArray{<:ForwardDiff.Dual{T,V,P}}) w
     end
     return out
 end
-
-
 
 function _nuft!(out, A, b)
     mul!(out, A, b)
@@ -217,7 +214,7 @@ function ChainRulesCore.rrule(::typeof(_nuft), A::NFFTPlan, b)
         Δf = NoTangent()
         dy = similar(vis)
         dy .= unthunk(Δy)
-        ΔA = @thunk(pr(A'*dy))
+        ΔA = @thunk(pr(A' * dy))
         return Δf, NoTangent(), ΔA
     end
     return vis, nuft_pullback
@@ -225,7 +222,8 @@ end
 
 using EnzymeCore: EnzymeRules, Const, Active, Duplicated
 #using EnzymeRules: ConfigWidth, needs_prima
-function EnzymeRules.augmented_primal(config, ::Const{typeof(_nuft!)}, ::Type{<:Const}, out, A::Const, b)
+function EnzymeRules.augmented_primal(config, ::Const{typeof(_nuft!)}, ::Type{<:Const}, out,
+                                      A::Const, b)
     _nuft!(out.val, A.val, b.val)
     # I think we don't need to cache this since A just has in internal temporary buffer
     # that is used to store the results of things like the FFT.
@@ -233,7 +231,9 @@ function EnzymeRules.augmented_primal(config, ::Const{typeof(_nuft!)}, ::Type{<:
     return EnzymeRules.AugmentedReturn(nothing, nothing, nothing)
 end
 
-function EnzymeRules.reverse(config::EnzymeRules.ConfigWidth{1}, ::Const{typeof(_nuft!)}, ::Type{<:Const}, tape, out::Duplicated, A::Const, b::Duplicated)
+function EnzymeRules.reverse(config::EnzymeRules.ConfigWidth{1}, ::Const{typeof(_nuft!)},
+                             ::Type{<:Const}, tape, out::Duplicated, A::Const,
+                             b::Duplicated)
 
     # I think we don't need to cache this since A just has in internal temporary buffer
     # that is used to store the results of things like the FFT.
@@ -257,7 +257,7 @@ function EnzymeRules.reverse(config::EnzymeRules.ConfigWidth{1}, ::Const{typeof(
     end
     for (db, dout) in zip(dbs, douts)
         # TODO open PR on NFFT so we can do this in place.
-        db .+= A.val'*dout
+        db .+= A.val' * dout
         dout .= 0
     end
     return (nothing, nothing, nothing)

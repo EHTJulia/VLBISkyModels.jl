@@ -1,6 +1,5 @@
 export stretched, shifted, rotated, renormed, modify, Stretch, Renormalize, Shift, Rotate
 
-
 """
     $(TYPEDEF)
 
@@ -35,16 +34,12 @@ function.
 """
 abstract type ModelModifier{T} end
 
-
-
-
 """
     scale_image(model::AbstractModifier, x, y)
 
 Returns a number of how to to scale the image intensity at `x` `y` for an modified `model`
 """
 function scale_image end
-
 
 """
     transform_image(model::AbstractModifier, x, y)
@@ -70,7 +65,6 @@ function transform_uv end
 unitscale(T, ::NotPolarized) = one(T)
 unitscale(T, ::IsPolarized) = I
 
-
 """
     $(TYPEDEF)
 
@@ -80,7 +74,7 @@ For a list of potential modifiers or transforms see `subtypes(ModelModifiers)`.
 # Fields
 $(FIELDS)
 """
-struct ModifiedModel{M, MT<:Tuple}<: AbstractModel
+struct ModifiedModel{M,MT<:Tuple} <: AbstractModel
     """base model"""
     model::M
     """model transforms"""
@@ -93,12 +87,11 @@ function Base.show(io::IO, mi::ModifiedModel)
     println(io, "ModifiedModel")
     println(io, "  base model: ", mi.model)
     println(io, "  Modifiers:")
-    for i in eachindex(mi.transform)[1:end-1]
+    for i in eachindex(mi.transform)[1:(end - 1)]
         println(io, "    $i. ", summary(mi.transform[i]))
     end
-    print(io, "    $(length(mi.transform)). ", summary(mi.transform[end]))
- end
-
+    return print(io, "    $(length(mi.transform)). ", summary(mi.transform[end]))
+end
 
 """
     unmodified(model::ModifiedModel)
@@ -127,19 +120,16 @@ true
 ```
 """
 basemodel(model::ModifiedModel) = ModifiedModel(model.model, Base.front(model.transform))
-basemodel(model::ModifiedModel{M, Tuple{}}) where {M} = model
+basemodel(model::ModifiedModel{M,Tuple{}}) where {M} = model
 
-
-flux(m::ModifiedModel) = flux(m.model)*mapreduce(flux, Base.:*, m.transform)
+flux(m::ModifiedModel) = flux(m.model) * mapreduce(flux, Base.:*, m.transform)
 flux(::ModelModifier{T}) where {T} = one(T)
-
 
 radialextent(m::ModifiedModel) = radialextent_modified(radialextent(m.model), m.transform)
 
-@inline visanalytic(::Type{ModifiedModel{M, T}}) where {M,T} = visanalytic(M)
-@inline imanalytic(::Type{ModifiedModel{M, T}}) where {M,T} = imanalytic(M)
-@inline ispolarized(::Type{ModifiedModel{M, T}}) where {M,T} = ispolarized(M)
-
+@inline visanalytic(::Type{ModifiedModel{M,T}}) where {M,T} = visanalytic(M)
+@inline imanalytic(::Type{ModifiedModel{M,T}}) where {M,T} = imanalytic(M)
+@inline ispolarized(::Type{ModifiedModel{M,T}}) where {M,T} = ispolarized(M)
 
 @inline function ModifiedModel(m, t::ModelModifier)
     return ModifiedModel(m, (t,))
@@ -151,23 +141,23 @@ end
     return ModifiedModel(model, (t0..., t))
 end
 
-@inline doesnot_uv_modify(t::Tuple) = doesnot_uv_modify(Base.front(t))*doesnot_uv_modify(last(t))
+@inline doesnot_uv_modify(t::Tuple) = doesnot_uv_modify(Base.front(t)) *
+                                      doesnot_uv_modify(last(t))
 @inline doesnot_uv_modify(::Tuple{}) = true
 
 function modify_uv(model, t::Tuple, u, v, scale)
     ut, vt = transform_uv(model, last(t), u, v)
     scalet = scale_uv(model, last(t), u, v)
-    return modify_uv(model, Base.front(t), ut, vt, scalet*scale)
+    return modify_uv(model, Base.front(t), ut, vt, scalet * scale)
 end
 modify_uv(model, ::Tuple{}, u, v, scale) = (u, v), scale
 
 function modify_image(model, t::Tuple, x, y, scale)
     xt, yt = transform_image(model, last(t), x, y)
     scalet = scale_image(model, last(t), x, y)
-    return modify_image(model, Base.front(t), xt, yt, scalet*scale)
+    return modify_image(model, Base.front(t), xt, yt, scalet * scale)
 end
 modify_image(model, ::Tuple{}, x, y, scale) = (x, y), scale
-
 
 # @inline function transform_uv(model, t::Tuple, u, v)
 #     ut, vt = transform_uv(model, last(t), u, v)
@@ -193,9 +183,10 @@ modify_image(model, ::Tuple{}, x, y, scale) = (x, y), scale
 # end
 # @inline scale_image(::M, t::Tuple{}, x, y) where {M} = unitscale(eltype(x), M)
 
-@inline radialextent_modified(r::Real, t::Tuple) = radialextent_modified(radialextent_modified(r, last(t)), Base.front(t))
+@inline radialextent_modified(r::Real, t::Tuple) = radialextent_modified(radialextent_modified(r,
+                                                                                               last(t)),
+                                                                         Base.front(t))
 @inline radialextent_modified(r::Real, ::Tuple{}) = r
-
 
 """
     modify(m::AbstractModel, transforms...)
@@ -213,9 +204,6 @@ function modify(m::AbstractModel, transforms...)
     return ModifiedModel(m, transforms)
 end
 
-
-
-
 # @inline function apply_uv_transform(m::AbstractModifier, t::TransformState)
 #     ut, vt = transform_uv(m, t.u, t.v)
 #     scale = t.scale*scale_uv(m, t.u, t.v)
@@ -225,7 +213,6 @@ end
 # @inline function apply_uv_transform(::AbstractModel, t::TransformState)
 #     return t
 # end
-
 
 # @inline function apply_uv_transform(m::AbstractModifier, u, v, scale)
 #     ut, vt = transform_uv(m, u, v)
@@ -244,7 +231,6 @@ end
 #     scale.*_visibilitymap(unmodified(m), ut, vt, time, freq)
 # end
 
-
 # # function visibilitymap(m, p::NamedTuple)
 # #     m = Base.Fix1(m∘NamedTuple{keys(p)})
 # #     return visibilitymap(m, NamedTuple{keys(p)}(p))
@@ -254,8 +240,6 @@ end
 #     res = apply_uv_transform.(Ref(m), u, v, 1.0)
 #     return first.(res), last.(res)
 # end
-
-
 
 # function apply_uv_transform(m::AbstractModifier, u::AbstractVector, v::AbstractVector)
 #     res = apply_uv_transform.(Ref(m), u, v, 1.0)
@@ -273,8 +257,6 @@ end
 # @inline function _visibilitymap(m::AbstractModifier{M}, p) where {M}
 #     return _visibilitymap(ispolarized(M), m, p)
 # end
-
-
 
 # @inline function _visibilitymap(m::AbstractModifier, p)
 #     (;U, V) = p
@@ -296,7 +278,6 @@ function update_xy(p::NamedTuple, xy)
     return p2
 end
 
-
 # @inline function _visibilitymap(::IsPolarized, m::AbstractModifier, p)
 #     (;U, V) = p
 
@@ -317,21 +298,22 @@ end
 #     mst.scale.*visibilitymap(unmodified(m), pup)
 # end
 
-
 @inline function visibility_point(m::M, p) where {M<:ModifiedModel}
     mbase = m.model
     transform = m.transform
     ispol = ispolarized(M)
-    (ut, vt), scale = modify_uv(ispol, transform, p.U, p.V, unitscale(Complex{eltype(p.U)}, ispol))
-    scale*visibility_point(mbase, update_uv(p, (U=ut, V=vt)))
+    (ut, vt), scale = modify_uv(ispol, transform, p.U, p.V,
+                                unitscale(Complex{eltype(p.U)}, ispol))
+    return scale * visibility_point(mbase, update_uv(p, (U=ut, V=vt)))
 end
 
 @inline function intensity_point(m::M, p) where {M<:ModifiedModel}
     mbase = m.model
     transform = m.transform
     ispol = ispolarized(M)
-    (xt, yt), scale = modify_image(ispol, transform, p.X, p.Y, unitscale(eltype(p.X), ispol))
-    scale*intensity_point(mbase, update_xy(p, (X=xt, Y=yt)))
+    (xt, yt), scale = modify_image(ispol, transform, p.X, p.Y,
+                                   unitscale(eltype(p.X), ispol))
+    return scale * intensity_point(mbase, update_xy(p, (X=xt, Y=yt)))
 end
 
 function modify_uv(model, transform::Tuple, u::AbstractVector, v::AbstractVector, scale)
@@ -339,7 +321,9 @@ function modify_uv(model, transform::Tuple, u::AbstractVector, v::AbstractVector
     return first.(uvscale), last.(uvscale)
 end
 
-visibilitymap_analytic(m::ModifiedModel, p::AbstractFourierDualDomain) = visibilitymap_analytic(m, visdomain(p))
+function visibilitymap_analytic(m::ModifiedModel, p::AbstractFourierDualDomain)
+    return visibilitymap_analytic(m, visdomain(p))
+end
 
 function visibilitymap_analytic(m::ModifiedModel, p::AbstractSingleDomain)
     vis = allocate_vismap(m, p)
@@ -347,32 +331,22 @@ function visibilitymap_analytic(m::ModifiedModel, p::AbstractSingleDomain)
     return vis
 end
 
-
-
 function __extract_tangent(dm::ModifiedModel)
     tm = __extract_tangent(dm.model)
     dtm = dm.transform
-    ttm = map(x->Tangent{typeof(x)}(;ntfromstruct(x)...), dtm)
-    tm = Tangent{typeof(dm)}(model=tm, transform=ttm)
+    ttm = map(x -> Tangent{typeof(x)}(; ntfromstruct(x)...), dtm)
+    return tm = Tangent{typeof(dm)}(; model=tm, transform=ttm)
 end
-
 
 function __extract_tangent(dm::GeometricModel)
     ntm = ntfromstruct(dm)
-    if ntm isa NamedTuple{(), Tuple{}}
+    if ntm isa NamedTuple{(),Tuple{}}
         tbm = ZeroTangent()
     else
-        tbm = Tangent{typeof(dm)}(;ntm...)
+        tbm = Tangent{typeof(dm)}(; ntm...)
     end
     return tbm
 end
-
-
-
-
-
-
-
 
 """
     $(TYPEDEF)
@@ -390,7 +364,6 @@ struct Shift{T} <: ModelModifier{T}
     Δx::T
     Δy::T
 end
-
 
 #function ShiftedModel(model::AbstractModel, Δx::Number, Δy::Number)
 #    T =
@@ -410,14 +383,17 @@ doesnot_uv_modify(::Shift) = true
 # This is a simple overload to simplify the type system
 @inline radialextent_modified(r::Real, t::Shift) = r + max(abs(t.Δx), abs(t.Δy))
 
-@inline transform_image(model, transform::Shift, x, y) = (x-transform.Δx, y-transform.Δy)
+@inline transform_image(model, transform::Shift, x, y) = (x - transform.Δx,
+                                                          y - transform.Δy)
 @inline transform_uv(model, ::Shift, u, v) = (u, v)
 
 @inline scale_image(m, transform::Shift, x, y) = unitscale(typeof(transform.Δx), m)
 # Curently we use exp here because enzyme has an issue with cispi that will be fixed soon.
-@inline scale_uv(m, transform::Shift{T}, u, v) where {T}    = exp(2im*T(π)*(u*transform.Δx + v*transform.Δy))*unitscale(typeof(transform.Δx), m)
-
-
+@inline scale_uv(m, transform::Shift{T}, u, v) where {T} = exp(2im * T(π) *
+                                                               (u * transform.Δx +
+                                                                v * transform.Δy)) *
+                                                           unitscale(typeof(transform.Δx),
+                                                                     m)
 
 """
     $(TYPEDEF)
@@ -436,8 +412,6 @@ true
 struct Renormalize{T} <: ModelModifier{T}
     scale::T
 end
-
-
 
 """
     $(SIGNATURES)
@@ -467,11 +441,12 @@ flux(t::Renormalize) = t.scale
 @inline transform_image(m, ::Renormalize, x, y) = (x, y)
 @inline transform_uv(m, ::Renormalize, u, v) = (u, v)
 
-@inline scale_image(m, transform::Renormalize, x, y) = transform.scale*unitscale(typeof(transform.scale), m)
-@inline scale_uv(m, transform::Renormalize, u, v)    = transform.scale*unitscale(typeof(transform.scale), m)
+@inline scale_image(m, transform::Renormalize, x, y) = transform.scale *
+                                                       unitscale(typeof(transform.scale), m)
+@inline scale_uv(m, transform::Renormalize, u, v) = transform.scale *
+                                                    unitscale(typeof(transform.scale), m)
 
 @inline radialextent_modified(r::Real, ::Renormalize) = r
-
 
 """
     Stretch(α, β)
@@ -499,10 +474,7 @@ struct Stretch{T} <: ModelModifier{T}
     β::T
 end
 
-
-
 Stretch(r) = Stretch(r, r)
-
 
 """
     $(SIGNATURES)
@@ -514,14 +486,15 @@ where were renormalize the intensity to preserve the models flux.
 stretched(model, α, β) = ModifiedModel(model, Stretch(α, β))
 
 @inline doesnot_uv_modify(::Stretch) = false
-@inline transform_image(m, transform::Stretch, x, y) = (x/transform.α, y/transform.β)
-@inline transform_uv(m, transform::Stretch, u, v) = (u*transform.α, v*transform.β)
+@inline transform_image(m, transform::Stretch, x, y) = (x / transform.α, y / transform.β)
+@inline transform_uv(m, transform::Stretch, u, v) = (u * transform.α, v * transform.β)
 
-@inline scale_image(m, transform::Stretch{T}, x, y) where {T} = inv(transform.α*transform.β)*unitscale(T, m)
+@inline scale_image(m, transform::Stretch{T}, x, y) where {T} = inv(transform.α *
+                                                                    transform.β) *
+                                                                unitscale(T, m)
 @inline scale_uv(m, ::Stretch{T}, u, v) where {T} = unitscale(T, m)
 
-@inline radialextent_modified(r::Real, t::Stretch) = r*max(t.α, t.β)
-
+@inline radialextent_modified(r::Real, t::Stretch) = r * max(t.α, t.β)
 
 """
     Rotate(ξ)
@@ -539,12 +512,10 @@ struct Rotate{T} <: ModelModifier{T}
     s::T
     c::T
     function Rotate(ξ::F) where {F}
-        s,c = sincos(ξ)
+        s, c = sincos(ξ)
         return new{F}(s, c)
     end
 end
-
-
 
 """
     $(SIGNATURES)
@@ -563,13 +534,13 @@ posangle(model::Rotate) = atan(model.s, model.c)
 @inline doesnot_uv_modify(::Rotate) = false
 
 @inline function transform_image(m, transform::Rotate, x, y)
-    s,c = transform.s, transform.c
-    return c*x - s*y, s*x + c*y
+    s, c = transform.s, transform.c
+    return c * x - s * y, s * x + c * y
 end
 
 @inline function transform_uv(m, transform::Rotate, u, v)
-    s,c = transform.s, transform.c
-    return c*u - s*v, + s*u + c*v
+    s, c = transform.s, transform.c
+    return c * u - s * v, +s * u + c * v
 end
 
 @inline scale_image(::NotPolarized, model::Rotate{T}, x, y) where {T} = one(T)
@@ -578,12 +549,11 @@ end
     u = oneunit(c)
     z = zero(s)
     c2 = c^2 - s^2
-    s2 = 2*c*s
-    return SMatrix{4,4}(u,  z,  z,  z,
-                        z,  c2, s2, z,
+    s2 = 2 * c * s
+    return SMatrix{4,4}(u, z, z, z,
+                        z, c2, s2, z,
                         z, -s2, c2, z,
-                        z,   z,  z, u)
-
+                        z, z, z, u)
 end
 
 @inline function scale_image(::IsPolarized, model::Rotate, x, y)

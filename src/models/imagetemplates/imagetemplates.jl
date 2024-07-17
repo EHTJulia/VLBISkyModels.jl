@@ -22,24 +22,22 @@ abstract type AbstractImageTemplate <: ComradeBase.AbstractModel end
 
 # Hook into ComradeBase interface
 visanalytic(::Type{<:AbstractImageTemplate}) = NotAnalytic()
-imanalytic(::Type{<:AbstractImageTemplate})  = IsAnalytic()
+imanalytic(::Type{<:AbstractImageTemplate}) = IsAnalytic()
 
 function flux(m::AbstractImageTemplate)
     g = imagepixels(radialextent(m), radialextent(m), 512, 512)
     return flux(intensitymap(m, g))
 end
 
-
-
 include(joinpath(@__DIR__, "image.jl"))
 include(joinpath(@__DIR__, "rings.jl"))
 include(joinpath(@__DIR__, "cosinering.jl"))
 
-function __extract_tangent(m::Union{AbstractImageTemplate, AbstractRadial, AbstractAzimuthal})
+function __extract_tangent(m::Union{AbstractImageTemplate,AbstractRadial,AbstractAzimuthal})
     nt = ntfromstruct(m)
-    if nt isa NamedTuple{(), Tuple{}}
+    if nt isa NamedTuple{(),Tuple{}}
         return ZeroTangent()
     else
-        return Tangent{typeof(m)}(;nt...)
+        return Tangent{typeof(m)}(; nt...)
     end
 end

@@ -13,7 +13,7 @@ struct LogSpiral{T<:Real} <: AbstractImageTemplate
     """ Azimuthal extent of the spiral arm """
     δϕ::T
 end
-radialextent(d::LogSpiral{T}) where {T} = exp(d.κ*d.δϕ)
+radialextent(d::LogSpiral{T}) where {T} = exp(d.κ * d.δϕ)
 
 """
     $(SIGNATURES)
@@ -40,28 +40,27 @@ modify(LogSpiral(κ, σ/r0, δϕ),
 
 """
 function LogSpiral(r0, κ, σ, δϕ, ξ, x0, y0)
-    return modify(LogSpiral(κ, σ/r0, δϕ), Stretch(r0), Rotate(ξ), Shift(x0, y0))
+    return modify(LogSpiral(κ, σ / r0, δϕ), Stretch(r0), Rotate(ξ), Shift(x0, y0))
 end
 
-
 @inline function intensity_point(θ::LogSpiral, p)
-    (;X, Y) = p
-    (;κ, σ, δϕ) = θ
+    (; X, Y) = p
+    (; κ, σ, δϕ) = θ
     #Set up the spiral
-    k = sqrt(1-κ*κ)/κ
-    rc = exp(k*10π) #This finds where we should start our spiral arm from
+    k = sqrt(1 - κ * κ) / κ
+    rc = exp(k * 10π) #This finds where we should start our spiral arm from
     a = inv(rc) #Get on the correct logspiral
 
     r = hypot(X, Y)
-    α = ringphase(X,Y)
+    α = ringphase(X, Y)
 
     #Now I need to find the distance from the closest spiral arm
-    n = (log(r/a)/k - α)/(2π)
+    n = (log(r / a) / k - α) / (2π)
     nc = ceil(n)
     nf = floor(n)
-    rc = a*exp(k*(α + nc*2π))
-    rf = a*exp(k*(α + nf*2π))
-    r1,r2 = abs(rc-r),abs(rf-r)
+    rc = a * exp(k * (α + nc * 2π))
+    rf = a * exp(k * (α + nf * 2π))
+    r1, r2 = abs(rc - r), abs(rf - r)
     if r1 < r2
         nn = nc
         dist = r1
@@ -70,8 +69,8 @@ end
         dist = r2
     end
     #Get the angular extent
-    dtheta = (10π - (α + nn*2π))
-    return exp(-dist^2/(2*σ^2) -dtheta^2/(2*(δϕ/2)^2))
+    dtheta = (10π - (α + nn * 2π))
+    return exp(-dist^2 / (2 * σ^2) - dtheta^2 / (2 * (δϕ / 2)^2))
 end
 
 #Load the templates
@@ -118,15 +117,15 @@ struct GaussDisk{T} <: AbstractImageTemplate
 end
 
 @inline function intensity_point(θ::GaussDisk{T}, p) where {T}
-    (;α) = θ
+    (; α) = θ
     r = hypot(p.X, p.Y)
-    if ( r < 1)
+    if (r < 1)
         return one(T)
     else
-        return exp(-(r-1)^2/(2*α^2))
+        return exp(-(r - 1)^2 / (2 * α^2))
     end
 end
-radialextent(d::GaussDisk{T}) where {T} = one(T) + 3*d.α
+radialextent(d::GaussDisk{T}) where {T} = one(T) + 3 * d.α
 
 """
     $(SIGNATURES)
@@ -148,4 +147,4 @@ modify(GaussDisk(σ/r0), Stretch(r0), Shift(x0, y0))
   - `y0`: The vertical location of the disk center
 
 """
-GaussDisk(r0, σ, x0, y0) = modify(GaussDisk(σ/r0), Stretch(r0), Shift(x0, y0))
+GaussDisk(r0, σ, x0, y0) = modify(GaussDisk(σ / r0), Stretch(r0), Shift(x0, y0))

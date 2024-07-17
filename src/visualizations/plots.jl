@@ -1,29 +1,28 @@
 using RecipesBase
 using Printf
 
-
-@recipe function f(image::Union{<:StokesIntensityMap, <:IntensityMap}; uvscale=rad2μas)
+@recipe function f(image::Union{<:StokesIntensityMap,<:IntensityMap}; uvscale=rad2μas)
     #Define some constants
     #Construct the image grid in μas
-    (;X, Y) = image
+    (; X, Y) = image
     xitr, yitr = uvscale.((X, Y))
     x0, x1 = uvscale.(extrema(xitr))
     y0, y1 = uvscale.(extrema(yitr))
 
-    (;X, Y) = image
+    (; X, Y) = image
     xitr, yitr = uvscale.((X, Y))
     tickfontsize --> 11
     guidefontsize --> 14
 
     tickfontsize --> 11
     guidefontsize --> 14
-    if typeof(image) <: Union{<:StokesIntensityMap, <:IntensityMap{<:StokesParams}}
+    if typeof(image) <: Union{<:StokesIntensityMap,<:IntensityMap{<:StokesParams}}
 
         # get the mean linear pol
         maxI = maximum(stokes(image, :I))
 
         layout --> (2, 2)
-        size --> (500*2,400*2)
+        size --> (500 * 2, 400 * 2)
         @series begin
             subplot := 1
             seriestype := :heatmap
@@ -38,11 +37,11 @@ using Printf
             #fontfamily --> "sans serif"
             xflip --> true
             widen := false
-            linecolor-->:black
+            linecolor --> :black
             tick_direction --> :out
             #colorrange-->(0.0, maxI)
 
-            collect(xitr),collect(yitr),z
+            collect(xitr), collect(yitr), z
         end
         @series begin
             subplot := 2
@@ -57,11 +56,11 @@ using Printf
             #fontfamily --> "sans serif"
             xflip --> true
             widen := false
-            linecolor-->:black
+            linecolor --> :black
             tick_direction --> :out
-            clims-->(-maxI/2, maxI/2)
+            clims --> (-maxI / 2, maxI / 2)
 
-            collect(xitr),collect(yitr),z
+            collect(xitr), collect(yitr), z
         end
         @series begin
             subplot := 3
@@ -79,11 +78,11 @@ using Printf
             #fontfamily --> "sans serif"
             xflip --> true
             widen := false
-            linecolor-->:black
+            linecolor --> :black
             tick_direction --> :out
-            clims-->(-maxI/2, maxI/2)
+            clims --> (-maxI / 2, maxI / 2)
 
-            collect(xitr),collect(yitr),z
+            collect(xitr), collect(yitr), z
         end
         @series begin
             subplot := 4
@@ -102,11 +101,11 @@ using Printf
             colorbar_title --> "Jy/px²"
             xflip --> true
             widen := false
-            linecolor-->:black
+            linecolor --> :black
             tick_direction --> :out
-            clims-->(-maxI/2, maxI/2)
+            clims --> (-maxI / 2, maxI / 2)
 
-            collect(xitr),collect(yitr),z
+            collect(xitr), collect(yitr), z
         end
     else
         seriestype := :heatmap
@@ -124,22 +123,20 @@ using Printf
         colorbar_title --> "Jy/px²"
         xflip --> true
         widen := false
-        linecolor-->:black
+        linecolor --> :black
         tick_direction --> :out
 
-        collect(xitr),collect(yitr), z
+        collect(xitr), collect(yitr), z
     end
 end
 
-
 @recipe function f(m::AbstractModel; uvscale=rad2μas,
-                   fovx = 2*radialextent(m), fovy=2*radialextent(m),
-                   nx = 512, ny = 512,
-                   x0 = 0.0, y0=0.0)
-
+                   fovx=2 * radialextent(m), fovy=2 * radialextent(m),
+                   nx=512, ny=512,
+                   x0=0.0, y0=0.0)
     grid = imagepixels(fovx, fovy, nx, ny, x0, y0)
     image = intensitymap(m, grid)
-    (;X, Y) = image
+    (; X, Y) = image
     xitr, yitr = uvscale.((X, Y))
     x0, x1 = uvscale.(extrema(xitr))
     y0, y1 = uvscale.(extrema(yitr))
@@ -156,7 +153,7 @@ end
         maxI = maximum(stokes(image, :I))
 
         layout --> (2, 2)
-        size --> (500*2,400*2)
+        size --> (500 * 2, 400 * 2)
         @series begin
             subplot := 1
             seriestype := :heatmap
@@ -171,11 +168,11 @@ end
             #fontfamily --> "sans serif"
             xflip --> true
             widen := false
-            linecolor-->:black
+            linecolor --> :black
             tick_direction --> :out
-            colorrange-->(0.0, maxI)
+            colorrange --> (0.0, maxI)
 
-            collect(xitr),collect(yitr),z
+            collect(xitr), collect(yitr), z
         end
         @series begin
             subplot := 2
@@ -191,11 +188,11 @@ end
             #fontfamily --> "sans serif"
             xflip --> true
             widen := false
-            linecolor-->:black
+            linecolor --> :black
             tick_direction --> :out
-            clims-->(-maxI/2, maxI/2)
+            clims --> (-maxI / 2, maxI / 2)
 
-            collect(xitr),collect(yitr),z
+            collect(xitr), collect(yitr), z
         end
         @series begin
             subplot := 3
@@ -213,11 +210,11 @@ end
             #fontfamily --> "sans serif"
             xflip --> true
             widen := false
-            linecolor-->:black
+            linecolor --> :black
             tick_direction --> :out
-            clims-->(-maxI/2, maxI/2)
+            clims --> (-maxI / 2, maxI / 2)
 
-            collect(xitr),collect(yitr),z
+            collect(xitr), collect(yitr), z
         end
         @series begin
             subplot := 4
@@ -236,11 +233,11 @@ end
             colorbar_title --> "Jy/px²"
             xflip --> true
             widen := false
-            linecolor-->:black
+            linecolor --> :black
             tick_direction --> :out
-            clims-->(-maxI/2, maxI/2)
+            clims --> (-maxI / 2, maxI / 2)
 
-            collect(xitr),collect(yitr),z
+            collect(xitr), collect(yitr), z
         end
     else
         seriestype := :heatmap
@@ -258,9 +255,9 @@ end
         colorbar_title --> "Jy/px²"
         xflip --> true
         widen := false
-        linecolor-->:black
+        linecolor --> :black
         tick_direction --> :out
 
-        collect(xitr),collect(yitr),z
+        collect(xitr), collect(yitr), z
     end
 end

@@ -10,9 +10,6 @@ export visibility, amplitude, closure_phase, logclosure_amplitude, bispectrum,
        visibilitymap, amplitudemap, closure_phasemap, logclosure_amplitudemap, bispectummap,
        flux, intensitymap, intensitymap!, PolarizedModel, convolve!
 
-
-
-
 export unpack
 
 """
