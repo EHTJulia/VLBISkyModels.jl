@@ -1,19 +1,18 @@
 export Gaussian,
-        Disk,
-        MRing,
-        Crescent,
-        ConcordanceCrescent,
-        ExtendedRing,
-        Ring,
-        ParabolicSegment,
-        Wisp,
-        Butterworth,
-        SlashedDisk
+       Disk,
+       MRing,
+       Crescent,
+       ConcordanceCrescent,
+       ExtendedRing,
+       Ring,
+       ParabolicSegment,
+       Wisp,
+       Butterworth,
+       SlashedDisk
 
 # helper functions for below
 @inline _getuv(p) = (p.U, p.V)
 @inline _getxy(p) = (p.X, p.Y)
-
 
 """
 $(TYPEDEF)
@@ -34,8 +33,6 @@ abstract type GeometricModel{T} <: AbstractModel end
 @inline visanalytic(::Type{<:GeometricModel}) = IsAnalytic()
 @inline imanalytic(::Type{<:GeometricModel}) = IsAnalytic()
 
-
-
 """
     $(TYPEDEF)
 
@@ -47,19 +44,15 @@ struct Gaussian{T} <: GeometricModel{T} end
 Gaussian() = Gaussian{Float64}()
 radialextent(::Gaussian{T}) where {T} = convert(T, 5)
 
-
 @inline function intensity_point(::Gaussian{T}, p) where {T}
-    x,y = _getxy(p)
-    return exp(-(x^2+y^2)/2)/T(2*pi)
+    x, y = _getxy(p)
+    return exp(-(x^2 + y^2) / 2) / T(2 * pi)
 end
 
 @inline function visibility_point(::Gaussian{T}, p) where {T}
     u, v = _getuv(p)
-    return exp(-2*T(π)^2*(u^2 + v^2)) + zero(T)im
+    return exp(-2 * T(π)^2 * (u^2 + v^2)) + zero(T)im
 end
-
-
-
 
 @doc raw"""
     Disk{T}() where {T}
@@ -76,19 +69,18 @@ struct Disk{T} <: GeometricModel{T} end
 Disk() = Disk{Float64}()
 
 @inline function intensity_point(::Disk{T}, p) where {T}
-    x,y = _getxy(p)
+    x, y = _getxy(p)
     r = x^2 + y^2
-    return r < 1 ?  one(T)/(π) : zero(T)
+    return r < 1 ? one(T) / (π) : zero(T)
 end
 
 @inline function visibility_point(::Disk{T}, p) where {T}
     u, v = _getuv(p)
-    ur = 2*T(π)*(sqrt(u^2 + v^2) + eps(T))
-    return 2*besselj1(ur)/(ur) + zero(T)im
+    ur = 2 * T(π) * (sqrt(u^2 + v^2) + eps(T))
+    return 2 * besselj1(ur) / (ur) + zero(T)im
 end
 
 radialextent(::Disk{T}) where {T} = convert(T, 3)
-
 
 @doc raw"""
     SlashedDisk{T}(slash::T) where {T}
@@ -105,14 +97,13 @@ struct SlashedDisk{T} <: GeometricModel{T}
     slash::T
 end
 
-
 function intensity_point(m::SlashedDisk{T}, p) where {T}
-    x,y = _getxy(p)
-    r2 = x^2 + y ^2
+    x, y = _getxy(p)
+    r2 = x^2 + y^2
     s = 1 - m.slash
-    norm = 2/(π*(1+s))
-    if  r2 < 1
-        return norm/2*((1+y) + s*(1-y))
+    norm = 2 / (π * (1 + s))
+    if r2 < 1
+        return norm / 2 * ((1 + y) + s * (1 - y))
     else
         return zero(T)
     end
@@ -120,21 +111,20 @@ end
 
 function visibility_point(m::SlashedDisk{T}, p) where {T}
     u, v = _getuv(p)
-    k = 2*T(π)*sqrt(u^2 + v^2) + eps(T)
-    s = 1-m.slash
-    norm = 2/(1+s)/k
+    k = 2 * T(π) * sqrt(u^2 + v^2) + eps(T)
+    s = 1 - m.slash
+    norm = 2 / (1 + s) / k
 
     b0outer = besselj0(k)
     b1outer = besselj1(k)
-    b2outer = besselj(2,k)
+    b2outer = besselj(2, k)
 
-    v1 = (1+s)*b1outer
-    v3 = -2im*T(π)*u*(1-s)*(b0outer-b2outer-2*b1outer/k)/(2*k)
-    return norm*(v1+v3)
+    v1 = (1 + s) * b1outer
+    v3 = -2im * T(π) * u * (1 - s) * (b0outer - b2outer - 2 * b1outer / k) / (2 * k)
+    return norm * (v1 + v3)
 end
 
 radialextent(::SlashedDisk{T}) where {T} = convert(T, 3)
-
 
 """
     $(TYPEDEF)
@@ -147,31 +137,29 @@ By default if `T` isn't given, `Gaussian` defaults to `Float64`
 """
 struct Ring{T} <: GeometricModel{T} end
 Ring() = Ring{Float64}()
-radialextent(::Ring{T}) where {T} = convert(T, 3/2)
+radialextent(::Ring{T}) where {T} = convert(T, 3 / 2)
 
 @inline function intensity_point(::Ring{T}, p) where {T}
-    x,y = _getxy(p)
-    r = hypot(x,y)
-    θ = atan(x,y)
+    x, y = _getxy(p)
+    r = hypot(x, y)
+    θ = atan(x, y)
     dr = T(1e-2)
-    if (abs(r-1) < dr/2)
+    if (abs(r - 1) < dr / 2)
         acc = one(T)
-        return acc/(2*T(π)*dr)
+        return acc / (2 * T(π) * dr)
     else
         return zero(T)
     end
 end
 
-
-
 @inline function visibility_point(::Ring{T}, p) where {T}
     u, v = _getuv(p)
-    k = 2*T(π)*sqrt(u^2 + v^2) + eps(T)
-    vis = besselj0(k) + zero(T)*im
+    k = 2 * T(π) * sqrt(u^2 + v^2) + eps(T)
+    vis = besselj0(k) + zero(T) * im
     return vis
 end
 
-struct Butterworth{N, T} <: GeometricModel{T} end
+struct Butterworth{N,T} <: GeometricModel{T} end
 
 """
     Butterworth{N}()
@@ -190,13 +178,9 @@ imanalytic(::Type{<:Butterworth}) = NotAnalytic()
 
 function visibility_point(::Butterworth{N,T}, p) where {N,T}
     u, v = _getuv(p)
-    b = hypot(u,v) + eps(T)
-    return complex(inv(sqrt(1 + b^(2*N))))
+    b = hypot(u, v) + eps(T)
+    return complex(inv(sqrt(1 + b^(2 * N))))
 end
-
-
-
-
 
 """
     $(TYPEDEF)
@@ -212,7 +196,7 @@ The `N` in the type defines the order of the Fourier expansion.
 # Fields
 $(FIELDS)
 """
-struct MRing{T, V<:Union{AbstractVector{T}, NTuple}} <: GeometricModel{T}
+struct MRing{T,V<:Union{AbstractVector{T},NTuple}} <: GeometricModel{T}
     """
     Real Fourier mode coefficients
     """
@@ -221,12 +205,11 @@ struct MRing{T, V<:Union{AbstractVector{T}, NTuple}} <: GeometricModel{T}
     Imaginary Fourier mode coefficients
     """
     β::V
-    function MRing(α::V, β::V) where {V <: Union{AbstractVector, NTuple}}
+    function MRing(α::V, β::V) where {V<:Union{AbstractVector,NTuple}}
         @argcheck length(α) == length(β) "Lengths of real/imag components must be equal in MRing"
-        return new{eltype(α), V}(α, β)
+        return new{eltype(α),V}(α, β)
     end
 end
-
 
 """
     MRing(c::Union{NTuple{N, <:Complex}, AbstractVector{<:Complex}})
@@ -235,42 +218,39 @@ Construct an MRing geometric model from a complex vector `c`
 that correspond to the real and imaginary (or cos and sin) coefficients
 of the Fourier expansion. The `N` in the type defines the order of
 the Fourier expansion.
-
 """
-function MRing(c::Union{AbstractVector{<:Complex}, NTuple{N,<:Complex}}) where {N}
+function MRing(c::Union{AbstractVector{<:Complex},NTuple{N,<:Complex}}) where {N}
     α = real.(c)
     β = imag.(c)
     return MRing(α, β)
 end
 
 function MRing(a::Real, b::Real)
-    aT,bT = promote(a,b)
+    aT, bT = promote(a, b)
     return MRing((aT,), (bT,))
 end
 
 # Depreciate this method since we are moving to vectors for simplificty
 #@deprecate MRing(a::Tuple, b::Tuple) MRing(a::AbstractVector, b::AbstractVector)
 
-radialextent(::MRing{T}) where {T} = convert(T, 3/2)
-
+radialextent(::MRing{T}) where {T} = convert(T, 3 / 2)
 
 @inline function intensity_point(m::MRing{T}, p) where {T}
-    x,y = _getxy(p)
-    r = hypot(x,y)
-    θ = atan(-x,y)
+    x, y = _getxy(p)
+    r = hypot(x, y)
+    θ = atan(-x, y)
     dr = T(0.025)
-    if (abs(r-1) < dr/2)
+    if (abs(r - 1) < dr / 2)
         acc = one(T)
         for n in eachindex(m.α, m.β)
-            s,c = sincos(n*θ)
-            acc += 2*(m.α[n]*c - m.β[n]*s)
+            s, c = sincos(n * θ)
+            acc += 2 * (m.α[n] * c - m.β[n] * s)
         end
-        return acc/(2*T(π)*dr)
+        return acc / (2 * T(π) * dr)
     else
         return zero(T)
     end
 end
-
 
 @inline function visibility_point(m::MRing{T}, p) where {T}
     u, v = _getuv(p)
@@ -278,13 +258,13 @@ end
 end
 
 @inline function _mring_vis(m::MRing{T}, u, v) where {T}
-    (;α, β) = m
-    k = T(2π)*sqrt(u^2 + v^2) + eps(T)
-    vis = besselj0(k) + zero(T)*im
+    (; α, β) = m
+    k = T(2π) * sqrt(u^2 + v^2) + eps(T)
+    vis = besselj0(k) + zero(T) * im
     θ = atan(-u, v)
     @inbounds for n in eachindex(α, β)
-        s,c = sincos(n*θ)
-        vis += 2*(α[n]*c - β[n]*s)*(1im)^n*besselj(n, k)
+        s, c = sincos(n * θ)
+        vis += 2 * (α[n] * c - β[n] * s) * (1im)^n * besselj(n, k)
     end
     return vis
 end
@@ -358,8 +338,11 @@ crescent model. This works by composing two disk models together.
 - `floor`: The floor of the inner disk 0 means the inner intensity is zero and 1 means it is a large disk.
 """
 function Crescent(router::T, rinner::T, shift::T, floor::T) where {T}
-    m = stretched(Disk{T}(), router, router)*(T(π)*router^2) + T(-1)*shifted(stretched(Disk{T}(), rinner, rinner)*((1-floor)*T(π)*rinner^2), shift, zero(typeof(shift)))
-    return m/flux(m)
+    m = stretched(Disk{T}(), router, router) * (T(π) * router^2) +
+        T(-1) *
+        shifted(stretched(Disk{T}(), rinner, rinner) * ((1 - floor) * T(π) * rinner^2),
+                shift, zero(typeof(shift)))
+    return m / flux(m)
 end
 
 """
@@ -400,21 +383,21 @@ struct ConcordanceCrescent{T} <: GeometricModel{T}
     slash::T
 end
 
-radialextent(m::ConcordanceCrescent{T}) where {T} = m.router*3/2
+radialextent(m::ConcordanceCrescent{T}) where {T} = m.router * 3 / 2
 
 # Crescent normalization to ensure the
 function _crescentnorm(m::ConcordanceCrescent)
-    f = (1+m.slash)*(m.router^2 - m.rinner^2) -
-        (1-m.slash)*m.shift*m.rinner*m.rinner/m.router
-    return 2/(π*f)
+    f = (1 + m.slash) * (m.router^2 - m.rinner^2) -
+        (1 - m.slash) * m.shift * m.rinner * m.rinner / m.router
+    return 2 / (π * f)
 end
 
 function intensity_point(m::ConcordanceCrescent{T}, p) where {T}
-    x,y = _getxy(p)
-    r2 = x^2 + y ^2
+    x, y = _getxy(p)
+    r2 = x^2 + y^2
     norm = _crescentnorm(m)
-    if (r2 < m.router^2 && (x-m.shift)^2 + y^2 > m.rinner^2 )
-        return norm/2*((1+x/m.router) + m.slash*(1-x/m.router))
+    if (r2 < m.router^2 && (x - m.shift)^2 + y^2 > m.rinner^2)
+        return norm / 2 * ((1 + x / m.router) + m.slash * (1 - x / m.router))
     else
         return zero(T)
     end
@@ -422,25 +405,25 @@ end
 
 function visibility_point(m::ConcordanceCrescent{T}, p) where {T}
     u, v = _getuv(p)
-    k = 2*T(π)*sqrt(u^2 + v^2) + eps(T)
-    norm = T(π)*_crescentnorm(m)/k
-    phaseshift = exp(2*m.shift*u*T(π)*1im)
-    b0outer,b0inner = besselj0(k*m.router), besselj0(k*m.rinner)
-    b1outer,b1inner = besselj1(k*m.router), besselj1(k*m.rinner)
-    b2outer,b2inner = besselj(2,k*m.router), besselj(2, k*m.rinner)
+    k = 2 * T(π) * sqrt(u^2 + v^2) + eps(T)
+    norm = T(π) * _crescentnorm(m) / k
+    phaseshift = exp(2 * m.shift * u * T(π) * 1im)
+    b0outer, b0inner = besselj0(k * m.router), besselj0(k * m.rinner)
+    b1outer, b1inner = besselj1(k * m.router), besselj1(k * m.rinner)
+    b2outer, b2inner = besselj(2, k * m.router), besselj(2, k * m.rinner)
 
-    v1 = (1+m.slash)*m.router*b1outer
-    v2 = ((1+m.slash) + (1-m.slash)*m.shift/m.router)*
-            phaseshift*m.rinner*b1inner
-    v3 = -2im*T(π)*u*(1-m.slash)*(m.router*b0outer -
-                           m.router*b2outer -
-                           2*b1outer/k
-                          )/(2*k)
-    v4 = -2im*T(π)*u*(1-m.slash)*(m.rinner*b0inner -
-                          m.rinner*b2inner -
-                          2*b1inner/k
-                         )/(2*k)*(m.rinner/m.router)*phaseshift
-    return norm*(v1-v2+v3-v4)
+    v1 = (1 + m.slash) * m.router * b1outer
+    v2 = ((1 + m.slash) + (1 - m.slash) * m.shift / m.router) *
+         phaseshift * m.rinner * b1inner
+    v3 = -2im * T(π) * u * (1 - m.slash) *
+         (m.router * b0outer -
+          m.router * b2outer -
+          2 * b1outer / k) / (2 * k)
+    v4 = -2im * T(π) * u * (1 - m.slash) *
+         (m.rinner * b0inner -
+          m.rinner * b2inner -
+          2 * b1inner / k) / (2 * k) * (m.rinner / m.router) * phaseshift
+    return norm * (v1 - v2 + v3 - v4)
 end
 
 """
@@ -472,13 +455,12 @@ visanalytic(::Type{<:ExtendedRing}) = NotAnalytic()
 radialextent(::ExtendedRing{T}) where {T} = convert(T, 6)
 
 @fastmath function intensity_point(m::ExtendedRing{T}, p) where {T}
-    x,y = _getxy(p)
+    x, y = _getxy(p)
     r = hypot(x, y) + eps(T)
     β = (m.shape + 1)
     α = m.shape
-    β^α*r^(-α-2)*exp(-β/r)/gamma(α)/(2*T(π))
+    return β^α * r^(-α - 2) * exp(-β / r) / gamma(α) / (2 * T(π))
 end
-
 
 """
     $(TYPEDEF)
@@ -490,7 +472,7 @@ Note that if `T` isn't specified at construction then it defaults to `Float64`.
 """
 struct ParabolicSegment{T} <: GeometricModel{T} end
 ParabolicSegment() = ParabolicSegment{Float64}()
-radialextent(::ParabolicSegment{T}) where {T} = convert(T, sqrt(2)+1)
+radialextent(::ParabolicSegment{T}) where {T} = convert(T, sqrt(2) + 1)
 
 """
     ParabolicSegment(a::Number, h::Number)
@@ -498,18 +480,19 @@ radialextent(::ParabolicSegment{T}) where {T} = convert(T, sqrt(2)+1)
 A parabolic segment with x-intercepts `±a` and a yintercept of `h`.
 
 # Note
+
 This is just a convenience function for `stretched(ParabolicSegment(), a, h)`
 """
 @inline function ParabolicSegment(a::Number, h::Number)
     # Define stretched model from unital model
-    stretched(ParabolicSegment(), a, h)
+    return stretched(ParabolicSegment(), a, h)
 end
 
 function intensity_point(::ParabolicSegment{T}, p) where {T}
-    x,y = _getxy(p)
-    yw = (1-x^2)
-    if abs(y - yw) < T(0.01/2) && abs(x) < 1
-        return 1/T(2*0.01)
+    x, y = _getxy(p)
+    yw = (1 - x^2)
+    if abs(y - yw) < T(0.01 / 2) && abs(x) < 1
+        return 1 / T(2 * 0.01)
     else
         return zero(T)
     end
@@ -519,8 +502,8 @@ function visibility_point(::ParabolicSegment{T}, p) where {T}
     u, v = _getuv(p)
     ϵ = sqrt(eps(T))
     vϵ = complex(v + ϵ)
-    phase = cispi(T(3)/4 + 2*vϵ + u^2/(2*vϵ))
-    Δ1 = erf(√(T(π)/(2*vϵ))*cispi(T(1)/4)*(u-2*vϵ))
-    Δ2 = erf(√(T(π)/(2*vϵ))*cispi(T(1)/4)*(u+2*vϵ))
-    return phase/(√(2*vϵ))*(Δ1-Δ2)/4
+    phase = cispi(T(3) / 4 + 2 * vϵ + u^2 / (2 * vϵ))
+    Δ1 = erf(√(T(π) / (2 * vϵ)) * cispi(T(1) / 4) * (u - 2 * vϵ))
+    Δ2 = erf(√(T(π) / (2 * vϵ)) * cispi(T(1) / 4) * (u + 2 * vϵ))
+    return phase / (√(2 * vϵ)) * (Δ1 - Δ2) / 4
 end

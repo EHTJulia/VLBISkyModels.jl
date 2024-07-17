@@ -1,22 +1,21 @@
 function _fft(img::AbstractArray{<:StokesParams{<:Real}})
-    vI = stokes(img, :I) |> complex
-    vQ = stokes(img, :Q) |> complex
-    vU = stokes(img, :U) |> complex
-    vV = stokes(img, :V) |> complex
+    vI = complex(stokes(img, :I))
+    vQ = complex(stokes(img, :Q))
+    vU = complex(stokes(img, :U))
+    vV = complex(stokes(img, :V))
     p = plan_fft!(vI)
-    p*vI
-    p*vQ
-    p*vU
-    p*vV
+    p * vI
+    p * vQ
+    p * vU
+    p * vV
     return StructArray{StokesParams{eltype(I)}}((vI, vQ, vU, vV))
 end
 
 function _fft(img::AbstractArray{<:Real})
-    vI = img |> complex
+    vI = complex(img)
     fft!(vI)
     return vI
 end
-
 
 function AbstractFFTs.ifft!(vis::AbstractArray{<:StokesParams}, region)
     vI = stokes(vis, :I)
@@ -24,10 +23,10 @@ function AbstractFFTs.ifft!(vis::AbstractArray{<:StokesParams}, region)
     vU = stokes(vis, :U)
     vV = stokes(vis, :V)
     p = plan_ifft!(vI, region)
-    p*vI
-    p*vQ
-    p*vU
-    p*vV
+    p * vI
+    p * vQ
+    p * vU
+    p * vV
     return StructArray{StokesParams{eltype(I)}}((vI, vQ, vU, vV))
 end
 
@@ -36,14 +35,11 @@ function AbstractFFTs.fftshift(vis::AbstractArray{<:StokesParams})
     vQ = stokes(vis, :Q)
     vU = stokes(vis, :U)
     vV = stokes(vis, :V)
-    return StructArray{StokesParams{eltype(I)}}((
-              fftshift(vI),
-              fftshift(vQ),
-              fftshift(vU),
-              fftshift(vV)
-            ))
+    return StructArray{StokesParams{eltype(I)}}((fftshift(vI),
+                                                 fftshift(vQ),
+                                                 fftshift(vU),
+                                                 fftshift(vV)))
 end
-
 
 # Special because I just want to do the straight FFT thing no matter what
 function intensitymap_numeric!(img::IntensityMap, m::AbstractModel)
@@ -66,7 +62,6 @@ end
 #     return nothing
 # end
 
-
 function intensitymap_numeric(m::AbstractModel, grid::AbstractRectiGrid)
     img = allocate_imgmap(m, grid)
     intensitymap_numeric!(img, m)
@@ -85,7 +80,6 @@ function visibilitymap_numeric!(vis::IntensityMap, m::AbstractModel)
     return nothing
 end
 
-
 function visibilitymap_numeric(m::AbstractModel, grid::AbstractRectiGrid)
     vis = allocate_vismap(m, grid)
     visibilitymap_numeric!(vis, m)
@@ -93,17 +87,13 @@ function visibilitymap_numeric(m::AbstractModel, grid::AbstractRectiGrid)
 end
 
 function intensitymap_numeric(::AbstractModel, ::UnstructuredDomain)
-    throw(ArgumentError(
-        "UnstructuredDomain not supported for numeric intensity maps."*
-        "To make this well defined you must first specify a [`FourierDualDomain`](@ref)"*
-        "for the grid."
-        ))
+    throw(ArgumentError("UnstructuredDomain not supported for numeric intensity maps." *
+                        "To make this well defined you must first specify a [`FourierDualDomain`](@ref)" *
+                        "for the grid."))
 end
 
 function visibilitymap_numeric(::AbstractModel, ::UnstructuredDomain)
-    throw(ArgumentError(
-        "UnstructuredDomain not supported for numeric intensity maps."*
-        "To make this well defined you must first specify a [`FourierDualDomain`](@ref)"*
-        "for the grid."
-        ))
+    throw(ArgumentError("UnstructuredDomain not supported for numeric intensity maps." *
+                        "To make this well defined you must first specify a [`FourierDualDomain`](@ref)" *
+                        "for the grid."))
 end

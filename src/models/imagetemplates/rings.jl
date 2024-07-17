@@ -5,9 +5,8 @@ export RingTemplate,
        GaussianRing, SlashedGaussianRing,
        EllipticalGaussianRing, EllipticalSlashedGaussianRing
 
-
 # Convience function that creates a phase that matches the EHT convention
-ringphase(x, y) = atan(-x,-y)
+ringphase(x, y) = atan(-x, -y)
 
 abstract type AbstractRadial end
 abstract type AbstractAzimuthal end
@@ -32,7 +31,7 @@ julia> ring = modify(RingTemplate(rad, azi), Stretch(10.0), Shift(1.0, 2.0))
 ## Fields
 $(FIELDS)
 """
-struct RingTemplate{R<:AbstractRadial, A<:AbstractAzimuthal} <: AbstractImageTemplate
+struct RingTemplate{R<:AbstractRadial,A<:AbstractAzimuthal} <: AbstractImageTemplate
     """
     Radial profile of the ring
     """
@@ -46,20 +45,19 @@ end
 function __extract_tangent(m::RingTemplate)
     trad = __extract_tangent(m.radial)
     tazi = __extract_tangent(m.azimuthal)
-    return Tangent{typeof(m)}(;radial=trad, azimuthal=tazi)
+    return Tangent{typeof(m)}(; radial=trad, azimuthal=tazi)
 end
 
 @inline function intensity_point(d::RingTemplate, p)
-    (;X, Y) = p
+    (; X, Y) = p
     r = hypot(X, Y)
     ϕ = ringphase(X, Y)
     fr = radial_profile(d.radial, r)
     fϕ = azimuthal_profile(d.azimuthal, ϕ)
-    return fr*fϕ
+    return fr * fϕ
 end
 
 @inline radialextent(d::RingTemplate) = radialextent(d.radial)
-
 
 """
     RadialGaussian(σ)
@@ -85,11 +83,10 @@ struct RadialGaussian{T} <: AbstractRadial
 end
 
 @inline @fastmath function radial_profile(d::RadialGaussian, r)
-    return exp(-(r - 1)^2/(2*d.σ^2))
+    return exp(-(r - 1)^2 / (2 * d.σ^2))
 end
 
-radialextent(d::RadialGaussian) = 1 + 3*d.σ
-
+radialextent(d::RadialGaussian) = 1 + 3 * d.σ
 
 """
     RadialDblPower(αinner, αouter)
@@ -119,14 +116,12 @@ struct RadialDblPower{T} <: AbstractRadial
     αouter::T
 end
 
-radialextent(d::RadialDblPower{T}) where {T} = 1 + convert(T, 50^(1/d.αouter))
-
+radialextent(d::RadialDblPower{T}) where {T} = 1 + convert(T, 50^(1 / d.αouter))
 
 @inline @fastmath function radial_profile(d::RadialDblPower, r)
-    (;αinner, αouter,) = d
-    return r^αinner/(1 + r^(αouter + αinner + 1))
+    (; αinner, αouter,) = d
+    return r^αinner / (1 + r^(αouter + αinner + 1))
 end
-
 
 """
     RadialJohnsonSU(αinner, αouter)
@@ -158,16 +153,13 @@ struct RadialJohnsonSU{T} <: AbstractRadial
     γ::T
 end
 
-radialextent(d::RadialJohnsonSU) = 1 + 5*d.σ
-
+radialextent(d::RadialJohnsonSU) = 1 + 5 * d.σ
 
 @inline @fastmath function radial_profile(d::RadialJohnsonSU, r)
-    (;σ, γ,) = d
+    (; σ, γ,) = d
     norm = inv(sqrt((r - 1)^2 + σ^2))
-    return norm*exp(-1/2*(γ + asinh((r - 1)/σ))^2)
+    return norm * exp(-1 / 2 * (γ + asinh((r - 1) / σ))^2)
 end
-
-
 
 """
     RadialTruncExp(σ)
@@ -198,10 +190,10 @@ end
 
 @fastmath function radial_profile(d::RadialTruncExp{T}, r) where {T}
     r < 1 && return zero(T)
-    return exp(-(r - 1)/(d.σ))
+    return exp(-(r - 1) / (d.σ))
 end
 
-radialextent(d::RadialTruncExp{T}) where {T} = 1 + log(convert(T, 50))*d.σ
+radialextent(d::RadialTruncExp{T}) where {T} = 1 + log(convert(T, 50)) * d.σ
 
 struct AzimuthalUniform{T} <: AbstractAzimuthal end
 
@@ -222,8 +214,7 @@ julia> t = RingTemplate(rad, azi)
 """
 AzimuthalUniform() = AzimuthalUniform{Float64}()
 
-@inline azimuthal_profile(::AzimuthalUniform{T}, ϕ) where {T} = one(T)/2π
-
+@inline azimuthal_profile(::AzimuthalUniform{T}, ϕ) where {T} = one(T) / 2π
 
 """
     AzimuthalCosine(s::NTuple{N,T}, ξ::NTuple{N, T}) where {N, T}
@@ -250,17 +241,17 @@ julia> t = RingTemplate(rad, azi)
 
 
 """
-struct AzimuthalCosine{T, N} <: AbstractAzimuthal
+struct AzimuthalCosine{T,N} <: AbstractAzimuthal
     s::NTuple{N,T}
     ξs::NTuple{N,T}
 end
 
-AzimuthalCosine(s::Real, ξs::Real) = AzimuthalCosine((s, ), (ξs,))
+AzimuthalCosine(s::Real, ξs::Real) = AzimuthalCosine((s,), (ξs,))
 
-@inline @fastmath function azimuthal_profile(d::AzimuthalCosine{T, N}, ϕ) where {T,N}
-    (;s, ξs) = d
+@inline @fastmath function azimuthal_profile(d::AzimuthalCosine{T,N}, ϕ) where {T,N}
+    (; s, ξs) = d
     mapreduce(+, 1:N; init=one(T)) do n
-        return -s[n]*cos(n*ϕ - ξs[n])
+        return -s[n] * cos(n * ϕ - ξs[n])
     end
 end
 
@@ -304,8 +295,8 @@ modify(GaussianRing(σ/r0), Stretch(r0), Shift(x0, y0))
 
 
 """
-@inline GaussianRing(r0, σ, x0, y0) = modify(GaussianRing(σ/r0), Stretch(r0), Shift(x0, y0))
-
+@inline GaussianRing(r0, σ, x0, y0) = modify(GaussianRing(σ / r0), Stretch(r0),
+                                             Shift(x0, y0))
 
 """
     $(SIGNATURES)
@@ -327,8 +318,8 @@ RingTemplate(RadialGaussian(σ), AzimuthalCosine((s,), (zero(s),)))
 ```
 
 """
-@inline SlashedGaussianRing(σ, s) = RingTemplate(RadialGaussian(σ), AzimuthalCosine((s,), (zero(s),)))
-
+@inline SlashedGaussianRing(σ, s) = RingTemplate(RadialGaussian(σ),
+                                                 AzimuthalCosine((s,), (zero(s),)))
 
 """
     $(SIGNATURES)
@@ -353,9 +344,8 @@ modify(SlashedGaussianRing(σ/r0, s), Stretch(r0), Rotate(ξ), Shift(x0, y0))
 ```
 
 """
-SlashedGaussianRing(r0, σ, s, ξ, x0, y0) = modify(SlashedGaussianRing(σ/r0, s), Stretch(r0), Rotate(ξ), Shift(x0, y0))
-
-
+SlashedGaussianRing(r0, σ, s, ξ, x0, y0) = modify(SlashedGaussianRing(σ / r0, s),
+                                                  Stretch(r0), Rotate(ξ), Shift(x0, y0))
 
 """
     $(SIGNATURES)
@@ -381,10 +371,10 @@ semi-minor axis `a` and semi-major axis `b`.
 
 """
 function EllipticalGaussianRing(r0, σ, τ, ξτ, x0, y0)
-    return modify(GaussianRing(σ/r0),
-        Stretch(r0*sqrt(1-τ), r0/sqrt(1-τ)),
-        Rotate(ξτ),
-        Shift(x0, y0))
+    return modify(GaussianRing(σ / r0),
+                  Stretch(r0 * sqrt(1 - τ), r0 / sqrt(1 - τ)),
+                  Rotate(ξτ),
+                  Shift(x0, y0))
 end
 
 """
@@ -428,10 +418,9 @@ The brightness asymmetry uses a cosine to implement the slash.
 
 """
 function EllipticalSlashedGaussianRing(r0, σ, τ, ξτ, s, ξs, x0, y0)
-    return modify(SlashedGaussianRing(σ/r0, s),
-        Rotate(ξs-ξτ),
-        Stretch(r0*sqrt(1-τ), r0/sqrt(1-τ)),
-        Rotate(ξτ),
-        Shift(x0, y0)
-        )
+    return modify(SlashedGaussianRing(σ / r0, s),
+                  Rotate(ξs - ξτ),
+                  Stretch(r0 * sqrt(1 - τ), r0 / sqrt(1 - τ)),
+                  Rotate(ξτ),
+                  Shift(x0, y0))
 end

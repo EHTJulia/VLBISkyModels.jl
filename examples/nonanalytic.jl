@@ -23,7 +23,6 @@ m = ExtendedRing(8.0)
 # The argument is `\alpha` in the above
 # equation. `beta` is given by ``(1+\alpha)``.
 
-
 # This model does not have a simple analytic Fourier transform, e.g.
 
 VLBISkyModels.visanalytic(ExtendedRing)
@@ -32,15 +31,14 @@ VLBISkyModels.visanalytic(ExtendedRing)
 # For this notebook we will use the *fast Fourier transform* or FFT. Specifically we will
 # use FFTW. To compute a numerical Fourier transform we first need to specify the image domain
 
-
 gim = imagepixels(10.0, 10.0, 256, 256)
 
 # Second we need to specify the list of points in the uv domain we are interested in.
 # Since VLBI tends sparsely sample the UV plan we provide a specific type for this
 # type called [`UnstructuredDomain`](@ref) that can be used to specify the UV points,
 
-u = randn(1000)/2
-v = randn(1000)/2
+u = randn(1000) / 2
+v = randn(1000) / 2
 guv = UnstructuredDomain((U=u, V=v))
 
 # We can now create a *dual domain* that contains both the image and the UV points and
@@ -61,13 +59,12 @@ imageviz(img)
 
 # and the visibility map using
 vis = visibilitymap(m, gfour)
-fig, ax = scatter(hypot.(vis.U, vis.V), real.(vis), label="Real")
-scatter!(ax, hypot.(vis.U, vis.V), imag.(vis), label="Imag")
+fig, ax = scatter(hypot.(vis.U, vis.V), real.(vis); label="Real")
+scatter!(ax, hypot.(vis.U, vis.V), imag.(vis); label="Imag")
 axislegend(ax)
 ax.xlabel = "uv-dist"
 ax.ylabel = "Flux"
 fig
-
 
 # Additionally, you can also modify the models and add them in complete generality. For example
 
@@ -75,11 +72,11 @@ mmod = modify(m, Shift(2.0, 2.0)) + Gaussian()
 mimg = intensitymap(mmod, gfour)
 mvis = visibilitymap(mmod, gfour)
 
-
 # Plotting everything gives
-fig = Figure(;size=(800, 400))
-ax1 = Axis(fig[1, 1]; xreversed=true, xlabel="RA (radians)", ylabel="Dec (radians)", aspect=1)
+fig = Figure(; size=(800, 400))
+ax1 = Axis(fig[1, 1]; xreversed=true, xlabel="RA (radians)", ylabel="Dec (radians)",
+           aspect=1)
 ax2 = Axis(fig[1, 2]; xlabel="uv-dist", ylabel="Amplitude")
-image!(ax1, mimg, colormap=:afmhot)
-scatter!(ax2, hypot.(mvis.U, mvis.V), abs.(mvis), label="Real")
+image!(ax1, mimg; colormap=:afmhot)
+scatter!(ax2, hypot.(mvis.U, mvis.V), abs.(mvis); label="Real")
 fig
