@@ -1,6 +1,5 @@
 # Model Interface
 
-
 ## Primitive Geometric Models
 
 `VLBISkyModels` aims to be more modular and extensible than previous VLBI modeling packages. Namely, simple models are composed to construct complicated source morphologies instead of making many different models. This is accomplished with a type and trait-based hierarchy.
@@ -27,29 +26,32 @@ VLBISkyModels.imanalytic(::Type{<:MyGaussian}) = IsAnalytic()
 ```
 
 Finally, we can specify if the model is intrinsically polarized by using the `IsPolarized` and `NotPolarized()` trait
+
 ```julia
 VLBISkyModels.ispolarized(::Type{<:MyGaussian}) = NotPolarized()
 ```
+
 !!! note
+    
     The actual implementation defines the Gaussian to be a subtype of `VLBISkyModels.GeometricModel`, which automatically defines these methods. However, for models that aren't a subtype of `GeometricModel`, we assume the image domain `IsAnalytic()` and the Fourier domain is `NotAnalytic()`.
 
 Since both the image and visibility domain representation of the Gaussian are analytic, we need to define an `intensity_point` and `visibility_point` method. For a Gaussian, these are given by
 
 ```julia
 function ComradeBase.intensity_point(::MyGaussian, p)
-    (;X, Y) = p
-    return exp(-(X^2+Y^2)/2)/2π
+    (; X, Y) = p
+    return exp(-(X^2 + Y^2) / 2) / 2π
 end
 
 function ComradeBase.visibility_point(::MyGaussian, u, v, time, freq) where {T}
-    return exp(-2π^2*(u^2 + v^2)) + 0im
+    return exp(-2π^2 * (u^2 + v^2)) + 0im
 end
 ```
 
 Additionally, most models in `VLBISkyModels` has two additional functions one can implement if possible:
 
-1. `flux(m::MyGaussian)`: This defines the flux of a model. If this isn't defined, the model won't have a flux until an image is created. For a Gaussian, the definition is `flux(::MyGaussian) = 1.0`.
-2. `radialextent(::MyGaussian)`: This defines the model's default radial extent. For a Gaussian, we will consider the radial extent to be $5σ$, so `radialextent(::MyGaussian) = 5.0`.
+ 1. `flux(m::MyGaussian)`: This defines the flux of a model. If this isn't defined, the model won't have a flux until an image is created. For a Gaussian, the definition is `flux(::MyGaussian) = 1.0`.
+ 2. `radialextent(::MyGaussian)`: This defines the model's default radial extent. For a Gaussian, we will consider the radial extent to be $5σ$, so `radialextent(::MyGaussian) = 5.0`.
 
 This completely defines the model interface for `VLBISkyModels`. With this, you can call the usual user API to evaluate, fit, and plot the model. Additionally, we can start talking about
 adding multiple Gaussians and modifying them. For instance, suppose you want an elliptical Gaussian with a flux of 2 Jy. This can be created by `VLBISkyModels` as follows:
@@ -57,20 +59,22 @@ adding multiple Gaussians and modifying them. For instance, suppose you want an 
 ```julia
 using Plots
 gauss = MyGaussian()
-ellgauss = 2.0*rotated(stretched(gauss, 1.0, 0.5), π/4)
-fig = plot(gauss, layout=(1,2), size=(800,300))
-plot!(fig[2], ellgauss, size=(800,350))
+ellgauss = 2.0 * rotated(stretched(gauss, 1.0, 0.5), π / 4)
+fig = plot(gauss; layout=(1, 2), size=(800, 300))
+plot!(fig[2], ellgauss; size=(800, 350))
 ```
-![Image](gauss.png)
 
+![Image](gauss.png)
 
 ```julia
 using Plots
-u = rand(100)*0.5; v=rand(100)*0.5
-vg  = visibilitymap(gauss, u, v)
+u = rand(100) * 0.5;
+v = rand(100) * 0.5;
+vg = visibilitymap(gauss, u, v)
 veg = visibilitymap(ellgauss, u, v)
 
-Plots.scatter(hypot.(u, v), abs.(vg), label="Gaussian")
-Plots.scatter!(hypot.(u, v), abs.(veg), label="Elliptical Gaussian")
+Plots.scatter(hypot.(u, v), abs.(vg); label="Gaussian")
+Plots.scatter!(hypot.(u, v), abs.(veg); label="Elliptical Gaussian")
 ```
+
 ![Image](vis.png)

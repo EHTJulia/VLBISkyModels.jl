@@ -1,18 +1,14 @@
 @testset "StokesIntensityMap" begin
     g = imagepixels(10.0, 10.0, 2, 2)
-    m = PolarizedModel(Gaussian(), 0.1*Gaussian(), 0.1*Gaussian(), 0.1*Gaussian())
+    m = PolarizedModel(Gaussian(), 0.1 * Gaussian(), 0.1 * Gaussian(), 0.1 * Gaussian())
     img = intensitymap(m, g)
 
     simg = StokesIntensityMap(img)
-    simg2 = StokesIntensityMap(
-        stokes(img, :I), stokes(img, :Q),
-        stokes(img, :U), stokes(img, :V)
-    )
-    simg3 = StokesIntensityMap(
-        baseimage(stokes(img, :I)), baseimage(stokes(img, :Q)),
-        baseimage(stokes(img, :U)), baseimage(stokes(img, :V)),
-        axisdims(img)
-    )
+    simg2 = StokesIntensityMap(stokes(img, :I), stokes(img, :Q),
+                               stokes(img, :U), stokes(img, :V))
+    simg3 = StokesIntensityMap(baseimage(stokes(img, :I)), baseimage(stokes(img, :Q)),
+                               baseimage(stokes(img, :U)), baseimage(stokes(img, :V)),
+                               axisdims(img))
 
     @test simg == simg2
     @test simg == simg3
@@ -29,7 +25,7 @@
     @test ndims(simg) == ndims(img)
     @test ndims(typeof(simg)) == ndims(img)
     @test simg[1] == img[1]
-    @test simg[2,2] == img[2,2]
+    @test simg[2, 2] == img[2, 2]
     @test pixelsizes(img) == pixelsizes(simg)
     @test fieldofview(img) == fieldofview(simg)
     @test domainpoints(simg) == domainpoints(g)
