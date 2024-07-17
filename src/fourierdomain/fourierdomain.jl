@@ -14,16 +14,14 @@ abstract type AbstractFourierDualDomain <: AbstractDomain end
 
 forward_plan(g::AbstractFourierDualDomain) = getfield(g, :plan_forward)
 reverse_plan(g::AbstractFourierDualDomain) = getfield(g, :plan_reverse)
-imgdomain(g::AbstractFourierDualDomain)  = getfield(g, :imgdomain)
-visdomain(g::AbstractFourierDualDomain)    = getfield(g, :visdomain)
-algorithm(g::AbstractFourierDualDomain)    = getfield(g, :algorithm)
+imgdomain(g::AbstractFourierDualDomain) = getfield(g, :imgdomain)
+visdomain(g::AbstractFourierDualDomain) = getfield(g, :visdomain)
+algorithm(g::AbstractFourierDualDomain) = getfield(g, :algorithm)
 
 # EnzymeRules.inactive(::typeof(forward_plan), args...) = nothing
 # EnzymeRules.inactive(::typeof(reverse_plan), args...) = nothing
 # ChainRulesCore.@non_differentiable getplan(p)
 # ChainRulesCore.@non_differentiable getphases(p)
-
-
 
 abstract type AbstractPlan end
 getplan(p::AbstractPlan) = getfield(p, :plan)
@@ -33,16 +31,15 @@ EnzymeRules.inactive(::typeof(getplan), args...) = nothing
 ChainRulesCore.@non_differentiable getplan(p)
 # ChainRulesCore.@non_differentiable getphases(p)
 
-
 function create_plans(algorithm, imgdomain, visdomain)
     plan_forward = create_forward_plan(algorithm, imgdomain, visdomain)
     plan_reverse = inverse_plan(plan_forward)
     return plan_forward, plan_reverse
 end
 
-
-
-struct FourierDualDomain{ID<:AbstractSingleDomain, VD<:AbstractSingleDomain, A<:FourierTransform, PI<:AbstractPlan, PD<:AbstractPlan} <: AbstractFourierDualDomain
+struct FourierDualDomain{ID<:AbstractSingleDomain,VD<:AbstractSingleDomain,
+                         A<:FourierTransform,PI<:AbstractPlan,PD<:AbstractPlan} <:
+       AbstractFourierDualDomain
     imgdomain::ID
     visdomain::VD
     algorithm::A
@@ -58,15 +55,16 @@ function Base.show(io::IO, mime::MIME"text/plain", g::FourierDualDomain)
     printstyled(io, "\nImage Domain: "; bold=true)
     show(io, mime, imgdomain(g))
     printstyled(io, "\nVisibility Domain: "; bold=true)
-    show(io, mime, visdomain(g))
+    return show(io, mime, visdomain(g))
 end
 
-function Serialization.serialize(s::Serialization.AbstractSerializer, cache::FourierDualDomain)
+function Serialization.serialize(s::Serialization.AbstractSerializer,
+                                 cache::FourierDualDomain)
     Serialization.writetag(s.io, Serialization.OBJECT_TAG)
     Serialization.serialize(s, typeof(cache))
     Serialization.serialize(s, cache.algorithm)
     Serialization.serialize(s, cache.imgdomain)
-    Serialization.serialize(s, cache.visdomain)
+    return Serialization.serialize(s, cache.visdomain)
 end
 
 function Serialization.deserialize(s::AbstractSerializer, ::Type{<:FourierDualDomain})
@@ -88,9 +86,8 @@ to ensure that the centroid is being properly computed.
 function uviterator(nx, dx, ny, dy)
     U = fftshift(fftfreq(nx, inv(dx)))
     V = fftshift(fftfreq(ny, inv(dy)))
-    return (;U, V)
+    return (; U, V)
 end
-
 
 """
     uvgrid(grid::AbstractRectiGrid)
@@ -102,8 +99,8 @@ Note the other dimensions are not changed.
 For the inverse see [`xygrid`](@ref)
 """
 function uvgrid(grid::AbstractRectiGrid)
-    (;X, Y) = grid
-    uu,vv = uviterator(length(X), step(X), length(Y), step(Y))
+    (; X, Y) = grid
+    uu, vv = uviterator(length(X), step(X), length(Y), step(Y))
     puv = merge((U=uu, V=vv), delete(named_dims(grid), (:X, :Y)))
     g = RectiGrid(puv; executor=executor(grid), header=header(grid))
     return g
@@ -111,11 +108,11 @@ end
 
 function ifftfreq(n::Int, fs::Real)
     if iseven(n)
-        x = LinRange(-n÷2, n÷2-1, n)*fs/n
-        return x .+ step(x)/2
+        x = LinRange(-n ÷ 2, n ÷ 2 - 1, n) * fs / n
+        return x .+ step(x) / 2
     else
-        n = n-1
-        x =  LinRange(-n÷2, n÷2, n+1)*fs/(n+1)
+        n = n - 1
+        x = LinRange(-n ÷ 2, n ÷ 2, n + 1) * fs / (n + 1)
         return x
     end
 end
@@ -123,7 +120,7 @@ end
 function xyiterator(nu, du, nv, dv)
     X = ifftfreq(nu, inv(du))
     Y = ifftfreq(nv, inv(dv))
-    return (;X, Y)
+    return (; X, Y)
 end
 
 """
@@ -134,10 +131,9 @@ Converts from a visi1bility domain recti-grid with spatial dimensions
 other dimensions are not changed.
 
 For the inverse see [`uvgrid`](@ref)
-
 """
 function xygrid(grid::AbstractRectiGrid)
-    (;U, V) = grid
+    (; U, V) = grid
     x, y = xyiterator(length(U), step(U), length(V), step(V))
     pxy = merge((X=X(x), Y=Y(y)), delete(named_dims(grid), (:U, :V)))
     g = RectiGrid(pxy; executor=executor(grid), header=header(grid))
@@ -151,11 +147,13 @@ Constructs a set of grids that live in the image and visibility domains. The tra
 is specified by the `algorithm` which is a subtype of `VLBISkyModels.FourierTransform`.
 
 # Arguments
- - `imgdomain`: The image domain grid
- - `visdomain`: The visibility domain grid
- - `algorithm`: The Fourier transform algorithm to use see `subtypes(VLBISkyModels.FourierTransform)` for a list
+
+  - `imgdomain`: The image domain grid
+  - `visdomain`: The visibility domain grid
+  - `algorithm`: The Fourier transform algorithm to use see `subtypes(VLBISkyModels.FourierTransform)` for a list
 """
-function FourierDualDomain(imgdomain::AbstractSingleDomain, visdomain::AbstractSingleDomain, algorithm)
+function FourierDualDomain(imgdomain::AbstractSingleDomain, visdomain::AbstractSingleDomain,
+                           algorithm)
     plan_forward, plan_reverse = create_plans(algorithm, imgdomain, visdomain)
     return FourierDualDomain(imgdomain, visdomain, algorithm, plan_forward, plan_reverse)
 end
@@ -167,7 +165,6 @@ end
 function create_imgmap(arr::AbstractArray, g::AbstractFourierDualDomain)
     return ComradeBase.create_map(arr, imgdomain(g))
 end
-
 
 function visibilitymap_analytic(m::AbstractModel, grid::AbstractFourierDualDomain)
     return visibilitymap_analytic(m, visdomain(grid))
@@ -189,8 +186,6 @@ function intensitymap_numeric(m::AbstractModel, grid::AbstractFourierDualDomain)
     img = intensitymap_numeric(m, imgdomain(grid))
     return img
 end
-
-
 
 include("fft_alg.jl")
 include("nuft/nuft.jl")

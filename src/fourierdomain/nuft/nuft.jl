@@ -1,7 +1,6 @@
 abstract type AbstractNUFTPlan <: AbstractPlan end
 abstract type NUFT <: FourierTransform end
 
-
 """
     $(TYPEDEF)
 
@@ -15,7 +14,8 @@ struct NUFTPlan{A,P,M} <: AbstractNUFTPlan
     phases::M #FT phases needed to phase center things
 end
 
-function create_forward_plan(algorithm::NUFT, imgdomain::AbstractRectiGrid, visdomain::UnstructuredDomain)
+function create_forward_plan(algorithm::NUFT, imgdomain::AbstractRectiGrid,
+                             visdomain::UnstructuredDomain)
     plan = plan_nuft(algorithm, imgdomain, visdomain)
     phases = make_phases(algorithm, imgdomain, visdomain)
     return NUFTPlan(algorithm, plan, phases)
@@ -24,8 +24,6 @@ end
 function inverse_plan(plan::NUFTPlan)
     return NUFTPlan(plan.alg, plan.plan', inv.(plan.phases))
 end
-
-
 
 @inline function nuft(A, b::AbstractArray)
     return _nuft(A, b)
@@ -40,7 +38,7 @@ end
     Q = _nuft(A, stokes(b, :Q))
     U = _nuft(A, stokes(b, :U))
     V = _nuft(A, stokes(b, :V))
-    return StructArray{StokesParams{eltype(I)}}((;I, Q, U, V))
+    return StructArray{StokesParams{eltype(I)}}((; I, Q, U, V))
 end
 
 @inline function nuft(A, b::StokesIntensityMap)
@@ -48,17 +46,8 @@ end
     Q = _nuft(A, stokes(b, :Q))
     U = _nuft(A, stokes(b, :U))
     V = _nuft(A, stokes(b, :V))
-    return StructArray{StokesParams{eltype(I)}}((;I, Q, U, V))
+    return StructArray{StokesParams{eltype(I)}}((; I, Q, U, V))
 end
-
-
-
-
-
-
-
-
-
 
 include(joinpath(@__DIR__, "nfft_alg.jl"))
 

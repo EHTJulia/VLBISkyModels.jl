@@ -1,15 +1,13 @@
 using VLBISkyModels
 using Enzyme
 
-
 u = rand(10_000) .- 0.5
 v = rand(10_000) .- 0.5
 
 buffer = IntensityMap(zeros(4, 4), 1.0, 1.0)
 
-
 f = let p = cache.plan
-        x->sum(abs2, VLBISkyModels.nuft(p, x))
+    x -> sum(abs2, VLBISkyModels.nuft(p, x))
 end
 
 x = rand(4, 4)
@@ -29,10 +27,10 @@ for Tout in (Enzyme.Duplicated, Enzyme.BatchDuplicated),
 
     EnzymeTestUtils.are_activities_compatible(Tout, TA, Tb) || continue
 
-    EnzymeTestUtils.test_reverse(VLBISkyModels._nuft!, Const, (out, Tout), (cache.plan, TA), (x, Tb))
-  end
-
+    EnzymeTestUtils.test_reverse(VLBISkyModels._nuft!, Const, (out, Tout), (cache.plan, TA),
+                                 (x, Tb))
+end
 
 using Zygote
 
-gz, = Zygote.gradient(x->foo(x, cache.plan), x)
+gz, = Zygote.gradient(x -> foo(x, cache.plan), x)

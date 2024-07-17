@@ -28,9 +28,6 @@ function FiniteDifferences.to_vec(k::UnstructuredMap)
     return v, back
 end
 
-
-
-
 @testset "VLBISkyModels.jl" begin
     include("models.jl")
     include("templates.jl")

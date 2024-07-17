@@ -29,21 +29,22 @@ In addition there are additional optional methods a person can define if needed:
 """
 abstract type CompositeModel{M1,M2} <: AbstractModel end
 
-
 function Base.show(io::IO, m::T) where {T<:CompositeModel}
     si = split("$(T)", "{")[1]
     println(io, "$(si)(")
     println(io, "model1: ", m.m1)
     println(io, "model2: ", m.m2)
-    print(io, ")")
+    return print(io, ")")
 end
-
 
 radialextent(m::CompositeModel) = max(radialextent(m.m1), radialextent(m.m2))
 
-@inline visanalytic(::Type{<:CompositeModel{M1,M2}}) where {M1,M2} = visanalytic(M1)*visanalytic(M2)
-@inline imanalytic(::Type{<:CompositeModel{M1,M2}}) where {M1,M2} = imanalytic(M1)*imanalytic(M2)
-@inline ispolarized(::Type{<:CompositeModel{M1,M2}}) where {M1,M2} = ispolarized(M1)*ispolarized(M2)
+@inline visanalytic(::Type{<:CompositeModel{M1,M2}}) where {M1,M2} = visanalytic(M1) *
+                                                                     visanalytic(M2)
+@inline imanalytic(::Type{<:CompositeModel{M1,M2}}) where {M1,M2} = imanalytic(M1) *
+                                                                    imanalytic(M2)
+@inline ispolarized(::Type{<:CompositeModel{M1,M2}}) where {M1,M2} = ispolarized(M1) *
+                                                                     ispolarized(M2)
 
 """
     $(TYPEDEF)
@@ -69,15 +70,13 @@ end
 
 Combine two models to create a composite [`AddModel`](@ref VLBISkyModels.AddModel).
 This adds two models pointwise, i.e.
+
 ```julia-repl
-julia> m1 = Gaussian()
-julia> m2 = Disk()
-julia> visibility(added(m1,m2), 1.0, 1.0) == visibility(m1, 1.0, 1.0) + visibility(m2, 1.0, 1.0)
-true
+julia> visibility(added(m1, m2), 1.0, 1.0) == visibility(m1, 1.0, 1.0) + visibility(m2, 1.0, 1.0)
+m1 = Gaussian()
 ```
 """
 @inline added(m1::AbstractModel, m2::AbstractModel) = AddModel(m1, m2)
-
 
 """
     Base.:+(m1::AbstractModel, m2::AbstractModel)
@@ -86,17 +85,12 @@ Combine two models to create a composite [`AddModel`](@ref VLBISkyModels.AddMode
 This adds two models pointwise, i.e.
 
 ```julia-repl
-julia> m1 = Gaussian()
-julia> m2 = Disk()
-julia> visibility(m1+m2, 1.0, 1.0) == visibility(m1, 1.0, 1.0) + visibility(m2, 1.0, 1.0)
-true
+julia> visibility(m1 + m2, 1.0, 1.0) == visibility(m1, 1.0, 1.0) + visibility(m2, 1.0, 1.0)
+m1 = Gaussian()
 ```
-
 """
 Base.:+(m1::AbstractModel, m2::AbstractModel) = added(m1, m2)
-Base.:-(m1::AbstractModel, m2::AbstractModel) = added(m1, -1.0*m2)
-
-
+Base.:-(m1::AbstractModel, m2::AbstractModel) = added(m1, -1.0 * m2)
 
 # struct NModel{V<:AbstractVector, M<:AbstractModel}
 #     m::V{M}
@@ -111,7 +105,6 @@ Base.:-(m1::AbstractModel, m2::AbstractModel) = added(m1, -1.0*m2)
 
 # end
 
-
 """
     components(m::AbstractModel)
 
@@ -121,14 +114,15 @@ will return a Tuple with all the models you have constructed.
 # Example
 
 ```julia-repl
-julia> m = Gaussian() + Disk()
 julia> components(m)
-(Gaussian{Float64}(), Disk{Float64}())
+m = Gaussian() + Disk()
 ```
 """
 components(m::AbstractModel) = (m,)
-components(m::CompositeModel{M1,M2}) where
-    {M1<:AbstractModel, M2<:AbstractModel} = (components(m.m1)..., components(m.m2)...)
+function components(m::CompositeModel{M1,M2}) where
+         {M1<:AbstractModel,M2<:AbstractModel}
+    return (components(m.m1)..., components(m.m2)...)
+end
 
 flux(m::AddModel) = flux(m.m1) + flux(m.m2)
 
@@ -164,60 +158,54 @@ end
 
 # TODO the fast thing is to add the intensitymaps together and then FT
 # We currently don't handle this case
-@inline function visibilitymap_numeric(model::AddModel{M1,M2}, p::AbstractSingleDomain) where {M1, M2}
+@inline function visibilitymap_numeric(model::AddModel{M1,M2},
+                                       p::AbstractSingleDomain) where {M1,M2}
     return _visibilitymap(visanalytic(M1), model.m1, p) .+
            _visibilitymap(visanalytic(M2), model.m2, p)
 end
 
-@inline function visibilitymap_numeric(model::AddModel{M1,M2}, p::AbstractRectiGrid) where {M1, M2}
+@inline function visibilitymap_numeric(model::AddModel{M1,M2},
+                                       p::AbstractRectiGrid) where {M1,M2}
     return _visibilitymap(visanalytic(M1), model.m1, p) .+
            _visibilitymap(visanalytic(M2), model.m2, p)
 end
 
-
-@inline function visibilitymap_numeric(model::AddModel{M1,M2}, p::AbstractFourierDualDomain) where {M1, M2}
+@inline function visibilitymap_numeric(model::AddModel{M1,M2},
+                                       p::AbstractFourierDualDomain) where {M1,M2}
     return _visibilitymap(visanalytic(M1), model.m1, p) .+
            _visibilitymap(visanalytic(M2), model.m2, p)
 end
-
 
 # @inline function _visibilitymap(::IsAnalytic, model::CompositeModel, u::AbstractArray, v::AbstractArray, args...)
 #     f = uv_combinator(model)
 #     return f.(visibility_point.(Ref(model.m1), u, v), visibility_point.(Ref(model.m2), u, v))
 # end
 
-
 function __extract_tangent(dm::CompositeModel)
     m1 = dm.m1
     m2 = dm.m2
     tm1 = __extract_tangent(m1)
     tm2 = __extract_tangent(m2)
-    return Tangent{typeof(dm)}(m1=tm1, m2=tm2)
+    return Tangent{typeof(dm)}(; m1=tm1, m2=tm2)
 end
-
-
-
 
 # function _visibilitymap(model::AddModel, u::AbstractArray, v::AbstractArray, args...)
 #     return visibilitymap(model.m1, u, v) + visibilitymap(model.m2, u, v)
 # end
 
-
 @inline function visibility_point(model::CompositeModel{M1,M2}, p) where {M1,M2}
     f = uv_combinator(model)
     v1 = visibility_point(model.m1, p)
     v2 = visibility_point(model.m2, p)
-    return f(v1,v2)
+    return f(v1, v2)
 end
 
 @inline function intensity_point(model::CompositeModel, p)
     f = xy_combinator(model)
     v1 = intensity_point(model.m1, p)
     v2 = intensity_point(model.m2, p)
-    return f(v1,v2)
+    return f(v1, v2)
 end
-
-
 
 """
     $(TYPEDEF)
@@ -238,47 +226,48 @@ end
 Convolve two models to create a composite [`ConvolvedModel`](@ref VLBISkyModels.ConvolvedModel).
 
 ```julia-repl
-julia> m1 = Ring()
-julia> m2 = Disk()
 julia> convolved(m1, m2)
+m1 = Ring()
 ```
 """
 convolved(m1::AbstractModel, m2::AbstractModel) = ConvolvedModel(m1, m2)
 
 """
     smoothed(m::AbstractModel, σ::Number)
+
 Smooths a model `m` with a Gaussian kernel with standard deviation `σ`.
 
 # Notes
+
 This uses [`convolved`](@ref) to created the model, i.e.
+
 ```julia-repl
-julia> m1 = Disk()
-julia> m2 = Gaussian()
 julia> convolved(m1, m2) == smoothed(m1, 1.0)
-true
+m1 = Disk()
 ```
 """
 smoothed(m, σ::Number) = convolved(m, stretched(Gaussian(), σ, σ))
 
 @inline imanalytic(::Type{<:ConvolvedModel}) = NotAnalytic()
 
-
 @inline uv_combinator(::ConvolvedModel) = Base.:*
 
-flux(m::ConvolvedModel) = flux(m.m1)*flux(m.m2)
+flux(m::ConvolvedModel) = flux(m.m1) * flux(m.m2)
 
-@inline function visibilitymap_numeric(model::ConvolvedModel{M1,M2}, p::AbstractRectiGrid) where {M1, M2}
-    return _visibilitymap(visanalytic(M1), model.m1, p).*
+@inline function visibilitymap_numeric(model::ConvolvedModel{M1,M2},
+                                       p::AbstractRectiGrid) where {M1,M2}
+    return _visibilitymap(visanalytic(M1), model.m1, p) .*
            _visibilitymap(visanalytic(M2), model.m2, p)
 end
 
-@inline function visibilitymap_numeric(model::ConvolvedModel{M1,M2}, p::AbstractFourierDualDomain) where {M1, M2}
-    return _visibilitymap(visanalytic(M1), model.m1, p).*
+@inline function visibilitymap_numeric(model::ConvolvedModel{M1,M2},
+                                       p::AbstractFourierDualDomain) where {M1,M2}
+    return _visibilitymap(visanalytic(M1), model.m1, p) .*
            _visibilitymap(visanalytic(M2), model.m2, p)
 end
 
-
-@inline function visibilitymap_numeric!(vis::IntensityMap, m::ConvolvedModel{M1,M2}) where {M1, M2}
+@inline function visibilitymap_numeric!(vis::IntensityMap,
+                                        m::ConvolvedModel{M1,M2}) where {M1,M2}
     cvis = copy(vis)
     visibilitymap!(cvis, m.m1)
     vis .= cvis
@@ -286,8 +275,6 @@ end
     vis .= cvis
     return nothing
 end
-
-
 
 # function intensitymap_numeric(model::ConvolvedModel, dims::ComradeBase.AbstractDomain)
 #     (;X, Y) = dims

@@ -12,10 +12,8 @@ and visibility location. The image model is
 
 where `Iᵢⱼ` are the flux densities of the image `img` and κ is the intensity function for the
 `kernel`.
-
-
 """
-struct ContinuousImage{A <: IntensityMapTypes, P} <: AbstractModel
+struct ContinuousImage{A<:IntensityMapTypes,P} <: AbstractModel
     """
     Discrete representation of the image.
     """
@@ -27,57 +25,63 @@ struct ContinuousImage{A <: IntensityMapTypes, P} <: AbstractModel
     kernel::P
 end
 
-function Base.show(io::IO, img::ContinuousImage{A, P}) where {A, P}
+function Base.show(io::IO, img::ContinuousImage{A,P}) where {A,P}
     sA = split("$A", ",")[1]
-    sA = sA*"}"
-    print(io, "ContinuousImage{$sA, $P}($(size(img)))")
+    sA = sA * "}"
+    return print(io, "ContinuousImage{$sA, $P}($(size(img)))")
 end
 
-ComradeBase.ispolarized(::Type{<:ContinuousImage{A}}) where {A<:StokesIntensityMap} = IsPolarized()
-ComradeBase.ispolarized(::Type{<:ContinuousImage{A}}) where {A<:IntensityMap{<:StokesParams}} = IsPolarized()
-ComradeBase.ispolarized(::Type{<:ContinuousImage{A}}) where {A<:IntensityMap{<:Real}} = NotPolarized()
-ComradeBase.flux(m::ContinuousImage) = flux(parent(m))*flux(m.kernel)
+function ComradeBase.ispolarized(::Type{<:ContinuousImage{A}}) where {A<:StokesIntensityMap}
+    return IsPolarized()
+end
+function ComradeBase.ispolarized(::Type{<:ContinuousImage{A}}) where {A<:IntensityMap{<:StokesParams}}
+    return IsPolarized()
+end
+function ComradeBase.ispolarized(::Type{<:ContinuousImage{A}}) where {A<:IntensityMap{<:Real}}
+    return NotPolarized()
+end
+ComradeBase.flux(m::ContinuousImage) = flux(parent(m)) * flux(m.kernel)
 
-ComradeBase.stokes(cimg::ContinuousImage, v) = ContinuousImage(stokes(parent(cimg), v), cimg.kernel)
+function ComradeBase.stokes(cimg::ContinuousImage, v)
+    return ContinuousImage(stokes(parent(cimg), v), cimg.kernel)
+end
 ComradeBase.centroid(m::ContinuousImage) = centroid(parent(m))
-Base.parent(m::ContinuousImage)         = m.img
-Base.length(m::ContinuousImage)         = length(parent(m))
-Base.size(m::ContinuousImage)           = size(parent(m))
-Base.size(m::ContinuousImage, i::Int)   = size(parent(m), i::Int)
-Base.firstindex(m::ContinuousImage)     = firstindex(parent(m))
-Base.lastindex(m::ContinuousImage)      = lastindex(parent(m))
+Base.parent(m::ContinuousImage) = m.img
+Base.length(m::ContinuousImage) = length(parent(m))
+Base.size(m::ContinuousImage) = size(parent(m))
+Base.size(m::ContinuousImage, i::Int) = size(parent(m), i::Int)
+Base.firstindex(m::ContinuousImage) = firstindex(parent(m))
+Base.lastindex(m::ContinuousImage) = lastindex(parent(m))
 
-Base.eltype(::ContinuousImage{A, P}) where {A,P} = eltype(A)
+Base.eltype(::ContinuousImage{A,P}) where {A,P} = eltype(A)
 
 Base.getindex(img::ContinuousImage, args...) = getindex(parent(img), args...)
 Base.axes(m::ContinuousImage) = axes(parent(m))
 ComradeBase.domainpoints(m::ContinuousImage) = domainpoints(parent(m))
 ComradeBase.axisdims(m::ContinuousImage) = axisdims(parent(m))
 
-
 function ContinuousImage(img::IntensityMapTypes, pulse::Pulse)
-    return ContinuousImage{typeof(img), typeof(pulse)}(img, pulse)
+    return ContinuousImage{typeof(img),typeof(pulse)}(img, pulse)
 end
-
 
 function ContinuousImage(im::AbstractMatrix, g::AbstractRectiGrid, pulse)
     img = IntensityMap(im, g)
     return ContinuousImage(img, pulse)
 end
 
-function InterpolatedModel(model::ContinuousImage, d::FourierDualDomain{<:AbstractRectiGrid, <:AbstractSingleDomain, <:FFTAlg})
+function InterpolatedModel(model::ContinuousImage,
+                           d::FourierDualDomain{<:AbstractRectiGrid,<:AbstractSingleDomain,
+                                                <:FFTAlg})
     img = parent(model)
     sitp = build_intermodel(img, forward_plan(d), algorithm(d), model.kernel)
-    return InterpolatedModel{typeof(model), typeof(sitp)}(model, sitp)
+    return InterpolatedModel{typeof(model),typeof(sitp)}(model, sitp)
 end
-
-
 
 # IntensityMap will obey the Comrade interface. This is so I can make easy models
 visanalytic(::Type{<:ContinuousImage}) = NotAnalytic() # not analytic b/c we want to hook into FFT stuff
 imanalytic(::Type{<:ContinuousImage}) = IsAnalytic()
 
-radialextent(c::ContinuousImage) = maximum(values(fieldofview(c.img)))/2
+radialextent(c::ContinuousImage) = maximum(values(fieldofview(c.img))) / 2
 
 function intensity_point(m::ContinuousImage, p)
     dx, dy = pixelsizes(m.img)
@@ -86,12 +90,14 @@ function intensity_point(m::ContinuousImage, p)
     @inbounds for (I, p0) in pairs(domainpoints(m.img))
         dp = (X=(p.X - p0.X), Y=(p.Y - p0.Y))
         k = intensity_point(ms, dp)
-        sum += m.img[I]*k
+        sum += m.img[I] * k
     end
     return sum
 end
 
-convolved(cimg::ContinuousImage, m::AbstractModel) = ContinuousImage(cimg.img, convolved(cimg.kernel, m))
+function convolved(cimg::ContinuousImage, m::AbstractModel)
+    return ContinuousImage(cimg.img, convolved(cimg.kernel, m))
+end
 convolved(cimg::AbstractModel, m::ContinuousImage) = convolved(m, cimg)
 
 # @inline function ModifiedModel(m::ContinuousImage, t::Tuple)
@@ -113,14 +119,12 @@ function visibilitymap_numeric(m::ContinuousImage, grid::AbstractFourierDualDoma
     return applypulse(vis, m.kernel, grid)
 end
 
-
-
 function applypulse(vis, pulse, gfour::AbstractFourierDualDomain)
     grid = imgdomain(gfour)
     griduv = visdomain(gfour)
     dx, dy = pixelsizes(grid)
     mp = stretched(pulse, dx, dy)
-    return vis.*visibility_point.(Ref(mp), domainpoints(griduv))
+    return vis .* visibility_point.(Ref(mp), domainpoints(griduv))
 end
 
 function ChainRulesCore.rrule(::typeof(applypulse), vis, pulse, grid)
@@ -130,33 +134,34 @@ function ChainRulesCore.rrule(::typeof(applypulse), vis, pulse, grid)
         griduv = visdomain(grid)
         dx, dy = pixelsizes(imgdomain(grid))
         mp = stretched(pulse, dx, dy)
-        Δvis = unthunk(Δ).*conj.(visibility_point.(Ref(mp), domainpoints(griduv)))
+        Δvis = unthunk(Δ) .* conj.(visibility_point.(Ref(mp), domainpoints(griduv)))
         return NoTangent(), pv(Δvis), NoTangent(), NoTangent()
     end
     return out, __applypulse_pb
 end
 
-
 # Make a special pass through for this as well
-function visibilitymap_numeric(m::ContinuousImage, grid::FourierDualDomain{GI, GV, <:FFTAlg}) where {GI, GV}
+function visibilitymap_numeric(m::ContinuousImage,
+                               grid::FourierDualDomain{GI,GV,<:FFTAlg}) where {GI,GV}
     minterp = InterpolatedModel(m, grid)
     return visibilitymap(minterp, visdomain(grid))
 end
 
-
 function checkgrid(imgdims, grid)
-    !(dims(imgdims) == dims(grid)) && throw(ArgumentError(
-        "The image dimensions in `ContinuousImage`\n"*
-        "and the visibility grid passed to `visibilitymap`\n"*
-        "do not match. This is not currently supported."))
+    return !(dims(imgdims) == dims(grid)) &&
+           throw(ArgumentError("The image dimensions in `ContinuousImage`\n" *
+                               "and the visibility grid passed to `visibilitymap`\n" *
+                               "do not match. This is not currently supported."))
 end
 ChainRulesCore.@non_differentiable checkgrid(::Any, ::Any)
 EnzymeRules.inactive(::typeof(checkgrid), args...) = nothing
 
-
 # A special pass through for Modified ContinuousImage
-const ScalingTransform = Union{Shift, Renormalize}
-function visibilitymap_numeric(m::ModifiedModel{M, T}, p::AbstractFourierDualDomain) where {M<:ContinuousImage, N, T<: NTuple{N,<:ScalingTransform}}
+const ScalingTransform = Union{Shift,Renormalize}
+function visibilitymap_numeric(m::ModifiedModel{M,T},
+                               p::AbstractFourierDualDomain) where {M<:ContinuousImage,N,
+                                                                    T<:NTuple{N,
+                                                                              <:ScalingTransform}}
     ispol = ispolarized(M)
     vbase = visibilitymap_numeric(m.model, p)
     puv = visdomain(p)
@@ -172,7 +177,7 @@ end
 function _apply_scaling!(out, mbase, t::Tuple, vbase, u, v)
     uc = unitscale(Complex{eltype(u)}, mbase)
     for i in eachindex(out, u, v, vbase)
-        out[i] = last(modify_uv(mbase, t, u[i], v[i], uc))*vbase[i]
+        out[i] = last(modify_uv(mbase, t, u[i], v[i], uc)) * vbase[i]
     end
     return nothing
 end
@@ -190,15 +195,14 @@ function ChainRulesCore.rrule(::typeof(_apply_scaling), mbase, t::Tuple, vbase, 
         Δu = zero(u)
         Δv = zero(v)
         d = autodiff(Reverse, _apply_scaling!, Const,
-                                  Duplicated(out, Δout),
-                                  Const(mbase),
-                                  Active(t),
-                                  Duplicated(vbase, Δvbase),
-                                  Duplicated(u, Δu),
-                                  Duplicated(v, Δv)
-                                  )
+                     Duplicated(out, Δout),
+                     Const(mbase),
+                     Active(t),
+                     Duplicated(vbase, Δvbase),
+                     Duplicated(u, Δu),
+                     Duplicated(v, Δv))
         dt = d[1][3]
-        ttm = map(x->Tangent{typeof(x)}(;ntfromstruct(x)...), dt)
+        ttm = map(x -> Tangent{typeof(x)}(; ntfromstruct(x)...), dt)
         return NoTangent(), NoTangent(), ttm, pvbase(Δvbase), pu(Δu), pv(Δv)
     end
     return vis, _apply_scaling_pullback

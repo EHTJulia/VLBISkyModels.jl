@@ -22,49 +22,44 @@ struct CosineRing{N,M,T} <: AbstractImageTemplate
     """
     σ0::T
     """Standard deviation expansion (length N) of the width of the Gaussian ring"""
-    σ::NTuple{N, T}
+    σ::NTuple{N,T}
     """Orientations of the cosine expansion width (length N)"""
-    ξσ::NTuple{N, T}
+    ξσ::NTuple{N,T}
     """Slash of Gaussian ring (length M)."""
-    s::NTuple{M, T}
+    s::NTuple{M,T}
     """Slash orientations (length M) in radians measured north of east"""
-    ξs::NTuple{M, T}
+    ξs::NTuple{M,T}
 end
-radialextent(d::CosineRing{N,M,T}) where {N,M,T} = one(T) + 3*(d.σ0 + maximum(d.σ))
-radialextent(d::CosineRing{0,M,T}) where {M,T} = one(T) + 3*(d.σ0)
+radialextent(d::CosineRing{N,M,T}) where {N,M,T} = one(T) + 3 * (d.σ0 + maximum(d.σ))
+radialextent(d::CosineRing{0,M,T}) where {M,T} = one(T) + 3 * (d.σ0)
 
-function CosineRing(
-    r0,
-    σ0,
-    σ::NTuple{N}, ξσ::NTuple{N},
-    s::NTuple{M}, ξs::NTuple{M}, x0, y0) where {N, M}
-    return modify(CosineRing(σ0/r0, σ./r0, ξσ, s, ξs), Stretch(r0), Shift(x0, y0))
+function CosineRing(r0,
+                    σ0,
+                    σ::NTuple{N}, ξσ::NTuple{N},
+                    s::NTuple{M}, ξs::NTuple{M}, x0, y0) where {N,M}
+    return modify(CosineRing(σ0 / r0, σ ./ r0, ξσ, s, ξs), Stretch(r0), Shift(x0, y0))
 end
-
 
 function intensity_point(θ::CosineRing{N,M,T}, p) where {N,M,T}
-    (;X, Y) = p
+    (; X, Y) = p
     ex = X
     ey = Y
-    ϕ = ringphase(X,Y)
+    ϕ = ringphase(X, Y)
     r = sqrt(ex^2 + ey^2)
-    dr2 = (r-1)^2
+    dr2 = (r - 1)^2
     #construct the slash
     n = one(T)
     @inbounds for i in 1:M
-        n -= θ.s[i]*cos(i*(ϕ - θ.ξs[i]))
+        n -= θ.s[i] * cos(i * (ϕ - θ.ξs[i]))
     end
 
     σ = θ.σ0
     @inbounds for i in 1:N
-        σ += θ.σ[i]*cos(i*(ϕ - θ.ξσ[i]))
+        σ += θ.σ[i] * cos(i * (ϕ - θ.ξσ[i]))
     end
 
-    return abs(n)*exp(-dr2/(2*σ^2))
+    return abs(n) * exp(-dr2 / (2 * σ^2))
 end
-
-
-
 
 """
     $(SIGNATURES)
@@ -102,13 +97,13 @@ The ellipticity `τ` is given by τ = 1-b/a.
 
 
 """
-function CosineRingwFloor(
-    r0,
-    σ0,
-    σ::NTuple{N}, ξσ::NTuple{N},
-    s::NTuple{M}, ξs::NTuple{M},
-    floor, x0, y0) where {N, M}
-    return CosineRing(r0, σ0, σ, ξσ, s, ξs, x0, y0) + floor*modify(GaussDisk(σ0/r0), Stretch(r0), Shift(x0, y0))
+function CosineRingwFloor(r0,
+                          σ0,
+                          σ::NTuple{N}, ξσ::NTuple{N},
+                          s::NTuple{M}, ξs::NTuple{M},
+                          floor, x0, y0) where {N,M}
+    return CosineRing(r0, σ0, σ, ξσ, s, ξs, x0, y0) +
+           floor * modify(GaussDisk(σ0 / r0), Stretch(r0), Shift(x0, y0))
 end
 
 """
@@ -143,15 +138,13 @@ The ellipticity `τ` is given by τ = 1-b/a.
  - `y0`: location of the ring center vertically
 
 """
-function CosineRingwGFloor(
-        r0,
-        σ0,
-        σ::NTuple{N}, ξσ::NTuple{N},
-        s::NTuple{M}, ξs::NTuple{M}, floor, σG, x0, y0) where {N, M}
+function CosineRingwGFloor(r0,
+                           σ0,
+                           σ::NTuple{N}, ξσ::NTuple{N},
+                           s::NTuple{M}, ξs::NTuple{M}, floor, σG, x0, y0) where {N,M}
     return CosineRing(r0, σ0, σ, ξσ, s, ξs, x0, y0) +
-           floor*modify(Gaussian(), Stretch(σG), Shift(x0, y0))
+           floor * modify(Gaussian(), Stretch(σG), Shift(x0, y0))
 end
-
 
 """
     $(SIGNATURES)
@@ -188,15 +181,13 @@ The ellipticity `τ` is given by τ = 1-b/a.
  - `y0`: vertical location of the ring center vertically
 
 """
-function EllipticalCosineRing(
-    r0,
-    σ0,
-    σ::NTuple{N}, ξσ::NTuple{N},
-    τ, ξτ,
-    s::NTuple{M}, ξs::NTuple{M}, x0, y0) where {N, M}
-    return modify(
-            CosineRing(σ0/r0, σ./r0, ξσ .- ξτ, s, ξs .- ξτ),
-            Stretch(r0*sqrt(1-τ), r0/sqrt(1-τ)),
-            Rotate(ξτ),
-            Shift(x0, y0))
+function EllipticalCosineRing(r0,
+                              σ0,
+                              σ::NTuple{N}, ξσ::NTuple{N},
+                              τ, ξτ,
+                              s::NTuple{M}, ξs::NTuple{M}, x0, y0) where {N,M}
+    return modify(CosineRing(σ0 / r0, σ ./ r0, ξσ .- ξτ, s, ξs .- ξτ),
+                  Stretch(r0 * sqrt(1 - τ), r0 / sqrt(1 - τ)),
+                  Rotate(ξτ),
+                  Shift(x0, y0))
 end

@@ -1,5 +1,4 @@
 @testset "image modifiers" begin
-
     m = Gaussian()
     g = imagepixels(20.0, 20.0, 128, 128)
     img = intensitymap(m, g)
@@ -9,21 +8,20 @@
     pimg = intensitymap(mp, g)
 
     @testset "Rotate invariant" begin
-        img2 = rotated(img, pi/4)
+        img2 = rotated(img, pi / 4)
         @test isapprox(img2, img, rtol=1e-4)
 
-        pimg2 = rotated(pimg, π/4)
+        pimg2 = rotated(pimg, π / 4)
         @test isapprox(stokes(pimg2, :U), stokes(pimg, :Q), rtol=1e-4)
         @test isapprox(stokes(pimg2, :Q), stokes(pimg, :U), atol=1e-4)
         @test isapprox(stokes(pimg2, :V), stokes(pimg, :V), rtol=1e-4)
         @test isapprox(stokes(pimg2, :I), img2, rtol=1e-4)
-
     end
 
     @testset "Stretched" begin
         g = imagepixels(20.0, 20.0, 128, 128)
         m2 = stretched(m, 2.0, 1.0)
-        imgs  = intensitymap(m2, g)
+        imgs = intensitymap(m2, g)
         imgs2 = stretched(img, 2.0, 1.0)
         @test isapprox(imgs2, imgs, rtol=1e-4)
 
@@ -36,14 +34,14 @@
     @testset "Stretch and rotate" begin
         g = imagepixels(20.0, 20.0, 128, 128)
 
-        m2 = modify(m, Stretch(2.0, 1.0), Rotate(π/4))
+        m2 = modify(m, Stretch(2.0, 1.0), Rotate(π / 4))
         imgs = intensitymap(m2, axisdims(img))
-        imgs2 = modify(img, Stretch(2.0, 1.0), Rotate(π/4))
+        imgs2 = modify(img, Stretch(2.0, 1.0), Rotate(π / 4))
         @test isapprox(imgs2, imgs, rtol=1e-4)
 
-        pm2 = modify(mp, Stretch(2.0, 1.0), Rotate(π/4))
+        pm2 = modify(mp, Stretch(2.0, 1.0), Rotate(π / 4))
         pimgs = intensitymap(pm2, g)
-        pimg2 = modify(pimg, Stretch(2.0, 1.0), Rotate(π/4))
+        pimg2 = modify(pimg, Stretch(2.0, 1.0), Rotate(π / 4))
         @test isapprox(pimg2, pimgs, rtol=1e-4)
     end
 
@@ -82,6 +80,5 @@
         imgs = [copy(img2) for _ in 1:10]
         cmimg = centroid_mean(imgs)
         @test isapprox(img, cmimg, rtol=1e-4)
-
     end
 end

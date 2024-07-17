@@ -6,7 +6,6 @@ struct NonAnalyticTest{M} <: AbstractModel
     model::M
 end
 
-
 ComradeBase.visanalytic(::Type{<:NonAnalyticTest}) = NotAnalytic()
 ComradeBase.ispolarized(::Type{<:NonAnalyticTest{M}}) where {M} = ispolarized(M)
 

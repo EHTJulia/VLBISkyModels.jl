@@ -20,6 +20,7 @@ non-analytic model.
 
 The `ExtendedRing` model is an example of a non-analytic model. The
 image structure is given by
+
 ```math
 I(r) = \frac{\beta^\alpha}{2\pi \Gamma(\alpha)} r^{-\alpha-2}e^{-\beta/r}
 ```
@@ -52,8 +53,8 @@ Since VLBI tends sparsely sample the UV plan we provide a specific type for this
 type called [`UnstructuredDomain`](@ref) that can be used to specify the UV points,
 
 ````@example nonanalytic
-u = randn(1000)/2
-v = randn(1000)/2
+u = randn(1000) / 2
+v = randn(1000) / 2
 guv = UnstructuredDomain((U=u, V=v))
 ````
 
@@ -63,7 +64,7 @@ the specific Fourier transform algorithm we want to use. The options for algorit
  1. [`NFFTAlg`](@ref): Uses the Non-Uniform Fast Fourier Transform. Fast and accurate, this is the recommended algorithm for most cases.
  2. [`DFTAlg`](@ref): Uses the Discrete Time Non-Uniform Fourier transform. Slow but exact, so only use for small image grids.
  3. [`FFTAlg`](@ref): Moderately fast and moderately accurate. Typically only used internally for testing.
-For this example we will use `NFFTAlg` since it is the recommended algorithm for most cases.
+    For this example we will use `NFFTAlg` since it is the recommended algorithm for most cases.
 
 ````@example nonanalytic
 gfour = FourierDualDomain(gim, guv, NFFTAlg())
@@ -81,8 +82,8 @@ and the visibility map using
 
 ````@example nonanalytic
 vis = visibilitymap(m, gfour)
-fig, ax = scatter(hypot.(vis.U, vis.V), real.(vis), label="Real")
-scatter!(ax, hypot.(vis.U, vis.V), imag.(vis), label="Imag")
+fig, ax = scatter(hypot.(vis.U, vis.V), real.(vis); label="Real")
+scatter!(ax, hypot.(vis.U, vis.V), imag.(vis); label="Imag")
 axislegend(ax)
 ax.xlabel = "uv-dist"
 ax.ylabel = "Flux"
@@ -100,15 +101,15 @@ mvis = visibilitymap(mmod, gfour)
 Plotting everything gives
 
 ````@example nonanalytic
-fig = Figure(;size=(800, 400))
-ax1 = Axis(fig[1, 1]; xreversed=true, xlabel="RA (radians)", ylabel="Dec (radians)", aspect=1)
+fig = Figure(; size=(800, 400))
+ax1 = Axis(fig[1, 1]; xreversed=true, xlabel="RA (radians)", ylabel="Dec (radians)",
+           aspect=1)
 ax2 = Axis(fig[1, 2]; xlabel="uv-dist", ylabel="Amplitude")
-image!(ax1, mimg, colormap=:afmhot)
-scatter!(ax2, hypot.(mvis.U, mvis.V), abs.(mvis), label="Real")
+image!(ax1, mimg; colormap=:afmhot)
+scatter!(ax2, hypot.(mvis.U, mvis.V), abs.(mvis); label="Real")
 fig
 ````
 
----
+* * *
 
 *This page was generated using [Literate.jl](https://github.com/fredrikekre/Literate.jl).*
-

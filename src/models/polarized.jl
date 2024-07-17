@@ -36,20 +36,25 @@ function Base.show(io::IO, model::PolarizedModel)
     println(io, "\tI: $(model.I)")
     println(io, "\tQ: $(model.Q)")
     println(io, "\tU: $(model.U)")
-    print(io, "\tV: $(model.V)")
+    return print(io, "\tV: $(model.V)")
 end
 
-Base.@assume_effects :foldable @inline visanalytic(::Type{PolarizedModel{I,Q,U,V}}) where {I,Q,U,V} = visanalytic(I)*visanalytic(Q)*visanalytic(U)*visanalytic(V)
-Base.@assume_effects :foldable @inline imanalytic(::Type{PolarizedModel{I,Q,U,V}}) where {I,Q,U,V} = imanalytic(I)*imanalytic(Q)*imanalytic(U)*imanalytic(V)
+Base.@assume_effects :foldable @inline visanalytic(::Type{PolarizedModel{I,Q,U,V}}) where {I,Q,U,V} = visanalytic(I) *
+                                                                                                      visanalytic(Q) *
+                                                                                                      visanalytic(U) *
+                                                                                                      visanalytic(V)
+Base.@assume_effects :foldable @inline imanalytic(::Type{PolarizedModel{I,Q,U,V}}) where {I,Q,U,V} = imanalytic(I) *
+                                                                                                     imanalytic(Q) *
+                                                                                                     imanalytic(U) *
+                                                                                                     imanalytic(V)
 
 @inline function intensity_point(pmodel::PolarizedModel, p)
     I = intensity_point(stokes(pmodel, :I), p)
     Q = intensity_point(stokes(pmodel, :Q), p)
     U = intensity_point(stokes(pmodel, :U), p)
     V = intensity_point(stokes(pmodel, :V), p)
-    return StokesParams(I,Q,U,V)
+    return StokesParams(I, Q, U, V)
 end
-
 
 @inline function visibility_point(pimg::PolarizedModel, p)
     si = visibility_point(stokes(pimg, :I), p)
@@ -69,10 +74,12 @@ end
 
 function __extract_tangent(m::PolarizedModel)
     tmI, tmQ, tmU, tmV = __extract_tangent.(split_stokes(m))
-    return Tangent{typeof(m)}(I=tmI, Q=tmQ, U=tmU, V=tmV)
+    return Tangent{typeof(m)}(; I=tmI, Q=tmQ, U=tmU, V=tmV)
 end
 
-split_stokes(pimg::PolarizedModel) = (stokes(pimg, :I), stokes(pimg, :Q), stokes(pimg, :U), stokes(pimg, :V))
+function split_stokes(pimg::PolarizedModel)
+    return (stokes(pimg, :I), stokes(pimg, :Q), stokes(pimg, :U), stokes(pimg, :V))
+end
 
 # If the model is numeric we don't know whether just a component is numeric or all of them are so
 # we need to re-dispatch
@@ -85,7 +92,8 @@ function visibilitymap_numeric(pimg::PolarizedModel, p::FourierDualDomain)
     return StructArray{StokesParams{eltype(si)}}((si, sq, su, sv))
 end
 
-function intensitymap!(pimg::Union{StokesIntensityMap, IntensityMap{<:StokesParams}}, pmodel::PolarizedModel)
+function intensitymap!(pimg::Union{StokesIntensityMap,IntensityMap{<:StokesParams}},
+                       pmodel::PolarizedModel)
     intensitymap!(stokes(pimg, :I), pmodel.I)
     intensitymap!(stokes(pimg, :Q), pmodel.Q)
     intensitymap!(stokes(pimg, :U), pmodel.U)
@@ -98,7 +106,8 @@ function intensitymap(pmodel::PolarizedModel, dims::AbstractSingleDomain)
     imgQ = baseimage(intensitymap(stokes(pmodel, :Q), dims))
     imgU = baseimage(intensitymap(stokes(pmodel, :U), dims))
     imgV = baseimage(intensitymap(stokes(pmodel, :V), dims))
-    return create_imgmap(StructArray{StokesParams{eltype(imgI)}}((imgI, imgQ, imgU, imgV)), dims)
+    return create_imgmap(StructArray{StokesParams{eltype(imgI)}}((imgI, imgQ, imgU, imgV)),
+                         dims)
 end
 
 @inline function convolved(m::PolarizedModel, p::AbstractModel)
@@ -110,25 +119,19 @@ end
 end
 
 @inline function _convolved(::NotPolarized, m::PolarizedModel, p)
-    return PolarizedModel(
-            convolved(stokes(m, :I), p),
-            convolved(stokes(m, :Q), p),
-            convolved(stokes(m, :U), p),
-            convolved(stokes(m, :V), p),
-        )
+    return PolarizedModel(convolved(stokes(m, :I), p),
+                          convolved(stokes(m, :Q), p),
+                          convolved(stokes(m, :U), p),
+                          convolved(stokes(m, :V), p))
 end
 
 @inline convolved(p::AbstractModel, m::PolarizedModel) = convolved(m, p)
 @inline function convolved(p::PolarizedModel, m::PolarizedModel)
-    return PolarizedModel(
-            convolved(stokes(p, :I), stokes(m, :I)),
-            convolved(stokes(p, :Q), stokes(m, :Q)),
-            convolved(stokes(p, :U), stokes(m, :U)),
-            convolved(stokes(p, :V), stokes(m, :V)),
-        )
+    return PolarizedModel(convolved(stokes(p, :I), stokes(m, :I)),
+                          convolved(stokes(p, :Q), stokes(m, :Q)),
+                          convolved(stokes(p, :U), stokes(m, :U)),
+                          convolved(stokes(p, :V), stokes(m, :V)))
 end
-
-
 
 # @inline function added(m::PolarizedModel, p::AbstractModel)
 #     return PolarizedModel(
@@ -140,15 +143,11 @@ end
 # end
 
 @inline function added(p::PolarizedModel, m::PolarizedModel)
-    return PolarizedModel(
-            added(stokes(p, :I), stokes(m, :I)),
-            added(stokes(p, :Q), stokes(m, :Q)),
-            added(stokes(p, :U), stokes(m, :U)),
-            added(stokes(p, :V), stokes(m, :V)),
-        )
+    return PolarizedModel(added(stokes(p, :I), stokes(m, :I)),
+                          added(stokes(p, :Q), stokes(m, :Q)),
+                          added(stokes(p, :U), stokes(m, :U)),
+                          added(stokes(p, :V), stokes(m, :V)))
 end
-
-
 
 # for m in (:renormed, :rotated, :shifted, :stretched)
 #     @eval begin
@@ -162,7 +161,6 @@ end
 #       end
 #     end
 # end
-
 
 """
     PoincareSphere2Map(I, p, X, grid)
@@ -186,7 +184,7 @@ The arguments are:
 
 """
 function PoincareSphere2Map(I, p, X, grid)
-    pimgI = I.*p
+    pimgI = I .* p
     stokesI = I
     stokesQ = pimgI .* X[1]
     stokesU = pimgI .* X[2]
@@ -202,8 +200,9 @@ end
 #     return IntensityMap(StructArray{StokesParams{eltype(I)}}((I=stokesI, Q=stokesQ, U=stokesU, V=stokesV)), grid)
 # end
 
-PoincareSphere2Map(I::IntensityMap, p, X) = PoincareSphere2Map(baseimage(I), p, X, axisdims(I))
-
+function PoincareSphere2Map(I::IntensityMap, p, X)
+    return PoincareSphere2Map(baseimage(I), p, X, axisdims(I))
+end
 
 """
     PolExp2Map(a, b, c, d, grid::AbstractRectiGrid)
@@ -220,22 +219,21 @@ Each Stokes parameter is parameterized as
 
 where `a,b,c,d` are real numbers with no conditions, and `p=√(a² + b² + c²)`.
 """
-function PolExp2Map(a::AbstractArray, b::AbstractArray, c::AbstractArray, d::AbstractArray, grid::AbstractRectiGrid)
-    p = sqrt.(b.^2 .+ c.^2 .+ d.^2)
+function PolExp2Map(a::AbstractArray, b::AbstractArray, c::AbstractArray, d::AbstractArray,
+                    grid::AbstractRectiGrid)
+    p = sqrt.(b .^ 2 .+ c .^ 2 .+ d .^ 2)
 
-    tmp = exp.(a).*sinh.(p).*inv.(p)
-    pimgI = exp.(a).*cosh.(p)
-    pimgQ = tmp.*b
-    pimgU = tmp.*c
-    pimgV = tmp.*d
+    tmp = exp.(a) .* sinh.(p) .* inv.(p)
+    pimgI = exp.(a) .* cosh.(p)
+    pimgQ = tmp .* b
+    pimgU = tmp .* c
+    pimgV = tmp .* d
     stokesI = pimgI
     stokesQ = pimgQ
     stokesU = pimgU
     stokesV = pimgV
     return StokesIntensityMap(stokesI, stokesQ, stokesU, stokesV, grid)
 end
-
-
 
 """
     linearpol(pimg::AbstractPolarizedModel, p)
@@ -245,7 +243,6 @@ Return the complex linear polarization of the model `m` at point `p`.
 function PolarizedTypes.linearpol(pimg::AbstractPolarizedModel, p)
     return linearpol(intensity_point(pimg, p))
 end
-
 
 """
     mpol(pimg::AbstractPolarizedModel, p)
@@ -274,7 +271,6 @@ function PolarizedTypes.fracpolarization(pimg::AbstractPolarizedModel, p)
     return fracpolarization(intensity_point(pimg, p))
 end
 
-
 """
     evpa(pimg::AbstractPolarizedModel, p)
 
@@ -293,7 +289,6 @@ Compute the polarization of the polarized model.
     return polellipse(intensity_point(pimg, p))
 end
 
-
 """
     m̆(pimg::AbstractPolarizedModel, p)
     mbreve(pimg::AbstractPolarizedModel, p)
@@ -309,7 +304,7 @@ To create the symbol type `m\\breve` in the REPL or use the
     Q = visibility(stokes(pimg, :Q), p)
     U = visibility(stokes(pimg, :U), p)
     I = visibility(stokes(pimg, :I), p)
-    return (Q+1im*U)/I
+    return (Q + 1im * U) / I
 end
 
 """
