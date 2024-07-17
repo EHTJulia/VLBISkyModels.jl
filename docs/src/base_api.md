@@ -1,7 +1,5 @@
 # Base API
 
-
-
 ## Contents
 
 ```@contents
@@ -47,6 +45,7 @@ PolarizedTypes.mbreve(::ComradeBase.AbstractPolarizedModel, ::Any)
 ```
 
 ### Model Interface
+
 ```@docs
 ComradeBase.AbstractModel
 ComradeBase.visanalytic
@@ -69,6 +68,7 @@ ComradeBase.intensitymap_numeric!
 ```
 
 ### Image Domain
+
 ```@docs
 ComradeBase.imagepixels
 ComradeBase.RectiGrid
@@ -89,6 +89,7 @@ ComradeBase.MinimalHeader
 ```
 
 ### Image Types
+
 ```@docs
 ComradeBase.IntensityMap
 ComradeBase.IntensityMap(::AbstractArray, ::AbstractRectiGrid)
@@ -100,7 +101,6 @@ ComradeBase.load
 ComradeBase.save
 ComradeBase.stokes
 ```
-
 
 ## Polarization
 
@@ -127,6 +127,7 @@ PolarizedTypes.fracpolarization
 ```
 
 ## Internal Methods not part of public API
+
 ```@docs
 ComradeBase._visibilitymap
 ComradeBase._visibilitymap!

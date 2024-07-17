@@ -14,7 +14,6 @@ Pages = ["api.md"]
 
 ## Model Definitions
 
-
 ### Combinators
 
 ```@docs
@@ -67,6 +66,7 @@ VLBISkyModels.ContinuousImage
 ```
 
 ### Image Pulses
+
 ```@docs
 VLBISkyModels.Pulse
 VLBISkyModels.DeltaPulse
@@ -75,7 +75,6 @@ VLBISkyModels.RaisedCosinePulse
 VLBISkyModels.BicubicPulse
 VLBISkyModels.Butterworth
 ```
-
 
 ### Fourier Duality Models
 
@@ -89,7 +88,6 @@ VLBISkyModels.FFTAlg
 VLBISkyModels.NFFTAlg
 VLBISkyModels.InterpolatedModel
 ```
-
 
 ### Modifiers
 
@@ -118,13 +116,14 @@ For more docstrings on how to evaluate models see [Base API](@ref).
 ```
 
 ### Visualization
+
 ```@docs
 VLBISkyModels.imageviz
 VLBISkyModels.polimage
 ```
 
-
 ### Misc.
+
 ```@docs
 VLBISkyModels.center_image
 VLBISkyModels.convolve
@@ -138,6 +137,7 @@ VLBISkyModels.μas2rad
 ```
 
 ## Internal (Not Public API)
+
 ```@docs
 VLBISkyModels.AbstractFourierDualDomain
 VLBISkyModels.scale_uv
