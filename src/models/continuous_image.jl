@@ -172,10 +172,10 @@ function visibilitymap_numeric(m::ModifiedModel{M,T},
     return _apply_scaling!(ispol, m.transform, vbase, puv.U, puv.V)
 end
 
-function _apply_scaling!(mbase, t::Tuple, vbase, u, v)
+function _apply_scaling(mbase, t::Tuple, vbase, u, v)
     # out = similar(vbase)
     out = vbase
-    _apply_scaling!!(parent(out), mbase, t, parent(vbase), u, v)
+    _apply_scaling!(parent(out), mbase, t, parent(vbase), u, v)
     return out
 end
 
