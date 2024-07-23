@@ -124,7 +124,9 @@ function applypulse(vis, pulse, gfour::AbstractFourierDualDomain)
     griduv = visdomain(gfour)
     dx, dy = pixelsizes(grid)
     mp = stretched(pulse, dx, dy)
-    return vis .* visibility_point.(Ref(mp), domainpoints(griduv))
+    pvis = parent(vis)
+    pvis .= pvis .* visibility_point.(Ref(mp), domainpoints(griduv))
+    return vis
 end
 
 function ChainRulesCore.rrule(::typeof(applypulse), vis, pulse, grid)
@@ -169,16 +171,18 @@ function visibilitymap_numeric(m::ModifiedModel{M,T},
 end
 
 function _apply_scaling(mbase, t::Tuple, vbase, u, v)
-    out = similar(vbase)
-    _apply_scaling!(out, mbase, t, vbase, u, v)
+    # out = similar(vbase)
+    out = vbase
+    _apply_scaling!(parent(out), mbase, t, parent(vbase), u, v)
     return out
 end
 
 function _apply_scaling!(out, mbase, t::Tuple, vbase, u, v)
     uc = unitscale(Complex{eltype(u)}, mbase)
-    for i in eachindex(out, u, v, vbase)
-        out[i] = last(modify_uv(mbase, t, u[i], v[i], uc)) * vbase[i]
-    end
+    out .= last.(modify_uv.(Ref(mbase), Ref(t), u, v, Ref(uc))) .* vbase
+    # for i in eachindex(out, u, v, vbase)
+    #     out[i] = last(modify_uv(mbase, t, u[i], v[i], uc)) * vbase[i]
+    # end
     return nothing
 end
 
