@@ -71,7 +71,7 @@ end
 function applyft(p::AbstractNUFTPlan, img::Union{AbstractArray, StokesIntensityMap})
     vis =  nuft(getplan(p), img)
     vis .= vis .* getphases(p)
-    return vis.*getphases(p)
+    return vis
 end
 """
 This a new function is overloaded to handle when NUFTPlan has plans
