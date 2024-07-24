@@ -116,10 +116,10 @@ function visibilitymap_numeric(m::ContinuousImage, grid::AbstractFourierDualDoma
     checkgrid(axisdims(m), imgdomain(grid))
     img = parent(m)
     vis = applyft(forward_plan(grid), img)
-    return applypulse(vis, m.kernel, grid)
+    return applypulse!(vis, m.kernel, grid)
 end
 
-function applypulse(vis, pulse, gfour::AbstractFourierDualDomain)
+function applypulse!(vis, pulse, gfour::AbstractFourierDualDomain)
     grid = imgdomain(gfour)
     griduv = visdomain(gfour)
     dx, dy = pixelsizes(grid)
@@ -129,17 +129,17 @@ function applypulse(vis, pulse, gfour::AbstractFourierDualDomain)
     return vis
 end
 
-function ChainRulesCore.rrule(::typeof(applypulse), vis, pulse, grid)
-    out = applypulse(vis, pulse, grid)
+function ChainRulesCore.rrule(::typeof(applypulse!), vis, pulse, grid)
+    out = applypulse!(vis, pulse, grid)
     pv = ProjectTo(vis)
-    function __applypulse_pb(Δ)
+    function __applypulse!_pb(Δ)
         griduv = visdomain(grid)
         dx, dy = pixelsizes(imgdomain(grid))
         mp = stretched(pulse, dx, dy)
         Δvis = unthunk(Δ) .* conj.(visibility_point.(Ref(mp), domainpoints(griduv)))
         return NoTangent(), pv(Δvis), NoTangent(), NoTangent()
     end
-    return out, __applypulse_pb
+    return out, __applypulse!_pb
 end
 
 # Make a special pass through for this as well
