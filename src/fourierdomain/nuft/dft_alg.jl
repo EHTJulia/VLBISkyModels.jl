@@ -27,7 +27,7 @@ end
 
 # internal function to make the phases to phase center the image.
 function make_phases(::DFTAlg, imgdomain::AbstractRectiGrid, visdomain::UnstructuredDomain)
-    return 1
+    return one(Complex{eltype(visdomain.U)})
 end
 
 function _nuft(A::AbstractMatrix, b::AbstractArray)
