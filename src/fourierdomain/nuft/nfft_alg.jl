@@ -54,7 +54,7 @@ end
 function applyft(p::AbstractNUFTPlan, img::Union{AbstractArray,StokesIntensityMap})
     vis = nuft(getplan(p), img)
     vis .= vis .* getphases(p)
-    return vis .* getphases(p)
+    return vis
 end
 
 function plan_nuft(alg::NFFTAlg, imagegrid::AbstractRectiGrid,
@@ -86,7 +86,7 @@ end
 # Allow NFFT to work with ForwardDiff.
 
 function _nuft(A::NFFTPlan, b::AbstractArray{<:Real})
-    bc = complex(b)
+    bc = b
     out = similar(b, eltype(A), size(A)[1])
     _nuft!(out, A, bc)
     return out
@@ -173,7 +173,7 @@ function EnzymeRules.reverse(config::EnzymeRules.ConfigWidth{1}, ::Const{typeof(
     end
     for (db, dout) in zip(dbs, douts)
         # TODO open PR on NFFT so we can do this in place.
-        db .+= A.val' * dout
+        db .+= real.(A.val' * dout)
         dout .= 0
     end
     return (nothing, nothing, nothing)
