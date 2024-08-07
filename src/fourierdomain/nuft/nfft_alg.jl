@@ -17,33 +17,13 @@ Base.@kwdef struct NFFTAlg{T,N,F} <: NUFT
     """
     padfac::Int = 1
     """
-    Kernel size parameters. This controls the accuracy of NFFT you do not usually need to change this
+    relative tolerance of the NFFT
     """
-    m::Int = 4
-    """
-    Over sampling factor. This controls the accuracy of NFFT you do not usually need to change this.
-    """
-    σ::T = 2.0
-    """
-    Window function for the NFFT. You do not usually need to change this
-    """
-    window::Symbol = :kaiser_bessel
+    reltol::T = 1e-9
     """
     NFFT interpolation algorithm.
     """
-    precompute::N = NFFT.POLYNOMIAL
-    """
-    Flag block partioning should be used to speed up computation
-    """
-    blocking::Bool = true
-    """
-    Flag if the node should be sorted in a lexicographic way
-    """
-    sortNodes::Bool = false
-    """
-    Flag if the deconvolve indices should be stored, Currently required for GPU
-    """
-    storeDeconvolutionIdx::Bool = true
+    precompute::N = NFFT.TENSOR
     """
     Flag passed to inner AbstractFFT. The fastest FFTW is FFTW.MEASURE but takes the longest
     to precompute
@@ -66,9 +46,8 @@ function plan_nuft(alg::NFFTAlg, imagegrid::AbstractRectiGrid,
     # Here we flip the sign because the NFFT uses the -2pi convention
     uv2[1, :] .= -visp.U * dx
     uv2[2, :] .= -visp.V * dy
-    (; m, σ, window, precompute, blocking, sortNodes, storeDeconvolutionIdx, fftflags) = alg
-    plan = plan_nfft(uv2, size(imagegrid); m, σ, window, precompute, blocking, sortNodes,
-                     storeDeconvolutionIdx, fftflags)
+    (; reltol, precompute, fftflags) = alg
+    plan = plan_nfft(uv2, size(imagegrid); reltol, precompute, fftflags)
     return plan
 end
 
@@ -85,9 +64,8 @@ end
 # Allow NFFT to work with ForwardDiff.
 
 function _nuft(A::NFFTPlan, b::AbstractArray{<:Real})
-    bc = complex(b)
     out = similar(b, eltype(A), size(A)[1])
-    _nuft!(out, A, bc)
+    _nuft!(out, A, b)
     return out
 end
 
@@ -172,7 +150,7 @@ function EnzymeRules.reverse(config::EnzymeRules.ConfigWidth{1}, ::Const{typeof(
     end
     for (db, dout) in zip(dbs, douts)
         # TODO open PR on NFFT so we can do this in place.
-        db .+= A.val' * dout
+        db .+= real.(A.val' * dout)
         dout .= 0
     end
     return (nothing, nothing, nothing)
