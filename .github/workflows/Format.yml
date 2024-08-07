@@ -1,13 +1,40 @@
-name: Format suggestions
 on:
+  push:
+    branches:
+      - main
+    tags: '*'
   pull_request:
-    # this argument is not required if you don't use the `suggestion-label` input
-    types: [ opened, reopened, synchronize, labeled, unlabeled ]
+    types:
+      - opened
+      - reopened
+      - synchronize
+      - ready_for_review
+
 jobs:
-  code-style:
-    runs-on: ubuntu-latest
+  format:
+    runs-on: ubuntu-20.04
+    timeout-minutes: 30
     steps:
-      - uses: julia-actions/julia-format@v3
-        with:
-          version: '1' # Set `version` to '1.0.54' if you need to use JuliaFormatter.jl v1.0.54 (default: '1')
-          suggestion-label: 'format-suggest' # leave this unset or empty to show suggestions for all PRs
+    - uses: actions/checkout@v4.1.5
+
+    - uses: dorny/paths-filter@v3.0.2
+      id: filter
+      with:
+        filters: |
+          julia_file_change:
+            - added|modified: '**.jl'
+
+    - uses: julia-actions/setup-julia@latest
+      if: steps.filter.outputs.julia_file_change == 'true'
+      with:
+        version: 1.9
+
+    - name: Apply JuliaFormatter
+      if: steps.filter.outputs.julia_file_change == 'true'
+      run: |
+        julia --color=yes dev/flux_format.jl --verbose .
+
+    - name: Check formatting diff
+      if: steps.filter.outputs.julia_file_change == 'true'
+      run: |
+        git diff --color=always --exit-code
