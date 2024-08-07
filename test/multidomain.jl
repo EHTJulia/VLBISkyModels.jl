@@ -58,3 +58,24 @@ end
     df, dx = check4dautodiff(Nx, Nt, Nf, fov, x, dx)
     test4Dgrad(dx, x, nuftdomains4d(Nx, Nt, Nf, fov))
 end
+
+function testtimecomplexity(Nx, Nt1, Nt2, Nf1, Nf2, fov)
+    p1 = nuftdomains4d(Nx,Nt1,Nf1,fov)
+    cimg1 = ContinuousImage(IntensityMap(randn(Nx, Nx, 1,1), VLBISkyModels.imgdomain(p1)), BSplinePulse{3}())
+    t1 = @benchmark VLBISkyModels.visibilitymap_numeric($cimg1, $p1)
+    median_t1 = median(t1).time / 1e6
+
+    p2 = nuftdomains4d(Nx,Nt2,Nf2,fov)
+    cimg2 = ContinuousImage(IntensityMap(randn(Nx, Nx, 2, 2), VLBISkyModels.imgdomain(p2)), BSplinePulse{3}())
+    t2 = @benchmark VLBISkyModels.visibilitymap_numeric($cimg2, $p2)
+    median_t2 = median(t2).time / 1e6
+
+    return median_t2/median_t1
+end
+
+
+@testset "Check time complexity for time and freq FT" begin
+    @test isapprox(testtimecomplexity(24,1,2,1,2,100), 4.0, atol=1e-1)
+    @test isapprox(testtimecomplexity(24,1,2,1,1,100), 2.0, atol=1e-1)
+    @test isapprox(testtimecomplexity(24,1,1,1,2,100), 2.0, atol=1e-1)
+end

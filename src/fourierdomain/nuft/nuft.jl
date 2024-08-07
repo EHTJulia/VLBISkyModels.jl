@@ -14,7 +14,7 @@ struct NUFTPlan{A,P,M,I,T} <: AbstractNUFTPlan
     plan::P #NUFT matrix or plan
     phases::M #FT phases needed to phase center things
     indices::I # imgdomain Ti/Fr indices mapped to visdomain indices
-    totalvis:: T # Total number of visibility points
+    totalvis::T # Total number of visibility points
 end
 
 # This functions creates a tuple of vectors 1) what indices in imgdomain
