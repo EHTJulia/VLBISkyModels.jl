@@ -107,10 +107,10 @@ function plan_nuft_spatial(alg::NFFTAlg, imagegrid::AbstractRectiGrid,
     dx = dpx.X
     dy = dpx.Y
     # Here we flip the sign because the NFFT uses the -2pi convention
-    uv2[1, :] .= -visp.U * dx
-    uv2[2, :] .= -visp.V * dy
+    uv2[1, :] .= -visp.U .* dx
+    uv2[2, :] .= -visp.V .* dy
     (; reltol, precompute, fftflags) = alg
-    plan = plan_nfft(uv2, size(imagegrid); reltol, precompute, fftflags)
+    plan = plan_nfft(uv2, size(imagegrid)[1:2]; reltol, precompute, fftflags)
     return plan
 end
 
