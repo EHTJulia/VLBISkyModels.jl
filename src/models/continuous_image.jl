@@ -124,6 +124,8 @@ function applypulse!(vis, pulse, gfour::AbstractFourierDualDomain)
     griduv = visdomain(gfour)
     dx, dy = pixelsizes(grid)
     mp = stretched(pulse, dx, dy)
+    # we grab the parent array since for some reason Enzyme struggles to see
+    # through the broadcast
     pvis = parent(vis)
     pvis .= pvis .* visibility_point.(Ref(mp), domainpoints(griduv))
     return vis
@@ -167,17 +169,17 @@ function visibilitymap_numeric(m::ModifiedModel{M,T},
     ispol = ispolarized(M)
     vbase = visibilitymap_numeric(m.model, p)
     puv = visdomain(p)
-    return _apply_scaling(ispol, m.transform, vbase, puv.U, puv.V)
+    return _apply_scaling!(ispol, m.transform, vbase, puv.U, puv.V)
 end
 
-function _apply_scaling(mbase, t::Tuple, vbase, u, v)
+function _apply_scaling!(mbase, t::Tuple, vbase, u, v)
     # out = similar(vbase)
     out = vbase
-    _apply_scaling!(parent(out), mbase, t, parent(vbase), u, v)
+    _apply_scaling!!(parent(out), mbase, t, parent(vbase), u, v)
     return out
 end
 
-function _apply_scaling!(out, mbase, t::Tuple, vbase, u, v)
+function _apply_scaling!!(out, mbase, t::Tuple, vbase, u, v)
     uc = unitscale(Complex{eltype(u)}, mbase)
     out .= last.(modify_uv.(Ref(mbase), Ref(t), u, v, Ref(uc))) .* vbase
     # for i in eachindex(out, u, v, vbase)
