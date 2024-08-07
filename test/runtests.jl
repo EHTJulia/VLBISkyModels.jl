@@ -38,4 +38,5 @@ end
     include("utility.jl")
     include("viz.jl")
     include("stokesintensitymap.jl")
+    include("multidomain.jl")
 end

@@ -10,7 +10,7 @@ struct DFTAlg <: NUFT end
 
 
 # internal function that creates an DFT matrix/plan to use used for the img.
-function plan_nuft(::DFTAlg, imagegrid::AbstractRectiGrid, visdomain::UnstructuredDomain)
+function plan_nuft_spatial(::DFTAlg, imagegrid::AbstractRectiGrid, visdomain::UnstructuredDomain)
     visp = domainpoints(visdomain)
     (;X, Y) = imagegrid
     uv = domainpoints(visdomain)

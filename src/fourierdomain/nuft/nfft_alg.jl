@@ -52,25 +52,107 @@ Base.@kwdef struct NFFTAlg{T,N,F} <: NUFT
 end
 
 
+"""
+This function helps us to lookup UnstructuredDomain at a particular Ti or Fr 
+visdomain[Ti=T,Fr=F] or visdomain[Ti=T] or visdomain[Fr=F] calls work. 
+Note: I cannot figure out how to write this function without specifying 
+nothing to Ti or Fr. I tried kwargs... as well.
+"""
+function Base.getindex(domain::UnstructuredDomain; Ti=nothing, Fr=nothing)
+    points = domainpoints(domain)
+    indices = if Ti !== nothing && Fr !== nothing
+        findall(p -> (p.Ti == Ti) && (p.Fr == Fr), points)
+    elseif Ti !== nothing
+        findall(p -> (p.Ti == Ti), points)
+    elseif Fr !== nothing
+        findall(p -> (p.Fr == Fr), points)
+    else
+        1:length(points)
+    end
+    return UnstructuredDomain(points[indices], executor(domain), header(domain))
+end
+
+# I am not sure if we need the same for UnstructuredMap as well.
+function Base.getindex(domain::UnstructuredMap; Ti=nothing, Fr=nothing)
+    points = domainpoints(domain)
+    indices = if Ti !== nothing && Fr !== nothing
+        findall(p -> (p.Ti == Ti) && (p.Fr == Fr), points)
+    elseif Ti !== nothing
+        findall(p -> (p.Ti == Ti), points)
+    elseif Fr !== nothing
+        findall(p -> (p.Fr == Fr), points)
+    else
+        1:length(points)
+    end
+    return UnstructuredMap(points[indices], executor(domain), header(domain))
+end
+
 
 function applyft(p::AbstractNUFTPlan, img::Union{AbstractArray, StokesIntensityMap})
     vis =  nuft(getplan(p), img)
     return vis.*getphases(p)
 end
 
+"""
+This a new function is overloaded to handle when NUFTPlan has plans
+as dictionaries in the case of Ti or Fr case
+"""
 
-function plan_nuft(alg::NFFTAlg, imagegrid::AbstractRectiGrid, visdomain::UnstructuredDomain)
-    visp = domainpoints(visdomain)
-    uv2 = similar(visp.U, (2, length(visdomain)))
-    dpx = pixelsizes(imagegrid)
-    dx = dpx.X
-    dy = dpx.Y
+@inline function applyft(p::NUFTPlan{<:FourierTransform, <:AbstractDict}, img::Union{AbstractArray, StokesIntensityMap})
+    vis_list = zeros(ComplexF64, p.totalvis)
+    pimg = baseimage(img)
+    plans = p.plan
+    iminds, visinds = p.indices
+
+    for i in eachindex(iminds, visinds)
+        imind = iminds[i]
+        visind = visinds[i]
+        vis_inner = nuft(plans[imind], @view(pimg[:, :, imind...])) 
+        vis_list[visind] .= vis_inner 
+    end
+    
+    vis_list .= vis_list .* p.phases
+    return vis_list
+end
+
+
+"""
+plan_nuft for only spatial part, no Ti or Fr
+"""
+function plan_nuft_spatial(alg::NFFTAlg, X, Y, U, V)
+    uv2 = similar(U, (2, length(U)))
+    dx = step(X)
+    dy = step(Y)
     # Here we flip the sign because the NFFT uses the -2pi convention
-    uv2[1,:] .= -visp.U*dx
-    uv2[2,:] .= -visp.V*dy
-    (;m, σ, window, precompute, blocking, sortNodes, storeDeconvolutionIdx, fftflags) = alg
-    plan = plan_nfft(uv2, size(imagegrid); m, σ, window, precompute, blocking, sortNodes, storeDeconvolutionIdx, fftflags)
+    uv2[1,:] .= -U * dx
+    uv2[2,:] .= -V * dy
+    (; m, σ, window, precompute, blocking, sortNodes, storeDeconvolutionIdx, fftflags) = alg
+    plan = plan_nfft(uv2, (length(X), length(Y)); m, σ, window, precompute, blocking, sortNodes, storeDeconvolutionIdx, fftflags)
     return plan
+end
+
+"""
+plan_nuft_spatial functions mapped to times Ti and frequencies Fr 
+"""
+function plan_nuft(alg::NFFTAlg, imagegrid::AbstractRectiGrid, visdomain::UnstructuredDomain, indices::Tuple)
+    #if hasproperty(imgdomain, :Ti) && hasproperty(imgdomain, :Fr) && hasproperty(visdomain, :Ti) && hasproperty(visdomain, :Fr)
+    #    check_image_uv(imagegrid, visdomain)  # Check grid is consistent in time and frequency
+    #end
+    points = domainpoints(visdomain)
+    iminds, visinds = indices
+
+    uv = UnstructuredDomain(points[visinds[1]], executor(visdomain), header(visdomain))
+    tplan = plan_nuft_spatial(alg, imagegrid.X, imagegrid.Y, uv.U, uv.V)
+    plans = Dict{typeof(iminds[1]), typeof(tplan)}()
+
+    for i in eachindex(iminds, visinds)
+        imind = iminds[i]
+        visind = visinds[i]
+        uv = UnstructuredDomain(points[visind], executor(visdomain), header(visdomain))
+        plans[imind...] = plan_nuft_spatial(alg, imagegrid.X, imagegrid.Y, uv.U, uv.V)
+    end
+
+    return plans
 end
 
 
