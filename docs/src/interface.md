@@ -43,7 +43,9 @@ function ComradeBase.intensity_point(::MyGaussian, p)
     return exp(-(X^2 + Y^2) / 2) / 2π
 end
 
-function ComradeBase.visibility_point(::MyGaussian, u, v, time, freq) where {T}
+function ComradeBase.visibility_point(::MyGaussian, p)
+    u = U.u
+    v = V.vs
     return exp(-2π^2 * (u^2 + v^2)) + 0im
 end
 ```
