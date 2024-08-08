@@ -33,7 +33,8 @@ end
 
 function applyft(p::AbstractNUFTPlan, img::Union{AbstractArray,StokesIntensityMap})
     vis = nuft(getplan(p), img)
-    return vis .* getphases(p)
+    vis .= vis .* getphases(p)
+    return vis
 end
 
 function plan_nuft(alg::NFFTAlg, imagegrid::AbstractRectiGrid,

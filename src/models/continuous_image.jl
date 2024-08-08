@@ -116,28 +116,32 @@ function visibilitymap_numeric(m::ContinuousImage, grid::AbstractFourierDualDoma
     checkgrid(axisdims(m), imgdomain(grid))
     img = parent(m)
     vis = applyft(forward_plan(grid), img)
-    return applypulse(vis, m.kernel, grid)
+    return applypulse!(vis, m.kernel, grid)
 end
 
-function applypulse(vis, pulse, gfour::AbstractFourierDualDomain)
+function applypulse!(vis, pulse, gfour::AbstractFourierDualDomain)
     grid = imgdomain(gfour)
     griduv = visdomain(gfour)
     dx, dy = pixelsizes(grid)
     mp = stretched(pulse, dx, dy)
-    return vis .* visibility_point.(Ref(mp), domainpoints(griduv))
+    # we grab the parent array since for some reason Enzyme struggles to see
+    # through the broadcast
+    pvis = parent(vis)
+    pvis .= pvis .* visibility_point.(Ref(mp), domainpoints(griduv))
+    return vis
 end
 
-function ChainRulesCore.rrule(::typeof(applypulse), vis, pulse, grid)
-    out = applypulse(vis, pulse, grid)
+function ChainRulesCore.rrule(::typeof(applypulse!), vis, pulse, grid)
+    out = applypulse!(vis, pulse, grid)
     pv = ProjectTo(vis)
-    function __applypulse_pb(Δ)
+    function __applypulse!_pb(Δ)
         griduv = visdomain(grid)
         dx, dy = pixelsizes(imgdomain(grid))
         mp = stretched(pulse, dx, dy)
         Δvis = unthunk(Δ) .* conj.(visibility_point.(Ref(mp), domainpoints(griduv)))
         return NoTangent(), pv(Δvis), NoTangent(), NoTangent()
     end
-    return out, __applypulse_pb
+    return out, __applypulse!_pb
 end
 
 # Make a special pass through for this as well
@@ -165,20 +169,22 @@ function visibilitymap_numeric(m::ModifiedModel{M,T},
     ispol = ispolarized(M)
     vbase = visibilitymap_numeric(m.model, p)
     puv = visdomain(p)
-    return _apply_scaling(ispol, m.transform, vbase, puv.U, puv.V)
+    return _apply_scaling!(ispol, m.transform, vbase, puv.U, puv.V)
 end
 
-function _apply_scaling(mbase, t::Tuple, vbase, u, v)
-    out = similar(vbase)
-    _apply_scaling!(out, mbase, t, vbase, u, v)
+function _apply_scaling!(mbase, t::Tuple, vbase, u, v)
+    # out = similar(vbase)
+    out = vbase
+    _apply_scaling!!(parent(out), mbase, t, parent(vbase), u, v)
     return out
 end
 
-function _apply_scaling!(out, mbase, t::Tuple, vbase, u, v)
+function _apply_scaling!!(out, mbase, t::Tuple, vbase, u, v)
     uc = unitscale(Complex{eltype(u)}, mbase)
-    for i in eachindex(out, u, v, vbase)
-        out[i] = last(modify_uv(mbase, t, u[i], v[i], uc)) * vbase[i]
-    end
+    out .= last.(modify_uv.(Ref(mbase), Ref(t), u, v, Ref(uc))) .* vbase
+    # for i in eachindex(out, u, v, vbase)
+    #     out[i] = last(modify_uv(mbase, t, u[i], v[i], uc)) * vbase[i]
+    # end
     return nothing
 end
 

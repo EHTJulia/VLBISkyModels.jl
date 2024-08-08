@@ -30,22 +30,22 @@ end
 end
 
 @inline function nuft(A, b::IntensityMap)
-    return nuft(A, baseimage(b))
+    return _nuft(A, baseimage(b))
 end
 
 @inline function nuft(A, b::AbstractArray{<:StokesParams})
-    I = _nuft(A, stokes(b, :I))
-    Q = _nuft(A, stokes(b, :Q))
-    U = _nuft(A, stokes(b, :U))
-    V = _nuft(A, stokes(b, :V))
+    I = _nuft(A, parent(stokes(b, :I)))
+    Q = _nuft(A, parent(stokes(b, :Q)))
+    U = _nuft(A, parent(stokes(b, :U)))
+    V = _nuft(A, parent(stokes(b, :V)))
     return StructArray{StokesParams{eltype(I)}}((; I, Q, U, V))
 end
 
 @inline function nuft(A, b::StokesIntensityMap)
-    I = _nuft(A, stokes(b, :I))
-    Q = _nuft(A, stokes(b, :Q))
-    U = _nuft(A, stokes(b, :U))
-    V = _nuft(A, stokes(b, :V))
+    I = _nuft(A, parent(stokes(b, :I)))
+    Q = _nuft(A, parent(stokes(b, :Q)))
+    U = _nuft(A, parent(stokes(b, :U)))
+    V = _nuft(A, parent(stokes(b, :V)))
     return StructArray{StokesParams{eltype(I)}}((; I, Q, U, V))
 end
 
