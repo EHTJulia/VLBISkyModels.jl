@@ -55,7 +55,8 @@ for us.
 Currently only the 0,1,3 order kernels are implemented.
 """
 struct BSplinePulse{N} <: Pulse end
-@inline ω(::BSplinePulse{N}, u) where {N} = complex(sinc(u)^(N + 1))
+@inline ω(::BSplinePulse{N}, u) where {N} = complex(Base.literal_pow(^, sinc(u),
+                                                                     Val((N + 1))))
 @inline κflux(::BSplinePulse) = 1.0
 
 @inline κ(::BSplinePulse{0}, x::T) where {T} = abs(x) < 0.5 ? one(T) : zero(T)
