@@ -7,3 +7,4 @@
 /test/Manifest.toml
 examples/Manifest.toml
 .vscode/launch.json
+.vscode/settings.json
