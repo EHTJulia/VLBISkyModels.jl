@@ -135,7 +135,7 @@ end
 
 # 1.7x Enzyme fails (GC?) so we skip this.
 if VERSION >= v"1.8"
-    function testgrad(f, args...; atol=1e-5, rtol=atol > 0 ? 0 : 1e-5)
+    function testgrad(f, args...; atol=1e-8, rtol=1e-5)
         gz = Zygote.gradient(f, args...)
         fdm = central_fdm(5, 1)
         gf = grad(fdm, f, args...)
