@@ -15,6 +15,7 @@ using ForwardDiff
 using Enzyme
 using LinearAlgebra
 using Downloads
+using BenchmarkTools
 
 function FiniteDifferences.to_vec(k::IntensityMap)
     v, b = to_vec(DD.data(k))

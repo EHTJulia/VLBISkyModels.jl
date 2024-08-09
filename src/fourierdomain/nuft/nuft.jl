@@ -80,20 +80,23 @@ function plan_indices(imgdomain::AbstractRectiGrid{<:Tuple{X,Y,Fr}}, visdomain::
     return (iminds, visinds)
 end
 
+# For only spatial case
+function plan_indices(imgdomain::AbstractRectiGrid{<:Tuple{X,Y}}, visdomain::UnstructuredDomain)
+    return (0,0)
+end
+
 # Function has been modified to process imgdomain/visdomain with Ti or Fr or both.
 # It calls the new plan_nuft  when Ti or Fr is present or else calls
 # the old spatial function
 function create_forward_plan(algorithm::NUFT, imgdomain::AbstractRectiGrid, visdomain::UnstructuredDomain)
     phases = make_phases(algorithm, imgdomain, visdomain)
-    if hasproperty(imgdomain, :Ti) || hasproperty(imgdomain, :Fr) && hasproperty(visdomain, :Ti) || hasproperty(visdomain, :Fr)
-        indices = plan_indices(imgdomain, visdomain)
-        plans = plan_nuft(algorithm, imgdomain, visdomain, indices)
-        return NUFTPlan(algorithm, plans, phases, indices, size(visdomain)[1])
+    indices = plan_indices(imgdomain, visdomain)
+    if hasproperty(imgdomain, :Ti) || hasproperty(imgdomain, :Fr)
+        plan = plan_nuft(algorithm, imgdomain, visdomain, indices)
     else
-        indices =  Vector{Tuple{Int, Int}}()
-        plan = plan_nuft_spatial(algorithm, imgdomain.X, imgdomain.Y, visdomain.U, visdomain.V)
-        return NUFTPlan(algorithm, plan, phases, indices, size(visdomain)[1])
+        plan = plan_nuft_spatial(algorithm, imgdomain, visdomain)
     end
+    return NUFTPlan(algorithm, plan, phases, indices, size(visdomain)[1])
 end
 
 # Added plan indices and totalvis points to the NUFTPlan in this function

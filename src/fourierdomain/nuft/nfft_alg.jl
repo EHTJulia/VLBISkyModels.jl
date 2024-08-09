@@ -119,15 +119,17 @@ end
 """
 plan_nuft for only spatial part, no Ti or Fr
 """
-function plan_nuft_spatial(alg::NFFTAlg, X, Y, U, V)
-    uv2 = similar(U, (2, length(U)))
-    dx = step(X)
-    dy = step(Y)
+function plan_nuft_spatial(alg::NFFTAlg, imagegrid::AbstractRectiGrid, visdomain::UnstructuredDomain)
+    visp = domainpoints(visdomain)
+    uv2 = similar(visp.U, (2, length(visdomain)))
+    dpx = pixelsizes(imagegrid)
+    dx = dpx.X
+    dy = dpx.Y
     # Here we flip the sign because the NFFT uses the -2pi convention
-    uv2[1,:] .= -U * dx
-    uv2[2,:] .= -V * dy
+    uv2[1, :] .= -visp.U * dx
+    uv2[2, :] .= -visp.V * dy
     (; m, σ, window, precompute, blocking, sortNodes, storeDeconvolutionIdx, fftflags) = alg
-    plan = plan_nfft(uv2, (length(X), length(Y)); m, σ, window, precompute, blocking, sortNodes, storeDeconvolutionIdx, fftflags)
+    plan = plan_nfft(uv2, (size(imagegrid)[1],size(imagegrid)[2]); m, σ, window, precompute, blocking, sortNodes, storeDeconvolutionIdx, fftflags)
     return plan
 end
 
@@ -142,14 +144,14 @@ function plan_nuft(alg::NFFTAlg, imagegrid::AbstractRectiGrid, visdomain::Unstru
     iminds, visinds = indices
 
     uv = UnstructuredDomain(points[visinds[1]], executor(visdomain), header(visdomain))
-    tplan = plan_nuft_spatial(alg, imagegrid.X, imagegrid.Y, uv.U, uv.V)
+    tplan = plan_nuft_spatial(alg, imagegrid, uv)
     plans = Dict{typeof(iminds[1]), typeof(tplan)}()
 
     for i in eachindex(iminds, visinds)
         imind = iminds[i]
         visind = visinds[i]
         uv = UnstructuredDomain(points[visind], executor(visdomain), header(visdomain))
-        plans[imind...] = plan_nuft_spatial(alg, imagegrid.X, imagegrid.Y, uv.U, uv.V)
+        plans[imind...] = plan_nuft_spatial(alg, imagegrid, uv)
     end
 
     return plans
