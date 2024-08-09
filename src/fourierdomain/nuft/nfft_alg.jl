@@ -137,9 +137,7 @@ end
 plan_nuft_spatial functions mapped to times Ti and frequencies Fr 
 """
 function plan_nuft(alg::NFFTAlg, imagegrid::AbstractRectiGrid, visdomain::UnstructuredDomain, indices::Tuple)
-    #if hasproperty(imgdomain, :Ti) && hasproperty(imgdomain, :Fr) && hasproperty(visdomain, :Ti) && hasproperty(visdomain, :Fr)
-    #    check_image_uv(imagegrid, visdomain)  # Check grid is consistent in time and frequency
-    #end
+    # check_image_uv(imagegrid, visdomain) # Check if Ti or Fr in visdomain are subset of imgdomain Ti or Fr if present
     points = domainpoints(visdomain)
     iminds, visinds = indices
 
