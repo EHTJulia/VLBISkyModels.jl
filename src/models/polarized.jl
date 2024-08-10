@@ -18,12 +18,12 @@ Constructs an `IntensityMap` from four maps for I, Q, U, V.
                             U::IntensityMap, V::IntensityMap)
     _check_grid(I, Q, U, V)
 
-    I = baseimage(I)
-    Q = baseimage(Q)
-    U = baseimage(U)
-    V = baseimage(V)
+    pI = baseimage(I)
+    pQ = baseimage(Q)
+    pU = baseimage(U)
+    pV = baseimage(V)
 
-    simg = StructArray{StokesParams{eltype(I)}}(; I, Q, U, V)
+    simg = StructArray{StokesParams{eltype(pI)}}((I=pI, Q=pQ, U=pU, V=pV))
     return IntensityMap(simg, axisdims(I), refdims(I), name(stokes(img, :I)))
 end
 
