@@ -140,9 +140,7 @@ function testgrad(f, x; atol=1e-8, rtol=1e-5)
     autodiff(Enzyme.Reverse, Const(f), Active, Duplicated(x, dx))
     fdm = central_fdm(5, 1)
     gf = grad(fdm, f, x)
-    map(gz, gf) do dgz, dgf
-        @test isapprox(dgz, dgf; atol, rtol)
-    end
+    @test isapprox(dx, gf; atol, rtol)
 end
 
 @testset "Primitive models" begin
