@@ -215,7 +215,7 @@ The arguments are:
 
 """
 function PoincareSphere2Map(I, p, X, grid)
-    pimgI = I.*p
+    pimgI = I .* p
     stokesI = I
     stokesQ = pimgI .* X[1]
     stokesU = pimgI .* X[2]
