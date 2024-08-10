@@ -1,7 +1,7 @@
 using RecipesBase
 using Printf
 
-@recipe function f(image::Union{<:StokesIntensityMap,<:IntensityMap}; uvscale=rad2μas)
+@recipe function f(image::IntensityMap; uvscale=rad2μas)
     #Define some constants
     #Construct the image grid in μas
     (; X, Y) = image
@@ -16,7 +16,7 @@ using Printf
 
     tickfontsize --> 11
     guidefontsize --> 14
-    if typeof(image) <: Union{<:StokesIntensityMap,<:IntensityMap{<:StokesParams}}
+    if typeof(image) <: IntensityMap{<:StokesParams}
 
         # get the mean linear pol
         maxI = maximum(stokes(image, :I))

@@ -34,5 +34,5 @@ end
     include("polarized.jl")
     include("utility.jl")
     include("viz.jl")
-    include("stokesintensitymap.jl")
+    # include("stokesintensitymap.jl")
 end

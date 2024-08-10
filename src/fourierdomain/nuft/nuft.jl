@@ -33,7 +33,7 @@ end
     return _nuft(A, baseimage(b))
 end
 
-@inline function nuft(A, b::AbstractArray{<:StokesParams})
+@inline function nuft(A, b::IntensityMap{<:StokesParams})
     I = _nuft(A, parent(stokes(b, :I)))
     Q = _nuft(A, parent(stokes(b, :Q)))
     U = _nuft(A, parent(stokes(b, :U)))
@@ -41,13 +41,13 @@ end
     return StructArray{StokesParams{eltype(I)}}((; I, Q, U, V))
 end
 
-@inline function nuft(A, b::StokesIntensityMap)
-    I = _nuft(A, parent(stokes(b, :I)))
-    Q = _nuft(A, parent(stokes(b, :Q)))
-    U = _nuft(A, parent(stokes(b, :U)))
-    V = _nuft(A, parent(stokes(b, :V)))
-    return StructArray{StokesParams{eltype(I)}}((; I, Q, U, V))
-end
+# @inline function nuft(A, b::StokesIntensityMap)
+#     I = _nuft(A, parent(stokes(b, :I)))
+#     Q = _nuft(A, parent(stokes(b, :Q)))
+#     U = _nuft(A, parent(stokes(b, :U)))
+#     V = _nuft(A, parent(stokes(b, :V)))
+#     return StructArray{StokesParams{eltype(I)}}((; I, Q, U, V))
+# end
 
 include(joinpath(@__DIR__, "nfft_alg.jl"))
 

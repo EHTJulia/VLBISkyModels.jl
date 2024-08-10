@@ -13,7 +13,7 @@ and visibility location. The image model is
 where `Iᵢⱼ` are the flux densities of the image `img` and κ is the intensity function for the
 `kernel`.
 """
-struct ContinuousImage{A<:IntensityMapTypes,P} <: AbstractModel
+struct ContinuousImage{A<:IntensityMap,P} <: AbstractModel
     """
     Discrete representation of the image.
     """
@@ -31,9 +31,6 @@ function Base.show(io::IO, img::ContinuousImage{A,P}) where {A,P}
     return print(io, "ContinuousImage{$sA, $P}($(size(img)))")
 end
 
-function ComradeBase.ispolarized(::Type{<:ContinuousImage{A}}) where {A<:StokesIntensityMap}
-    return IsPolarized()
-end
 function ComradeBase.ispolarized(::Type{<:ContinuousImage{A}}) where {A<:IntensityMap{<:StokesParams}}
     return IsPolarized()
 end
@@ -60,7 +57,7 @@ Base.axes(m::ContinuousImage) = axes(parent(m))
 ComradeBase.domainpoints(m::ContinuousImage) = domainpoints(parent(m))
 ComradeBase.axisdims(m::ContinuousImage) = axisdims(parent(m))
 
-function ContinuousImage(img::IntensityMapTypes, pulse::Pulse)
+function ContinuousImage(img::IntensityMap, pulse::Pulse)
     return ContinuousImage{typeof(img),typeof(pulse)}(img, pulse)
 end
 

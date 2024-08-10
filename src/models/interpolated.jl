@@ -35,7 +35,7 @@ end
 radialextent(m::InterpolatedModel) = radialextent(m.model)
 flux(m::InterpolatedModel) = flux(m.model)
 
-function build_intermodel(img::IntensityMapTypes, plan, alg::FFTAlg, pulse=DeltaPulse())
+function build_intermodel(img::IntensityMap, plan, alg::FFTAlg, pulse=DeltaPulse())
     vis = applyft(plan, img)
     grid = axisdims(img)
     griduv = build_padded_uvgrid(grid, alg)

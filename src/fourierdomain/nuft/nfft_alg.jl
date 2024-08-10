@@ -31,7 +31,7 @@ Base.@kwdef struct NFFTAlg{T,N,F} <: NUFT
     fftflags::F = FFTW.MEASURE
 end
 
-function applyft(p::AbstractNUFTPlan, img::Union{AbstractArray,StokesIntensityMap})
+function applyft(p::AbstractNUFTPlan, img::AbstractArray)
     vis = nuft(getplan(p), img)
     vis .= vis .* getphases(p)
     return vis
@@ -101,18 +101,18 @@ function _nuft!(out, A, b)
     return nothing
 end
 
-function ChainRulesCore.rrule(::typeof(_nuft), A::NFFTPlan, b)
-    pr = ChainRulesCore.ProjectTo(b)
-    vis = nuft(A, b)
-    function nuft_pullback(Δy)
-        Δf = NoTangent()
-        dy = similar(vis)
-        dy .= unthunk(Δy)
-        ΔA = @thunk(pr(A' * dy))
-        return Δf, NoTangent(), ΔA
-    end
-    return vis, nuft_pullback
-end
+# function ChainRulesCore.rrule(::typeof(_nuft), A::NFFTPlan, b)
+#     pr = ChainRulesCore.ProjectTo(b)
+#     vis = nuft(A, b)
+#     function nuft_pullback(Δy)
+#         Δf = NoTangent()
+#         dy = similar(vis)
+#         dy .= unthunk(Δy)
+#         ΔA = @thunk(pr(A' * dy))
+#         return Δf, NoTangent(), ΔA
+#     end
+#     return vis, nuft_pullback
+# end
 
 #using EnzymeRules: ConfigWidth, needs_prima
 function EnzymeRules.augmented_primal(config, ::Const{typeof(_nuft!)}, ::Type{<:Const}, out,

@@ -85,7 +85,7 @@ function padimage(img::IntensityMap, alg::FFTAlg)
     return PaddedView(zero(eltype(img)), img, (nny, nnx))
 end
 
-function padimage(img::Union{StokesIntensityMap,IntensityMap{<:StokesParams}}, alg::FFTAlg)
+function padimage(img::IntensityMap{<:StokesParams}, alg::FFTAlg)
     pI = padimage(stokes(img, :I), alg)
     pQ = padimage(stokes(img, :Q), alg)
     pU = padimage(stokes(img, :U), alg)
@@ -107,7 +107,7 @@ function applyft(plan::FFTPlan, img::AbstractArray{<:Number})
 end
 
 function applyft(plan::FFTPlan,
-                 img::Union{AbstractArray{<:StokesParams},StokesIntensityMap})
+                 img::AbstractArray{<:StokesParams})
     visI = applyft(plan, stokes(img, :I))
     visQ = applyft(plan, stokes(img, :Q))
     visU = applyft(plan, stokes(img, :U))
@@ -162,7 +162,7 @@ ForwardDiff.npartials(x::Complex{<:ForwardDiff.Dual}) = ForwardDiff.npartials(x.
 This is so ForwardDiff works with FFTW. I am very harsh on the `x` type because of type piracy.
 =#
 function Base.:*(p::AbstractFFTs.Plan,
-                 x::PaddedView{<:ForwardDiff.Dual{T,V,P},N,I,<:IntensityMapTypes}) where {T,
+                 x::PaddedView{<:ForwardDiff.Dual{T,V,P},N,I,<:IntensityMap}) where {T,
                                                                                           V,
                                                                                           P,
                                                                                           N,
