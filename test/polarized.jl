@@ -215,7 +215,7 @@ end
     pimg = PolExp2Map(randn(24, 24), randn(24, 24), randn(24, 24), randn(24, 24), g)
     @info typeof(pimg)
     @test mapreduce(*, pimg) do x
-        v =  (x.I^2 >= x.Q^2 + x.U^2 + x.V^2)
+        v = (x.I^2 >= x.Q^2 + x.U^2 + x.V^2)
         return v
     end
 end

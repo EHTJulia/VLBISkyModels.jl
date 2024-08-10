@@ -76,7 +76,6 @@ function testft_cimg(m, atol=1e-4)
     vnf = visibilitymap(m, gnf)
     vdf = visibilitymap(m, gdf)
 
-
     @test isapprox(maximum(abs, vdf .- vnf), 0, atol=atol)
     @test isapprox(maximum(abs, vff .- vdf), 0, atol=atol)
     gff = nothing
@@ -602,12 +601,11 @@ end
     @test convolved(m, Gaussian()) == convolved(Gaussian(), m)
 
     foo(x) = sum(abs2,
-                        VLBISkyModels.visibilitymap_analytic(MultiComponentModel(Gaussian(),
-                                                                                 @view(x[:,1]),
-                                                                                 @view(x[:,2]),
-                                                                                 @view(x[:,3])
-                                                                                ),
-                                                             guv))
+                 VLBISkyModels.visibilitymap_analytic(MultiComponentModel(Gaussian(),
+                                                                          @view(x[:, 1]),
+                                                                          @view(x[:, 2]),
+                                                                          @view(x[:, 3])),
+                                                      guv))
     x = randn(10, 4)
     foo(x)
     testgrad(foo, x)

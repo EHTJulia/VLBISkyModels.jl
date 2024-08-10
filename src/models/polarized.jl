@@ -32,7 +32,6 @@ end
     return IntensityMap(simg, grid)
 end
 
-
 """
     $(TYPEDEF)
 

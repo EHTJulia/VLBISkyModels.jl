@@ -163,10 +163,10 @@ This is so ForwardDiff works with FFTW. I am very harsh on the `x` type because 
 =#
 function Base.:*(p::AbstractFFTs.Plan,
                  x::PaddedView{<:ForwardDiff.Dual{T,V,P},N,I,<:IntensityMap}) where {T,
-                                                                                          V,
-                                                                                          P,
-                                                                                          N,
-                                                                                          I}
+                                                                                     V,
+                                                                                     P,
+                                                                                     N,
+                                                                                     I}
     M = typeof(ForwardDiff.value(first(x)))
     cache = Matrix{M}(undef, size(x)...)
     cache .= ForwardDiff.value.(x)
