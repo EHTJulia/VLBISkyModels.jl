@@ -114,7 +114,6 @@ function ChainRulesCore.rrule(::typeof(_nuft), A::NFFTPlan, b)
     return vis, nuft_pullback
 end
 
-using EnzymeCore: EnzymeRules, Const, Active, Duplicated
 #using EnzymeRules: ConfigWidth, needs_prima
 function EnzymeRules.augmented_primal(config, ::Const{typeof(_nuft!)}, ::Type{<:Const}, out,
                                       A::Const, b)

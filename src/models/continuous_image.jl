@@ -111,7 +111,7 @@ convolved(cimg::AbstractModel, m::ContinuousImage) = convolved(m, cimg)
 #     return ModifiedModel{typeof(m), typeof(t)}(m, t)
 # end
 
-function visibilitymap_numeric(m::ContinuousImage, grid::AbstractFourierDualDomain)
+@inline function visibilitymap_numeric(m::ContinuousImage, grid::AbstractFourierDualDomain)
     # We need to make sure that the grid is the same size as the image
     checkgrid(axisdims(m), imgdomain(grid))
     img = parent(m)
@@ -131,18 +131,6 @@ function applypulse!(vis, pulse, gfour::AbstractFourierDualDomain)
     return vis
 end
 
-function ChainRulesCore.rrule(::typeof(applypulse!), vis, pulse, grid)
-    out = applypulse!(vis, pulse, grid)
-    pv = ProjectTo(vis)
-    function __applypulse!_pb(Δ)
-        griduv = visdomain(grid)
-        dx, dy = pixelsizes(imgdomain(grid))
-        mp = stretched(pulse, dx, dy)
-        Δvis = unthunk(Δ) .* conj.(visibility_point.(Ref(mp), domainpoints(griduv)))
-        return NoTangent(), pv(Δvis), NoTangent(), NoTangent()
-    end
-    return out, __applypulse!_pb
-end
 
 # Make a special pass through for this as well
 function visibilitymap_numeric(m::ContinuousImage,
@@ -169,47 +157,14 @@ function visibilitymap_numeric(m::ModifiedModel{M,T},
     ispol = ispolarized(M)
     vbase = visibilitymap_numeric(m.model, p)
     puv = visdomain(p)
-    return _apply_scaling!(ispol, m.transform, vbase, puv.U, puv.V)
+    _apply_scaling!(ispol, m.transform, vbase, puv.U, puv.V)
+    return vbase
 end
 
-function _apply_scaling!(mbase, t::Tuple, vbase, u, v)
+@inline function _apply_scaling!(mbase, t::Tuple, vbase, u, v)
     # out = similar(vbase)
-    out = vbase
-    _apply_scaling!!(parent(out), mbase, t, parent(vbase), u, v)
-    return out
-end
-
-function _apply_scaling!!(out, mbase, t::Tuple, vbase, u, v)
+    pvbase = parent(vbase)
     uc = unitscale(Complex{eltype(u)}, mbase)
-    out .= last.(modify_uv.(Ref(mbase), Ref(t), u, v, Ref(uc))) .* vbase
-    # for i in eachindex(out, u, v, vbase)
-    #     out[i] = last(modify_uv(mbase, t, u[i], v[i], uc)) * vbase[i]
-    # end
+    pvbase .= last.(modify_uv.(Ref(mbase), Ref(t), u, v, Ref(uc))) .* pvbase
     return nothing
-end
-
-function ChainRulesCore.rrule(::typeof(_apply_scaling), mbase, t::Tuple, vbase, u, v)
-    vis = _apply_scaling(mbase, t, vbase, u, v)
-    pvbase = ProjectTo(vbase)
-    pu = ProjectTo(u)
-    pv = ProjectTo(v)
-    function _apply_scaling_pullback(Δ)
-        out = similar(vis)
-        Δout = similar(vis)
-        Δout .= unthunk(Δ)
-        Δvbase = zero(vbase)
-        Δu = zero(u)
-        Δv = zero(v)
-        d = autodiff(Reverse, _apply_scaling!, Const,
-                     Duplicated(out, Δout),
-                     Const(mbase),
-                     Active(t),
-                     Duplicated(vbase, Δvbase),
-                     Duplicated(u, Δu),
-                     Duplicated(v, Δv))
-        dt = d[1][3]
-        ttm = map(x -> Tangent{typeof(x)}(; ntfromstruct(x)...), dt)
-        return NoTangent(), NoTangent(), ttm, pvbase(Δvbase), pu(Δu), pv(Δv)
-    end
-    return vis, _apply_scaling_pullback
 end
