@@ -27,9 +27,9 @@ Constructs an `IntensityMap` from four maps for I, Q, U, V.
 end
 
 @inline function stokes_intensitymap(I::AbstractArray, Q::AbstractArray,
-                            U::AbstractArray, V::AbstractArray,
-                            grid::AbstractRectiGrid)
-    simg = StructArray{StokesParams{eltype(I)}}((;I, Q, U, V))
+                                     U::AbstractArray, V::AbstractArray,
+                                     grid::AbstractRectiGrid)
+    simg = StructArray{StokesParams{eltype(I)}}((; I, Q, U, V))
     return IntensityMap(simg, grid)
 end
 
