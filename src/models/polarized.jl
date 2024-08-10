@@ -8,7 +8,6 @@ function _check_grid(I::IntensityMap, Q::IntensityMap, U::IntensityMap, V::Inten
     return axisdims(I) == axisdims(Q) == axisdims(U) == axisdims(V)
 end
 
-
 """
     stokes_intensitymap(I, Q, U, V)
 
