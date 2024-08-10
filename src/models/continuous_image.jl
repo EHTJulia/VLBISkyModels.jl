@@ -128,7 +128,6 @@ function applypulse!(vis, pulse, gfour::AbstractFourierDualDomain)
     return vis
 end
 
-
 # Make a special pass through for this as well
 function visibilitymap_numeric(m::ContinuousImage,
                                grid::FourierDualDomain{GI,GV,<:FFTAlg}) where {GI,GV}
