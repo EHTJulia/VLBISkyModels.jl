@@ -13,7 +13,7 @@ end
 Constructs an `IntensityMap` from four maps for I, Q, U, V.
 """
 @inline function stokes_intensitymap(I::IntensityMap, Q::IntensityMap,
-                            U::IntensityMap, V::IntensityMap)
+                                     U::IntensityMap, V::IntensityMap)
     _check_grid(I, Q, U, V)
 
     pI = baseimage(I)
