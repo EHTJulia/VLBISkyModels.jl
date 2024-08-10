@@ -22,7 +22,7 @@ Constructs an `IntensityMap` from four maps for I, Q, U, V.
     pV = baseimage(V)
 
     simg = StructArray{StokesParams{eltype(pI)}}((I=pI, Q=pQ, U=pU, V=pV))
-    return IntensityMap(simg, axisdims(I), refdims(I), name(stokes(img, :I)))
+    return IntensityMap(simg, axisdims(I), refdims(I), name(I))
 end
 
 @inline function stokes_intensitymap(I::AbstractArray, Q::AbstractArray,
