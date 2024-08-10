@@ -1,3 +1,5 @@
+Enzyme.API.runtimeActivity!(true)
+
 function testmodel(m::VLBISkyModels.AbstractModel, npix=512, atol=1e-4)
     @info "Testing $(m)"
     Plots.plot(m)
@@ -133,19 +135,13 @@ end
     end
 end
 
-# 1.7x Enzyme fails (GC?) so we skip this.
-if VERSION >= v"1.8"
-    function testgrad(f, args...; atol=1e-8, rtol=1e-5)
-        gz = Zygote.gradient(f, args...)
-        fdm = central_fdm(5, 1)
-        gf = grad(fdm, f, args...)
-        map(gz, gf) do dgz, dgf
-            @test isapprox(dgz, dgf; atol, rtol)
-        end
-    end
-else
-    function testgrad(f, x)
-        return nothing
+function testgrad(f, x; atol=1e-8, rtol=1e-5)
+    dx = Enzyme.make_zero(x)
+    autodiff(Enzyme.Reverse, Const(f), Active, Duplicated(x, dx))
+    fdm = central_fdm(5, 1)
+    gf = grad(fdm, f, x)
+    map(gz, gf) do dgz, dgf
+        @test isapprox(dgz, dgf; atol, rtol)
     end
 end
 

@@ -102,7 +102,7 @@ function ComradeBase.flux(img::StokesIntensityMap{T}) where {T}
                         flux(stokes(img, :U)),
                         flux(stokes(img, :V)))
 end
-VLBISkyModels.centroid(m::StokesIntensityMap) = centroid(stokes(m, :I))
+@inline VLBISkyModels.centroid(m::StokesIntensityMap) = centroid(stokes(m, :I))
 
 # simple check to ensure that the four grids are equal across stokes parameters
 function check_grid(I::IntensityMap, Q::IntensityMap, U::IntensityMap, V::IntensityMap)
