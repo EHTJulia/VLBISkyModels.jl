@@ -2,7 +2,6 @@ export PolarizedModel, coherencymatrix, PoincareSphere2Map, PolExp2Map, stokes_i
 
 import ComradeBase: AbstractPolarizedModel, m̆, evpa, CoherencyMatrix, StokesParams
 
-
 # simple check to ensure that the four grids are equal across stokes parameters
 function _check_grid(I::IntensityMap, Q::IntensityMap, U::IntensityMap, V::IntensityMap)
     return axisdims(I) == axisdims(Q) == axisdims(U) == axisdims(V)
