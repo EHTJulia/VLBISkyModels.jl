@@ -133,13 +133,3 @@ function _summary(io, x::StokesIntensityMap{T,N}) where {T,N}
 end
 
 Base.show(io::IO, img::StokesIntensityMap) = summary(io, img)
-
-function IntensityMap(img::StokesIntensityMap)
-    I = baseimage(stokes(img, :I))
-    Q = baseimage(stokes(img, :Q))
-    U = baseimage(stokes(img, :U))
-    V = baseimage(stokes(img, :V))
-
-    simg = StructArray{StokesParams{eltype(I)}}(; I, Q, U, V)
-    return IntensityMap(simg, axisdims(img), refdims(I), name(stokes(img, :I)))
-end
