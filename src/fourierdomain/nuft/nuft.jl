@@ -25,9 +25,6 @@ function inverse_plan(plan::NUFTPlan)
     return NUFTPlan(plan.alg, plan.plan', inv.(plan.phases))
 end
 
-@inline function nuft(A, b::AbstractArray)
-    return _nuft(A, b)
-end
 
 @inline function nuft(A, b::IntensityMap)
     return _nuft(A, baseimage(b))
