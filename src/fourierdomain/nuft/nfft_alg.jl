@@ -71,11 +71,11 @@ function applyft(p::AbstractNUFTPlan, img::Union{AbstractArray,StokesIntensityMa
     vis .= vis .* getphases(p)
     return vis
 end
+
 """
 This a new function is overloaded to handle when NUFTPlan has plans
 as dictionaries in the case of Ti or Fr case
 """
-
 @inline function applyft(p::NUFTPlan{<:FourierTransform,<:AbstractDict},
                          img::Union{AbstractArray,StokesIntensityMap})
     vis_list = zeros(ComplexF64, p.totalvis)
@@ -92,12 +92,6 @@ as dictionaries in the case of Ti or Fr case
 
     vis_list .= vis_list .* p.phases
     return vis_list
-end
-
-function applyft(p::AbstractNUFTPlan, img::AbstractArray)
-    vis = nuft(getplan(p), img)
-    vis .= vis .* getphases(p)
-    return vis
 end
 
 """

@@ -125,22 +125,6 @@ function inverse_plan(plan::NUFTPlan{<:FourierTransform,<:AbstractDict})
     return NUFTPlan(plan.alg, inverse_plans, inv.(plan.phases), plan.indices, plan.totalvis)
 end
 
-# This a new function is overloaded to handle when NUFTPlan has plans
-# as dictionaries in the case of Ti or Fr case
-function inverse_plan(plan::NUFTPlan{<:FourierTransform,<:AbstractDict})
-    iminds, visinds = plan.indices
-
-    inverse_plans_t = plan.plan[iminds[1]]'
-    inverse_plans = Dict{typeof(iminds[1]),typeof(inverse_plans_t)}()
-
-    for i in eachindex(iminds, visinds)
-        imind = iminds[i]
-        inverse_plans[imind...] = plan.plan[imind...]'
-    end
-
-    return NUFTPlan(plan.alg, inverse_plans, inv.(plan.phases), plan.indices, plan.totalvis)
-end
-
 @inline function nuft(A, b::IntensityMap)
     return _nuft(A, baseimage(b))
 end
