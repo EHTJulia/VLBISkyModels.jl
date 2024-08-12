@@ -66,7 +66,7 @@ function Base.getindex(domain::UnstructuredMap; Ti=nothing, Fr=nothing)
     return UnstructuredMap(points[indices], executor(domain), header(domain))
 end
 
-function applyft(p::AbstractNUFTPlan, img::Union{AbstractArray,StokesIntensityMap})
+function applyft(p::AbstractNUFTPlan, img::Union{AbstractArray})
     vis = nuft(getplan(p), img)
     vis .= vis .* getphases(p)
     return vis
@@ -77,7 +77,7 @@ This a new function is overloaded to handle when NUFTPlan has plans
 as dictionaries in the case of Ti or Fr case
 """
 @inline function applyft(p::NUFTPlan{<:FourierTransform,<:AbstractDict},
-                         img::Union{AbstractArray,StokesIntensityMap})
+                         img::Union{AbstractArray})
     vis_list = zeros(ComplexF64, p.totalvis)
     pimg = baseimage(img)
     plans = p.plan
