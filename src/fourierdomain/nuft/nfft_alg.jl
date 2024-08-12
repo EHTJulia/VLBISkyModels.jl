@@ -66,9 +66,8 @@ function Base.getindex(domain::UnstructuredMap; Ti=nothing, Fr=nothing)
     return UnstructuredMap(points[indices], executor(domain), header(domain))
 end
 
-
-function applyft(p::AbstractNUFTPlan, img::Union{AbstractArray, StokesIntensityMap})
-    vis =  nuft(getplan(p), img)
+function applyft(p::AbstractNUFTPlan, img::Union{AbstractArray,StokesIntensityMap})
+    vis = nuft(getplan(p), img)
     vis .= vis .* getphases(p)
     return vis
 end
@@ -77,7 +76,8 @@ This a new function is overloaded to handle when NUFTPlan has plans
 as dictionaries in the case of Ti or Fr case
 """
 
-@inline function applyft(p::NUFTPlan{<:FourierTransform, <:AbstractDict}, img::Union{AbstractArray, StokesIntensityMap})
+@inline function applyft(p::NUFTPlan{<:FourierTransform,<:AbstractDict},
+                         img::Union{AbstractArray,StokesIntensityMap})
     vis_list = zeros(ComplexF64, p.totalvis)
     pimg = baseimage(img)
     plans = p.plan
@@ -86,10 +86,10 @@ as dictionaries in the case of Ti or Fr case
     for i in eachindex(iminds, visinds)
         imind = iminds[i]
         visind = visinds[i]
-        vis_inner = nuft(plans[imind], @view(pimg[:, :, imind...])) 
-        vis_list[visind] .= vis_inner 
+        vis_inner = nuft(plans[imind], @view(pimg[:, :, imind...]))
+        vis_list[visind] .= vis_inner
     end
-    
+
     vis_list .= vis_list .* p.phases
     return vis_list
 end
@@ -100,12 +100,11 @@ function applyft(p::AbstractNUFTPlan, img::AbstractArray)
     return vis
 end
 
-    
 """
 plan_nuft for only spatial part, no Ti or Fr
 """
 function plan_nuft_spatial(alg::NFFTAlg, imagegrid::AbstractRectiGrid,
-                               visdomain::UnstructuredDomain)
+                           visdomain::UnstructuredDomain)
     visp = domainpoints(visdomain)
     uv2 = similar(visp.U, (2, length(visdomain)))
     dpx = pixelsizes(imagegrid)
@@ -122,14 +121,15 @@ end
 """
 plan_nuft_spatial functions mapped to times Ti and frequencies Fr 
 """
-function plan_nuft(alg::NFFTAlg, imagegrid::AbstractRectiGrid, visdomain::UnstructuredDomain, indices::Tuple)
+function plan_nuft(alg::NFFTAlg, imagegrid::AbstractRectiGrid,
+                   visdomain::UnstructuredDomain, indices::Tuple)
     # check_image_uv(imagegrid, visdomain) # Check if Ti or Fr in visdomain are subset of imgdomain Ti or Fr if present
     points = domainpoints(visdomain)
     iminds, visinds = indices
 
     uv = UnstructuredDomain(points[visinds[1]], executor(visdomain), header(visdomain))
     tplan = plan_nuft_spatial(alg, imagegrid, uv)
-    plans = Dict{typeof(iminds[1]), typeof(tplan)}()
+    plans = Dict{typeof(iminds[1]),typeof(tplan)}()
 
     for i in eachindex(iminds, visinds)
         imind = iminds[i]

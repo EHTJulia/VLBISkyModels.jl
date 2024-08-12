@@ -16,47 +16,47 @@ struct NUFTPlan{A,P,M,I,T} <: AbstractNUFTPlan
     totalvis::T # Total number of visibility points
 end
 
-
 # This functions creates a tuple of vectors 1) what indices in imgdomain
 # correponds to 2) what all indices in the visdomain 
 # The indices tuple will be cached in NUFTPlan
 # Functions are overloaded based on the structure of RectiGrid
-function plan_indices(imgdomain::AbstractRectiGrid{<:Tuple{X,Y,Ti,Fr}}, visdomain::UnstructuredDomain)
-    iminds = Tuple{Int,Int}[] 
+function plan_indices(imgdomain::AbstractRectiGrid{<:Tuple{X,Y,Ti,Fr}},
+                      visdomain::UnstructuredDomain)
+    iminds = Tuple{Int,Int}[]
     visinds = Vector{Int}[]
     vis_points = domainpoints(visdomain)
     Fr = imgdomain.Fr
     Ti = imgdomain.Ti
-    
-    for (j, fr) in pairs(Fr) 
+
+    for (j, fr) in pairs(Fr)
         for (i, ti) in pairs(Ti)
-            push!(iminds, (i,j))
-            push!(visinds, findall(p -> p.Ti==ti && p.Fr==fr, vis_points))
+            push!(iminds, (i, j))
+            push!(visinds, findall(p -> p.Ti == ti && p.Fr == fr, vis_points))
         end
     end
 
     return (iminds, visinds)
-
 end
 
-function plan_indices(imgdomain::AbstractRectiGrid{<:Tuple{X,Y,Fr,Ti}}, visdomain::UnstructuredDomain)
-    iminds = Tuple{Int,Int}[] 
+function plan_indices(imgdomain::AbstractRectiGrid{<:Tuple{X,Y,Fr,Ti}},
+                      visdomain::UnstructuredDomain)
+    iminds = Tuple{Int,Int}[]
     visinds = Vector{Int}[]
     vis_points = domainpoints(visdomain)
     Ti = imgdomain.Ti
     Fr = imgdomain.Fr
 
     for (i, ti) in pairs(Ti)
-        for (j, fr) in pairs(Fr) 
-            push!(iminds, (j,i))
-            push!(visinds, findall(p -> p.Ti==ti && p.Fr==fr, vis_points))
+        for (j, fr) in pairs(Fr)
+            push!(iminds, (j, i))
+            push!(visinds, findall(p -> p.Ti == ti && p.Fr == fr, vis_points))
         end
-    end 
+    end
     return (iminds, visinds)
 end
 
-
-function plan_indices(imgdomain::AbstractRectiGrid{<:Tuple{X,Y,Ti}}, visdomain::UnstructuredDomain)
+function plan_indices(imgdomain::AbstractRectiGrid{<:Tuple{X,Y,Ti}},
+                      visdomain::UnstructuredDomain)
     iminds = Int[]
     visinds = Vector{Int}[]
     vis_points = domainpoints(visdomain)
@@ -64,33 +64,36 @@ function plan_indices(imgdomain::AbstractRectiGrid{<:Tuple{X,Y,Ti}}, visdomain::
 
     for (i, ti) in pairs(Ti)
         push!(iminds, i)
-        push!(visinds, findall(p -> p.Ti==ti, vis_points))
+        push!(visinds, findall(p -> p.Ti == ti, vis_points))
     end
     return (iminds, visinds)
 end
 
-function plan_indices(imgdomain::AbstractRectiGrid{<:Tuple{X,Y,Fr}}, visdomain::UnstructuredDomain)
+function plan_indices(imgdomain::AbstractRectiGrid{<:Tuple{X,Y,Fr}},
+                      visdomain::UnstructuredDomain)
     iminds = Int[]
     visinds = Vector{Int}[]
     vis_points = domainpoints(visdomain)
     Fr = imgdomain.Fr
 
-    for (j, fr) in pairs(Fr) 
+    for (j, fr) in pairs(Fr)
         push!(iminds, j)
-        push!(visinds, findall(p -> p.Fr==fr, vis_points))
+        push!(visinds, findall(p -> p.Fr == fr, vis_points))
     end
     return (iminds, visinds)
 end
 
 # For only spatial case
-function plan_indices(imgdomain::AbstractRectiGrid{<:Tuple{X,Y}}, visdomain::UnstructuredDomain)
-    return (0,0)
+function plan_indices(imgdomain::AbstractRectiGrid{<:Tuple{X,Y}},
+                      visdomain::UnstructuredDomain)
+    return (0, 0)
 end
 
 # Function has been modified to process imgdomain/visdomain with Ti or Fr or both.
 # It calls the new plan_nuft  when Ti or Fr is present or else calls
 # the old spatial function
-function create_forward_plan(algorithm::NUFT, imgdomain::AbstractRectiGrid, visdomain::UnstructuredDomain)
+function create_forward_plan(algorithm::NUFT, imgdomain::AbstractRectiGrid,
+                             visdomain::UnstructuredDomain)
     phases = make_phases(algorithm, imgdomain, visdomain)
     indices = plan_indices(imgdomain, visdomain)
     if hasproperty(imgdomain, :Ti) || hasproperty(imgdomain, :Fr)
@@ -108,38 +111,35 @@ end
 
 # This a new function is overloaded to handle when NUFTPlan has plans
 # as dictionaries in the case of Ti or Fr case
-function inverse_plan(plan::NUFTPlan{<:FourierTransform, <:AbstractDict})
+function inverse_plan(plan::NUFTPlan{<:FourierTransform,<:AbstractDict})
     iminds, visinds = plan.indices
 
     inverse_plans_t = plan.plan[iminds[1]]'
-    inverse_plans = Dict{typeof(iminds[1]), typeof(inverse_plans_t)}()
+    inverse_plans = Dict{typeof(iminds[1]),typeof(inverse_plans_t)}()
 
     for i in eachindex(iminds, visinds)
-        imind=iminds[i]
+        imind = iminds[i]
         inverse_plans[imind...] = plan.plan[imind...]'
     end
 
     return NUFTPlan(plan.alg, inverse_plans, inv.(plan.phases), plan.indices, plan.totalvis)
 end
-
 
 # This a new function is overloaded to handle when NUFTPlan has plans
 # as dictionaries in the case of Ti or Fr case
-function inverse_plan(plan::NUFTPlan{<:FourierTransform, <:AbstractDict})
+function inverse_plan(plan::NUFTPlan{<:FourierTransform,<:AbstractDict})
     iminds, visinds = plan.indices
 
     inverse_plans_t = plan.plan[iminds[1]]'
-    inverse_plans = Dict{typeof(iminds[1]), typeof(inverse_plans_t)}()
+    inverse_plans = Dict{typeof(iminds[1]),typeof(inverse_plans_t)}()
 
     for i in eachindex(iminds, visinds)
-        imind=iminds[i]
+        imind = iminds[i]
         inverse_plans[imind...] = plan.plan[imind...]'
     end
 
     return NUFTPlan(plan.alg, inverse_plans, inv.(plan.phases), plan.indices, plan.totalvis)
 end
-
-
 
 @inline function nuft(A, b::IntensityMap)
     return _nuft(A, baseimage(b))
@@ -152,7 +152,6 @@ end
     V = _nuft(A, parent(stokes(b, :V)))
     return StructArray{StokesParams{eltype(I)}}((; I, Q, U, V))
 end
-
 
 # @inline function nuft(A, b::StokesIntensityMap)
 #     I = _nuft(A, parent(stokes(b, :I)))
