@@ -16,6 +16,7 @@ struct NUFTPlan{A,P,M,I,T} <: AbstractNUFTPlan
     totalvis::T # Total number of visibility points
 end
 
+
 # This functions creates a tuple of vectors 1) what indices in imgdomain
 # correponds to 2) what all indices in the visdomain 
 # The indices tuple will be cached in NUFTPlan
@@ -35,6 +36,7 @@ function plan_indices(imgdomain::AbstractRectiGrid{<:Tuple{X,Y,Ti,Fr}}, visdomai
     end
 
     return (iminds, visinds)
+
 end
 
 function plan_indices(imgdomain::AbstractRectiGrid{<:Tuple{X,Y,Fr,Ti}}, visdomain::UnstructuredDomain)
@@ -52,6 +54,7 @@ function plan_indices(imgdomain::AbstractRectiGrid{<:Tuple{X,Y,Fr,Ti}}, visdomai
     end 
     return (iminds, visinds)
 end
+
 
 function plan_indices(imgdomain::AbstractRectiGrid{<:Tuple{X,Y,Ti}}, visdomain::UnstructuredDomain)
     iminds = Int[]
@@ -149,6 +152,7 @@ end
     V = _nuft(A, parent(stokes(b, :V)))
     return StructArray{StokesParams{eltype(I)}}((; I, Q, U, V))
 end
+
 
 # @inline function nuft(A, b::StokesIntensityMap)
 #     I = _nuft(A, parent(stokes(b, :I)))
