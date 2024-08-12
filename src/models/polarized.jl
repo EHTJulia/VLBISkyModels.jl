@@ -102,10 +102,10 @@ function visibilitymap_analytic(pimg::PolarizedModel, p::AbstractSingleDomain)
     return StructArray{StokesParams{eltype(si)}}((si, sq, su, sv))
 end
 
-function __extract_tangent(m::PolarizedModel)
-    tmI, tmQ, tmU, tmV = __extract_tangent.(split_stokes(m))
-    return Tangent{typeof(m)}(; I=tmI, Q=tmQ, U=tmU, V=tmV)
-end
+# function __extract_tangent(m::PolarizedModel)
+#     tmI, tmQ, tmU, tmV = __extract_tangent.(split_stokes(m))
+#     return Tangent{typeof(m)}(; I=tmI, Q=tmQ, U=tmU, V=tmV)
+# end
 
 function split_stokes(pimg::PolarizedModel)
     return (stokes(pimg, :I), stokes(pimg, :Q), stokes(pimg, :U), stokes(pimg, :V))

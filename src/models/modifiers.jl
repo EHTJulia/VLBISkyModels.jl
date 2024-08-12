@@ -331,22 +331,22 @@ function visibilitymap_analytic(m::ModifiedModel, p::AbstractSingleDomain)
     return vis
 end
 
-function __extract_tangent(dm::ModifiedModel)
-    tm = __extract_tangent(dm.model)
-    dtm = dm.transform
-    ttm = map(x -> Tangent{typeof(x)}(; ntfromstruct(x)...), dtm)
-    return tm = Tangent{typeof(dm)}(; model=tm, transform=ttm)
-end
+# function __extract_tangent(dm::ModifiedModel)
+#     tm = __extract_tangent(dm.model)
+#     dtm = dm.transform
+#     ttm = map(x -> Tangent{typeof(x)}(; ntfromstruct(x)...), dtm)
+#     return tm = Tangent{typeof(dm)}(; model=tm, transform=ttm)
+# end
 
-function __extract_tangent(dm::GeometricModel)
-    ntm = ntfromstruct(dm)
-    if ntm isa NamedTuple{(),Tuple{}}
-        tbm = ZeroTangent()
-    else
-        tbm = Tangent{typeof(dm)}(; ntm...)
-    end
-    return tbm
-end
+# function __extract_tangent(dm::GeometricModel)
+#     ntm = ntfromstruct(dm)
+#     if ntm isa NamedTuple{(),Tuple{}}
+#         tbm = ZeroTangent()
+#     else
+#         tbm = Tangent{typeof(dm)}(; ntm...)
+#     end
+#     return tbm
+# end
 
 """
     $(TYPEDEF)
