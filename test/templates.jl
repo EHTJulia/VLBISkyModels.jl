@@ -9,7 +9,7 @@ function test_template(θ::ComradeBase.AbstractModel; npix=128, fov=120.0,)
     @inferred ComradeBase.radialextent(θ)
     @test ComradeBase.radialextent(θ) isa AbstractFloat
     g = imagepixels(fov, fov, npix, npix)
-    VLBISkyModels.__extract_tangent(θ)
+    # VLBISkyModels.__extract_tangent(θ)
     @inferred intensitymap(θ, g)
     flux(θ)
     return ComradeBase.visanalytic(typeof(θ))

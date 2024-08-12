@@ -10,6 +10,7 @@ using FITSIO
 using DocStringExtensions
 using DelimitedFiles
 using Enzyme, EnzymeCore
+using EnzymeCore: EnzymeRules, Const, Active, Duplicated
 using FFTW
 using FillArrays
 using NFFT
@@ -62,8 +63,7 @@ import ComradeBase: flux, radialextent, intensitymap, intensitymap!,
                     create_vismap, create_imgmap
 
 # Write your package code here.
-include("stokes_image.jl")
-const IntensityMapTypes{T,N} = Union{IntensityMap{T,N},StokesIntensityMap{T,N}}
+# include("stokes_image.jl")
 include(joinpath("fourierdomain", "fourierdomain.jl"))
 include(joinpath("models", "models.jl"))
 include("utility.jl")

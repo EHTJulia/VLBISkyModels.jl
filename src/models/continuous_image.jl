@@ -13,7 +13,7 @@ and visibility location. The image model is
 where `Iᵢⱼ` are the flux densities of the image `img` and κ is the intensity function for the
 `kernel`.
 """
-struct ContinuousImage{A<:IntensityMapTypes,P} <: AbstractModel
+struct ContinuousImage{A<:IntensityMap,P} <: AbstractModel
     """
     Discrete representation of the image.
     """
@@ -31,9 +31,6 @@ function Base.show(io::IO, img::ContinuousImage{A,P}) where {A,P}
     return print(io, "ContinuousImage{$sA, $P}($(size(img)))")
 end
 
-function ComradeBase.ispolarized(::Type{<:ContinuousImage{A}}) where {A<:StokesIntensityMap}
-    return IsPolarized()
-end
 function ComradeBase.ispolarized(::Type{<:ContinuousImage{A}}) where {A<:IntensityMap{<:StokesParams}}
     return IsPolarized()
 end
@@ -60,7 +57,7 @@ Base.axes(m::ContinuousImage) = axes(parent(m))
 ComradeBase.domainpoints(m::ContinuousImage) = domainpoints(parent(m))
 ComradeBase.axisdims(m::ContinuousImage) = axisdims(parent(m))
 
-function ContinuousImage(img::IntensityMapTypes, pulse::Pulse)
+function ContinuousImage(img::IntensityMap, pulse::Pulse)
     return ContinuousImage{typeof(img),typeof(pulse)}(img, pulse)
 end
 
@@ -111,33 +108,24 @@ convolved(cimg::AbstractModel, m::ContinuousImage) = convolved(m, cimg)
 #     return ModifiedModel{typeof(m), typeof(t)}(m, t)
 # end
 
-function visibilitymap_numeric(m::ContinuousImage, grid::AbstractFourierDualDomain)
+@inline function visibilitymap_numeric(m::ContinuousImage, grid::AbstractFourierDualDomain)
     # We need to make sure that the grid is the same size as the image
     checkgrid(axisdims(m), imgdomain(grid))
     img = parent(m)
     vis = applyft(forward_plan(grid), img)
-    return applypulse(vis, m.kernel, grid)
+    return applypulse!(vis, m.kernel, grid)
 end
 
-function applypulse(vis, pulse, gfour::AbstractFourierDualDomain)
+function applypulse!(vis, pulse, gfour::AbstractFourierDualDomain)
     grid = imgdomain(gfour)
     griduv = visdomain(gfour)
     dx, dy = pixelsizes(grid)
     mp = stretched(pulse, dx, dy)
-    return vis .* visibility_point.(Ref(mp), domainpoints(griduv))
-end
-
-function ChainRulesCore.rrule(::typeof(applypulse), vis, pulse, grid)
-    out = applypulse(vis, pulse, grid)
-    pv = ProjectTo(vis)
-    function __applypulse_pb(Δ)
-        griduv = visdomain(grid)
-        dx, dy = pixelsizes(imgdomain(grid))
-        mp = stretched(pulse, dx, dy)
-        Δvis = unthunk(Δ) .* conj.(visibility_point.(Ref(mp), domainpoints(griduv)))
-        return NoTangent(), pv(Δvis), NoTangent(), NoTangent()
-    end
-    return out, __applypulse_pb
+    # we grab the parent array since for some reason Enzyme struggles to see
+    # through the broadcast
+    pvis = parent(vis)
+    pvis .= pvis .* visibility_point.(Ref(mp), domainpoints(griduv))
+    return vis
 end
 
 # Make a special pass through for this as well
@@ -165,45 +153,14 @@ function visibilitymap_numeric(m::ModifiedModel{M,T},
     ispol = ispolarized(M)
     vbase = visibilitymap_numeric(m.model, p)
     puv = visdomain(p)
-    return _apply_scaling(ispol, m.transform, vbase, puv.U, puv.V)
+    _apply_scaling!(ispol, m.transform, vbase, puv.U, puv.V)
+    return vbase
 end
 
-function _apply_scaling(mbase, t::Tuple, vbase, u, v)
-    out = similar(vbase)
-    _apply_scaling!(out, mbase, t, vbase, u, v)
-    return out
-end
-
-function _apply_scaling!(out, mbase, t::Tuple, vbase, u, v)
+@inline function _apply_scaling!(mbase, t::Tuple, vbase, u, v)
+    # out = similar(vbase)
+    pvbase = parent(vbase)
     uc = unitscale(Complex{eltype(u)}, mbase)
-    for i in eachindex(out, u, v, vbase)
-        out[i] = last(modify_uv(mbase, t, u[i], v[i], uc)) * vbase[i]
-    end
+    pvbase .= last.(modify_uv.(Ref(mbase), Ref(t), u, v, Ref(uc))) .* pvbase
     return nothing
-end
-
-function ChainRulesCore.rrule(::typeof(_apply_scaling), mbase, t::Tuple, vbase, u, v)
-    vis = _apply_scaling(mbase, t, vbase, u, v)
-    pvbase = ProjectTo(vbase)
-    pu = ProjectTo(u)
-    pv = ProjectTo(v)
-    function _apply_scaling_pullback(Δ)
-        out = similar(vis)
-        Δout = similar(vis)
-        Δout .= unthunk(Δ)
-        Δvbase = zero(vbase)
-        Δu = zero(u)
-        Δv = zero(v)
-        d = autodiff(Reverse, _apply_scaling!, Const,
-                     Duplicated(out, Δout),
-                     Const(mbase),
-                     Active(t),
-                     Duplicated(vbase, Δvbase),
-                     Duplicated(u, Δu),
-                     Duplicated(v, Δv))
-        dt = d[1][3]
-        ttm = map(x -> Tangent{typeof(x)}(; ntfromstruct(x)...), dt)
-        return NoTangent(), NoTangent(), ttm, pvbase(Δvbase), pu(Δu), pv(Δv)
-    end
-    return vis, _apply_scaling_pullback
 end

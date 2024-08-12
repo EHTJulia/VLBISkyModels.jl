@@ -181,13 +181,13 @@ end
 #     return f.(visibility_point.(Ref(model.m1), u, v), visibility_point.(Ref(model.m2), u, v))
 # end
 
-function __extract_tangent(dm::CompositeModel)
-    m1 = dm.m1
-    m2 = dm.m2
-    tm1 = __extract_tangent(m1)
-    tm2 = __extract_tangent(m2)
-    return Tangent{typeof(dm)}(; m1=tm1, m2=tm2)
-end
+# function __extract_tangent(dm::CompositeModel)
+#     m1 = dm.m1
+#     m2 = dm.m2
+#     tm1 = __extract_tangent(m1)
+#     tm2 = __extract_tangent(m2)
+#     return Tangent{typeof(dm)}(; m1=tm1, m2=tm2)
+# end
 
 # function _visibilitymap(model::AddModel, u::AbstractArray, v::AbstractArray, args...)
 #     return visibilitymap(model.m1, u, v) + visibilitymap(model.m2, u, v)

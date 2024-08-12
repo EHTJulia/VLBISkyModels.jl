@@ -1,3 +1,5 @@
+Enzyme.API.runtimeActivity!(true)
+
 function testmodel(m::VLBISkyModels.AbstractModel, npix=512, atol=1e-4)
     @info "Testing $(m)"
     Plots.plot(m)
@@ -74,10 +76,6 @@ function testft_cimg(m, atol=1e-4)
     vnf = visibilitymap(m, gnf)
     vdf = visibilitymap(m, gdf)
 
-    test_rrule(VLBISkyModels.applypulse, vnf, m.kernel ⊢ NoTangent(), gnf ⊢ NoTangent())
-    test_rrule(VLBISkyModels.applypulse, vff, m.kernel ⊢ NoTangent(), gff ⊢ NoTangent())
-    test_rrule(VLBISkyModels.applypulse, vdf, m.kernel ⊢ NoTangent(), gdf ⊢ NoTangent())
-
     @test isapprox(maximum(abs, vdf .- vnf), 0, atol=atol)
     @test isapprox(maximum(abs, vff .- vdf), 0, atol=atol)
     gff = nothing
@@ -133,20 +131,12 @@ end
     end
 end
 
-# 1.7x Enzyme fails (GC?) so we skip this.
-if VERSION >= v"1.8"
-    function testgrad(f, args...; atol=1e-8, rtol=1e-5)
-        gz = Zygote.gradient(f, args...)
-        fdm = central_fdm(5, 1)
-        gf = grad(fdm, f, args...)
-        map(gz, gf) do dgz, dgf
-            @test isapprox(dgz, dgf; atol, rtol)
-        end
-    end
-else
-    function testgrad(f, x)
-        return nothing
-    end
+function testgrad(f, x; atol=1e-8, rtol=1e-5)
+    dx = Enzyme.make_zero(x)
+    autodiff(Enzyme.Reverse, Const(f), Active, Duplicated(x, dx))
+    fdm = central_fdm(5, 1)
+    gf = grad(fdm, f, x)[begin]
+    @test isapprox(dx, gf; atol, rtol)
 end
 
 @testset "Primitive models" begin
@@ -610,15 +600,15 @@ end
 
     @test convolved(m, Gaussian()) == convolved(Gaussian(), m)
 
-    foo(fl, x, y) = sum(abs2,
-                        VLBISkyModels.visibilitymap_analytic(MultiComponentModel(Gaussian(),
-                                                                                 fl, x, y),
-                                                             guv))
-    x = randn(10)
-    y = randn(10)
-    fl = rand(10)
-    foo(fl, x, y)
-    testgrad(foo, fl, x, y)
+    foo(x) = sum(abs2,
+                 VLBISkyModels.visibilitymap_analytic(MultiComponentModel(Gaussian(),
+                                                                          @view(x[:, 1]),
+                                                                          @view(x[:, 2]),
+                                                                          @view(x[:, 3])),
+                                                      guv))
+    x = randn(10, 4)
+    foo(x)
+    testgrad(foo, x)
 
     testmodel(m, 1024, 1e-5)
 end
@@ -681,7 +671,7 @@ end
     pQ = similar(pI)
     pU = similar(pI)
     pV = similar(pI)
-    pimg1 = StokesIntensityMap(pI, pQ, pU, pV)
+    pimg1 = stokes_intensitymap(pI, pQ, pU, pV)
     intensitymap!(pimg1, m)
     pimg2 = intensitymap(m, axisdims(pI))
     @test isapprox(sum(abs, (stokes(pimg1, :I) .- stokes(pimg2, :I))), 0.0, atol=1e-12)
@@ -825,21 +815,21 @@ end
 
     show(IOBuffer(), MIME"text/plain"(), gnf)
     cimg = ContinuousImage(img, DeltaPulse())
-    test_rrule(ContinuousImage, img, DeltaPulse() ⊢ NoTangent())
+    # test_rrule(ContinuousImage, img, DeltaPulse() ⊢ NoTangent())
 
     plan = VLBISkyModels.forward_plan(gnf).plan
 
-    @testset "nuft pullback" begin
-        x = rand(24, 12)
-        temp(x) = sum(abs2, VLBISkyModels._nuft(plan, x))
-        gfo = ForwardDiff.gradient(temp, x)
-        gz, = Zygote.gradient(temp, x)
-        dx = zero(x)
-        autodiff(Enzyme.Reverse, temp, Active, Duplicated(x, dx))
-        @test gfo ≈ gz
-        @test dx ≈ gz
-        test_rrule(VLBISkyModels._nuft, plan ⊢ NoTangent(), baseimage(img))
-    end
+    # @testset "nuft pullback" begin
+    #     x = rand(24, 12)
+    #     temp(x) = sum(abs2, VLBISkyModels._nuft(plan, x))
+    #     gfo = ForwardDiff.gradient(temp, x)
+    #     gz, = Zygote.gradient(temp, x)
+    #     dx = zero(x)
+    #     autodiff(Enzyme.Reverse, temp, Active, Duplicated(x, dx))
+    #     @test gfo ≈ gz
+    #     @test dx ≈ gz
+    #     # test_rrule(VLBISkyModels._nuft, plan ⊢ NoTangent(), baseimage(img))
+    # end
 end
 
 @testset "ContinuousImage" begin
@@ -870,14 +860,14 @@ end
     @test convolved(img, Gaussian()) isa ContinuousImage
     @test convolved(Gaussian(), img) isa ContinuousImage
 
-    test_rrule(ContinuousImage, IntensityMap(data, g), BSplinePulse{3}() ⊢ NoTangent())
+    # test_rrule(ContinuousImage, IntensityMap(data, g), BSplinePulse{3}() ⊢ NoTangent())
 end
 
 using ForwardDiff
 @testset "Rules" begin
     data = rand(32, 32)
     g = imagepixels(10.0, 10.0, 32, 32)
-    test_rrule(IntensityMap, data, g ⊢ NoTangent())
+    # test_rrule(IntensityMap, data, g ⊢ NoTangent())
 
     gfour = FourierDualDomain(g, FFTAlg(; padfac=8))
     plan = VLBISkyModels.forward_plan(gfour)

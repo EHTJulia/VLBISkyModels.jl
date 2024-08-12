@@ -36,4 +36,4 @@ end
 
 @inline ModifiedModel(z::ZeroModel, ::NTuple{N,<:ModelModifier}) where {N} = z
 
-__extract_tangent(::ZeroModel) = ZeroTangent()
+# __extract_tangent(::ZeroModel) = ZeroTangent()
