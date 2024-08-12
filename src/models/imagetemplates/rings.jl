@@ -42,11 +42,11 @@ struct RingTemplate{R<:AbstractRadial,A<:AbstractAzimuthal} <: AbstractImageTemp
     azimuthal::A
 end
 
-function __extract_tangent(m::RingTemplate)
-    trad = __extract_tangent(m.radial)
-    tazi = __extract_tangent(m.azimuthal)
-    return Tangent{typeof(m)}(; radial=trad, azimuthal=tazi)
-end
+# function __extract_tangent(m::RingTemplate)
+#     trad = __extract_tangent(m.radial)
+#     tazi = __extract_tangent(m.azimuthal)
+#     return Tangent{typeof(m)}(; radial=trad, azimuthal=tazi)
+# end
 
 @inline function intensity_point(d::RingTemplate, p)
     (; X, Y) = p
