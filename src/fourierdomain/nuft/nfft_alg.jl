@@ -36,33 +36,17 @@ end
 #Note: I cannot figure out how to write this function without specifying 
 #nothing to Ti or Fr. I tried kwargs... as well.
 
+# This function should be in ComaradeBase
 function Base.getindex(domain::UnstructuredDomain; Ti=nothing, Fr=nothing)
     points = domainpoints(domain)
     indices = if Ti !== nothing && Fr !== nothing
         findall(p -> (p.Ti == Ti) && (p.Fr == Fr), points)
     elseif Ti !== nothing
         findall(p -> (p.Ti == Ti), points)
-    elseif Fr !== nothing
-        findall(p -> (p.Fr == Fr), points)
     else
-        1:length(points)
+        findall(p -> (p.Fr == Fr), points)
     end
     return UnstructuredDomain(points[indices], executor(domain), header(domain))
-end
-
-# I am not sure if we need the same for UnstructuredMap as well.
-function Base.getindex(domain::UnstructuredMap; Ti=nothing, Fr=nothing)
-    points = domainpoints(domain)
-    indices = if Ti !== nothing && Fr !== nothing
-        findall(p -> (p.Ti == Ti) && (p.Fr == Fr), points)
-    elseif Ti !== nothing
-        findall(p -> (p.Ti == Ti), points)
-    elseif Fr !== nothing
-        findall(p -> (p.Fr == Fr), points)
-    else
-        1:length(points)
-    end
-    return UnstructuredMap(points[indices], executor(domain), header(domain))
 end
 
 function applyft(p::AbstractNUFTPlan, img::Union{AbstractArray})
