@@ -31,7 +31,6 @@ Base.@kwdef struct NFFTAlg{T,N,F} <: NUFT
     fftflags::F = FFTW.MEASURE
 end
 
-
 #This function helps us to lookup UnstructuredDomain at a particular Ti or Fr 
 #visdomain[Ti=T,Fr=F] or visdomain[Ti=T] or visdomain[Fr=F] calls work. 
 #Note: I cannot figure out how to write this function without specifying 
@@ -72,7 +71,6 @@ function applyft(p::AbstractNUFTPlan, img::Union{AbstractArray})
     return vis
 end
 
-
 # This a new function is overloaded to handle when NUFTPlan has plans
 # as dictionaries in the case of Ti or Fr case
 
@@ -93,7 +91,6 @@ end
     return vis_list
 end
 
-
 #plan_nuft for only spatial part, no Ti or Fr
 function plan_nuft_spatial(alg::NFFTAlg, imagegrid::AbstractRectiGrid,
                            visdomain::UnstructuredDomain)
@@ -109,7 +106,6 @@ function plan_nuft_spatial(alg::NFFTAlg, imagegrid::AbstractRectiGrid,
     plan = plan_nfft(uv2, size(imagegrid)[1:2]; reltol, precompute, fftflags)
     return plan
 end
-
 
 #plan_nuft_spatial functions mapped to times Ti and frequencies Fr 
 function plan_nuft(alg::NFFTAlg, imagegrid::AbstractRectiGrid,
