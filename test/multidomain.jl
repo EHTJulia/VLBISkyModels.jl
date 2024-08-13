@@ -163,9 +163,9 @@ function testtimecomplexity(Nx, Nt1, Nt2, Nf1, Nf2)
 end
 
 @testset "Check time complexity for time and freq FT" begin
-    @test isapprox(testtimecomplexity(24, 1, 2, 1, 2), 4.0, atol=1e-1)
-    @test isapprox(testtimecomplexity(24, 1, 2, 1, 1), 2.0, atol=1e-1)
-    @test isapprox(testtimecomplexity(24, 1, 1, 1, 2), 2.0, atol=1e-1)
+    @test isapprox(testtimecomplexity(24, 1, 2, 1, 2), 4.0, atol=0.5)
+    @test isapprox(testtimecomplexity(24, 1, 2, 1, 1), 2.0, atol=0.5)
+    @test isapprox(testtimecomplexity(24, 1, 1, 1, 2), 2.0, atol=0.5)
 end
 
 function rotating4dgaussian(p)

@@ -31,12 +31,12 @@ Base.@kwdef struct NFFTAlg{T,N,F} <: NUFT
     fftflags::F = FFTW.MEASURE
 end
 
-"""
-This function helps us to lookup UnstructuredDomain at a particular Ti or Fr 
-visdomain[Ti=T,Fr=F] or visdomain[Ti=T] or visdomain[Fr=F] calls work. 
-Note: I cannot figure out how to write this function without specifying 
-nothing to Ti or Fr. I tried kwargs... as well.
-"""
+
+#This function helps us to lookup UnstructuredDomain at a particular Ti or Fr 
+#visdomain[Ti=T,Fr=F] or visdomain[Ti=T] or visdomain[Fr=F] calls work. 
+#Note: I cannot figure out how to write this function without specifying 
+#nothing to Ti or Fr. I tried kwargs... as well.
+
 function Base.getindex(domain::UnstructuredDomain; Ti=nothing, Fr=nothing)
     points = domainpoints(domain)
     indices = if Ti !== nothing && Fr !== nothing
@@ -72,10 +72,10 @@ function applyft(p::AbstractNUFTPlan, img::Union{AbstractArray})
     return vis
 end
 
-"""
-This a new function is overloaded to handle when NUFTPlan has plans
-as dictionaries in the case of Ti or Fr case
-"""
+
+# This a new function is overloaded to handle when NUFTPlan has plans
+# as dictionaries in the case of Ti or Fr case
+
 @inline function applyft(p::NUFTPlan{<:FourierTransform,<:AbstractDict},
                          img::Union{AbstractArray})
     vis_list = zeros(ComplexF64, p.totalvis)
@@ -93,9 +93,8 @@ as dictionaries in the case of Ti or Fr case
     return vis_list
 end
 
-"""
-plan_nuft for only spatial part, no Ti or Fr
-"""
+
+#plan_nuft for only spatial part, no Ti or Fr
 function plan_nuft_spatial(alg::NFFTAlg, imagegrid::AbstractRectiGrid,
                            visdomain::UnstructuredDomain)
     visp = domainpoints(visdomain)
@@ -111,9 +110,8 @@ function plan_nuft_spatial(alg::NFFTAlg, imagegrid::AbstractRectiGrid,
     return plan
 end
 
-"""
-plan_nuft_spatial functions mapped to times Ti and frequencies Fr 
-"""
+
+#plan_nuft_spatial functions mapped to times Ti and frequencies Fr 
 function plan_nuft(alg::NFFTAlg, imagegrid::AbstractRectiGrid,
                    visdomain::UnstructuredDomain, indices::Tuple)
     # check_image_uv(imagegrid, visdomain) # Check if Ti or Fr in visdomain are subset of imgdomain Ti or Fr if present
