@@ -214,6 +214,12 @@ end
 radialextent(m::SingleStokes) = radialextent(m.model)
 flux(m::SingleStokes{M,S}) where {M, S} = getproperty(flux(m.model), S)
 
+# Need this since rotations can be funky to we should rotate in polarization
+function ModifiedModel(m::SingleStokes{M, S}, mods::NTuple{N,<:ModelModifier})
+    return SingleStokes(ModifiedModel(m.model, mods), S)
+end
+
+
 """
     PoincareSphere2Map(I, p, X, grid)
     PoincareSphere2Map(I::IntensityMap, p, X)
