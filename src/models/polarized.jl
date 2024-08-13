@@ -192,6 +192,28 @@ end
 #     end
 # end
 
+struct SingleStokes{M, S} <: ComradeAbstractModel
+    model::M
+    function SingleStokes(m, S::Symbol)
+        return new{M, S}(m)
+    end
+end
+
+visanalytic(::Type{<:SingleStokes{M}}) where {M} = visanalytic(typeof(M))
+imanalytic(::Type{<:SingleStokes{M}}) where {M} = imanalytic(typeof(M))
+ispolarized(::Type{<:SingleStokes{M}}) where {M} = NotPolarized()
+
+function ComradeBase.intensity_point(m::SingleStokes{M, S}, p) where {M, S}
+    return getproprerty(intensity_point(m.model, p), S)
+end
+
+function ComradeBase.visibility_point(m::SingleStokes{M, S}, p) where {M, S}
+    return getproprerty(visibility_point(m.model, p), S)
+end
+
+radialextent(m::SingleStokes) = radialextent(m.model)
+flux(m::SingleStokes{M,S}) where {M, S} = getproperty(flux(m.model), S)
+
 """
     PoincareSphere2Map(I, p, X, grid)
     PoincareSphere2Map(I::IntensityMap, p, X)
