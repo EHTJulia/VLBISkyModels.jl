@@ -79,14 +79,13 @@ as dictionaries in the case of Ti or Fr case
 @inline function applyft(p::NUFTPlan{<:FourierTransform,<:AbstractDict},
                          img::Union{AbstractArray})
     vis_list = zeros(ComplexF64, p.totalvis)
-    pimg = baseimage(img)
     plans = p.plan
     iminds, visinds = p.indices
 
     for i in eachindex(iminds, visinds)
         imind = iminds[i]
         visind = visinds[i]
-        vis_inner = nuft(plans[imind], @view(pimg[:, :, imind...]))
+        vis_inner = nuft(plans[imind], @view(img[:, :, imind...]))
         vis_list[visind] .= vis_inner
     end
 
@@ -131,7 +130,6 @@ function plan_nuft(alg::NFFTAlg, imagegrid::AbstractRectiGrid,
         uv = UnstructuredDomain(points[visind], executor(visdomain), header(visdomain))
         plans[imind...] = plan_nuft_spatial(alg, imagegrid, uv)
     end
-
     return plans
 end
 
