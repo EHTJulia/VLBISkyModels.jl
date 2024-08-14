@@ -203,6 +203,7 @@ struct SingleStokes{M,S} <: ComradeBase.AbstractModel
     """
     function SingleStokes(m, S::Symbol)
         !(S ∈ (:I, :Q, :U, :V)) && throw(ArgumentError("Invalid Stokes parameter $S"))
+        M = typeof(m)
         return new{M,S}(m)
     end
 end
