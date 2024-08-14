@@ -61,6 +61,7 @@ struct PolarizedModel{TI,TQ,TU,TV} <: AbstractPolarizedModel
 end
 
 @inline radialextent(m::PolarizedModel) = radialextent(stokes(m, :I))
+@inline flux(m::PolarizedModel) = StokesParams(flux(m.I), flux(m.Q), flux(m.U), flux(m.V))
 
 function Base.show(io::IO, model::PolarizedModel)
     println(io, "PolarizedModel")
