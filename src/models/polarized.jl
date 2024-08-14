@@ -231,7 +231,6 @@ function ModifiedModel(m::SingleStokes{M,:U}, mods::NTuple{N,<:ModelModifier}) w
     return SingleStokes(ModifiedModel(m.model, mods), S)
 end
 
-
 """
     PoincareSphere2Map(I, p, X, grid)
     PoincareSphere2Map(I::IntensityMap, p, X)
