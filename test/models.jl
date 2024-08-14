@@ -680,6 +680,50 @@ end
     @test isapprox(sum(abs, (stokes(pimg1, :V) .- stokes(pimg2, :V))), 0.0, atol=1e-12)
 end
 
+@testset "SingleStokes" begin
+    mI = stretched(MRing((0.2,), (0.1,)), 20.0, 20.0)
+    mQ = 0.2 * stretched(MRing((0.0,), (0.6,)), 20.0, 20.0)
+    mU = 0.2 * stretched(MRing((0.1,), (-0.6,)), 20.0, 20.0)
+    mV = 0.0 * stretched(MRing((0.0,), (-0.6,)), 20.0, 20.0)
+    m = PolarizedModel(mI, mQ, mU, mV)
+
+    msI = SingleStokes(m, :I)
+    msQ = SingleStokes(m, :Q)
+    msU = SingleStokes(m, :U)
+    msV = SingleStokes(m, :V)
+
+    @test_throws error(ArgumentError) SingleStokes(m, :X)
+
+    @test flux(msI) ≈ flux(mI)
+    @test flux(msQ) ≈ flux(mQ)
+    @test flux(msU) ≈ flux(mU)
+    @test flux(msV) ≈ flux(mV)
+
+
+    p = (U=0.5, V=0.1)
+    @test ComradeBase.visibility_point(mI, p) ≈ ComradeBase.visibility_point(msI, p)
+    @test ComradeBase.visibility_point(mQ, p) ≈ ComradeBase.visibility_point(msQ, p)
+    @test ComradeBase.visibility_point(mU, p) ≈ ComradeBase.visibility_point(msU, p)
+    @test ComradeBase.visibility_point(mV, p) ≈ ComradeBase.visibility_point(msV, p)
+
+    @test ComradeBase.intensity_point(mI, p) ≈ ComradeBase.intensity_point(msI, p)
+    @test ComradeBase.intensity_point(mQ, p) ≈ ComradeBase.intensity_point(msQ, p)
+    @test ComradeBase.intensity_point(mU, p) ≈ ComradeBase.intensity_point(msU, p)
+    @test ComradeBase.intensity_point(mV, p) ≈ ComradeBase.intensity_point(msV, p)
+
+    mmod = modify(m, Rotate(π/3))
+    mmodI = SingleStokes(mmod, :I)
+    mmodQ = SingleStokes(mmod, :Q)
+    mmodU = SingleStokes(mmod, :U)
+    mmodV = SingleStokes(mmod, :V)
+
+    @test ComradeBase.visibility_point(mmodI, p) ≈ ComradeBase.visibility_point(mmod, p).I
+    @test ComradeBase.visibility_point(mmodQ, p) ≈ ComradeBase.visibility_point(mmod, p).Q
+    @test ComradeBase.visibility_point(mmodU, p) ≈ ComradeBase.visibility_point(mmod, p).U
+    @test ComradeBase.visibility_point(mmodV, p) ≈ ComradeBase.visibility_point(mmod, p).V
+
+end
+
 @testset "Serialization" begin
     gim = imagepixels(10.0, 10.0, 128, 128)
     u = randn(100) * 0.5

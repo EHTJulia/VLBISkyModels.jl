@@ -1,4 +1,5 @@
-export PolarizedModel, coherencymatrix, PoincareSphere2Map, PolExp2Map, stokes_intensitymap
+export PolarizedModel, coherencymatrix, PoincareSphere2Map, PolExp2Map, stokes_intensitymap,
+       SingleStokes
 
 import ComradeBase: AbstractPolarizedModel, m̆, evpa, CoherencyMatrix, StokesParams
 
@@ -192,10 +193,17 @@ end
 #     end
 # end
 
-struct SingleStokes{M, S} <: ComradeAbstractModel
+struct SingleStokes{M,S} <: ComradeBase.AbstractModel
     model::M
+    """
+       SingleStokes(m::AbstractModel, s::Symbol)
+    Takes a model whose trait `ispolarized` returns `IsPolarized` and extracts a SingleStokes
+    parameter from it. The `s` parameter is the symbol that represents the Stokes parameter
+    e.g., `:I`, `:Q`, `:U`, `:V` for stokes I, Q, U, V respectively.
+    """
     function SingleStokes(m, S::Symbol)
-        return new{M, S}(m)
+        !(S ∈ (:I, :Q, :U, :V)) && throw(ArgumentError("Invalid Stokes parameter $S"))
+        return new{M,S}(m)
     end
 end
 
@@ -203,19 +211,23 @@ visanalytic(::Type{<:SingleStokes{M}}) where {M} = visanalytic(typeof(M))
 imanalytic(::Type{<:SingleStokes{M}}) where {M} = imanalytic(typeof(M))
 ispolarized(::Type{<:SingleStokes{M}}) where {M} = NotPolarized()
 
-function ComradeBase.intensity_point(m::SingleStokes{M, S}, p) where {M, S}
-    return getproprerty(intensity_point(m.model, p), S)
+function ComradeBase.intensity_point(m::SingleStokes{M,S}, p) where {M,S}
+    return getproperty(intensity_point(m.model, p), S)
 end
 
-function ComradeBase.visibility_point(m::SingleStokes{M, S}, p) where {M, S}
-    return getproprerty(visibility_point(m.model, p), S)
+function ComradeBase.visibility_point(m::SingleStokes{M,S}, p) where {M,S}
+    return getproperty(visibility_point(m.model, p), S)
 end
 
 radialextent(m::SingleStokes) = radialextent(m.model)
-flux(m::SingleStokes{M,S}) where {M, S} = getproperty(flux(m.model), S)
+flux(m::SingleStokes{M,S}) where {M,S} = getproperty(flux(m.model), S)
 
 # Need this since rotations can be funky to we should rotate in polarization
-function ModifiedModel(m::SingleStokes{M, S}, mods::NTuple{N,<:ModelModifier})
+function ModifiedModel(m::SingleStokes{M,:Q}, mods::NTuple{N,<:ModelModifier}) where {M,S,N}
+    return SingleStokes(ModifiedModel(m.model, mods), S)
+end
+
+function ModifiedModel(m::SingleStokes{M,:U}, mods::NTuple{N,<:ModelModifier}) where {M,S,N}
     return SingleStokes(ModifiedModel(m.model, mods), S)
 end
 

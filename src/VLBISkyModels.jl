@@ -67,8 +67,9 @@ import ComradeBase: flux, radialextent, intensitymap, intensitymap!,
 include(joinpath("fourierdomain", "fourierdomain.jl"))
 include(joinpath("models", "models.jl"))
 include("utility.jl")
-include("rules.jl")
+# include("rules.jl")
 include(joinpath("visualizations", "vis.jl"))
+include("io.jl")
 
 if !isdefined(Base, :get_extension)
     using Requires
