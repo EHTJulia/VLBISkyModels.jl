@@ -705,7 +705,7 @@ end
     @test ComradeBase.visibility_point(mU, p) ≈ ComradeBase.visibility_point(msU, p)
     @test ComradeBase.visibility_point(mV, p) ≈ ComradeBase.visibility_point(msV, p)
 
-    pI = (X = 0.5, Y = 0.6)
+    pI = (X=0.5, Y=0.6)
     @test ComradeBase.intensity_point(mI, pI) ≈ ComradeBase.intensity_point(msI, pI)
     @test ComradeBase.intensity_point(mQ, pI) ≈ ComradeBase.intensity_point(msQ, pI)
     @test ComradeBase.intensity_point(mU, pI) ≈ ComradeBase.intensity_point(msU, pI)
@@ -726,7 +726,6 @@ end
     @test ComradeBase.intensity_point(mmodQ, pI) ≈ ComradeBase.intensity_point(mmod, pI).Q
     @test ComradeBase.intensity_point(mmodU, pI) ≈ ComradeBase.intensity_point(mmod, pI).U
     @test ComradeBase.intensity_point(mmodV, pI) ≈ ComradeBase.intensity_point(mmod, pI).V
-
 end
 
 @testset "Serialization" begin
