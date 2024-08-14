@@ -692,13 +692,12 @@ end
     msU = SingleStokes(m, :U)
     msV = SingleStokes(m, :V)
 
-    @test_throws error(ArgumentError) SingleStokes(m, :X)
+    @test_throws ArgumentError SingleStokes(m, :X)
 
     @test flux(msI) ≈ flux(mI)
     @test flux(msQ) ≈ flux(mQ)
     @test flux(msU) ≈ flux(mU)
     @test flux(msV) ≈ flux(mV)
-
 
     p = (U=0.5, V=0.1)
     @test ComradeBase.visibility_point(mI, p) ≈ ComradeBase.visibility_point(msI, p)
@@ -706,12 +705,13 @@ end
     @test ComradeBase.visibility_point(mU, p) ≈ ComradeBase.visibility_point(msU, p)
     @test ComradeBase.visibility_point(mV, p) ≈ ComradeBase.visibility_point(msV, p)
 
-    @test ComradeBase.intensity_point(mI, p) ≈ ComradeBase.intensity_point(msI, p)
-    @test ComradeBase.intensity_point(mQ, p) ≈ ComradeBase.intensity_point(msQ, p)
-    @test ComradeBase.intensity_point(mU, p) ≈ ComradeBase.intensity_point(msU, p)
-    @test ComradeBase.intensity_point(mV, p) ≈ ComradeBase.intensity_point(msV, p)
+    pI = (X = 0.5, Y = 0.6)
+    @test ComradeBase.intensity_point(mI, pI) ≈ ComradeBase.intensity_point(msI, pI)
+    @test ComradeBase.intensity_point(mQ, pI) ≈ ComradeBase.intensity_point(msQ, pI)
+    @test ComradeBase.intensity_point(mU, pI) ≈ ComradeBase.intensity_point(msU, pI)
+    @test ComradeBase.intensity_point(mV, pI) ≈ ComradeBase.intensity_point(msV, pI)
 
-    mmod = modify(m, Rotate(π/3))
+    mmod = modify(m, Rotate(π / 3))
     mmodI = SingleStokes(mmod, :I)
     mmodQ = SingleStokes(mmod, :Q)
     mmodU = SingleStokes(mmod, :U)
@@ -721,6 +721,11 @@ end
     @test ComradeBase.visibility_point(mmodQ, p) ≈ ComradeBase.visibility_point(mmod, p).Q
     @test ComradeBase.visibility_point(mmodU, p) ≈ ComradeBase.visibility_point(mmod, p).U
     @test ComradeBase.visibility_point(mmodV, p) ≈ ComradeBase.visibility_point(mmod, p).V
+
+    @test ComradeBase.intensity_point(mmodI, pI) ≈ ComradeBase.intensity_point(mmod, pI).I
+    @test ComradeBase.intensity_point(mmodQ, pI) ≈ ComradeBase.intensity_point(mmod, pI).Q
+    @test ComradeBase.intensity_point(mmodU, pI) ≈ ComradeBase.intensity_point(mmod, pI).U
+    @test ComradeBase.intensity_point(mmodV, pI) ≈ ComradeBase.intensity_point(mmod, pI).V
 
 end
 
