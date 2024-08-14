@@ -223,12 +223,12 @@ radialextent(m::SingleStokes) = radialextent(m.model)
 flux(m::SingleStokes{M,S}) where {M,S} = getproperty(flux(m.model), S)
 
 # Need this since rotations can be funky to we should rotate in polarization
-function ModifiedModel(m::SingleStokes{M,:Q}, mods::NTuple{N,<:ModelModifier}) where {M,S,N}
-    return SingleStokes(ModifiedModel(m.model, mods), S)
+function ModifiedModel(m::SingleStokes{M,:Q}, mods::NTuple{N,<:ModelModifier}) where {M,N}
+    return SingleStokes(ModifiedModel(m.model, mods), :Q)
 end
 
-function ModifiedModel(m::SingleStokes{M,:U}, mods::NTuple{N,<:ModelModifier}) where {M,S,N}
-    return SingleStokes(ModifiedModel(m.model, mods), S)
+function ModifiedModel(m::SingleStokes{M,:U}, mods::NTuple{N,<:ModelModifier}) where {M,N}
+    return SingleStokes(ModifiedModel(m.model, mods), :U)
 end
 
 """
