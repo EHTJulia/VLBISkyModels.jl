@@ -342,8 +342,7 @@ function Makie.plot!(plot::PolImage)
              rotation=rot,
              colorrange=pc,
              color=col,
-             colormap=pcm,
-             )
+             colormap=pcm,)
 
     return plot
 end
