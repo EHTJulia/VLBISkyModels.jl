@@ -49,6 +49,12 @@ function visibility_point(m::MultiComponentModel, p)
     return s
 end
 
+"""
+    load_clean_components(fname::AbstractString, beam=nothing)
+
+Load a clean component model from a file. The file can be a FITS file or a .mod file.
+If the beam argument is not given it will try to extract the beam from the FITS file.
+"""
 function load_clean_components(fname, beam=nothing)
     endswith(fname, ".mod") && return load_clean_components_mod_file(fname, beam)
     return load_clean_components_fits(fname, beam)

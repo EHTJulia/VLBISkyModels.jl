@@ -136,6 +136,14 @@ VLBISkyModels.rad2μas
 VLBISkyModels.μas2rad
 ```
 
+### IO
+    
+```@docs
+VLBISkyModels.load_clean_components
+VLBISkyModels.load_fits
+VLBISkyModels.save_fits
+```
+
 ## Internal (Not Public API)
 
 ```@docs
