@@ -103,7 +103,7 @@ function _extract_fits_image(f::FITSIO.ImageHDU{T}) where {T}
             image .= image .* (psizex * psizey / beamarea)
         end
     end
-    info = MinimalHeader(source, ra, dec, mjd, freq)
+    info = ComradeBase.MinimalHeader(source, ra, dec, mjd, freq)
     g = imagepixels(psizex * nx, psizey * nx, nx, ny, x0c * psizex, y0c * psizey;
                     header=info)
     imap = IntensityMap(image, g)
