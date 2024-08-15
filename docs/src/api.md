@@ -137,7 +137,6 @@ VLBISkyModels.μas2rad
 ```
 
 ### IO
-    
 ```@docs
 VLBISkyModels.load_clean_components
 VLBISkyModels.load_fits
