@@ -334,7 +334,6 @@ function Makie.plot!(plot::PolImage)
         !al && return maximum(l)
         return l
     end
-    println(p[])
     scatter!(plot, p;
              marker=m,
              markersize=len2,
