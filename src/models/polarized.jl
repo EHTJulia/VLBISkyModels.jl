@@ -1,4 +1,5 @@
-export PolarizedModel, coherencymatrix, PoincareSphere2Map, PolExp2Map, stokes_intensitymap
+export PolarizedModel, coherencymatrix, PoincareSphere2Map, PolExp2Map, stokes_intensitymap,
+       SingleStokes
 
 import ComradeBase: AbstractPolarizedModel, m̆, evpa, CoherencyMatrix, StokesParams
 
@@ -60,6 +61,7 @@ struct PolarizedModel{TI,TQ,TU,TV} <: AbstractPolarizedModel
 end
 
 @inline radialextent(m::PolarizedModel) = radialextent(stokes(m, :I))
+@inline flux(m::PolarizedModel) = StokesParams(flux(m.I), flux(m.Q), flux(m.U), flux(m.V))
 
 function Base.show(io::IO, model::PolarizedModel)
     println(io, "PolarizedModel")
@@ -191,6 +193,45 @@ end
 #       end
 #     end
 # end
+
+struct SingleStokes{M,S} <: ComradeBase.AbstractModel
+    model::M
+    """
+       SingleStokes(m::AbstractModel, s::Symbol)
+    Takes a model whose trait `ispolarized` returns `IsPolarized` and extracts a SingleStokes
+    parameter from it. The `s` parameter is the symbol that represents the Stokes parameter
+    e.g., `:I`, `:Q`, `:U`, `:V` for stokes I, Q, U, V respectively.
+    """
+    function SingleStokes(m, S::Symbol)
+        !(S ∈ (:I, :Q, :U, :V)) && throw(ArgumentError("Invalid Stokes parameter $S"))
+        M = typeof(m)
+        return new{M,S}(m)
+    end
+end
+
+visanalytic(::Type{<:SingleStokes{M}}) where {M} = visanalytic(typeof(M))
+imanalytic(::Type{<:SingleStokes{M}}) where {M} = imanalytic(typeof(M))
+ispolarized(::Type{<:SingleStokes{M}}) where {M} = NotPolarized()
+
+function ComradeBase.intensity_point(m::SingleStokes{M,S}, p) where {M,S}
+    return getproperty(intensity_point(m.model, p), S)
+end
+
+function ComradeBase.visibility_point(m::SingleStokes{M,S}, p) where {M,S}
+    return getproperty(visibility_point(m.model, p), S)
+end
+
+radialextent(m::SingleStokes) = radialextent(m.model)
+flux(m::SingleStokes{M,S}) where {M,S} = getproperty(flux(m.model), S)
+
+# Need this since rotations can be funky to we should rotate in polarization
+function ModifiedModel(m::SingleStokes{M,:Q}, mods::NTuple{N,<:ModelModifier}) where {M,N}
+    return SingleStokes(ModifiedModel(m.model, mods), :Q)
+end
+
+function ModifiedModel(m::SingleStokes{M,:U}, mods::NTuple{N,<:ModelModifier}) where {M,N}
+    return SingleStokes(ModifiedModel(m.model, mods), :U)
+end
 
 """
     PoincareSphere2Map(I, p, X, grid)

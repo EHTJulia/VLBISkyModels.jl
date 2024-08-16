@@ -214,7 +214,7 @@ end
 function ellipse_params(x, y, s, xmin)
     e = polellipse(s)
     p = Point2((x), (y))
-    len = Vec2(max(e.b, e.a / 10), e.a) / 2
+    len = Vec2(max(e.b, e.a / 20), e.a) / 2
     col = polintensity(s) / s.I * sign(s.V)
     rot = evpa(s)
     return p, len, col, rot
@@ -269,8 +269,8 @@ function Makie.plot!(plot::PolImage)
         fovy = last(Y) - first(Y)
         dx = max(fovx, fovy)
 
-        p = Point2[]
-        len = Vec2[]
+        p = Point2{typeof(dx)}[]
+        len = Vec2{typeof(dx)}[]
         col = eltype(stokes(img, :I))[]
         rot = eltype(stokes(img, :I))[]
 
@@ -317,7 +317,7 @@ function Makie.plot!(plot::PolImage)
         end
     end
     m = lift(plot.plot_total) do pt
-        pt && return '𝝾'
+        pt && return '∘'
         return '⋅'
     end
 
@@ -334,7 +334,7 @@ function Makie.plot!(plot::PolImage)
         !al && return maximum(l)
         return l
     end
-
+    println(p[])
     scatter!(plot, p;
              marker=m,
              markersize=len2,
