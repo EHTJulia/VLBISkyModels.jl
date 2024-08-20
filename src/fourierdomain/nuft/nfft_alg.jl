@@ -31,7 +31,7 @@ Base.@kwdef struct NFFTAlg{T,N,F} <: NUFT
     fftflags::F = FFTW.MEASURE
 end
 
-function applyft(p::AbstractNUFTPlan, img::Union{AbstractArray})
+function applyft(p::AbstractNUFTPlan, img::AbstractArray)
     vis = nuft(getplan(p), img)
     vis .= vis .* getphases(p)
     return vis
