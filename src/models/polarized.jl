@@ -209,8 +209,8 @@ struct SingleStokes{M,S} <: ComradeBase.AbstractModel
     end
 end
 
-visanalytic(::Type{<:SingleStokes{M}}) where {M} = visanalytic(typeof(M))
-imanalytic(::Type{<:SingleStokes{M}}) where {M} = imanalytic(typeof(M))
+visanalytic(::Type{<:SingleStokes{M}}) where {M} = visanalytic((M))
+imanalytic(::Type{<:SingleStokes{M}}) where {M} = imanalytic((M))
 ispolarized(::Type{<:SingleStokes{M}}) where {M} = NotPolarized()
 
 function ComradeBase.intensity_point(m::SingleStokes{M,S}, p) where {M,S}

@@ -549,6 +549,17 @@ end
         testgrad(foo, x)
     end
 
+    @test "Convolved Non-analytic" begin
+        m1 = Gaussian()
+        m2 = VLBISkyModels.NonAnalyticTest(Gaussian())
+        g = imagepixels(20.0, 20.0, 256, 256)
+        mt = convolved(m1, m2)
+        img1 = intensitymap(mt, g)
+        img2 = intensitymap(convolved(m1, m2.model), g)
+
+        @test isapprox(parent(img1), parent(img2), rtol=1e-8)
+    end
+
     @testset "All composite" begin
         g = imagepixels(20.0, 20.0, 1024, 1024)
         guv = UnstructuredDomain((U=randn(32), V=randn(32)))
