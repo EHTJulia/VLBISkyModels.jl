@@ -177,8 +177,7 @@ function test4dft_individual(Nx, Nt, alg)
         vis_ind_t = VLBISkyModels.visibilitymap_numeric(cimg, p_ind)
         append!(vis_ind, vis_ind_t)
     end
-
-    return isapprox(maximum(abs, vis_numeric - vis_ind), 0; atol=1e-4)
+    return vis_numeric == vis_ind
 end
 
 function rotating4dgaussian_swap(p)
