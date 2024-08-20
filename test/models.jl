@@ -549,7 +549,7 @@ end
         testgrad(foo, x)
     end
 
-    @test "Convolved Non-analytic" begin
+    @testset "Convolved Non-analytic" begin
         m1 = Gaussian()
         m2 = VLBISkyModels.NonAnalyticTest(Gaussian())
         g = imagepixels(20.0, 20.0, 256, 256)
