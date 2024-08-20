@@ -33,10 +33,6 @@ end
 
 #This function helps us to lookup UnstructuredDomain at a particular Ti or Fr 
 #visdomain[Ti=T,Fr=F] or visdomain[Ti=T] or visdomain[Fr=F] calls work. 
-#Note: I cannot figure out how to write this function without specifying 
-#nothing to Ti or Fr. I tried kwargs... as well.
-
-# This function should be in ComaradeBase
 function Base.getindex(domain::UnstructuredDomain; Ti=nothing, Fr=nothing)
     points = domainpoints(domain)
     indices = if Ti !== nothing && Fr !== nothing
@@ -59,15 +55,18 @@ end
 # as dictionaries in the case of Ti or Fr case
 
 @inline function applyft(p::NUFTPlan{<:FourierTransform,<:AbstractDict},
-                         img::Union{AbstractArray})
+                         img::AbstractArray)
     vis_list = zeros(ComplexF64, p.totalvis)
     plans = p.plan
     iminds, visinds = p.indices
-
     for i in eachindex(iminds, visinds)
         imind = iminds[i]
         visind = visinds[i]
-        vis_inner = nuft(plans[imind], @view(img[:, :, imind...]))
+        # TODO
+        # If visinds are consecutive then we can use the in-place _nuft!:
+        # _nuft!(visind, plans[imind], @view(img[:, :, imind...])  
+        vis_inner = nuft(plans[imind], @view(img[:, :, imind]))
+        # After the todo this wont be required
         vis_list[visind] .= vis_inner
     end
 
@@ -75,7 +74,6 @@ end
     return vis_list
 end
 
-#plan_nuft for only spatial part, no Ti or Fr
 function plan_nuft_spatial(alg::NFFTAlg, imagegrid::AbstractRectiGrid,
                            visdomain::UnstructuredDomain)
     visp = domainpoints(visdomain)
@@ -89,26 +87,6 @@ function plan_nuft_spatial(alg::NFFTAlg, imagegrid::AbstractRectiGrid,
     (; reltol, precompute, fftflags) = alg
     plan = plan_nfft(uv2, size(imagegrid)[1:2]; reltol, precompute, fftflags)
     return plan
-end
-
-#plan_nuft_spatial functions mapped to times Ti and frequencies Fr 
-function plan_nuft(alg::NFFTAlg, imagegrid::AbstractRectiGrid,
-                   visdomain::UnstructuredDomain, indices::Tuple)
-    # check_image_uv(imagegrid, visdomain) # Check if Ti or Fr in visdomain are subset of imgdomain Ti or Fr if present
-    points = domainpoints(visdomain)
-    iminds, visinds = indices
-
-    uv = UnstructuredDomain(points[visinds[1]], executor(visdomain), header(visdomain))
-    tplan = plan_nuft_spatial(alg, imagegrid, uv)
-    plans = Dict{typeof(iminds[1]),typeof(tplan)}()
-
-    for i in eachindex(iminds, visinds)
-        imind = iminds[i]
-        visind = visinds[i]
-        uv = UnstructuredDomain(points[visind], executor(visdomain), header(visdomain))
-        plans[imind...] = plan_nuft_spatial(alg, imagegrid, uv)
-    end
-    return plans
 end
 
 function make_phases(::NFFTAlg, imgdomain::AbstractRectiGrid, visdomain::UnstructuredDomain)

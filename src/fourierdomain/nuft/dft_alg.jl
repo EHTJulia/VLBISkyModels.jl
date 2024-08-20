@@ -15,7 +15,8 @@ function plan_nuft_spatial(::DFTAlg, imagegrid::AbstractRectiGrid,
     visp = domainpoints(visdomain)
     (; X, Y) = imagegrid
     uv = domainpoints(visdomain)
-    dft = similar(Array{Complex{eltype(imagegrid)}}, length(visdomain), size(imagegrid)...)
+    dft = similar(Array{Complex{eltype(imagegrid)}}, length(visdomain),
+                  size(imagegrid)[1:2]...)
     @fastmath for i in eachindex(Y), j in eachindex(X), k in eachindex(visp)
         u = uv.U[k]
         v = uv.V[k]
