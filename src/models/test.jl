@@ -11,3 +11,5 @@ ComradeBase.ispolarized(::Type{<:NonAnalyticTest{M}}) where {M} = ispolarized(M)
 
 @inline radialextent(m::NonAnalyticTest) = radialextent(m.model)
 @inline intensity_point(m::NonAnalyticTest, p) = intensity_point(m.model, p)
+
+flux(m::NonAnalyticTest) = flux(m.model)
