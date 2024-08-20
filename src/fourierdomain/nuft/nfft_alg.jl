@@ -31,20 +31,6 @@ Base.@kwdef struct NFFTAlg{T,N,F} <: NUFT
     fftflags::F = FFTW.MEASURE
 end
 
-#This function helps us to lookup UnstructuredDomain at a particular Ti or Fr 
-#visdomain[Ti=T,Fr=F] or visdomain[Ti=T] or visdomain[Fr=F] calls work. 
-function Base.getindex(domain::UnstructuredDomain; Ti=nothing, Fr=nothing)
-    points = domainpoints(domain)
-    indices = if Ti !== nothing && Fr !== nothing
-        findall(p -> (p.Ti == Ti) && (p.Fr == Fr), points)
-    elseif Ti !== nothing
-        findall(p -> (p.Ti == Ti), points)
-    else
-        findall(p -> (p.Fr == Fr), points)
-    end
-    return UnstructuredDomain(points[indices], executor(domain), header(domain))
-end
-
 function applyft(p::AbstractNUFTPlan, img::Union{AbstractArray})
     vis = nuft(getplan(p), img)
     vis .= vis .* getphases(p)
