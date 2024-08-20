@@ -254,17 +254,17 @@ smoothed(m, σ::Number) = convolved(m, stretched(Gaussian(), σ, σ))
 
 flux(m::ConvolvedModel) = flux(m.m1) * flux(m.m2)
 
-# @inline function visibilitymap_numeric(model::ConvolvedModel{M1,M2},
-#                                        p::AbstractRectiGrid) where {M1,M2}
-#     return _visibilitymap(visanalytic(M1), model.m1, p) .*
-#            _visibilitymap(visanalytic(M2), model.m2, p)
-# end
+@inline function visibilitymap_numeric(model::ConvolvedModel{M1,M2},
+                                       p::AbstractRectiGrid) where {M1,M2}
+    return _visibilitymap(visanalytic(M1), model.m1, p) .*
+           _visibilitymap(visanalytic(M2), model.m2, p)
+end
 
-# @inline function visibilitymap_numeric(model::ConvolvedModel{M1,M2},
-#                                        p::AbstractFourierDualDomain) where {M1,M2}
-#     return _visibilitymap(visanalytic(M1), model.m1, p) .*
-#            _visibilitymap(visanalytic(M2), model.m2, p)
-# end
+@inline function visibilitymap_numeric(model::ConvolvedModel{M1,M2},
+                                       p::AbstractFourierDualDomain) where {M1,M2}
+    return _visibilitymap(visanalytic(M1), model.m1, p) .*
+           _visibilitymap(visanalytic(M2), model.m2, p)
+end
 
 @inline function visibilitymap_numeric!(vis::IntensityMap,
                                         m::ConvolvedModel{M1,M2}) where {M1,M2}
