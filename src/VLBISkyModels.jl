@@ -69,6 +69,7 @@ include(joinpath("models", "models.jl"))
 include("utility.jl")
 include("rules.jl")
 include(joinpath("visualizations", "vis.jl"))
+include(joinpath("models","multifrequency.jl"))
 
 if !isdefined(Base, :get_extension)
     using Requires
