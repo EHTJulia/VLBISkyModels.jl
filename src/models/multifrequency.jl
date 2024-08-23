@@ -10,7 +10,7 @@ Spectral Model object.
 # Fields
 $(FIELDS)
 """
-struct Multifrequency{B, F<:Number, S<:AbstractSpectralModel} <: ComradeBase.AbstractModel
+struct Multifrequency{B<:ComradeBase.AbstractModel, F<:Number, S<:AbstractSpectralModel} <: ComradeBase.AbstractModel
     """
     Base image model (e.g. Gaussian, ContinuousImage)
     """
@@ -63,18 +63,22 @@ Applies Taylor Series spectral model to an image model.
 
 Generates a new image model at frequency ν with respect to the reference frequency ν0.
 """
-function applyspectral(ν, ν0, base::ContinuousImage, spec::TaylorSpectral)
+function applyspectral(ν::N, ν0::N, base::ContinuousImage, spec::TaylorSpectral) where {N<:Number}
+    image = base.img
     x = log10(ν/ν0) # frequency to evaluate taylor expansion
-    data = getfield(base.img,:data)
-    for i in 1:n # loop through the taylor series terms
-        data .+= spec.c[i]*(x^i)
+    data = copy(getfield(image,:data)) # copy data so we original image is unmodified
+    logdata = log10.(data)
+    n = spec.n
+    for i in 1:n # taylor series expansion
+        logdata .+= spec.c[i]*(x^i)
     end
-    image = IntensityMap(data, getfield(base.img, :grid), getfield(base.img, :refdims), getfield(base.img, :name))
+    data = 10 .^ logdata
+    image = IntensityMap(data, getfield(image, :grid), getfield(image, :refdims), getfield(image, :name))
     return ContinuousImage(image,base.kernel)
 end
 
 """Creates a new Multifrequency object containing image at a frequency ν."""
-function generateimage(MF::Multifrequency, ν)
+function generateimage(MF::Multifrequency, ν::N) where {N<:Number}
     new_base = applyspectral(ν,MF.ν0,MF.base,MF.spec) # base image model, spectral model, frequency to generate new image
-    return Multifrequency(new_base,MF.ν0,spec)
+    return Multifrequency(new_base,MF.ν0,MF.spec)
 end
