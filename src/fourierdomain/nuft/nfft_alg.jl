@@ -42,7 +42,7 @@ end
 
 @inline function applyft(p::NUFTPlan{<:FourierTransform,<:AbstractDict},
                          img::AbstractArray)
-    vis_list = zeros(ComplexF64, p.totalvis)
+    vis_list = similar(baseimage(img), Complex{eltype(img)}, p.totalvis)
     plans = p.plan
     iminds, visinds = p.indices
     for i in eachindex(iminds, visinds)
