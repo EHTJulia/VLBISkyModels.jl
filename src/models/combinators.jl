@@ -268,11 +268,11 @@ end
 
 @inline function visibilitymap_numeric!(vis::IntensityMap,
                                         m::ConvolvedModel{M1,M2}) where {M1,M2}
-    cvis = copy(vis)
+    cvis = similar(vis)
     visibilitymap!(cvis, m.m1)
     vis .= cvis
     visibilitymap!(cvis, m.m2)
-    vis .= cvis
+    vis .*= cvis
     return nothing
 end
 
