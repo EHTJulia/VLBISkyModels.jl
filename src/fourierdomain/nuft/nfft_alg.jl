@@ -124,7 +124,7 @@ function EnzymeRules.augmented_primal(config, ::Const{typeof(_nuft!)}, ::Type{<:
     return EnzymeRules.AugmentedReturn(nothing, nothing, nothing)
 end
 
-function EnzymeRules.reverse(config::EnzymeRules.ConfigWidth{1}, ::Const{typeof(_nuft!)},
+@noinline function EnzymeRules.reverse(config::EnzymeRules.ConfigWidth{1}, ::Const{typeof(_nuft!)},
                              ::Type{<:Const}, tape, out::Duplicated, A::Const,
                              b::Duplicated)
 
