@@ -10,11 +10,13 @@ since it's easy to define derivatives.
 struct DFTAlg <: NUFT end
 
 # internal function that creates an DFT matrix/plan to use used for the img.
-function plan_nuft(::DFTAlg, imagegrid::AbstractRectiGrid, visdomain::UnstructuredDomain)
+function plan_nuft_spatial(::DFTAlg, imagegrid::AbstractRectiGrid,
+                           visdomain::UnstructuredDomain)
     visp = domainpoints(visdomain)
     (; X, Y) = imagegrid
     uv = domainpoints(visdomain)
-    dft = similar(Array{Complex{eltype(imagegrid)}}, length(visdomain), size(imagegrid)...)
+    dft = similar(Array{Complex{eltype(imagegrid)}}, length(visdomain),
+                  size(imagegrid)[1:2]...)
     @fastmath for i in eachindex(Y), j in eachindex(X), k in eachindex(visp)
         u = uv.U[k]
         v = uv.V[k]
