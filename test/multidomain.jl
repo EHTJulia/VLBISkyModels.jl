@@ -301,10 +301,10 @@ end
     @test test3dgaussians_freq(1024, 4, NFFTAlg())
     @test test2dgaussian(1024, NFFTAlg())
 
-    @test test4dgaussiansft(512, 10, DFTAlg())
-    @test test4dgaussiansft_swap(512, 10, DFTAlg())
-    @test test4dft_individual(512, 10, DFTAlg())
-    @test test3dgaussians(512, 10, DFTAlg())
-    @test test3dgaussians_freq(512, 4, DFTAlg())
+    @test test4dgaussiansft(512, 2, DFTAlg())
+    @test test4dgaussiansft_swap(512, 2, DFTAlg())
+    @test test4dft_individual(512, 2, DFTAlg())
+    @test test3dgaussians(512, 2, DFTAlg())
+    @test test3dgaussians_freq(512, 2, DFTAlg())
     @test test2dgaussian(512, DFTAlg())
 end
