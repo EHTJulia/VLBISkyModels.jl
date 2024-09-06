@@ -23,7 +23,7 @@ struct InterpolatedImage{I,P} <: AbstractModel
     img::I
     itp::P
     function InterpolatedImage(img::SpatialIntensityMap)
-        itp = BicubicInterpolator(img.X, img.Y, img, StrictBoundaries())
+        itp = BilinearInterpolator(img.X, img.Y, img, StrictBoundaries())
         return new{typeof(img),typeof(itp)}(img, itp)
     end
 end
