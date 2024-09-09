@@ -46,39 +46,45 @@ This is the same multifrequency model implemented in ehtim (Chael et al., 2023).
 # Fields
 $(FIELDS)
 """
-struct TaylorSpectral{C<:AbstractArray,N<:Integer} <: AbstractSpectralModel
+struct TaylorSpectral{C<:NTuple} <: AbstractSpectralModel
     """
     Taylor expansion coefficients.
-    Can be a vector or an array of coefficients.
+    Tuple of coefficients.
     """
     c::C
-    """
-    Taylor expansion order
-    """
-    n::N
+end
+
+function order(::TaylorSpectral{<:NTuple{N}}) where N
+    return N
 end
 
 """
-Applies Taylor Series spectral model to an image model.
+Applies Taylor Series spectral model to image data.
 
-Generates a new image model at frequency ν with respect to the reference frequency ν0.
+Generates image data at frequency ν with respect to the reference frequency ν0.
 """
-function applyspectral(ν::N, ν0::N, base::ContinuousImage, spec::TaylorSpectral) where {N<:Number}
-    image = base.img
-    x = log10(ν/ν0) # frequency to evaluate taylor expansion
-    data = copy(getfield(image,:data)) # copy data so we original image is unmodified
-    logdata = log10.(data)
-    n = spec.n
-    for i in 1:n # taylor series expansion
-        logdata .+= spec.c[i]*(x^i)
+function applyspectral(ν::N, ν0::N, I0::AbstractArray, spec::TaylorSpectral) where {N<:Number}
+    x = log(ν/ν0) # frequency to evaluate taylor expansion
+    c = spec.c
+
+    n = order(spec)
+    xlist = ntuple(i -> x^i, n) # creating a tuple to hold the frequency powers
+
+    data = similar(I0)
+    for i in eachindex(data) # doing expansion one pixel at a time
+        exparg = sum(getindex.(c,i).*xlist)
+        data[i] = I0[i] * exp(exparg)
     end
-    data = 10 .^ logdata
-    image = IntensityMap(data, getfield(image, :grid), getfield(image, :refdims), getfield(image, :name))
-    return ContinuousImage(image,base.kernel)
+    return data
 end
 
 """Creates a new Multifrequency object containing image at a frequency ν."""
 function generateimage(MF::Multifrequency, ν::N) where {N<:Number}
-    new_base = applyspectral(ν,MF.ν0,MF.base,MF.spec) # base image model, spectral model, frequency to generate new image
+    image = parent(MF.base) # ContinuousImage -> SpatialIntensityMap
+    I0 = parent(image) # SpatialIntensityMap -> Array
+
+    data = applyspectral(ν,MF.ν0,I0,MF.spec) # base image model, spectral model, frequency to generate new image
+    
+    new_base = IntensityMap(data, getfield(image, :grid), getfield(image, :refdims), getfield(image, :name))
     return Multifrequency(new_base,MF.ν0,MF.spec)
 end
