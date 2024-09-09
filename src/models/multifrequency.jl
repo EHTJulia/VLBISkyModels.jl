@@ -1,4 +1,4 @@
-export Multifrequency, TaylorSpectral, applyspectral, generateimage
+export Multifrequency, TaylorSpectral, applyspectral, generatemodel
 
 """Abstract type to hold all multifrequency spectral models"""
 abstract type AbstractSpectralModel end
