@@ -79,12 +79,13 @@ function applyspectral(ν::N, ν0::N, I0::AbstractArray, spec::TaylorSpectral) w
 end
 
 """Creates a new Multifrequency object containing image at a frequency ν."""
-function generateimage(MF::Multifrequency, ν::N) where {N<:Number}
+function generatemodel(MF::Multifrequency, ν::N) where {N<:Number}
     image = parent(MF.base) # ContinuousImage -> SpatialIntensityMap
     I0 = parent(image) # SpatialIntensityMap -> Array
-
+    
     data = applyspectral(ν,MF.ν0,I0,MF.spec) # base image model, spectral model, frequency to generate new image
     
-    new_base = IntensityMap(data, getfield(image, :grid), getfield(image, :refdims), getfield(image, :name))
+    new_intensitymap = IntensityMap(data, getfield(image, :grid), getfield(image, :refdims), getfield(image, :name))
+    new_base = ContinuousImage(new_intensitymap,MF.base.kernel)
     return Multifrequency(new_base,MF.ν0,MF.spec)
 end
