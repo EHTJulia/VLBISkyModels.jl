@@ -1,4 +1,4 @@
-export Multifrequency, TaylorSpectral, applyspectral, generatemodel
+export Multifrequency, TaylorSpectral, applyspectral, applyspectral!, generatemodel, visibilitymap_numeric, build_imagecube
 
 """Abstract type to hold all multifrequency spectral models"""
 abstract type AbstractSpectralModel end
@@ -78,12 +78,27 @@ function applyspectral(ν::N, ν0::N, I0::AbstractArray, spec::TaylorSpectral) w
     return data
 end
 
+
+function applyspectral!(I0::AbstractArray, spec::TaylorSpectral, ν::N, ν0::N) where {N<:Number}
+    x = log(ν/ν0) # frequency to evaluate taylor expansion
+    c = spec.c
+
+    n = order(spec)
+    xlist = ntuple(i -> x^i, n) # creating a tuple to hold the frequency powers
+
+    for i in eachindex(I0) # doing expansion one pixel at a time
+        exparg = sum(getindex.(c,i).*xlist)
+        I0[i] = I0[i] * exp(exparg)
+    end
+    return I0
+end
+
 """Creates a new Multifrequency object containing image at a frequency ν."""
 function generatemodel(MF::Multifrequency, ν::N) where {N<:Number}
     image = parent(MF.base) # ContinuousImage -> SpatialIntensityMap
     I0 = parent(image) # SpatialIntensityMap -> Array
     
-    data = applyspectral(ν,MF.ν0,I0,MF.spec) # base image model, spectral model, frequency to generate new image
+    data = applyspectral(I0,MF.spec,ν,MF.ν0) # base image model, spectral model, frequency to generate new image
     
     new_intensitymap = IntensityMap(data, getfield(image, :grid), getfield(image, :refdims), getfield(image, :name))
     new_base = ContinuousImage(new_intensitymap,MF.base.kernel)
@@ -93,7 +108,7 @@ end
 function visibilitymap_numeric(m::Multifrequency{<:ContinuousImage}, grid::AbstractFourierDualDomain)
     checkspatialgrid(axisdims(m.base), grid.imgdomain) # compare base image dimensions to spatial dimensions of data cube
     img = parent(m.base)
-    imgcube = build_imagecube(m, grid.imgdomain.ν)
+    imgcube = build_imagecube(m, grid.imgdomain.Fr)
     vis = applyft(forward_plan(grid), imgcube)
     return applypulse!(vis, m.base.kernel, grid)
 end
@@ -106,19 +121,23 @@ function checkspatialgrid(imgdims, grid)
 end
 
 
+"""
+Build a multifrequency image cube to hold images at all frequencies.
+"""
+function build_imagecube(m, νlist)
+    I0 = parent(m.base) # base image IntensityMap 
+    ν0 = m.ν0
+    spec = m.spec
 
-#function build_imagecube(m, νlist)
-#    # build imagecube to hold images at all frequencies
-#
-#    I0 = parent(m.base) # base image IntensityMap 
-#    ν0 = m.ν0
-#    spec = m.spec
-#
-#    img_cube = #
-#
-#    for i in eachindex(νlist)
-#        applyspectral!() # modify existing image cube inplace --- don't create new object
-#    end
-#
-#    return img_cube
-#end
+    spatialgrid = axisdims(I0) # single frequency image rectigrid
+    mfgrid = RectiGrid((X=spatialgrid.X,Y=spatialgrid.Y,Fr=νlist)) # multifrequency rectigrid
+
+    imgcube = allocate_imgmap(m.base, mfgrid) # build 3D cube of IntensityMap objects
+
+    for i in eachindex(νlist) # setting the image each frequency to first equal the base image and then apply spectral model
+        imgcube[:,:,i] .= I0 
+        imgcube[:,:,i] = applyspectral!(imgcube[:,:,i], spec, νlist[i], ν0) # modify existing image cube inplace --- don't create new object
+    end
+
+    return imgcube
+end
