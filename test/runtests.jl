@@ -15,6 +15,7 @@ using ForwardDiff
 using Enzyme
 using LinearAlgebra
 using Downloads
+using BenchmarkTools
 
 function FiniteDifferences.to_vec(k::IntensityMap)
     v, b = to_vec(DD.data(k))
@@ -34,5 +35,7 @@ end
     include("polarized.jl")
     include("utility.jl")
     include("viz.jl")
-    include("stokesintensitymap.jl")
+    include("io.jl")
+    # include("stokesintensitymap.jl")
+    include("multidomain.jl")
 end

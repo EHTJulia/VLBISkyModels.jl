@@ -136,6 +136,14 @@ VLBISkyModels.rad2μas
 VLBISkyModels.μas2rad
 ```
 
+### IO
+
+```@docs
+VLBISkyModels.load_clean_components
+VLBISkyModels.load_fits
+VLBISkyModels.save_fits
+```
+
 ## Internal (Not Public API)
 
 ```@docs
@@ -145,7 +153,7 @@ VLBISkyModels.scale_image
 VLBISkyModels.transform_uv
 VLBISkyModels.transform_image
 VLBISkyModels.unpack
-VLBISkyModels.StokesIntensityMap
+VLBISkyModels.stokes_intensitymap
 VLBISkyModels.FFTPlan
 VLBISkyModels.NUFTPlan
 ```

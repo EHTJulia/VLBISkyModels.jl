@@ -31,23 +31,47 @@ Base.@kwdef struct NFFTAlg{T,N,F} <: NUFT
     fftflags::F = FFTW.MEASURE
 end
 
-function applyft(p::AbstractNUFTPlan, img::Union{AbstractArray,StokesIntensityMap})
+function applyft(p::AbstractNUFTPlan, img::AbstractArray)
     vis = nuft(getplan(p), img)
-    return vis .* getphases(p)
+    vis .= vis .* getphases(p)
+    return vis
 end
 
-function plan_nuft(alg::NFFTAlg, imagegrid::AbstractRectiGrid,
-                   visdomain::UnstructuredDomain)
+# This a new function is overloaded to handle when NUFTPlan has plans
+# as dictionaries in the case of Ti or Fr case
+
+@inline function applyft(p::NUFTPlan{<:FourierTransform,<:AbstractDict},
+                         img::AbstractArray)
+    vis_list = similar(baseimage(img), Complex{eltype(img)}, p.totalvis)
+    plans = p.plan
+    iminds, visinds = p.indices
+    for i in eachindex(iminds, visinds)
+        imind = iminds[i]
+        visind = visinds[i]
+        # TODO
+        # If visinds are consecutive then we can use the in-place _nuft!:
+        # _nuft!(visind, plans[imind], @view(img[:, :, imind...])  
+        vis_inner = nuft(plans[imind], @view(img[:, :, imind]))
+        # After the todo this wont be required
+        vis_list[visind] .= vis_inner
+    end
+
+    vis_list .= vis_list .* p.phases
+    return vis_list
+end
+
+function plan_nuft_spatial(alg::NFFTAlg, imagegrid::AbstractRectiGrid,
+                           visdomain::UnstructuredDomain)
     visp = domainpoints(visdomain)
     uv2 = similar(visp.U, (2, length(visdomain)))
     dpx = pixelsizes(imagegrid)
     dx = dpx.X
     dy = dpx.Y
     # Here we flip the sign because the NFFT uses the -2pi convention
-    uv2[1, :] .= -visp.U * dx
-    uv2[2, :] .= -visp.V * dy
+    uv2[1, :] .= -visp.U .* dx
+    uv2[2, :] .= -visp.V .* dy
     (; reltol, precompute, fftflags) = alg
-    plan = plan_nfft(uv2, size(imagegrid); reltol, precompute, fftflags)
+    plan = plan_nfft(uv2, size(imagegrid)[1:2]; reltol, precompute, fftflags)
     return plan
 end
 
@@ -100,20 +124,19 @@ function _nuft!(out, A, b)
     return nothing
 end
 
-function ChainRulesCore.rrule(::typeof(_nuft), A::NFFTPlan, b)
-    pr = ChainRulesCore.ProjectTo(b)
-    vis = nuft(A, b)
-    function nuft_pullback(Δy)
-        Δf = NoTangent()
-        dy = similar(vis)
-        dy .= unthunk(Δy)
-        ΔA = @thunk(pr(A' * dy))
-        return Δf, NoTangent(), ΔA
-    end
-    return vis, nuft_pullback
-end
+# function ChainRulesCore.rrule(::typeof(_nuft), A::NFFTPlan, b)
+#     pr = ChainRulesCore.ProjectTo(b)
+#     vis = nuft(A, b)
+#     function nuft_pullback(Δy)
+#         Δf = NoTangent()
+#         dy = similar(vis)
+#         dy .= unthunk(Δy)
+#         ΔA = @thunk(pr(A' * dy))
+#         return Δf, NoTangent(), ΔA
+#     end
+#     return vis, nuft_pullback
+# end
 
-using EnzymeCore: EnzymeRules, Const, Active, Duplicated
 #using EnzymeRules: ConfigWidth, needs_prima
 function EnzymeRules.augmented_primal(config, ::Const{typeof(_nuft!)}, ::Type{<:Const}, out,
                                       A::Const, b)
@@ -124,7 +147,7 @@ function EnzymeRules.augmented_primal(config, ::Const{typeof(_nuft!)}, ::Type{<:
     return EnzymeRules.AugmentedReturn(nothing, nothing, nothing)
 end
 
-function EnzymeRules.reverse(config::EnzymeRules.ConfigWidth{1}, ::Const{typeof(_nuft!)},
+@noinline function EnzymeRules.reverse(config::EnzymeRules.ConfigWidth{1}, ::Const{typeof(_nuft!)},
                              ::Type{<:Const}, tape, out::Duplicated, A::Const,
                              b::Duplicated)
 

@@ -1,6 +1,37 @@
-export PolarizedModel, coherencymatrix, PoincareSphere2Map, PolExp2Map
+export PolarizedModel, coherencymatrix, PoincareSphere2Map, PolExp2Map, stokes_intensitymap,
+       SingleStokes
 
 import ComradeBase: AbstractPolarizedModel, m̆, evpa, CoherencyMatrix, StokesParams
+
+# simple check to ensure that the four grids are equal across stokes parameters
+function _check_grid(I::IntensityMap, Q::IntensityMap, U::IntensityMap, V::IntensityMap)
+    return axisdims(I) == axisdims(Q) == axisdims(U) == axisdims(V)
+end
+
+"""
+    stokes_intensitymap(I, Q, U, V)
+
+Constructs an `IntensityMap` from four maps for I, Q, U, V.
+"""
+@inline function stokes_intensitymap(I::IntensityMap, Q::IntensityMap,
+                                     U::IntensityMap, V::IntensityMap)
+    _check_grid(I, Q, U, V)
+
+    pI = baseimage(I)
+    pQ = baseimage(Q)
+    pU = baseimage(U)
+    pV = baseimage(V)
+
+    simg = StructArray{StokesParams{eltype(pI)}}((I=pI, Q=pQ, U=pU, V=pV))
+    return IntensityMap(simg, axisdims(I), refdims(I), name(I))
+end
+
+@inline function stokes_intensitymap(I::AbstractArray, Q::AbstractArray,
+                                     U::AbstractArray, V::AbstractArray,
+                                     grid::AbstractRectiGrid)
+    simg = StructArray{StokesParams{eltype(I)}}((; I, Q, U, V))
+    return IntensityMap(simg, grid)
+end
 
 """
     $(TYPEDEF)
@@ -30,6 +61,7 @@ struct PolarizedModel{TI,TQ,TU,TV} <: AbstractPolarizedModel
 end
 
 @inline radialextent(m::PolarizedModel) = radialextent(stokes(m, :I))
+@inline flux(m::PolarizedModel) = StokesParams(flux(m.I), flux(m.Q), flux(m.U), flux(m.V))
 
 function Base.show(io::IO, model::PolarizedModel)
     println(io, "PolarizedModel")
@@ -72,10 +104,10 @@ function visibilitymap_analytic(pimg::PolarizedModel, p::AbstractSingleDomain)
     return StructArray{StokesParams{eltype(si)}}((si, sq, su, sv))
 end
 
-function __extract_tangent(m::PolarizedModel)
-    tmI, tmQ, tmU, tmV = __extract_tangent.(split_stokes(m))
-    return Tangent{typeof(m)}(; I=tmI, Q=tmQ, U=tmU, V=tmV)
-end
+# function __extract_tangent(m::PolarizedModel)
+#     tmI, tmQ, tmU, tmV = __extract_tangent.(split_stokes(m))
+#     return Tangent{typeof(m)}(; I=tmI, Q=tmQ, U=tmU, V=tmV)
+# end
 
 function split_stokes(pimg::PolarizedModel)
     return (stokes(pimg, :I), stokes(pimg, :Q), stokes(pimg, :U), stokes(pimg, :V))
@@ -92,7 +124,7 @@ function visibilitymap_numeric(pimg::PolarizedModel, p::FourierDualDomain)
     return StructArray{StokesParams{eltype(si)}}((si, sq, su, sv))
 end
 
-function intensitymap!(pimg::Union{StokesIntensityMap,IntensityMap{<:StokesParams}},
+function intensitymap!(pimg::IntensityMap{<:StokesParams},
                        pmodel::PolarizedModel)
     intensitymap!(stokes(pimg, :I), pmodel.I)
     intensitymap!(stokes(pimg, :Q), pmodel.Q)
@@ -162,6 +194,45 @@ end
 #     end
 # end
 
+struct SingleStokes{M,S} <: ComradeBase.AbstractModel
+    model::M
+    """
+       SingleStokes(m::AbstractModel, s::Symbol)
+    Takes a model whose trait `ispolarized` returns `IsPolarized` and extracts a SingleStokes
+    parameter from it. The `s` parameter is the symbol that represents the Stokes parameter
+    e.g., `:I`, `:Q`, `:U`, `:V` for stokes I, Q, U, V respectively.
+    """
+    function SingleStokes(m, S::Symbol)
+        !(S ∈ (:I, :Q, :U, :V)) && throw(ArgumentError("Invalid Stokes parameter $S"))
+        M = typeof(m)
+        return new{M,S}(m)
+    end
+end
+
+visanalytic(::Type{<:SingleStokes{M}}) where {M} = visanalytic((M))
+imanalytic(::Type{<:SingleStokes{M}}) where {M} = imanalytic((M))
+ispolarized(::Type{<:SingleStokes{M}}) where {M} = NotPolarized()
+
+function ComradeBase.intensity_point(m::SingleStokes{M,S}, p) where {M,S}
+    return getproperty(intensity_point(m.model, p), S)
+end
+
+function ComradeBase.visibility_point(m::SingleStokes{M,S}, p) where {M,S}
+    return getproperty(visibility_point(m.model, p), S)
+end
+
+radialextent(m::SingleStokes) = radialextent(m.model)
+flux(m::SingleStokes{M,S}) where {M,S} = getproperty(flux(m.model), S)
+
+# Need this since rotations can be funky to we should rotate in polarization
+function ModifiedModel(m::SingleStokes{M,:Q}, mods::NTuple{N,<:ModelModifier}) where {M,N}
+    return SingleStokes(ModifiedModel(m.model, mods), :Q)
+end
+
+function ModifiedModel(m::SingleStokes{M,:U}, mods::NTuple{N,<:ModelModifier}) where {M,N}
+    return SingleStokes(ModifiedModel(m.model, mods), :U)
+end
+
 """
     PoincareSphere2Map(I, p, X, grid)
     PoincareSphere2Map(I::IntensityMap, p, X)
@@ -189,15 +260,16 @@ function PoincareSphere2Map(I, p, X, grid)
     stokesQ = pimgI .* X[1]
     stokesU = pimgI .* X[2]
     stokesV = pimgI .* X[3]
-    return StokesIntensityMap(stokesI, stokesQ, stokesU, stokesV, grid)
+    return stokes_intensitymap(stokesI, stokesQ, stokesU, stokesV, grid)
 end
+
 # function PoincareSphere2Map(I, p, X, grid)
-#     pimgI = I.*p
+#     pimgI = I .* p
 #     stokesI = I
 #     stokesQ = pimgI .* X[1]
 #     stokesU = pimgI .* X[2]
 #     stokesV = pimgI .* X[3]
-#     return IntensityMap(StructArray{StokesParams{eltype(I)}}((I=stokesI, Q=stokesQ, U=stokesU, V=stokesV)), grid)
+#     return IntensityMap(StructArray{StokesParamsstokesI, stokesQ, stokesU, stokesV, grid)
 # end
 
 function PoincareSphere2Map(I::IntensityMap, p, X)
@@ -232,7 +304,7 @@ function PolExp2Map(a::AbstractArray, b::AbstractArray, c::AbstractArray, d::Abs
     stokesQ = pimgQ
     stokesU = pimgU
     stokesV = pimgV
-    return StokesIntensityMap(stokesI, stokesQ, stokesU, stokesV, grid)
+    return stokes_intensitymap(stokesI, stokesQ, stokesU, stokesV, grid)
 end
 
 """

@@ -23,7 +23,7 @@ struct InterpolatedImage{I,P} <: AbstractModel
     img::I
     itp::P
     function InterpolatedImage(img::SpatialIntensityMap)
-        itp = BicubicInterpolator(img.X, img.Y, img, StrictBoundaries())
+        itp = BilinearInterpolator(img.X, img.Y, img, StrictBoundaries())
         return new{typeof(img),typeof(itp)}(img, itp)
     end
 end
@@ -35,10 +35,13 @@ function ispolarized(::Type{<:InterpolatedImage{<:IntensityMap{T}}}) where {T<:S
     return IsPolarized()
 end
 
-function intensity_point(m::InterpolatedImage, p)
-    (m.img.X[begin] > p.X || p.X > m.img.X[end]) && return zero(eltype(m.img))
-    (m.img.Y[begin] > p.Y || p.Y > m.img.Y[end]) && return zero(eltype(m.img))
-    return m.itp(p.X, p.Y) / (step(m.img.X) * step(m.img.Y))
+@inline function intensity_point(m::InterpolatedImage, p)
+    g = axisdims(m.img)
+    dx, dy = pixelsizes(g)
+    X, Y = g.X, g.Y
+    (X[begin] > p.X || p.X > X[end]) && return zero(eltype(m.img))
+    (Y[begin] > p.Y || p.Y > Y[end]) && return zero(eltype(m.img))
+    return m.itp(p.X, p.Y) / (dx*dy)
 end
 function ModifiedModel(img::SpatialIntensityMap,
                        transforms::NTuple{N,ModelModifier}) where {N}

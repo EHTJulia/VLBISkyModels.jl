@@ -49,6 +49,12 @@ function visibility_point(m::MultiComponentModel, p)
     return s
 end
 
+"""
+    load_clean_components(fname::AbstractString, beam=nothing)
+
+Load a clean component model from a file. The file can be a FITS file or a .mod file.
+If the beam argument is not given it will try to extract the beam from the FITS file.
+"""
 function load_clean_components(fname, beam=nothing)
     endswith(fname, ".mod") && return load_clean_components_mod_file(fname, beam)
     return load_clean_components_fits(fname, beam)
@@ -123,33 +129,33 @@ function _visibilitymap_multi!(vis, base, flux, x, y)
     return nothing
 end
 
-function ChainRulesCore.rrule(::typeof(visibilitymap_analytic), m::MultiComponentModel,
-                              g::UnstructuredDomain)
-    vis = visibilitymap_analytic(m, g)
-    function _composite_visibilitymap_analytic_pullback(Δ)
-        dg = UnstructuredDomain(map(zero, named_dims(g)); executor=executor(g),
-                                header=header(g))
+# function ChainRulesCore.rrule(::typeof(visibilitymap_analytic), m::MultiComponentModel,
+#                               g::UnstructuredDomain)
+#     vis = visibilitymap_analytic(m, g)
+#     function _composite_visibilitymap_analytic_pullback(Δ)
+#         dg = UnstructuredDomain(map(zero, named_dims(g)); executor=executor(g),
+#                                 header=header(g))
 
-        dvis = UnstructuredMap(similar(parent(vis)), dg)
-        dvis .= unthunk(Δ)
-        rvis = UnstructuredMap(zero(vis), g)
-        df = zero(m.flux)
-        dx = zero(m.x)
-        dy = zero(m.y)
-        if fieldnames(typeof(m)) === ()
-            tm = Const(m)
-        else
-            tm = Active(m)
-        end
-        d = autodiff(Reverse, _visibilitymap_multi!, Const, Duplicated(rvis, dvis),
-                     Const(m.base), Duplicated(m.flux, df), Duplicated(m.x, dx),
-                     Duplicated(m.y, dy))
-        dm = getm(d[1])
-        tangentm = __extract_tangent(dm)
-        return NoTangent(), Tangent{typeof(m)}(; base=tangentm, flux=df, x=dx, y=dy),
-               Tangent{typeof(g)}(; dims=dims(dvis))
-    end
+#         dvis = UnstructuredMap(similar(parent(vis)), dg)
+#         dvis .= unthunk(Δ)
+#         rvis = UnstructuredMap(zero(vis), g)
+#         df = zero(m.flux)
+#         dx = zero(m.x)
+#         dy = zero(m.y)
+#         if fieldnames(typeof(m)) === ()
+#             tm = Const(m)
+#         else
+#             tm = Active(m)
+#         end
+#         d = autodiff(Reverse, _visibilitymap_multi!, Const, Duplicated(rvis, dvis),
+#                      Const(m.base), Duplicated(m.flux, df), Duplicated(m.x, dx),
+#                      Duplicated(m.y, dy))
+#         dm = getm(d[1])
+#         tangentm = __extract_tangent(dm)
+#         return NoTangent(), Tangent{typeof(m)}(; base=tangentm, flux=df, x=dx, y=dy),
+#                Tangent{typeof(g)}(; dims=dims(dvis))
+#     end
 
-    return vis, _composite_visibilitymap_analytic_pullback
-end
-__extract_tangent(::Nothing) = ZeroTangent()
+#     return vis, _composite_visibilitymap_analytic_pullback
+# end
+# __extract_tangent(::Nothing) = ZeroTangent()
