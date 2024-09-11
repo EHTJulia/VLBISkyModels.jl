@@ -89,3 +89,31 @@ function generatemodel(MF::Multifrequency, ν::N) where {N<:Number}
     new_base = ContinuousImage(new_intensitymap,MF.base.kernel)
     return Multifrequency(new_base,MF.ν0,MF.spec)
 end
+
+#function visibilitymap_numeric(m::Multifrequency{<:ContinuousImage}, grid::AbstractFourierDualDomain) # following the ContinuousImage docs (grid = getfield(IntensityMap,:grid))
+#    checkgrid(axisdims(m), spatial_imgdims(grid)) # compare size of base image to spatial dimensions of data cube
+#    img = parent(m.base)
+#    vis = applyft(forward_plan(grid), imgcube)
+#    return applypulse!(vis, m.base.kernel, grid)
+#end
+
+
+#function spatial_imgdims
+#    # check only the spatial dimension of the grid --- can have as many frequency elements as you want
+#end
+
+#function build_imagecube(m, νlist)
+#    # build imagecube to hold images at all frequencies
+#
+#    I0 = parent(m.base) # base image IntensityMap 
+#    ν0 = m.ν0
+#    spec = m.spec
+#
+#    img_cube = #
+#
+#    for i in eachindex(νlist)
+#        applyspectral!() # modify existing image cube inplace --- don't create new object
+#    end
+#
+#    return img_cube
+#end
