@@ -63,18 +63,9 @@ Applies Taylor Series spectral model to image data.
 
 Generates image data at frequency ν with respect to the reference frequency ν0.
 """
-function applyspectral(ν::N, ν0::N, I0::AbstractArray, spec::TaylorSpectral) where {N<:Number}
-    x = log(ν/ν0) # frequency to evaluate taylor expansion
-    c = spec.c
-
-    n = order(spec)
-    xlist = ntuple(i -> x^i, n) # creating a tuple to hold the frequency powers
-
-    data = similar(I0)
-    for i in eachindex(data) # doing expansion one pixel at a time
-        exparg = sum(getindex.(c,i).*xlist)
-        data[i] = I0[i] * exp(exparg)
-    end
+function applyspectral(I0::AbstractArray, spec::TaylorSpectral, ν::N, ν0::N) where {N<:Number}
+    data = copy(I0)
+    applyspectral!(data, spec, ν, ν0)
     return data
 end
 
@@ -107,8 +98,8 @@ end
 
 function visibilitymap_numeric(m::Multifrequency{<:ContinuousImage}, grid::AbstractFourierDualDomain)
     checkspatialgrid(axisdims(m.base), grid.imgdomain) # compare base image dimensions to spatial dimensions of data cube
-    img = parent(m.base)
-    imgcube = build_imagecube(m, grid.imgdomain.Fr)
+    #@info display(grid)
+    imgcube = build_imagecube(m, grid.imgdomain)
     vis = applyft(forward_plan(grid), imgcube)
     return applypulse!(vis, m.base.kernel, grid)
 end
@@ -124,19 +115,17 @@ end
 """
 Build a multifrequency image cube to hold images at all frequencies.
 """
-function build_imagecube(m, νlist)
+function build_imagecube(m, mfgrid)
     I0 = parent(m.base) # base image IntensityMap 
     ν0 = m.ν0
     spec = m.spec
-
-    spatialgrid = axisdims(I0) # single frequency image rectigrid
-    mfgrid = RectiGrid((X=spatialgrid.X,Y=spatialgrid.Y,Fr=νlist)) # multifrequency rectigrid
+    νlist = mfgrid.Fr 
 
     imgcube = allocate_imgmap(m.base, mfgrid) # build 3D cube of IntensityMap objects
 
     for i in eachindex(νlist) # setting the image each frequency to first equal the base image and then apply spectral model
         imgcube[:,:,i] .= I0 
-        imgcube[:,:,i] = applyspectral!(imgcube[:,:,i], spec, νlist[i], ν0) # modify existing image cube inplace --- don't create new object
+        applyspectral!(@view(imgcube[:,:,i]), spec, νlist[i], ν0) # @view modifies existing image cube inplace --- don't create new object
     end
 
     return imgcube
