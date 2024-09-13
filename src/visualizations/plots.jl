@@ -4,13 +4,11 @@ using Printf
 @recipe function f(image::IntensityMap; uvscale=rad2μas)
     #Define some constants
     #Construct the image grid in μas
-    (; X, Y) = image
-    xitr, yitr = uvscale.((X, Y))
-    x0, x1 = uvscale.(extrema(xitr))
-    y0, y1 = uvscale.(extrema(yitr))
 
     (; X, Y) = image
     xitr, yitr = uvscale.((X, Y))
+    x0, x1 = extrema(xitr)
+    y0, y1 = extrema(yitr)
     tickfontsize --> 11
     guidefontsize --> 14
 
