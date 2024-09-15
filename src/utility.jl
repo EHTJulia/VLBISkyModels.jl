@@ -41,7 +41,7 @@ end
     X, Y = g.X, g.Y
     (X[begin] > p.X || p.X > X[end]) && return zero(eltype(m.img))
     (Y[begin] > p.Y || p.Y > Y[end]) && return zero(eltype(m.img))
-    return m.itp(p.X, p.Y) / (dx*dy)
+    return m.itp(p.X, p.Y) / (dx * dy)
 end
 function ModifiedModel(img::SpatialIntensityMap,
                        transforms::NTuple{N,ModelModifier}) where {N}

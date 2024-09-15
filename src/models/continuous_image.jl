@@ -128,6 +128,23 @@ function applypulse!(vis, pulse, gfour::AbstractFourierDualDomain)
     return vis
 end
 
+# function intensitymap_analytic!(img::IntensityMap, m::Union{ContinuousImage, ModifiedModel{<:ContinuousImage}})
+#     intensitymap_numeric!(img, m)
+#     # guv = uvgrid(axisdims(img))
+#     # U = guv.U.*ones(length(guv.V))' |> vec
+#     # V = ones(length(guv.U)).*guv.V' |> vec
+#     # gfour = FourierDualDomain(g, UnstructuredDomain((;U, V)), FFTAlg())
+#     # vis = reshape(parent(visibilitymap_numeric(m, gfour)), size(img))
+#     # img .= real.(ifftshift(ifft!(fftshift(conj.(vis)))))
+#     return nothing
+# end
+
+# function visibilitymap_numeric!(img::IntensityMap, m::ContinuousImage)
+#     gfour = FourierDualDomain(axisdims(parent(m)), axisdims(img), FFTAlg())
+#     img .= visibilitymap_numeric(m, gfour)
+#     return nothing
+# end
+
 # Make a special pass through for this as well
 function visibilitymap_numeric(m::ContinuousImage,
                                grid::FourierDualDomain{GI,GV,<:FFTAlg}) where {GI,GV}
@@ -147,9 +164,9 @@ EnzymeRules.inactive(::typeof(checkgrid), args...) = nothing
 # A special pass through for Modified ContinuousImage
 const ScalingTransform = Union{Shift,Renormalize}
 function visibilitymap_numeric(m::ModifiedModel{M,T},
-                               p::AbstractFourierDualDomain) where {M<:ContinuousImage,N,
-                                                                    T<:NTuple{N,
-                                                                              <:ScalingTransform}}
+                               p::FourierDualDomain) where {M<:ContinuousImage,N,
+                                                            T<:NTuple{N,
+                                                                      <:ScalingTransform}}
     ispol = ispolarized(M)
     vbase = visibilitymap_numeric(m.model, p)
     puv = visdomain(p)

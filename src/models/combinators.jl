@@ -128,7 +128,7 @@ flux(m::AddModel) = flux(m.m1) + flux(m.m2)
 
 _numeric_add(m1, m2, dims) = intensitymap(m1, dims) + intensitymap(m2, dims)
 
-function intensitymap_numeric(m::AddModel, dims::AbstractRectiGrid)
+function intensitymap_numeric(m::AddModel, dims::AbstractSingleDomain)
     return _numeric_add(m.m1, m.m2, dims)
 end
 
