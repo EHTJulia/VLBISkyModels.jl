@@ -331,8 +331,7 @@ function Makie.plot!(plot::PolImage)
     end
 
     len2 = lift(plot.adjust_length, len, plot.length_norm) do al, l, lm
-        
-        (!al && length(l)>0) && return maximum(l)
+        (!al && length(l) > 0) && return maximum(l)
         return l
     end
     scatter!(plot, p;
