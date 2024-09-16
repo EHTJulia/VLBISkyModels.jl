@@ -9,7 +9,7 @@ using ForwardDiff
 using FITSIO
 using DocStringExtensions
 using DelimitedFiles
-using Enzyme, EnzymeCore
+using EnzymeCore
 using EnzymeCore: EnzymeRules, Const, Active, Duplicated
 using FFTW
 using FillArrays

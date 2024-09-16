@@ -108,7 +108,7 @@ convolved(cimg::AbstractModel, m::ContinuousImage) = convolved(m, cimg)
 #     return ModifiedModel{typeof(m), typeof(t)}(m, t)
 # end
 
-@inline function visibilitymap_numeric(m::ContinuousImage, grid::AbstractFourierDualDomain)
+@inline function visibilitymap_numeric(m::ContinuousImage, grid::FourierDualDomain)
     # We need to make sure that the grid is the same size as the image
     checkgrid(axisdims(m), imgdomain(grid))
     img = parent(m)
@@ -145,6 +145,7 @@ end
 #     return nothing
 # end
 
+
 # Make a special pass through for this as well
 function visibilitymap_numeric(m::ContinuousImage,
                                grid::FourierDualDomain{GI,GV,<:FFTAlg}) where {GI,GV}
@@ -165,8 +166,8 @@ EnzymeRules.inactive(::typeof(checkgrid), args...) = nothing
 const ScalingTransform = Union{Shift,Renormalize}
 function visibilitymap_numeric(m::ModifiedModel{M,T},
                                p::FourierDualDomain) where {M<:ContinuousImage,N,
-                                                            T<:NTuple{N,
-                                                                      <:ScalingTransform}}
+                                                                    T<:NTuple{N,
+                                                                              <:ScalingTransform}}
     ispol = ispolarized(M)
     vbase = visibilitymap_numeric(m.model, p)
     puv = visdomain(p)
