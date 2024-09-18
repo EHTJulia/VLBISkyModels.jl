@@ -106,7 +106,6 @@ function polintensity(s::StokesParams)
     return sqrt(s.Q^2 + s.U^2 + s.V^2)
 end
 
-
 """
     polimage(img::IntensityMap{<:StokesParams};
                 colormap = :bone,
@@ -205,11 +204,10 @@ end
 #     return (img,)
 # end
 
-function Makie.MakieCore.conversion_trait(::Type{<:PolImage}) 
+function Makie.MakieCore.conversion_trait(::Type{<:PolImage})
     # @info "HERE"
-    VertexGrid()
+    return VertexGrid()
 end
-
 
 # function Makie.convert_arguments(::Type{<:PolImage}, img::IntensityMap)
 #     return (IntensityMap(img),)
@@ -250,7 +248,7 @@ function Makie.plot!(plot::PolImage)
     imgo = plot[3]
 
     img = lift(imgo, Xo, Yo) do img, X, Y
-        return IntensityMap(img, RectiGrid((;X, Y)))
+        return IntensityMap(img, RectiGrid((; X, Y)))
     end
 
     imgI = lift(img) do img
@@ -263,18 +261,17 @@ function Makie.plot!(plot::PolImage)
     #     return crange
     # end
     heatmap!(plot, Xo, Yo, imgI;
-           colormap=plot.colormap,
-           colorscale=plot.colorscale,
-           colorrange=plot.colorrange,
-           alpha=plot.alpha,
-           nan_color=plot.nan_color,
-           lowclip=plot.lowclip)
+             colormap=plot.colormap,
+             colorscale=plot.colorscale,
+             colorrange=plot.colorrange,
+             alpha=plot.alpha,
+             nan_color=plot.nan_color,
+             lowclip=plot.lowclip)
 
     points = lift(img, plot.nvec,
                   plot.min_frac, plot.min_pol_frac,
                   plot.length_norm,
                   plot.plot_total) do img, nvec, Icut, pcut, length_norm, ptot
-
         X = img.X
         Y = img.Y
         Xvec = range(X[begin + 1], X[end - 1]; length=nvec)
