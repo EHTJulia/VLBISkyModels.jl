@@ -36,75 +36,76 @@ function Makie.expand_dimensions(::ImageLike, img::SpatialIntensityMap)
     return first(rX) .. last(rX), first(rY) .. last(rY), parent(img)
 end
 
-function Makie.convert_arguments(::CellGrid, x, y, img::AbstractMatrix{<:StokesParams})
-    return x, y, stokes(img, :I)
-end
-function Makie.convert_arguments(::VertexGrid, x, y, img::AbstractMatrix{<:StokesParams})
-    return x, y, stokes(img, :I)
-end
-function Makie.convert_arguments(::ImageLike, x, y, img::AbstractMatrix{<:StokesParams})
-    return x, y, stokes(img, :I)
-end
+# function Makie.convert_arguments(::CellGrid, x, y, img::AbstractMatrix{<:StokesParams})
+#     return x, y, stokes(img, :I)
+# end
+# function Makie.convert_arguments(::VertexGrid, x, y, img::AbstractMatrix{<:StokesParams})
+#     return x, y, stokes(img, :I)
+# end
+# function Makie.convert_arguments(::ImageLike, x, y, img::AbstractMatrix{<:StokesParams})
+#     return x, y, stokes(img, :I)
+# end
 
-function Makie.expand_dimensions(g::VertexGrid,
-                                 img::SpatialIntensityMap{<:StokesParams})
-    imgI = stokes(img, :I)
-    return Makie.expand_dimensions(g, imgI)
-end
+# function Makie.expand_dimensions(g::VertexGrid,
+#                                  img::SpatialIntensityMap{<:StokesParams})
+#     imgI = stokes(img, :I)
+#     return Makie.expand_dimensions(g, imgI)
+# end
 
-function Makie.expand_dimensions(g::CellGrid,
-                                 img::SpatialIntensityMap{<:StokesParams})
-    imgI = stokes(img, :I)
-    return Makie.expand_dimensions(g, imgI)
-end
+# function Makie.expand_dimensions(g::CellGrid,
+#                                  img::SpatialIntensityMap{<:StokesParams})
+#     imgI = stokes(img, :I)
+#     return Makie.expand_dimensions(g, imgI)
+# end
 
-function Makie.expand_dimensions(g::ImageLike,
-                                 img::SpatialIntensityMap{<:StokesParams})
-    imgI = stokes(img, :I)
-    return Makie.expand_dimensions(g, imgI)
-end
+# function Makie.expand_dimensions(g::ImageLike,
+#                                  img::SpatialIntensityMap{<:StokesParams})
+#     imgI = stokes(img, :I)
+#     return Makie.expand_dimensions(g, imgI)
+# end
 
 const VectorDim = Union{AbstractVector,DD.Dimension}
 
-function Makie.convert_arguments(t::CellGrid, x::VectorDim, y::VectorDim,
+function Makie.expand_dimensions(t::CellGrid, x::VectorDim, y::VectorDim,
                                  m::VLBISkyModels.AbstractModel)
     img = intensitymap(m, RectiGrid((X(x), Y(y))))
-    return Makie.convert_arguments(t, img)
+    return Makie.expand_dimensions(t, img)
 end
 
-function Makie.convert_arguments(t::VertexGrid, x::VectorDim, y::VectorDim,
+function Makie.expand_dimensions(t::VertexGrid, x::VectorDim, y::VectorDim,
                                  m::VLBISkyModels.AbstractModel)
     img = intensitymap(m, RectiGrid((X(x), Y(y))))
-    return Makie.convert_arguments(t, img)
+    return Makie.expand_dimensions(t, img)
 end
 
-function Makie.convert_arguments(t::ImageLike, x::VectorDim, y::VectorDim,
+function Makie.expand_dimensions(t::ImageLike, x::VectorDim, y::VectorDim,
                                  m::VLBISkyModels.AbstractModel)
     img = intensitymap(m, RectiGrid((X(x), Y(y))))
-    return Makie.convert_arguments(t, img)
+    return Makie.expand_dimensions(t, img)
 end
 
-function Makie.convert_arguments(t::CellGrid, g::VLBISkyModels.AbstractRectiGrid,
+function Makie.expand_dimensions(t::CellGrid, g::VLBISkyModels.AbstractRectiGrid,
                                  m::VLBISkyModels.AbstractModel)
     img = intensitymap(m, g)
-    return Makie.convert_arguments(t, img)
+    return Makie.expand_dimensions(t, img)
 end
 
-function Makie.convert_arguments(t::VertexGrid, g::VLBISkyModels.AbstractRectiGrid,
+function Makie.expand_dimensions(t::VertexGrid, g::VLBISkyModels.AbstractRectiGrid,
                                  m::VLBISkyModels.AbstractModel)
     img = intensitymap(m, g)
-    return Makie.convert_arguments(t, img)
+    return Makie.expand_dimensions(t, img)
 end
 
-function Makie.convert_arguments(t::ImageLike, g::VLBISkyModels.AbstractRectiGrid,
+function Makie.expand_dimensions(t::ImageLike, g::VLBISkyModels.AbstractRectiGrid,
                                  m::VLBISkyModels.AbstractModel)
     img = intensitymap(m, g)
-    return Makie.convert_arguments(t, img)
+    return Makie.expand_dimensions(t, img)
 end
 
 function polintensity(s::StokesParams)
     return sqrt(s.Q^2 + s.U^2 + s.V^2)
 end
+
 
 """
     polimage(img::IntensityMap{<:StokesParams};
@@ -175,7 +176,7 @@ $(Makie.ATTRIBUTES)
     you need to have `xreversed=true` when defining your axis.
 
 """
-Makie.@recipe(PolImage, img) do scene
+Makie.@recipe(PolImage, X, Y, img) do scene
     return Makie.Attributes(;
                             colormap=Reverse(:bone),
                             colorrange=Makie.automatic,
@@ -195,16 +196,28 @@ Makie.@recipe(PolImage, img) do scene
 end
 
 # # We need this because DimensionalData tries to be too dang smart
-function Makie.convert_arguments(::Type{<:PolImage}, img::IntensityMap{<:StokesParams,2})
-    return (img,)
+# function Makie.convert_arguments(::Type{<:PolImage}, img::IntensityMap{<:StokesParams,2}, args...)
+#     @info "HERE"
+#     return (img,)
+# end
+
+# function Makie.expand_dimensions(::Type{<:PolImage}, img::IntensityMap{<:StokesParams,2}, args...)
+#     return (img,)
+# end
+
+function Makie.MakieCore.conversion_trait(::Type{<:PolImage}) 
+    # @info "HERE"
+    VertexGrid()
 end
+
+
 # function Makie.convert_arguments(::Type{<:PolImage}, img::IntensityMap)
 #     return (IntensityMap(img),)
 # end
 
-function Makie.plottype(::SpatialIntensityMap{<:StokesParams})
-    return PolImage{<:Tuple{<:IntensityMap{<:StokesParams}}}
-end
+# function Makie.plottype(::SpatialIntensityMap{<:StokesParams})
+#     return PolImage{<:Tuple{<:IntensityMap{<:StokesParams}}}
+# end
 
 function polparams(x, y, s, xmin, ptot)
     ptot && return ellipse_params(x, y, s, xmin)
@@ -230,10 +243,18 @@ function lin_params(x, y, s, xmin)
 end
 
 function Makie.plot!(plot::PolImage)
-    @extract plot (img,)
+    # @extract plot (X, Y, img)
+
+    Xo = plot[1]
+    Yo = plot[2]
+    imgo = plot[3]
+
+    img = lift(imgo, Xo, Yo) do img, X, Y
+        return IntensityMap(img, RectiGrid((;X, Y)))
+    end
 
     imgI = lift(img) do img
-        return (stokes(img, :I))
+        return parent(stokes(img, :I))
     end
 
     # plot the stokes I image
@@ -241,7 +262,7 @@ function Makie.plot!(plot::PolImage)
     #     (crange == Makie.automatic) && return (0.0, maximum(imgI)*1.01)
     #     return crange
     # end
-    image!(plot, imgI;
+    heatmap!(plot, Xo, Yo, imgI;
            colormap=plot.colormap,
            colorscale=plot.colorscale,
            colorrange=plot.colorrange,
@@ -253,6 +274,7 @@ function Makie.plot!(plot::PolImage)
                   plot.min_frac, plot.min_pol_frac,
                   plot.length_norm,
                   plot.plot_total) do img, nvec, Icut, pcut, length_norm, ptot
+
         X = img.X
         Y = img.Y
         Xvec = range(X[begin + 1], X[end - 1]; length=nvec)
