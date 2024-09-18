@@ -1,4 +1,4 @@
-export Multifrequency, TaylorSpectral, applyspectral, applyspectral!, generatemodel, visibilitymap_numeric, build_imagecube
+export Multifrequency, TaylorSpectral, applyspectral, applyspectral!, generatemodel, visibilitymap_numeric, build_imagecube, mfimagepixels
 
 """Abstract type to hold all multifrequency spectral models"""
 abstract type AbstractSpectralModel end
@@ -129,4 +129,17 @@ function build_imagecube(m, mfgrid)
     end
 
     return imgcube
+end
+
+function mfimagepixels(fovx::Real, fovy::Real, nx::Integer, ny::Integer, νlist::Vector, x0::Real=0, y0::Real=0; executor=Serial(), header=ComradeBase.NoHeader())
+    @assert (nx > 0) && (ny > 0) "Number of pixels must be positive"
+
+    psizex = fovx / nx
+    psizey = fovy / ny
+
+    xitr = X(LinRange(-fovx / 2 + psizex / 2 - x0, fovx / 2 - psizex / 2 - x0, nx))
+    yitr = Y(LinRange(-fovy / 2 + psizey / 2 - y0, fovy / 2 - psizey / 2 - y0, ny))
+    νlist = Fr(νlist)
+    grid = RectiGrid((X=xitr, Y=yitr, Fr=νlist); executor, header)
+    return grid
 end
