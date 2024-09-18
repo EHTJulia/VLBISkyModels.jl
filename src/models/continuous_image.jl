@@ -123,7 +123,6 @@ end
     return visibilitymap(minterp, visdomain(grid))
 end
 
-
 function applypulse!(vis, pulse, gfour::AbstractFourierDualDomain)
     grid = imgdomain(gfour)
     griduv = visdomain(gfour)
