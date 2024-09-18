@@ -116,6 +116,14 @@ convolved(cimg::AbstractModel, m::ContinuousImage) = convolved(m, cimg)
     return applypulse!(vis, m.kernel, grid)
 end
 
+@inline function visibilitymap_numeric(m::ContinuousImage,
+                                       grid::FourierDualDomain{GI,GV,<:FFTAlg}) where {GI<:AbstractSingleDomain,
+                                                                                       GV<:AbstractSingleDomain}
+    minterp = InterpolatedModel(m, grid)
+    return visibilitymap(minterp, visdomain(grid))
+end
+
+
 function applypulse!(vis, pulse, gfour::AbstractFourierDualDomain)
     grid = imgdomain(gfour)
     griduv = visdomain(gfour)

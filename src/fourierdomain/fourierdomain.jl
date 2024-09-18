@@ -38,8 +38,8 @@ function create_plans(algorithm, imgdomain, visdomain)
 end
 
 struct FourierDualDomain{ID<:AbstractSingleDomain,VD<:AbstractSingleDomain,
-                         A<:FourierTransform,PI<:AbstractPlan,PD<:AbstractPlan} <:
-       AbstractFourierDualDomain
+                         A<:FourierTransform,PI<:AbstractPlan,
+                         PD<:AbstractPlan} <: AbstractFourierDualDomain
     imgdomain::ID
     visdomain::VD
     algorithm::A
