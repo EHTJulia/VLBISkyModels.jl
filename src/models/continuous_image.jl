@@ -152,7 +152,6 @@ end
 #     return nothing
 # end
 
-
 # Make a special pass through for this as well
 function visibilitymap_numeric(m::ContinuousImage,
                                grid::FourierDualDomain{GI,GV,<:FFTAlg}) where {GI,GV}
@@ -173,8 +172,8 @@ EnzymeRules.inactive(::typeof(checkgrid), args...) = nothing
 const ScalingTransform = Union{Shift,Renormalize}
 function visibilitymap_numeric(m::ModifiedModel{M,T},
                                p::FourierDualDomain) where {M<:ContinuousImage,N,
-                                                                    T<:NTuple{N,
-                                                                              <:ScalingTransform}}
+                                                            T<:NTuple{N,
+                                                                      <:ScalingTransform}}
     ispol = ispolarized(M)
     vbase = visibilitymap_numeric(m.model, p)
     puv = visdomain(p)
