@@ -26,8 +26,10 @@ algorithm(g::AbstractFourierDualDomain) = getfield(g, :algorithm)
 abstract type AbstractPlan end
 getplan(p::AbstractPlan) = getfield(p, :plan)
 getphases(p::AbstractPlan) = getfield(p, :phases)
+getindices(p::AbstractPlan) = getfield(p, :indices)
 EnzymeRules.inactive(::typeof(getplan), args...) = nothing
-# EnzymeRules.inactive(::typeof(getphases), args...) = nothing
+EnzymeRules.inactive(::typeof(getindices), args...) = nothing
+EnzymeRules.inactive(::typeof(getphases), args...) = nothing
 ChainRulesCore.@non_differentiable getplan(p)
 # ChainRulesCore.@non_differentiable getphases(p)
 

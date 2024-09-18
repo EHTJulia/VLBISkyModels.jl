@@ -76,14 +76,13 @@ function foo4D(x, p)
 end
 
 # Test function to check autodiff
-function check4dautodiff(Nx, Nt, Nf, x, dx, alg)
-    p = create_domains(Nx, alg; Nt=Nt, Nf=Nf)
-    df = Enzyme.autodiff(Reverse, foo4D, Active, Duplicated(x, fill!(dx, 0)), Const(p))
-    return df, dx
+function check4dautodiff(p, x, dx)
+    Enzyme.autodiff(Reverse, foo4D, Active, Duplicated(x, fill!(dx, 0)), Const(p))
+    return dx
 end
 
 # Function to test gradient against finite differences
-function test4Dgrad(x, p)
+function test4Dgrad(p, x)
     finite_dx = grad(central_fdm(5, 1), x -> foo4D(x, p), x)[1]
     return finite_dx
 end
@@ -95,10 +94,13 @@ end
     x = randn(Nx, Nx, Nt, Nf)
     dx = zeros(Nx, Nx, Nt, Nf)
 
-    df, dx = check4dautodiff(Nx, Nt, Nf, x, dx, NFFTAlg())
-    finite_dx = test4Dgrad(x, create_domains(Nx, NFFTAlg(); Nt=Nt, Nf=Nf))
+    alg = NFFTAlg()
+    pnf = create_domains(Nx, alg; Nt=Nt, Nf=Nf)   
+    dx = check4dautodiff(p, x, dx)
+    finite_dx = test4Dgrad(p, x)
     @test isapprox(dx, finite_dx, atol=1e-2)
 
+    pdf = create_domains(Nx, alg; Nt=Nt, Nf=Nf)   
     df, dx = check4dautodiff(Nx, Nt, Nf, x, dx, DFTAlg())
     @test isapprox(dx, finite_dx, atol=1e-2)
 end

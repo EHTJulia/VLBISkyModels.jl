@@ -43,7 +43,7 @@ end
 @inline function applyft(p::NUFTPlan{<:FourierTransform,<:AbstractDict},
                          img::AbstractArray)
     vis_list = similar(baseimage(img), Complex{eltype(img)}, p.totalvis)
-    plans = p.plan
+    plans = getplan(plan)
     iminds, visinds = p.indices
     for i in eachindex(iminds, visinds)
         imind = iminds[i]
@@ -53,7 +53,10 @@ end
         # _nuft!(visind, plans[imind], @view(img[:, :, imind...])  
         vis_inner = nuft(plans[imind], @view(img[:, :, imind]))
         # After the todo this wont be required
-        vis_list[visind] .= vis_inner
+        vis_view = @view(vis_list[visind])
+        for i in eachindex(vis_view, vis_inner)
+            vis_view[i] = vis_inner[i]
+        end
     end
 
     vis_list .= vis_list .* p.phases
