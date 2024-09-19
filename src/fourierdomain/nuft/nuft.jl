@@ -19,7 +19,6 @@ end
 getindices(p::NUFTPlan) = getfield(p, :indices)
 EnzymeRules.inactive(::typeof(getindices), args...) = nothing
 
-
 # We do this for speed an readability since all seems to be very slow 
 _compare(nv::NamedTuple{N}, val) where {N} = mapreduce(n -> (nv[n] == val[n]), *, N)
 
@@ -108,7 +107,7 @@ function applyft(p::AbstractNUFTPlan, img::AbstractArray)
 end
 
 @inline function _nuft(p::NUFTPlan{<:FourierTransform,<:AbstractDict},
-                         img::AbstractArray{<:Real})
+                       img::AbstractArray{<:Real})
     vis_list = similar(baseimage(img), Complex{eltype(img)}, p.totalvis)
     plans = getplan(p)
     iminds, visinds = getindices(p)
@@ -131,7 +130,6 @@ end
 function _nuft(A::NUFTPlan, b::AbstractArray{<:Real})
     return _nuft(getplan(A), b)
 end
-
 
 @inline function nuft(A, b::IntensityMap)
     return _nuft(A, baseimage(b))

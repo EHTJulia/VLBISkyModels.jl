@@ -31,10 +31,8 @@ Base.@kwdef struct NFFTAlg{T,N,F} <: NUFT
     fftflags::F = FFTW.MEASURE
 end
 
-
 # This a new function is overloaded to handle when NUFTPlan has plans
 # as dictionaries in the case of Ti or Fr case
-
 
 function plan_nuft_spatial(alg::NFFTAlg, imagegrid::AbstractRectiGrid,
                            visdomain::UnstructuredDomain)
@@ -114,9 +112,10 @@ end
 # end
 
 #using EnzymeRules: ConfigWidth, needs_prima
-function EnzymeRules.augmented_primal(::EnzymeRules.RevConfigWidth, 
+function EnzymeRules.augmented_primal(::EnzymeRules.RevConfigWidth,
                                       ::Const{typeof(_nuft!)}, ::Type{<:Const}, out,
-                                      A::Const{<:NFFTPlan}, b::Duplicated{<:AbstractArray{<:Real}})
+                                      A::Const{<:NFFTPlan},
+                                      b::Duplicated{<:AbstractArray{<:Real}})
     _nuft!(out.val, A.val, b.val)
     # I think we don't need to cache this since A just has in internal temporary buffer
     # that is used to store the results of things like the FFT.
@@ -126,10 +125,9 @@ end
 
 @noinline function EnzymeRules.reverse(config::EnzymeRules.RevConfigWidth,
                                        ::Const{typeof(_nuft!)},
-                                       ::Type{<:Const}, tape, 
+                                       ::Type{<:Const}, tape,
                                        out::Duplicated, A::Const{<:NFFTPlan},
-                                       b::Duplicated{<:AbstractArray{<:Real}}
-                                     )
+                                       b::Duplicated{<:AbstractArray{<:Real}})
 
     # I think we don't need to cache this since A just has in internal temporary buffer
     # that is used to store the results of things like the FFT.

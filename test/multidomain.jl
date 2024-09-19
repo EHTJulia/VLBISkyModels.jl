@@ -75,7 +75,8 @@ end
 
 # Test function to check autodiff
 function check4dautodiff(p, x, dx)
-    Enzyme.autodiff(set_runtime_activity(Enzyme.Reverse), foo4D, Active, Duplicated(x, fill!(dx, 0)), Const(p))
+    Enzyme.autodiff(set_runtime_activity(Enzyme.Reverse), foo4D, Active,
+                    Duplicated(x, fill!(dx, 0)), Const(p))
     return nothing
 end
 
@@ -93,12 +94,12 @@ end
     dx = zeros(Nx, Nx, Nt, Nf)
 
     alg = NFFTAlg()
-    pnf = create_domains(Nx, alg; Nt=Nt, Nf=Nf)   
+    pnf = create_domains(Nx, alg; Nt=Nt, Nf=Nf)
     check4dautodiff(pnf, x, dx)
     finite_dx = test4Dgrad(pnf, x)
     @test isapprox(dx, finite_dx, atol=1e-2)
 
-    pdf = create_domains(Nx, alg; Nt=Nt, Nf=Nf)   
+    pdf = create_domains(Nx, alg; Nt=Nt, Nf=Nf)
     check4dautodiff(pdf, x, dx)
     @test isapprox(dx, finite_dx, atol=1e-2)
 end
