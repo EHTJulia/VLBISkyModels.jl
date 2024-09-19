@@ -103,7 +103,7 @@ end
 
 function applyft(p::AbstractNUFTPlan, img::AbstractArray)
     vis = nuft(p, img)
-    vis .= vis .* getphases(p)
+    vis .*= getphases(p)
     return vis
 end
 
@@ -111,14 +111,14 @@ end
                          img::AbstractArray{<:Real})
     vis_list = similar(baseimage(img), Complex{eltype(img)}, p.totalvis)
     plans = getplan(p)
-    iminds, visinds = getindices(indices)
+    iminds, visinds = getindices(p)
     for i in eachindex(iminds, visinds)
         imind = iminds[i]
         visind = visinds[i]
         # TODO
         # If visinds are consecutive then we can use the in-place _nuft!:
         # _nuft!(visind, plans[imind], @view(img[:, :, imind...])  
-        vis_inner = _nuft(plans[imind], @view(img[:, :, imind]))
+        vis_inner = _nuft(plans[imind], img[:, :, imind])
         # After the todo this wont be required
         vis_view = @view(vis_list[visind])
         for i in eachindex(vis_view, vis_inner)
@@ -126,6 +126,10 @@ end
         end
     end
     return vis_list
+end
+
+function _nuft(A::NUFTPlan, b::AbstractArray{<:Real})
+    return _nuft(getplan(A), b)
 end
 
 

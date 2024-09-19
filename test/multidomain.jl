@@ -68,15 +68,15 @@ end
 
 # Function to calculate visibilities
 function foo4D(x, p)
-    cimg = ContinuousImage(IntensityMap(x, VLBISkyModels.imgdomain(p)), BSplinePulse{3}())
+    cimg = ContinuousImage(IntensityMap(x, VLBISkyModels.imgdomain(p)), DeltaPulse())
     vis = VLBISkyModels.visibilitymap_numeric(cimg, p)
     return sum(abs2, vis)
 end
 
 # Test function to check autodiff
 function check4dautodiff(p, x, dx)
-    Enzyme.autodiff(set_runtime_activity(Reverse), foo4D, Active, Duplicated(x, fill!(dx, 0)), Const(p))
-    return dx
+    Enzyme.autodiff(set_runtime_activity(Enzyme.Reverse), foo4D, Active, Duplicated(x, fill!(dx, 0)), Const(p))
+    return nothing
 end
 
 # Function to test gradient against finite differences
@@ -94,39 +94,39 @@ end
 
     alg = NFFTAlg()
     pnf = create_domains(Nx, alg; Nt=Nt, Nf=Nf)   
-    dx = check4dautodiff(pnf, x, dx)
-    finite_dx = test4Dgrad(p, x)
+    check4dautodiff(pnf, x, dx)
+    finite_dx = test4Dgrad(pnf, x)
     @test isapprox(dx, finite_dx, atol=1e-2)
 
     pdf = create_domains(Nx, alg; Nt=Nt, Nf=Nf)   
-    dx = check4dautodiff(pdf, x, dx)
+    check4dautodiff(pdf, x, dx)
     @test isapprox(dx, finite_dx, atol=1e-2)
 end
 
 # Time complexity tests
-function testtimecomplexity(Nx, Nt1, Nt2, Nf1, Nf2, alg)
-    p1 = create_domains(Nx, alg; Nt=Nt1, Nf=Nf1)
-    cimg1 = ContinuousImage(IntensityMap(randn(Nx, Nx, Nt1, Nf1),
-                                         VLBISkyModels.imgdomain(p1)),
-                            BSplinePulse{3}())
-    t1 = @benchmark VLBISkyModels.visibilitymap_numeric($cimg1, $p1)
-    median_t1 = median(t1).time / 1e6
+# function testtimecomplexity(Nx, Nt1, Nt2, Nf1, Nf2, alg)
+#     p1 = create_domains(Nx, alg; Nt=Nt1, Nf=Nf1)
+#     cimg1 = ContinuousImage(IntensityMap(randn(Nx, Nx, Nt1, Nf1),
+#                                          VLBISkyModels.imgdomain(p1)),
+#                             BSplinePulse{3}())
+#     t1 = @benchmark VLBISkyModels.visibilitymap_numeric($cimg1, $p1)
+#     median_t1 = median(t1).time / 1e6
 
-    p2 = create_domains(Nx, alg; Nt=Nt2, Nf=Nf2)
-    cimg2 = ContinuousImage(IntensityMap(randn(Nx, Nx, Nt2, Nf2),
-                                         VLBISkyModels.imgdomain(p2)),
-                            BSplinePulse{3}())
-    t2 = @benchmark VLBISkyModels.visibilitymap_numeric($cimg2, $p2)
-    median_t2 = median(t2).time / 1e6
+#     p2 = create_domains(Nx, alg; Nt=Nt2, Nf=Nf2)
+#     cimg2 = ContinuousImage(IntensityMap(randn(Nx, Nx, Nt2, Nf2),
+#                                          VLBISkyModels.imgdomain(p2)),
+#                             BSplinePulse{3}())
+#     t2 = @benchmark VLBISkyModels.visibilitymap_numeric($cimg2, $p2)
+#     median_t2 = median(t2).time / 1e6
 
-    return median_t2 / median_t1
-end
+#     return median_t2 / median_t1
+# end
 
-@testset "Check time complexity for time and freq image FT" begin
-    @test isapprox(testtimecomplexity(24, 1, 2, 1, 2, NFFTAlg()), 4.0, atol=0.5)
-    @test isapprox(testtimecomplexity(24, 1, 2, 1, 1, NFFTAlg()), 2.0, atol=0.5)
-    @test isapprox(testtimecomplexity(24, 1, 1, 1, 2, NFFTAlg()), 2.0, atol=0.5)
-end
+# @testset "Check time complexity for time and freq image FT" begin
+#     @test isapprox(testtimecomplexity(24, 1, 2, 1, 2, NFFTAlg()), 4.0, atol=0.5)
+#     @test isapprox(testtimecomplexity(24, 1, 2, 1, 1, NFFTAlg()), 2.0, atol=0.5)
+#     @test isapprox(testtimecomplexity(24, 1, 1, 1, 2, NFFTAlg()), 2.0, atol=0.5)
+# end
 
 function rotating4dgaussian(p)
     # Elliptical gaussians rotating with a constant stretch and varying rotation

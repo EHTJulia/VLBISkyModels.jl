@@ -63,20 +63,18 @@ end
 
 # Allow NFFT to work with ForwardDiff.
 
-function _nuft(p::NUFTPlan{<:NUFT, <:NFFTPlan}, b::AbstractArray{<:Real})
-    A = getplan(p)
-    out = similar(b, eltype(A), size(A)[1])
-    _nuft!(out, A, b)
+function _nuft(p::NFFTPlan, b::AbstractArray{<:Real})
+    out = similar(b, eltype(p), size(p)[1])
+    _nuft!(out, p, b)
     return out
 end
 
-function _nuft(A::NUFTPlan, b::AbstractArray{<:ForwardDiff.Dual})
+function _nuft(A::NFFTPlan, b::AbstractArray{<:ForwardDiff.Dual})
     return _frule_nuft(A, b)
 end
 
-function _frule_nuft(A::NUFTPlan, b::AbstractArray{<:ForwardDiff.Dual{T,V,P}}) where {T,V,P}
+function _frule_nuft(p::NFFTPlan, b::AbstractArray{<:ForwardDiff.Dual{T,V,P}}) where {T,V,P}
     # Compute the fft
-    p = getplan(A)
     buffer = ForwardDiff.value.(b)
     xtil = p * complex.(buffer)
     out = similar(buffer, Complex{ForwardDiff.Dual{T,V,P}})

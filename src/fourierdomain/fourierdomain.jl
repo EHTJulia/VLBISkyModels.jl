@@ -18,8 +18,8 @@ imgdomain(g::AbstractFourierDualDomain) = getfield(g, :imgdomain)
 visdomain(g::AbstractFourierDualDomain) = getfield(g, :visdomain)
 algorithm(g::AbstractFourierDualDomain) = getfield(g, :algorithm)
 
-# EnzymeRules.inactive(::typeof(forward_plan), args...) = nothing
-# EnzymeRules.inactive(::typeof(reverse_plan), args...) = nothing
+EnzymeRules.inactive(::typeof(forward_plan), args...) = nothing
+EnzymeRules.inactive(::typeof(reverse_plan), args...) = nothing
 # ChainRulesCore.@non_differentiable getplan(p)
 # ChainRulesCore.@non_differentiable getphases(p)
 

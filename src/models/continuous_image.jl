@@ -125,12 +125,13 @@ end
 
 function applypulse!(vis, pulse, gfour::AbstractFourierDualDomain)
     grid = imgdomain(gfour)
+    guv  = visdomain(gfour)
     dx, dy = pixelsizes(grid)
     mp = stretched(pulse, dx, dy)
     # we grab the parent array since for some reason Enzyme struggles to see
     # through the broadcast
     pvis = parent(vis)
-    dp = domainpoints(grid)
+    dp = domainpoints(guv)
     pvis .*= visibility_point.(Ref(mp), dp)
     return vis
 end
