@@ -1,5 +1,3 @@
-Enzyme.API.runtimeActivity!(true)
-
 function create_domains(Nx, alg; Nt=0, Nf=0, fov=12.0, swap_tf=false)
     X = Y = range(-fov, fov; length=Nx)
     Ti = Nt > 0 ? sort(10 * rand(Nt)) : Float64[]
@@ -77,7 +75,7 @@ end
 
 # Test function to check autodiff
 function check4dautodiff(p, x, dx)
-    Enzyme.autodiff(Reverse, foo4D, Active, Duplicated(x, fill!(dx, 0)), Const(p))
+    Enzyme.autodiff(set_runtime_activity(Reverse), foo4D, Active, Duplicated(x, fill!(dx, 0)), Const(p))
     return dx
 end
 
@@ -96,12 +94,12 @@ end
 
     alg = NFFTAlg()
     pnf = create_domains(Nx, alg; Nt=Nt, Nf=Nf)   
-    dx = check4dautodiff(p, x, dx)
+    dx = check4dautodiff(pnf, x, dx)
     finite_dx = test4Dgrad(p, x)
     @test isapprox(dx, finite_dx, atol=1e-2)
 
     pdf = create_domains(Nx, alg; Nt=Nt, Nf=Nf)   
-    df, dx = check4dautodiff(Nx, Nt, Nf, x, dx, DFTAlg())
+    dx = check4dautodiff(pdf, x, dx)
     @test isapprox(dx, finite_dx, atol=1e-2)
 end
 

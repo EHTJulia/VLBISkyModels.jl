@@ -1,5 +1,3 @@
-Enzyme.API.runtimeActivity!(true)
-
 function testmodel(m::VLBISkyModels.AbstractModel, npix=512, atol=1e-4)
     @info "Testing $(m)"
     # Plots.plot(m)
@@ -133,7 +131,7 @@ end
 
 function testgrad(f, x; atol=1e-8, rtol=1e-5)
     dx = Enzyme.make_zero(x)
-    autodiff(Enzyme.Reverse, Const(f), Active, Duplicated(x, dx))
+    autodiff(set_runtime_activity(Enzyme.Reverse), Const(f), Active, Duplicated(x, dx))
     fdm = central_fdm(5, 1)
     gf = grad(fdm, f, x)[begin]
     @test isapprox(dx, gf; atol, rtol)

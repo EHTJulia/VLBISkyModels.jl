@@ -16,6 +16,10 @@ struct NUFTPlan{A,P,M,I,T} <: AbstractNUFTPlan
     totalvis::T # Total number of visibility points
 end
 
+getindices(p::NUFTPlan) = getfield(p, :indices)
+EnzymeRules.inactive(::typeof(getindices), args...) = nothing
+
+
 # We do this for speed an readability since all seems to be very slow 
 _compare(nv::NamedTuple{N}, val) where {N} = mapreduce(n -> (nv[n] == val[n]), *, N)
 
@@ -96,6 +100,34 @@ function inverse_plan(plan::NUFTPlan{<:FourierTransform,<:AbstractDict})
 
     return NUFTPlan(plan.alg, inverse_plans, inv.(plan.phases), plan.indices, plan.totalvis)
 end
+
+function applyft(p::AbstractNUFTPlan, img::AbstractArray)
+    vis = nuft(p, img)
+    vis .= vis .* getphases(p)
+    return vis
+end
+
+@inline function _nuft(p::NUFTPlan{<:FourierTransform,<:AbstractDict},
+                         img::AbstractArray{<:Real})
+    vis_list = similar(baseimage(img), Complex{eltype(img)}, p.totalvis)
+    plans = getplan(p)
+    iminds, visinds = getindices(indices)
+    for i in eachindex(iminds, visinds)
+        imind = iminds[i]
+        visind = visinds[i]
+        # TODO
+        # If visinds are consecutive then we can use the in-place _nuft!:
+        # _nuft!(visind, plans[imind], @view(img[:, :, imind...])  
+        vis_inner = _nuft(plans[imind], @view(img[:, :, imind]))
+        # After the todo this wont be required
+        vis_view = @view(vis_list[visind])
+        for i in eachindex(vis_view, vis_inner)
+            vis_view[i] = vis_inner[i]
+        end
+    end
+    return vis_list
+end
+
 
 @inline function nuft(A, b::IntensityMap)
     return _nuft(A, baseimage(b))

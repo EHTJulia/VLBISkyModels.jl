@@ -14,7 +14,7 @@ x = rand(4, 4)
 dx = zero(x)
 f(x)
 foo(x, p) = sum(abs2, VLBISkyModels.nuft(p, x))
-Enzyme.autodiff(Reverse, foo, Active, Duplicated(x, fill!(dx, 0.0)), Const(cache.plan))
+Enzyme.autodiff(set_runtime_activity(Reverse), foo, Active, Duplicated(x, fill!(dx, 0.0)), Const(cache.plan))
 
 out = zeros(ComplexF64, length(u))
 using Zygote

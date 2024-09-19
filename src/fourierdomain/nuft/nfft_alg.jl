@@ -31,37 +31,10 @@ Base.@kwdef struct NFFTAlg{T,N,F} <: NUFT
     fftflags::F = FFTW.MEASURE
 end
 
-function applyft(p::AbstractNUFTPlan, img::AbstractArray)
-    vis = nuft(getplan(p), img)
-    vis .= vis .* getphases(p)
-    return vis
-end
 
 # This a new function is overloaded to handle when NUFTPlan has plans
 # as dictionaries in the case of Ti or Fr case
 
-@inline function applyft(p::NUFTPlan{<:FourierTransform,<:AbstractDict},
-                         img::AbstractArray)
-    vis_list = similar(baseimage(img), Complex{eltype(img)}, p.totalvis)
-    plans = getplan(plan)
-    iminds, visinds = p.indices
-    for i in eachindex(iminds, visinds)
-        imind = iminds[i]
-        visind = visinds[i]
-        # TODO
-        # If visinds are consecutive then we can use the in-place _nuft!:
-        # _nuft!(visind, plans[imind], @view(img[:, :, imind...])  
-        vis_inner = nuft(plans[imind], @view(img[:, :, imind]))
-        # After the todo this wont be required
-        vis_view = @view(vis_list[visind])
-        for i in eachindex(vis_view, vis_inner)
-            vis_view[i] = vis_inner[i]
-        end
-    end
-
-    vis_list .= vis_list .* p.phases
-    return vis_list
-end
 
 function plan_nuft_spatial(alg::NFFTAlg, imagegrid::AbstractRectiGrid,
                            visdomain::UnstructuredDomain)
@@ -90,18 +63,20 @@ end
 
 # Allow NFFT to work with ForwardDiff.
 
-function _nuft(A::NFFTPlan, b::AbstractArray{<:Real})
+function _nuft(p::NUFTPlan{<:NUFT, <:NFFTPlan}, b::AbstractArray{<:Real})
+    A = getplan(p)
     out = similar(b, eltype(A), size(A)[1])
     _nuft!(out, A, b)
     return out
 end
 
-function _nuft(A::NFFTPlan, b::AbstractArray{<:ForwardDiff.Dual})
+function _nuft(A::NUFTPlan, b::AbstractArray{<:ForwardDiff.Dual})
     return _frule_nuft(A, b)
 end
 
-function _frule_nuft(p::NFFTPlan, b::AbstractArray{<:ForwardDiff.Dual{T,V,P}}) where {T,V,P}
+function _frule_nuft(A::NUFTPlan, b::AbstractArray{<:ForwardDiff.Dual{T,V,P}}) where {T,V,P}
     # Compute the fft
+    p = getplan(A)
     buffer = ForwardDiff.value.(b)
     xtil = p * complex.(buffer)
     out = similar(buffer, Complex{ForwardDiff.Dual{T,V,P}})
@@ -141,7 +116,8 @@ end
 # end
 
 #using EnzymeRules: ConfigWidth, needs_prima
-function EnzymeRules.augmented_primal(config::EnzymeRules.RevConfigWidth{1}, ::Const{typeof(_nuft!)}, ::Type{<:Const}, out,
+function EnzymeRules.augmented_primal(::EnzymeRules.RevConfigWidth, 
+                                      ::Const{typeof(_nuft!)}, ::Type{<:Const}, out,
                                       A::Const{<:NFFTPlan}, b::Duplicated{<:AbstractArray{<:Real}})
     _nuft!(out.val, A.val, b.val)
     # I think we don't need to cache this since A just has in internal temporary buffer
@@ -150,9 +126,10 @@ function EnzymeRules.augmented_primal(config::EnzymeRules.RevConfigWidth{1}, ::C
     return EnzymeRules.AugmentedReturn(nothing, nothing, nothing)
 end
 
-@noinline function EnzymeRules.reverse(config::EnzymeRules.RevConfigWidth{1},
+@noinline function EnzymeRules.reverse(config::EnzymeRules.RevConfigWidth,
                                        ::Const{typeof(_nuft!)},
-                                       ::Type{<:Const}, tape, out::Duplicated, A::Const{<:NFFTPlan},
+                                       ::Type{<:Const}, tape, 
+                                       out::Duplicated, A::Const{<:NFFTPlan},
                                        b::Duplicated{<:AbstractArray{<:Real}}
                                      )
 
