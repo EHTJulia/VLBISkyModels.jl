@@ -141,8 +141,8 @@ end
 # end
 
 #using EnzymeRules: ConfigWidth, needs_prima
-function EnzymeRules.augmented_primal(config, ::Const{typeof(_nuft!)}, ::Type{<:Const}, out,
-                                      A::Const, b)
+function EnzymeRules.augmented_primal(config::EnzymeRules.RevConfigWidth{1}, ::Const{typeof(_nuft!)}, ::Type{<:Const}, out,
+                                      A::Const{<:NFFTPlan}, b::Duplicated{<:AbstractArray{<:Real}})
     _nuft!(out.val, A.val, b.val)
     # I think we don't need to cache this since A just has in internal temporary buffer
     # that is used to store the results of things like the FFT.
@@ -150,10 +150,11 @@ function EnzymeRules.augmented_primal(config, ::Const{typeof(_nuft!)}, ::Type{<:
     return EnzymeRules.AugmentedReturn(nothing, nothing, nothing)
 end
 
-@noinline function EnzymeRules.reverse(config::EnzymeRules.ConfigWidth{1},
+@noinline function EnzymeRules.reverse(config::EnzymeRules.RevConfigWidth{1},
                                        ::Const{typeof(_nuft!)},
-                                       ::Type{<:Const}, tape, out::Duplicated, A::Const,
-                                       b::Duplicated)
+                                       ::Type{<:Const}, tape, out::Duplicated, A::Const{<:NFFTPlan},
+                                       b::Duplicated{<:AbstractArray{<:Real}}
+                                     )
 
     # I think we don't need to cache this since A just has in internal temporary buffer
     # that is used to store the results of things like the FFT.
