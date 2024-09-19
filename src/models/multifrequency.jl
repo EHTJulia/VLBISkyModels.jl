@@ -10,7 +10,7 @@ Spectral Model object.
 # Fields
 $(FIELDS)
 """
-struct Multifrequency{B<:ComradeBase.AbstractModel, F<:Number, S<:AbstractSpectralModel} <: ComradeBase.AbstractModel
+struct Multifrequency{B<:ContinuousImage, F<:Number, S<:AbstractSpectralModel} <: ComradeBase.AbstractModel
     """
     Base image model (e.g. Gaussian, ContinuousImage)
     """
@@ -26,15 +26,27 @@ struct Multifrequency{B<:ComradeBase.AbstractModel, F<:Number, S<:AbstractSpectr
 end
 
 # defining the mandatory methods for a Comrade AbstractModel
-visanalytic(::Type{Multifrequency{B}}) where {B} = visanalytic(B)
+visanalytic(::Type{Multifrequency{B}}) where {B} = NotAnalytic() #visanalytic(B)
 imanalytic(::Type{Multifrequency{B}}) where {B} = imanalytic(B)
 
 radialextent(::Type{Multifrequency{B}}) where {B} = radialextent(B)
 
 flux(::Type{Multifrequency{B}}) where {B} = flux(B)
 
-intensity_point(::Type{Multifrequency{B}}) where {B} = intensity_point(B)
-visibility_point(::Type{Multifrequency{B}}) where {B} = visibility_point(B)
+intensity_point(M::Multifrequency{B},p) where {B} = intensity_point(M.base,p)
+
+function intensity_point(M::Multifrequency,p)
+    I0 = intensity_point(M.base,p)
+    αimg = ContinuousImage(IntensityMap(M.spec[1],axisdims(M.base)), M.base.kernel)
+
+    αpoint = intensity_point(αimg,p)
+    
+    exparg = αpoint * log(p.Fr/ν0)
+
+    return I0 * exp(exparg)
+end
+
+#visibility_point(M::Multifrequency{B},p) where {B} = visibility_point(B)
 
 
 """
@@ -98,7 +110,6 @@ end
 
 function visibilitymap_numeric(m::Multifrequency{<:ContinuousImage}, grid::AbstractFourierDualDomain)
     checkspatialgrid(axisdims(m.base), grid.imgdomain) # compare base image dimensions to spatial dimensions of data cube
-    #@info display(grid)
     imgcube = build_imagecube(m, grid.imgdomain)
     vis = applyft(forward_plan(grid), imgcube)
     return applypulse!(vis, m.base.kernel, grid)
