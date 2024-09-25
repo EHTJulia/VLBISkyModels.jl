@@ -116,15 +116,23 @@ convolved(cimg::AbstractModel, m::ContinuousImage) = convolved(m, cimg)
     return applypulse!(vis, m.kernel, grid)
 end
 
+@inline function visibilitymap_numeric(m::ContinuousImage,
+                                       grid::FourierDualDomain{GI,GV,<:FFTAlg}) where {GI<:AbstractSingleDomain,
+                                                                                       GV<:AbstractSingleDomain}
+    minterp = InterpolatedModel(m, grid)
+    return visibilitymap(minterp, visdomain(grid))
+end
+
 function applypulse!(vis, pulse, gfour::AbstractFourierDualDomain)
     grid = imgdomain(gfour)
-    griduv = visdomain(gfour)
+    guv = visdomain(gfour)
     dx, dy = pixelsizes(grid)
     mp = stretched(pulse, dx, dy)
     # we grab the parent array since for some reason Enzyme struggles to see
     # through the broadcast
     pvis = parent(vis)
-    pvis .= pvis .* visibility_point.(Ref(mp), domainpoints(griduv))
+    dp = domainpoints(guv)
+    pvis .*= visibility_point.(Ref(mp), dp)
     return vis
 end
 
@@ -144,7 +152,6 @@ end
 #     img .= visibilitymap_numeric(m, gfour)
 #     return nothing
 # end
-
 
 # Make a special pass through for this as well
 function visibilitymap_numeric(m::ContinuousImage,
@@ -166,8 +173,8 @@ EnzymeRules.inactive(::typeof(checkgrid), args...) = nothing
 const ScalingTransform = Union{Shift,Renormalize}
 function visibilitymap_numeric(m::ModifiedModel{M,T},
                                p::FourierDualDomain) where {M<:ContinuousImage,N,
-                                                                    T<:NTuple{N,
-                                                                              <:ScalingTransform}}
+                                                            T<:NTuple{N,
+                                                                      <:ScalingTransform}}
     ispol = ispolarized(M)
     vbase = visibilitymap_numeric(m.model, p)
     puv = visdomain(p)

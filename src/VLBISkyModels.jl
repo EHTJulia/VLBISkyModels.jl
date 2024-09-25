@@ -71,17 +71,4 @@ include("utility.jl")
 include(joinpath("visualizations", "vis.jl"))
 include("io.jl")
 
-if !isdefined(Base, :get_extension)
-    using Requires
-end
-
-@static if !isdefined(Base, :get_extension)
-    function __init__()
-        @require Makie = "ee78f7c6-11fb-53f2-987a-cfe4a2b5a57a" include(joinpath(@__DIR__,
-                                                                                 "..",
-                                                                                 "ext",
-                                                                                 "VLBISkyModelsMakieExt.jl"))
-    end
-end
-
 end

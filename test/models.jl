@@ -1,8 +1,6 @@
-Enzyme.API.runtimeActivity!(true)
-
 function testmodel(m::VLBISkyModels.AbstractModel, npix=512, atol=1e-4)
     @info "Testing $(m)"
-    Plots.plot(m)
+    # Plots.plot(m)
     g = imagepixels(4 * VLBISkyModels.radialextent(m), 4 * VLBISkyModels.radialextent(m),
                     npix, npix)
     gth = imagepixels(4 * VLBISkyModels.radialextent(m), 4 * VLBISkyModels.radialextent(m),
@@ -11,7 +9,7 @@ function testmodel(m::VLBISkyModels.AbstractModel, npix=512, atol=1e-4)
     img = intensitymap(m, g)
     imgt = intensitymap(m, gth)
     @test isapprox(maximum(img .- imgt), 0.0, atol=1e-8)
-    Plots.plot(img)
+    # Plots.plot(img)
     img2 = similar(img)
     intensitymap!(img2, m)
     @test eltype(img) === Float64
@@ -19,7 +17,7 @@ function testmodel(m::VLBISkyModels.AbstractModel, npix=512, atol=1e-4)
     @test isapprox(maximum(parent(img) .- parent(img2)), 0, atol=1e-8)
     dx, dy = pixelsizes(img)
     u = fftshift(fftfreq(size(img, 1), 1 / dx)) ./ 40
-    Plots.closeall()
+    # Plots.closeall()
     minterp = InterpolatedModel(ContinuousImage(img, DeltaPulse()), axisdims(img);
                                 algorithm=FFTAlg(; padfac=4))
     @test isapprox(maximum(abs,
@@ -133,7 +131,7 @@ end
 
 function testgrad(f, x; atol=1e-8, rtol=1e-5)
     dx = Enzyme.make_zero(x)
-    autodiff(Enzyme.Reverse, Const(f), Active, Duplicated(x, dx))
+    autodiff(set_runtime_activity(Enzyme.Reverse), Const(f), Active, Duplicated(x, dx))
     fdm = central_fdm(5, 1)
     gf = grad(fdm, f, x)[begin]
     @test isapprox(dx, gf; atol, rtol)
