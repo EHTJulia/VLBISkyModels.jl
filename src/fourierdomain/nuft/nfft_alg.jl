@@ -61,18 +61,13 @@ end
 
 # Allow NFFT to work with ForwardDiff.
 
-function _nuft(p::NFFTPlan, b::AbstractArray{<:Real})
-    out = similar(b, eltype(p), size(p)[1])
-    _nuft!(out, p, b)
-    return out
-end
-
-function _nuft(A::NFFTPlan, b::AbstractArray{<:ForwardDiff.Dual})
+function _nuft(A::NUFTPlan, b::AbstractArray{<:ForwardDiff.Dual})
     return _frule_nuft(A, b)
 end
 
-function _frule_nuft(p::NFFTPlan, b::AbstractArray{<:ForwardDiff.Dual{T,V,P}}) where {T,V,P}
+function _frule_nuft(A::NUFTPlan, b::AbstractArray{<:ForwardDiff.Dual{T,V,P}}) where {T,V,P}
     # Compute the fft
+    p = getplan(A)
     buffer = ForwardDiff.value.(b)
     xtil = p * complex.(buffer)
     out = similar(buffer, Complex{ForwardDiff.Dual{T,V,P}})
@@ -93,38 +88,44 @@ function _frule_nuft(p::NFFTPlan, b::AbstractArray{<:ForwardDiff.Dual{T,V,P}}) w
     return out
 end
 
-function _nuft!(out, A, b)
+# We split on a strided array since NFFT.jl only works on those
+# and for StridedArrays we can potentially save an allocation
+@inline function _nuft!(out::StridedArray, A::NFFTPlan, b::StridedArray)
+    _jlnuft!(out, A, b)
+    return nothing
+end
+
+@inline function _nuft!(out::AbstractArray, A::NFFTPlan, b::AbstractArray)
+    tmp = similar(out)
+    _jlnuft!(tmp, A, b)
+    out .= tmp
+    return nothing
+end
+
+@inline function _jlnuft!(out, A, b)
     mul!(out, A, b)
     return nothing
 end
 
-# function ChainRulesCore.rrule(::typeof(_nuft), A::NFFTPlan, b)
-#     pr = ChainRulesCore.ProjectTo(b)
-#     vis = nuft(A, b)
-#     function nuft_pullback(Δy)
-#         Δf = NoTangent()
-#         dy = similar(vis)
-#         dy .= unthunk(Δy)
-#         ΔA = @thunk(pr(A' * dy))
-#         return Δf, NoTangent(), ΔA
-#     end
-#     return vis, nuft_pullback
-# end
-
-#using EnzymeRules: ConfigWidth, needs_prima
-function EnzymeRules.augmented_primal(::EnzymeRules.RevConfigWidth,
-                                      ::Const{typeof(_nuft!)}, ::Type{<:Const}, out,
+function EnzymeRules.augmented_primal(config::EnzymeRules.RevConfigWidth,
+                                      ::Const{typeof(_jlnuft!)}, ::Type{<:Const},
+                                      out::Duplicated,
                                       A::Const{<:NFFTPlan},
                                       b::Duplicated{<:AbstractArray{<:Real}})
-    _nuft!(out.val, A.val, b.val)
+    primal = EnzymeRules.needs_primal(config) ? out.val : nothing
+    shadow = EnzymeRules.needs_shadow(config) ? out.dval : nothing
+    cache_out = EnzymeRules.overwritten(config)[2] ? out : nothing
+    cache_b = EnzymeRules.overwritten(config)[4] ? b : nothing
+    tape = (cache_out, cache_b)
+    _jlnuft!(out.val, A.val, b.val)
     # I think we don't need to cache this since A just has in internal temporary buffer
     # that is used to store the results of things like the FFT.
     # cache_A = (EnzymeRules.overwritten(config)[3]) ? A.val : nothing
-    return EnzymeRules.AugmentedReturn(nothing, nothing, nothing)
+    return EnzymeRules.AugmentedReturn(primal, shadow, tape)
 end
 
 @noinline function EnzymeRules.reverse(config::EnzymeRules.RevConfigWidth,
-                                       ::Const{typeof(_nuft!)},
+                                       ::Const{typeof(_jlnuft!)},
                                        ::Type{<:Const}, tape,
                                        out::Duplicated, A::Const{<:NFFTPlan},
                                        b::Duplicated{<:AbstractArray{<:Real}})
@@ -137,17 +138,20 @@ end
     #     cache_A = A.val
     # end
 
+    outfwd = EnzymeRules.overwritten(config)[2] ? tape[1] : out
+    bfwd = EnzymeRules.overwritten(config)[4] ? tape[2] : b
+
     # This is so Enzyme batch mode works
     dbs = if EnzymeRules.width(config) == 1
-        (b.dval,)
+        (bfwd.dval,)
     else
-        b.dval
+        bfwd.dval
     end
 
     douts = if EnzymeRules.width(config) == 1
-        (out.dval,)
+        (outfwd.dval,)
     else
-        out.dval
+        outfwd.dval
     end
     for (db, dout) in zip(dbs, douts)
         # TODO open PR on NFFT so we can do this in place.
