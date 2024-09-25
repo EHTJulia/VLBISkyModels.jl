@@ -71,5 +71,4 @@ include("utility.jl")
 include(joinpath("visualizations", "vis.jl"))
 include("io.jl")
 
-
 end
