@@ -69,7 +69,7 @@ end
 # Function to calculate visibilities
 function foo4D(x, p)
     cimg = ContinuousImage(IntensityMap(x, VLBISkyModels.imgdomain(p)), DeltaPulse())
-    vis = VLBISkyModels.visibilitymap_numeric(cimg, p)
+    vis = VLBISkyModels.visibilitymap(cimg, p)
     return sum(abs2, vis)
 end
 
@@ -146,7 +146,7 @@ end
 function test4dgaussiansft(Nx, Nt, alg)
     p = create_domains(Nx, alg; Nt=Nt, Nf=1)
     cimg, gaussians = rotating4dgaussian(p)
-    vis_numeric = VLBISkyModels.visibilitymap_numeric(cimg, p)
+    vis_numeric = VLBISkyModels.visibilitymap(cimg, p)
     vis_analytic = similar(vis_numeric, 0)
 
     for (i, t) in enumerate(p.imgdomain.Ti)
@@ -165,7 +165,7 @@ end
 function test4dft_individual(Nx, Nt, alg)
     p = create_domains(Nx, alg; Nt=Nt, Nf=1)
     cimg, gaussians = rotating4dgaussian(p)
-    vis_numeric = VLBISkyModels.visibilitymap_numeric(cimg, p)
+    vis_numeric = VLBISkyModels.visibilitymap(cimg, p)
     vis_ind = similar(vis_numeric, 0)
 
     for (i, t) in enumerate(p.imgdomain.Ti)
@@ -175,7 +175,7 @@ function test4dft_individual(Nx, Nt, alg)
         p_ind = FourierDualDomain(imgdomain_ind, visdomain_ind, alg)
         img = intensitymap(gaussians[i], imgdomain_ind)
         cimg = ContinuousImage(img, BSplinePulse{3}())
-        vis_ind_t = VLBISkyModels.visibilitymap_numeric(cimg, p_ind)
+        vis_ind_t = VLBISkyModels.visibilitymap(cimg, p_ind)
         append!(vis_ind, vis_ind_t)
     end
     return vis_numeric == vis_ind
@@ -207,7 +207,7 @@ function test4dgaussiansft_swap(Nx, Nt, alg)
         visdomain_analytic = p.visdomain[Fr=p.imgdomain.Fr[1], Ti=t]
         p_analytic = FourierDualDomain(imgdomain_analytic, visdomain_analytic, alg)
         gaussian = gaussians[i]
-        vis_analytic_t = VLBISkyModels.visibilitymap_analytic(gaussian, p_analytic)
+        vis_analytic_t = VLBISkyModels.visibilitymap(gaussian, p_analytic)
         append!(vis_analytic, vis_analytic_t)
     end
 
@@ -238,7 +238,7 @@ function test3dgaussians(Nx, Nt, alg)
         visdomain_analytic = p.visdomain[Ti=t]
         p_analytic = FourierDualDomain(imgdomain_analytic, visdomain_analytic, alg)
         gaussian = gaussians[i]
-        vis_analytic_t = VLBISkyModels.visibilitymap_analytic(gaussian, p_analytic)
+        vis_analytic_t = VLBISkyModels.visibilitymap(gaussian, p_analytic)
         append!(vis_analytic, vis_analytic_t)
     end
 
@@ -261,7 +261,7 @@ function test3dgaussians_freq(Nx, Nf, alg)
     p = create_domains(Nx, alg; Nf=Nf)
     cimg, gaussians = freqgaussians(p)
 
-    vis_numeric = VLBISkyModels.visibilitymap_numeric(cimg, p)
+    vis_numeric = VLBISkyModels.visibilitymap(cimg, p)
     vis_analytic = similar(vis_numeric, 0)
 
     for (i, fr) in enumerate(p.imgdomain.Fr)
@@ -284,12 +284,12 @@ function test2dgaussian(Nx, alg)
     intensity_map = intensitymap(gaussian, RectiGrid((; X=p.imgdomain.X, Y=p.imgdomain.Y)))
     cimg = ContinuousImage(intensity_map, BSplinePulse{3}())
 
-    vis_numeric = VLBISkyModels.visibilitymap_numeric(cimg, p)
+    vis_numeric = VLBISkyModels.visibilitymap(cimg, p)
 
     imgdomain_analytic = RectiGrid((; X=p.imgdomain.X, Y=p.imgdomain.Y))
     visdomain_analytic = p.visdomain
     p_analytic = FourierDualDomain(imgdomain_analytic, visdomain_analytic, alg)
-    vis_analytic = VLBISkyModels.visibilitymap_analytic(gaussian, p_analytic)
+    vis_analytic = VLBISkyModels.visibilitymap(gaussian, p_analytic)
 
     return isapprox(maximum(abs, vis_numeric - vis_analytic), 0; atol=1e-3)
 end
