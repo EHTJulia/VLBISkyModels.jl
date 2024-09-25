@@ -33,5 +33,5 @@ function make_phases(::DFTAlg, imgdomain::AbstractRectiGrid, visdomain::Unstruct
 end
 
 function _nuft!(out::AbstractArray, p::AbstractArray, b::AbstractArray{<:Real})
-    return _mul!(out, p, reshape(b, :))
+    return mul!(out, p, reshape(b, :))
 end
