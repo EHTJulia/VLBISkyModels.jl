@@ -82,7 +82,7 @@ function applyspectral(I0::AbstractArray, spec::TaylorSpectral, ν::N, ν0::N) w
 end
 
 
-function applyspectral!(I0::AbstractArray, spec::TaylorSpectral{T{M}}, ν::N, ν0::N) where {N<:Number, T<:NTuple, M<:Matrix}
+function applyspectral!(I0::AbstractArray, spec::TaylorSpectral{T}, ν::N, ν0::N) where {N<:Number, T<:NTuple{<:Matrix}}
     x = log(ν/ν0) # frequency to evaluate taylor expansion
     c = spec.c
 
@@ -100,7 +100,7 @@ function applyspectral!(I0::AbstractArray, spec::TaylorSpectral{T{M}}, ν::N, ν
     return I0
 end
 
-function applyspectral!(I0::AbstractArray, spec::TaylorSpectral{T{N}}, ν::N, ν0::N) where {N<:Number, T<:NTuple}
+function applyspectral!(I0::AbstractArray, spec::TaylorSpectral{T}, ν::N, ν0::N) where {N<:Number, T<:NTuple{<:Number}}
     x = log(ν/ν0) # frequency to evaluate taylor expansion
     c = spec.c
 
