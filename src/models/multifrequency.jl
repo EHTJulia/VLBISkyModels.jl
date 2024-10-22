@@ -86,12 +86,8 @@ function applyspectral!(I0::AbstractArray, spec::TaylorSpectral{T}, ν::N, ν0::
     x = log(ν/ν0) # frequency to evaluate taylor expansion
     c = spec.c
 
-    print(c)
-
     n = order(spec)
     xlist = ntuple(i -> x^i, n) # creating a tuple to hold the frequency powers
-
-    print(xlist)
 
     for i in eachindex(I0) # doing expansion one pixel at a time
         exparg = sum(getindex.(c,i).*xlist)
