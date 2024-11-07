@@ -104,7 +104,7 @@ function _extract_fits_image(f::FITSIO.ImageHDU{T}) where {T}
         end
     end
     info = ComradeBase.MinimalHeader(source, ra, dec, mjd, freq)
-    g = imagepixels(psizex * nx, psizey * nx, nx, ny, x0c * psizex, y0c * psizey;
+    g = imagepixels(psizex * nx, psizey * ny, nx, ny, x0c * psizex, y0c * psizey;
                     header=info)
     imap = IntensityMap(image, g)
     return imap
