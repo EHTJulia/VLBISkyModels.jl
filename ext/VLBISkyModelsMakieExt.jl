@@ -102,10 +102,10 @@ end
 
 """
     polimage(img::IntensityMap{<:StokesParams};
-                colormap = :bone,
+                colormap = :grayC,
                 colorrange = Makie.automatic,
                 pcolorrange=Makie.automatic,
-                pcolormap=Reverse(:jet1),
+                pcolormap=:coolwarm,
                 nvec = 30,
                 min_frac = 0.1,
                 min_pol_frac=0.2,
@@ -171,7 +171,7 @@ $(Makie.ATTRIBUTES)
 """
 Makie.@recipe(PolImage, X, Y, img) do scene
     return Makie.Attributes(;
-                            colormap=Reverse(:bone),
+                            colormap=:grayC,
                             colorrange=Makie.automatic,
                             pcolorrange=Makie.automatic,
                             pcolormap=Makie.automatic,
@@ -339,7 +339,7 @@ function Makie.plot!(plot::PolImage)
         if pt
             return :diverging_bkr_55_10_c35_n256
         else
-            return :rainbow1
+            return :coolwarm
         end
     end
 
@@ -408,7 +408,7 @@ function _imgviz!(fig, ax, img::IntensityMap{<:Real}; scale_length=fieldofview(i
     dkwargs = Dict(kwargs)
     crange = get(dkwargs, :colorrange, colorrange_default)
     delete!(dkwargs, :colorrange)
-    cmap = get(dkwargs, :colormap, :afmhot)
+    cmap = get(dkwargs, :colormap, :magma)
     delete!(dkwargs, :colormap)
 
     hm = heatmap!(ax, img; colorrange=crange, colormap=cmap, dkwargs...)
@@ -432,7 +432,7 @@ function _imgviz!(fig, ax, img::IntensityMap{<:StokesParams};
     dkwargs = Dict(kwargs)
     crange = get(dkwargs, :colorrange, colorrange_default)
     delete!(dkwargs, :colorrange)
-    cmap = get(dkwargs, :colormap, Reverse(:bone))
+    cmap = get(dkwargs, :colormap, :grayC)
     delete!(dkwargs, :colormap)
     delete!(dkwargs, :size)
 

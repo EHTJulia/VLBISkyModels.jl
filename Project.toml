@@ -1,7 +1,7 @@
 name = "VLBISkyModels"
 uuid = "d6343c73-7174-4e0f-bb64-562643efbeca"
 authors = ["Paul Tiede <ptiede91@gmail.com> and contributors"]
-version = "0.6.3"
+version = "0.6.4"
 
 [deps]
 AbstractFFTs = "621f4979-c628-5d54-868e-fcf4e3e8185c"
@@ -45,7 +45,7 @@ BasicInterpolators = "0.6, 0.7"
 ChainRulesCore = "1"
 ComradeBase = "0.8"
 DelimitedFiles = "1"
-DimensionalData = "0.27, 0.28"
+DimensionalData = "0.27, 0.28, 0.29"
 DocStringExtensions = "0.6,0.7,0.8,0.9"
 EnzymeCore = "0.8"
 FFTW = "^1"
@@ -64,7 +64,7 @@ Reexport = "1"
 Serialization = "1.8"
 SpecialFunctions = "0.10, 1, 2"
 StaticArrays = "1"
-StructArrays = "0.3,0.4,0.5,0.6"
+StructArrays = "0.6,0.7"
 julia = "1.9"
 
 [extras]
