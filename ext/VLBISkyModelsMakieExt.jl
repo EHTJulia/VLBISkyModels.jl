@@ -337,9 +337,9 @@ function Makie.plot!(plot::PolImage)
     pcm = lift(plot.pcolormap, plot.plot_total) do pc, pt
         (pc != Makie.automatic) && return pc
         if pt
-            return :diverging_bkr_55_10_c35_n256
-        else
             return :coolwarm
+        else
+            return :rainbow1
         end
     end
 
