@@ -301,8 +301,8 @@ Each Stokes parameter is parameterized as
 
 where `a,b,c,d` are real numbers with no conditions, and `p=√(a² + b² + c²)`.
 """
-@fastmath function PolExp2Map(a::AbstractArray, 
-                              b::AbstractArray, 
+@fastmath function PolExp2Map(a::AbstractArray,
+                              b::AbstractArray,
                               c::AbstractArray,
                               d::AbstractArray,
                               grid::AbstractRectiGrid)
