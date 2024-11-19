@@ -286,8 +286,6 @@ function PoincareSphere2Map(I::IntensityMap, p, X)
     return PoincareSphere2Map(baseimage(I), p, X, axisdims(I))
 end
 
-using FastBroadcast
-
 """
     PolExp2Map(a, b, c, d, grid::AbstractRectiGrid)
 
