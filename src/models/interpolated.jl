@@ -39,7 +39,7 @@ function build_intermodel(img::IntensityMap, plan, alg::FFTAlg, pulse=DeltaPulse
     vis = applyft(plan, img)
     grid = axisdims(img)
     griduv = build_padded_uvgrid(grid, alg)
-    phasecenter!(vis, grid, griduv)
+    # phasecenter!(vis, grid, griduv)
     (; X, Y) = grid
     (; U, V) = griduv
     sitp = create_interpolator(U, V, vis, stretched(pulse, step(X), step(Y)))

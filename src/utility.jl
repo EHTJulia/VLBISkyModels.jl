@@ -77,23 +77,23 @@ function convolve!(img::SpatialIntensityMap{<:Real}, m::AbstractModel)
     ComradeBase.baseimage(img) isa FillArrays.Fill && return img
 
     @assert visanalytic(typeof(m)) isa IsAnalytic "Convolving model must have an analytic Fourier transform currently"
-    p = plan_rfft(baseimage(img))
-
     # plan_rfft uses just the positive first axis to respect real conjugate symmetry
     (; X, Y) = img
-    U = rfftfreq(size(img, 1), inv(step(X)))
-    V = fftfreq(size(img, 2), inv(step(Y)))
 
-    griduv = RectiGrid((; U, V))
-    puv = domainpoints(griduv)
-
+    pimg = padimage(img, FFTAlg())
     # TODO maybe ask a user to pass a vis buffer as well?
-    vis = p * baseimage(img)
+    vis = fftshift(fft(ifftshift(pimg)))
+    U = fftshift(fftfreq(size(pimg, 1), inv(step(X))))
+    V = fftshift(fftfreq(size(pimg, 2), inv(step(Y))))
+    guv = RectiGrid((U=U, V=V); executor=executor(img), header=header(img))
+    puv = domainpoints(guv)
 
-    # Conjugate because Comrade uses +2πi exponent
-    vis .*= conj.(visibility_point.(Ref(m), puv))
-    pinv = plan_irfft(vis, size(img, 1))
-    mul!(baseimage(img), pinv, vis)
+    vis .*= visibility_point.(Ref(shifted(m, step(X)/2, step(Y)/2)), puv)
+    # phasedecenter!(vis, axisdims(img), griduv)
+    cimg = fftshift(ifft(ifftshift(vis)))
+    for i in CartesianIndices(img)
+        img[i] = real(cimg[i])
+    end
     return img
 end
 
