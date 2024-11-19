@@ -301,9 +301,11 @@ Each Stokes parameter is parameterized as
 
 where `a,b,c,d` are real numbers with no conditions, and `p=√(a² + b² + c²)`.
 """
-@fastmath function PolExp2Map(a::AbstractArray, b::AbstractArray, c::AbstractArray, d::AbstractArray,
-                    grid::AbstractRectiGrid)
-
+@fastmath function PolExp2Map(a::AbstractArray, 
+                              b::AbstractArray, 
+                              c::AbstractArray,
+                              d::AbstractArray,
+                              grid::AbstractRectiGrid)
     pimgI = similar(a)
     pimgQ = similar(b)
     pimgU = similar(c)
@@ -311,7 +313,7 @@ where `a,b,c,d` are real numbers with no conditions, and `p=√(a² + b² + c²)
 
     # This is just faster because it is a 1 pass algorithm
     @inbounds @simd for i in eachindex(pimgI, pimgQ, pimgU, pimgV)
-        p = sqrt(b[i] ^ 2 + c[i] ^ 2 + d[i] ^ 2)
+        p = sqrt(b[i]^2 + c[i]^2 + d[i]^2)
         ea = exp(a[i])
         tmp = ea * sinh(p) / p
         pimgI[i] = ea * cosh(p)
