@@ -255,12 +255,22 @@ The arguments are:
 
 """
 function PoincareSphere2Map(I, p, X, grid)
-    pimgI = I .* p
-    stokesI = I
-    stokesQ = pimgI .* X[1]
-    stokesU = pimgI .* X[2]
-    stokesV = pimgI .* X[3]
-    return stokes_intensitymap(stokesI, stokesQ, stokesU, stokesV, grid)
+    Q = similar(I)
+    U = similar(I)
+    V = similar(I)
+
+    t1 = X[1]
+    t2 = X[2]
+    t3 = X[3]
+
+    @inbounds @simd for i in eachindex(I, Q, U, V)
+        pI = I[i] * p[i]
+        Q[i] = pI * t1[i]
+        U[i] = pI * t2[i]
+        V[i] = pI * t3[i]
+    end
+
+    return stokes_intensitymap(I, Q, U, V, grid)
 end
 
 # function PoincareSphere2Map(I, p, X, grid)
@@ -275,6 +285,8 @@ end
 function PoincareSphere2Map(I::IntensityMap, p, X)
     return PoincareSphere2Map(baseimage(I), p, X, axisdims(I))
 end
+
+using FastBroadcast
 
 """
     PolExp2Map(a, b, c, d, grid::AbstractRectiGrid)
@@ -291,20 +303,37 @@ Each Stokes parameter is parameterized as
 
 where `a,b,c,d` are real numbers with no conditions, and `p=√(a² + b² + c²)`.
 """
-function PolExp2Map(a::AbstractArray, b::AbstractArray, c::AbstractArray, d::AbstractArray,
+@fastmath function PolExp2Map(a::AbstractArray, b::AbstractArray, c::AbstractArray, d::AbstractArray,
                     grid::AbstractRectiGrid)
-    p = sqrt.(b .^ 2 .+ c .^ 2 .+ d .^ 2)
 
-    tmp = exp.(a) .* sinh.(p) .* inv.(p)
-    pimgI = exp.(a) .* cosh.(p)
-    pimgQ = tmp .* b
-    pimgU = tmp .* c
-    pimgV = tmp .* d
-    stokesI = pimgI
-    stokesQ = pimgQ
-    stokesU = pimgU
-    stokesV = pimgV
-    return stokes_intensitymap(stokesI, stokesQ, stokesU, stokesV, grid)
+    pimgI = similar(a)
+    pimgQ = similar(b)
+    pimgU = similar(c)
+    pimgV = similar(d)
+
+    # This is just faster because it is a 1 pass algorithm
+    @inbounds @simd for i in eachindex(pimgI, pimgQ, pimgU, pimgV)
+        p = sqrt(b[i] ^ 2 + c[i] ^ 2 + d[i] ^ 2)
+        ea = exp(a[i])
+        tmp = ea * sinh(p) / p
+        pimgI[i] = ea * cosh(p)
+        pimgQ[i] = tmp * b[i]
+        pimgU[i] = tmp * c[i]
+        pimgV[i] = tmp * d[i]
+    end
+
+    # p = @.. sqrt(b ^ 2 + c ^ 2 + d ^ 2)
+    # ea = @.. exp(a)
+    # tmp = @.. ea * sinh(p) * inv(p)
+    # pimgI = @.. ea * cosh(p)
+    # pimgQ = @.. tmp * b
+    # pimgU = @.. tmp * c
+    # pimgV = @.. tmp * d
+    # stokesI = pimgI
+    # stokesQ = pimgQ
+    # stokesU = pimgU
+    # stokesV = pimgV
+    return stokes_intensitymap(pimgI, pimgQ, pimgU, pimgV, grid)
 end
 
 """

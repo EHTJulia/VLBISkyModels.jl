@@ -105,7 +105,7 @@ end
                 colormap = :grayC,
                 colorrange = Makie.automatic,
                 pcolorrange=Makie.automatic,
-                pcolormap=:coolwarm,
+                pcolormap=Makie.Reverse(:RdBu),
                 nvec = 30,
                 min_frac = 0.1,
                 min_pol_frac=0.2,
@@ -337,7 +337,7 @@ function Makie.plot!(plot::PolImage)
     pcm = lift(plot.pcolormap, plot.plot_total) do pc, pt
         (pc != Makie.automatic) && return pc
         if pt
-            return :coolwarm
+            return Makie.Reverse(:RdBu)
         else
             return :rainbow1
         end
@@ -408,7 +408,7 @@ function _imgviz!(fig, ax, img::IntensityMap{<:Real}; scale_length=fieldofview(i
     dkwargs = Dict(kwargs)
     crange = get(dkwargs, :colorrange, colorrange_default)
     delete!(dkwargs, :colorrange)
-    cmap = get(dkwargs, :colormap, :magma)
+    cmap = get(dkwargs, :colormap, :inferno)
     delete!(dkwargs, :colormap)
 
     hm = heatmap!(ax, img; colorrange=crange, colormap=cmap, dkwargs...)
