@@ -19,7 +19,7 @@ function _load_fits(fname, ::Type{IntensityMap})
     img = FITS(fname, "r") do f
         if length(f) > 1
             @warn "Currently only loading stokes I. To load polarized quantities\n" *
-                  "please call `load(filename, IntensityMap{StokesParams})`"
+                  "please call `load_fits(filename, IntensityMap{StokesParams})`"
         end
         # assume that the first element is stokes I
         return _extract_fits_image(f[1])
@@ -104,7 +104,7 @@ function _extract_fits_image(f::FITSIO.ImageHDU{T}) where {T}
         end
     end
     info = ComradeBase.MinimalHeader(source, ra, dec, mjd, freq)
-    g = imagepixels(psizex * nx, psizey * nx, nx, ny, x0c * psizex, y0c * psizey;
+    g = imagepixels(psizex * nx, psizey * ny, nx, ny, x0c * psizex, y0c * psizey;
                     header=info)
     imap = IntensityMap(image, g)
     return imap

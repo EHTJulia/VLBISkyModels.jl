@@ -32,6 +32,6 @@ function make_phases(::DFTAlg, imgdomain::AbstractRectiGrid, visdomain::Unstruct
     return one(Complex{eltype(visdomain.U)})
 end
 
-function _nuft(A::AbstractMatrix, b::AbstractArray)
-    return A * reshape(b, :)
+function _nuft!(out::AbstractArray, p::AbstractArray, b::AbstractArray{<:Real})
+    return mul!(out, p, reshape(b, :))
 end

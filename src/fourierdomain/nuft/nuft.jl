@@ -16,6 +16,9 @@ struct NUFTPlan{A,P,M,I,T} <: AbstractNUFTPlan
     totalvis::T # Total number of visibility points
 end
 
+getindices(p::NUFTPlan) = getfield(p, :indices)
+EnzymeRules.inactive(::typeof(getindices), args...) = nothing
+
 # We do this for speed an readability since all seems to be very slow 
 _compare(nv::NamedTuple{N}, val) where {N} = mapreduce(n -> (nv[n] == val[n]), *, N)
 
@@ -34,16 +37,23 @@ function plan_indices(imgdomain::AbstractRectiGrid, visdomain::UnstructuredDomai
     # DimPoints stack overflows for an empty tuple  
     isempty(spatialdims) && return (0, 0)
 
-    itr = pairs(DimPoints(spatialdims))
-    T = typeof(first(first(itr)))
-    iminds = T[]
-    visinds = Vector{Int}[]
+    itr = DimPoints(spatialdims)
     visp = domainpoints(visdomain)
-    for (i, vals) in itr
+    inds = map(eachindex(itr), itr) do i, vals
         nv = NamedTuple{nms}(vals)
-        push!(iminds, i)
-        push!(visinds, findall(p -> _compare(nv, p), visp))
+        # Check if visinds are strided if so switch to a iterator
+        visind = findall(p -> _compare(nv, p), visp)
+        dfs = diff(visind)
+        if all(==(dfs[1]), dfs)
+            return (i, visind[1]:dfs[1]:visind[end])
+        else
+            return (i, visind)
+        end
     end
+
+    iminds = vec(parent(first.(inds)))
+    visinds = vec(parent(last.(inds)))
+
     return iminds, visinds
 end
 
@@ -97,6 +107,12 @@ function inverse_plan(plan::NUFTPlan{<:FourierTransform,<:AbstractDict})
     return NUFTPlan(plan.alg, inverse_plans, inv.(plan.phases), plan.indices, plan.totalvis)
 end
 
+function applyft(p::AbstractNUFTPlan, img::AbstractArray)
+    vis = nuft(p, img)
+    vis .*= getphases(p)
+    return vis
+end
+
 @inline function nuft(A, b::IntensityMap)
     return _nuft(A, baseimage(b))
 end
@@ -109,13 +125,34 @@ end
     return StructArray{StokesParams{eltype(I)}}((; I, Q, U, V))
 end
 
-# @inline function nuft(A, b::StokesIntensityMap)
-#     I = _nuft(A, parent(stokes(b, :I)))
-#     Q = _nuft(A, parent(stokes(b, :Q)))
-#     U = _nuft(A, parent(stokes(b, :U)))
-#     V = _nuft(A, parent(stokes(b, :V)))
-#     return StructArray{StokesParams{eltype(I)}}((; I, Q, U, V))
-# end
+function _nuft(A::NUFTPlan, b::AbstractArray{<:Real})
+    return _nuft(getplan(A), b)
+end
+
+function _nuft(A, b::AbstractArray{<:Real})
+    out = similar(b, eltype(A), size(A)[1])
+    _nuft!(out, A, b)
+    return out
+end
+
+# Special overload for multidomain nuft
+@inline function _nuft(p::NUFTPlan{<:FourierTransform,<:AbstractDict},
+                       img::AbstractArray{<:Real})
+    vis_list = similar(baseimage(img), Complex{eltype(img)}, p.totalvis)
+    plans = getplan(p)
+    iminds, visinds = getindices(p)
+    for i in eachindex(iminds, visinds)
+        imind = iminds[i]
+        visind = visinds[i]
+        # TODO
+        # If visinds are consecutive then we can use the in-place _nuft!:
+        # _nuft!(visind, plans[imind], @view(img[:, :, imind...])
+        vis_view = @view(vis_list[visind])
+        _nuft!(vis_view, plans[imind], @view(img[:, :, imind]))
+        # After the todo this wont be required
+    end
+    return vis_list
+end
 
 include(joinpath(@__DIR__, "nfft_alg.jl"))
 

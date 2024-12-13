@@ -62,7 +62,7 @@ end
 #     return nothing
 # end
 
-function intensitymap_numeric(m::AbstractModel, grid::AbstractRectiGrid)
+function intensitymap_numeric(m::AbstractModel, grid::AbstractSingleDomain)
     img = allocate_imgmap(m, grid)
     intensitymap_numeric!(img, m)
     return img
