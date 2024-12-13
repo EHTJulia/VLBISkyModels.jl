@@ -82,7 +82,7 @@ function applyspectral(I0::AbstractArray, spec::TaylorSpectral, ν::N, ν0::N) w
 end
 
 
-function applyspectral!(I0::AbstractArray, spec::TaylorSpectral{T}, ν::N, ν0::N) where {N<:Number, T<:Tuple{<:Matrix}}
+function applyspectral!(I0::AbstractArray, spec::TaylorSpectral{T}, ν::N, ν0::N) where {N<:Number, T<:Tuple{Vararg{<:Matrix}}}
     x = log(ν/ν0) # frequency to evaluate taylor expansion
     c = spec.c
 
@@ -110,7 +110,7 @@ function applyspectral!(I0::AbstractArray, spec::TaylorSpectral{T}, ν::N, ν0::
     return I0
 end
 
-"""Creates a new Multifrequency object containing image at a frequency ν."""
+"""Given a multifrequency model (base image & spectral model), creates a new Continuous image model at frequency ν."""
 function generatemodel(MF::Multifrequency, ν::N) where {N<:Number}
     image = parent(MF.base) # ContinuousImage -> SpatialIntensityMap
     I0 = parent(image) # SpatialIntensityMap -> Array
@@ -118,8 +118,7 @@ function generatemodel(MF::Multifrequency, ν::N) where {N<:Number}
     data = applyspectral(I0,MF.spec,ν,MF.ν0) # base image model, spectral model, frequency to generate new image
     
     new_intensitymap = IntensityMap(data, getfield(image, :grid), getfield(image, :refdims), getfield(image, :name))
-    new_base = ContinuousImage(new_intensitymap,MF.base.kernel)
-    return Multifrequency(new_base,MF.ν0,MF.spec)
+    return ContinuousImage(new_intensitymap,MF.base.kernel)
 end
 
 function visibilitymap_numeric(m::Multifrequency{<:ContinuousImage}, grid::AbstractFourierDualDomain)
