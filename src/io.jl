@@ -92,7 +92,7 @@ function _extract_fits_image(f::FITSIO.ImageHDU{T}) where {T}
     if haskey(header, "STOKES")
         stokes = Symbol(header["STOKES"])
     end
-    bmaj = one(T) #Nominal values
+    bmaj = one(T) # Nominal values
     bmin = one(T)
     if haskey(header, "BUNIT")
         if header["BUNIT"] == "JY/BEAM"
