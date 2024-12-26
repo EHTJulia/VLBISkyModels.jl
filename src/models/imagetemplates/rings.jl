@@ -53,8 +53,8 @@ end
     @unpack_params radial, azimuthal = d(p)
     r = hypot(X, Y)
     ϕ = ringphase(X, Y)
-    pr = merge((;r), p)
-    pϕ = merge((;ϕ), p)
+    pr = merge((; r), p)
+    pϕ = merge((; ϕ), p)
     fr = radial_profile(radial, pr)
     fϕ = azimuthal_profile(azimuthal, pϕ)
     return fr * fϕ

@@ -465,7 +465,7 @@ radialextent(::ExtendedRing{T}) where {T} = convert(T, 6)
     r = hypot(x, y) + eps(T)
     @unpack_params shape = m(p)
     β = (shape + 1)
-    α =  shape
+    α = shape
     return β^α * r^(-α - 2) * exp(-β / r) / gamma(α) / (2 * T(π))
 end
 

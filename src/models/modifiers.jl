@@ -34,11 +34,12 @@ function.
 """
 abstract type ModelModifier{T} end
 
-
-ComradeBase.getparam(m::ModelModifier, s::Symbol, p) = ComradeBase.build_param(getproperty(m, s), p)
-ComradeBase.getparam(m::ModelModifier, ::Val{s}, p) where {s} = ComradeBase.build_param(getproperty(m, s), p)
-
-
+function ComradeBase.getparam(m::ModelModifier, s::Symbol, p)
+    return ComradeBase.build_param(getproperty(m, s), p)
+end
+function ComradeBase.getparam(m::ModelModifier, ::Val{s}, p) where {s}
+    return ComradeBase.build_param(getproperty(m, s), p)
+end
 
 """
     scale_image(model::AbstractModifier, x, y)
@@ -391,20 +392,20 @@ doesnot_uv_modify(::Shift) = true
     @unpack_params Δx, Δy = transform(p)
     X = p.X - Δx
     Y = p.Y - Δy
-    return update_xy(p, (;X, Y))
+    return update_xy(p, (; X, Y))
 end
 
 @inline transform_uv(model, ::Shift, p) = p
 
 @inline scale_image(m, ::Shift, p) = unitscale(p.X, m)
 # Curently we use exp here because enzyme has an issue with cispi that will be fixed soon.
-@inline function  scale_uv(m, transform::Shift, p) 
+@inline function scale_uv(m, transform::Shift, p)
     @unpack_params Δx, Δy = transform(p)
-    (;U, V) = p
+    (; U, V) = p
     T = typeof(Δx)
     return exp(2im * T(π) *
-        (U * Δx + V * Δy)) *
-        unitscale(T, m)
+               (U * Δx + V * Δy)) *
+           unitscale(T, m)
 end
 
 """
@@ -453,13 +454,12 @@ flux(t::Renormalize) = t.scale
 @inline transform_image(m, ::Renormalize, p) = p
 @inline transform_uv(m, ::Renormalize, p) = p
 
-@inline function scale_image(m, transform::Renormalize, p) 
+@inline function scale_image(m, transform::Renormalize, p)
     @unpack_params scale = transform(p)
     return scale * unitscale(typeof(scale), m)
 end
 
-
-@inline function scale_uv(m, transform::Renormalize, p) 
+@inline function scale_uv(m, transform::Renormalize, p)
     @unpack_params scale = transform(p)
     return scale * unitscale(typeof(scale), m)
 end
@@ -506,18 +506,18 @@ stretched(model, α) = stretched(model, α, α)
 
 @inline doesnot_uv_modify(::Stretch) = false
 @inline function transform_image(m, transform::Stretch, p)
-    (;X, Y) = p
+    (; X, Y) = p
     @unpack_params α, β = transform(p)
     # @show p
-    pt = update_xy(p, (;X=X/α, Y=Y/β))
+    pt = update_xy(p, (; X=X / α, Y=Y / β))
     # @show pt
     return pt
 end
 
-@inline function transform_uv(m, transform::Stretch, p) 
-    (;U, V) = p
+@inline function transform_uv(m, transform::Stretch, p)
+    (; U, V) = p
     @unpack_params α, β = transform(p)
-    return update_uv(p, (;U=U*α, V=V*β))
+    return update_uv(p, (; U=U * α, V=V * β))
 end
 
 @inline function scale_image(m, transform::Stretch, p)
@@ -569,19 +569,19 @@ posangle(model::Rotate) = atan(model.s, model.c)
 
 @inline function transform_image(m, transform::Rotate, p)
     @unpack_params s, c = transform(p)
-    (;X, Y) = p
-    Xr= c * X - s * Y
+    (; X, Y) = p
+    Xr = c * X - s * Y
     Yr = s * X + c * Y
-    pt = update_xy(p, (;X=Xr, Y=Yr))
+    pt = update_xy(p, (; X=Xr, Y=Yr))
     return pt
 end
 
 @inline function transform_uv(m, transform::Rotate, p)
     @unpack_params s, c = transform(p)
-    (;U, V) = p
-    Ur =  c * U - s * V
+    (; U, V) = p
+    Ur = c * U - s * V
     Vr = s * U + c * V
-    return update_uv(p, (;U=Ur, V=Vr))
+    return update_uv(p, (; U=Ur, V=Vr))
 end
 
 @inline scale_image(::NotPolarized, model::Rotate, p) = one(typeof(getparam(model, :s, p)))
