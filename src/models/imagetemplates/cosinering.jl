@@ -42,6 +42,7 @@ end
 
 function intensity_point(θ::CosineRing{N,M,T}, p) where {N,M,T}
     (; X, Y) = p
+    @unpack_params s, ξs, σ, ξσ, σ0 = θ(p)
     ex = X
     ey = Y
     ϕ = ringphase(X, Y)
@@ -50,15 +51,15 @@ function intensity_point(θ::CosineRing{N,M,T}, p) where {N,M,T}
     #construct the slash
     n = one(T)
     @inbounds for i in 1:M
-        n -= θ.s[i] * cos(i * (ϕ - θ.ξs[i]))
+        n -= s[i] * cos(i * (ϕ - θ.ξs[i]))
     end
 
-    σ = θ.σ0
+    σs = σ0
     @inbounds for i in 1:N
-        σ += θ.σ[i] * cos(i * (ϕ - θ.ξσ[i]))
+        σs += σ[i] * cos(i * (ϕ - ξσ[i]))
     end
 
-    return abs(n) * exp(-dr2 / (2 * σ^2))
+    return abs(n) * exp(-dr2 / (2 * σs^2))
 end
 
 """

@@ -50,10 +50,13 @@ end
 
 @inline function intensity_point(d::RingTemplate, p)
     (; X, Y) = p
+    @unpack_params radial, azimuthal = d(p)
     r = hypot(X, Y)
     ϕ = ringphase(X, Y)
-    fr = radial_profile(d.radial, r)
-    fϕ = azimuthal_profile(d.azimuthal, ϕ)
+    pr = merge((;r), p)
+    pϕ = merge((;ϕ), p)
+    fr = radial_profile(radial, pr)
+    fϕ = azimuthal_profile(azimuthal, pϕ)
     return fr * fϕ
 end
 
@@ -82,8 +85,10 @@ struct RadialGaussian{T} <: AbstractRadial
     σ::T
 end
 
-@inline @fastmath function radial_profile(d::RadialGaussian, r)
-    return exp(-(r - 1)^2 / (2 * d.σ^2))
+@inline @fastmath function radial_profile(d::RadialGaussian, p)
+    @unpack_params σ = d(p)
+    r = p.r
+    return exp(-(r - 1)^2 / (2 * σ^2))
 end
 
 radialextent(d::RadialGaussian) = 1 + 3 * d.σ
@@ -118,8 +123,9 @@ end
 
 radialextent(d::RadialDblPower{T}) where {T} = 1 + convert(T, 50^(1 / d.αouter))
 
-@inline @fastmath function radial_profile(d::RadialDblPower, r)
-    (; αinner, αouter,) = d
+@inline @fastmath function radial_profile(d::RadialDblPower, p)
+    @unpack_params αinner, αouter = d(p)
+    r = p.r
     return r^αinner / (1 + r^(αouter + αinner + 1))
 end
 
@@ -155,8 +161,9 @@ end
 
 radialextent(d::RadialJohnsonSU) = 1 + 5 * d.σ
 
-@inline @fastmath function radial_profile(d::RadialJohnsonSU, r)
-    (; σ, γ,) = d
+@inline @fastmath function radial_profile(d::RadialJohnsonSU, p)
+    @unpack_params σ, γ = d(p)
+    r = p.r
     norm = inv(sqrt((r - 1)^2 + σ^2))
     return norm * exp(-1 / 2 * (γ + asinh((r - 1) / σ))^2)
 end
@@ -188,9 +195,11 @@ struct RadialTruncExp{T} <: AbstractRadial
     σ::T
 end
 
-@fastmath function radial_profile(d::RadialTruncExp{T}, r) where {T}
+@fastmath function radial_profile(d::RadialTruncExp{T}, p) where {T}
+    @unpack_params σ = d(p)
+    r = p.r
     r < 1 && return zero(T)
-    return exp(-(r - 1) / (d.σ))
+    return exp(-(r - 1) / (σ))
 end
 
 radialextent(d::RadialTruncExp{T}) where {T} = 1 + log(convert(T, 50)) * d.σ
@@ -214,7 +223,7 @@ julia> t = RingTemplate(rad, azi)
 """
 AzimuthalUniform() = AzimuthalUniform{Float64}()
 
-@inline azimuthal_profile(::AzimuthalUniform{T}, ϕ) where {T} = one(T) / 2π
+@inline azimuthal_profile(::AzimuthalUniform{T}, p) where {T} = one(T) / 2π
 
 """
     AzimuthalCosine(s::NTuple{N,T}, ξ::NTuple{N, T}) where {N, T}
@@ -248,8 +257,9 @@ end
 
 AzimuthalCosine(s::Real, ξs::Real) = AzimuthalCosine((s,), (ξs,))
 
-@inline @fastmath function azimuthal_profile(d::AzimuthalCosine{T,N}, ϕ) where {T,N}
-    (; s, ξs) = d
+@inline @fastmath function azimuthal_profile(d::AzimuthalCosine{T,N}, p) where {T,N}
+    @unpack_params s, ξs = d(p)
+    ϕ = p.ϕ
     mapreduce(+, 1:N; init=one(T)) do n
         return -s[n] * cos(n * ϕ - ξs[n])
     end

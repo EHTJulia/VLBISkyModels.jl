@@ -32,12 +32,3 @@ end
 include(joinpath(@__DIR__, "image.jl"))
 include(joinpath(@__DIR__, "rings.jl"))
 include(joinpath(@__DIR__, "cosinering.jl"))
-
-function __extract_tangent(m::Union{AbstractImageTemplate,AbstractRadial,AbstractAzimuthal})
-    nt = ntfromstruct(m)
-    if nt isa NamedTuple{(),Tuple{}}
-        return ZeroTangent()
-    else
-        return Tangent{typeof(m)}(; nt...)
-    end
-end

@@ -100,7 +100,8 @@ end
 function intensity_point(m::SlashedDisk{T}, p) where {T}
     x, y = _getxy(p)
     r2 = x^2 + y^2
-    s = 1 - m.slash
+    @unpack_params slash = m(p)
+    s = 1 - slash
     norm = 2 / (π * (1 + s))
     if r2 < 1
         return norm / 2 * ((1 + y) + s * (1 - y))
@@ -111,8 +112,9 @@ end
 
 function visibility_point(m::SlashedDisk{T}, p) where {T}
     u, v = _getuv(p)
+    @unpack_params slash = m(p)
     k = 2 * T(π) * sqrt(u^2 + v^2) + eps(T)
-    s = 1 - m.slash
+    s = 1 - slash
     norm = 2 / (1 + s) / k
 
     b0outer = besselj0(k)
@@ -240,11 +242,12 @@ radialextent(::MRing{T}) where {T} = convert(T, 3 / 2)
     r = hypot(x, y)
     θ = atan(-x, y)
     dr = T(0.025)
+    @unpack_params α, β = m(p)
     if (abs(r - 1) < dr / 2)
         acc = one(T)
-        for n in eachindex(m.α, m.β)
+        for n in eachindex(α, β)
             s, c = sincos(n * θ)
-            acc += 2 * (m.α[n] * c - m.β[n] * s)
+            acc += 2 * (α[n] * c - β[n] * s)
         end
         return acc / (2 * T(π) * dr)
     else
@@ -386,18 +389,20 @@ end
 radialextent(m::ConcordanceCrescent{T}) where {T} = m.router * 3 / 2
 
 # Crescent normalization to ensure the
-function _crescentnorm(m::ConcordanceCrescent)
-    f = (1 + m.slash) * (m.router^2 - m.rinner^2) -
-        (1 - m.slash) * m.shift * m.rinner * m.rinner / m.router
+function _crescentnorm(m::ConcordanceCrescent, p)
+    @unpack_params router, rinner, shift, slash = m(p)
+    f = (1 + slash) * (router^2 - rinner^2) -
+        (1 - slash) * shift * rinner * rinner / router
     return 2 / (π * f)
 end
 
 function intensity_point(m::ConcordanceCrescent{T}, p) where {T}
     x, y = _getxy(p)
     r2 = x^2 + y^2
-    norm = _crescentnorm(m)
-    if (r2 < m.router^2 && (x - m.shift)^2 + y^2 > m.rinner^2)
-        return norm / 2 * ((1 + x / m.router) + m.slash * (1 - x / m.router))
+    norm = _crescentnorm(m, p)
+    @unpack_params router, rinner, shift, slash = m(p)
+    if (r2 < router^2 && (x - shift)^2 + y^2 > rinner^2)
+        return norm / 2 * ((1 + x / router) + slash * (1 - x / router))
     else
         return zero(T)
     end
@@ -406,23 +411,24 @@ end
 function visibility_point(m::ConcordanceCrescent{T}, p) where {T}
     u, v = _getuv(p)
     k = 2 * T(π) * sqrt(u^2 + v^2) + eps(T)
-    norm = T(π) * _crescentnorm(m) / k
-    phaseshift = exp(2 * m.shift * u * T(π) * 1im)
-    b0outer, b0inner = besselj0(k * m.router), besselj0(k * m.rinner)
-    b1outer, b1inner = besselj1(k * m.router), besselj1(k * m.rinner)
-    b2outer, b2inner = besselj(2, k * m.router), besselj(2, k * m.rinner)
+    norm = T(π) * _crescentnorm(m, p) / k
+    @unpack_params router, rinner, shift, slash = m(p)
+    phaseshift = exp(2 * shift * u * T(π) * 1im)
+    b0outer, b0inner = besselj0(k * router), besselj0(k * rinner)
+    b1outer, b1inner = besselj1(k * router), besselj1(k * rinner)
+    b2outer, b2inner = besselj(2, k * router), besselj(2, k * rinner)
 
-    v1 = (1 + m.slash) * m.router * b1outer
-    v2 = ((1 + m.slash) + (1 - m.slash) * m.shift / m.router) *
-         phaseshift * m.rinner * b1inner
-    v3 = -2im * T(π) * u * (1 - m.slash) *
-         (m.router * b0outer -
-          m.router * b2outer -
+    v1 = (1 + slash) * router * b1outer
+    v2 = ((1 + slash) + (1 - slash) * shift / router) *
+         phaseshift * rinner * b1inner
+    v3 = -2im * T(π) * u * (1 - slash) *
+         (router * b0outer -
+          router * b2outer -
           2 * b1outer / k) / (2 * k)
-    v4 = -2im * T(π) * u * (1 - m.slash) *
-         (m.rinner * b0inner -
-          m.rinner * b2inner -
-          2 * b1inner / k) / (2 * k) * (m.rinner / m.router) * phaseshift
+    v4 = -2im * T(π) * u * (1 - slash) *
+         (rinner * b0inner -
+          rinner * b2inner -
+          2 * b1inner / k) / (2 * k) * (rinner / router) * phaseshift
     return norm * (v1 - v2 + v3 - v4)
 end
 
@@ -457,8 +463,9 @@ radialextent(::ExtendedRing{T}) where {T} = convert(T, 6)
 @fastmath function intensity_point(m::ExtendedRing{T}, p) where {T}
     x, y = _getxy(p)
     r = hypot(x, y) + eps(T)
-    β = (m.shape + 1)
-    α = m.shape
+    @unpack_params shape = m(p)
+    β = (shape + 1)
+    α =  shape
     return β^α * r^(-α - 2) * exp(-β / r) / gamma(α) / (2 * T(π))
 end
 
