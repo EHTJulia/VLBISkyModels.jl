@@ -256,12 +256,7 @@ radialextent(::MRing{T}) where {T} = convert(T, 3 / 2)
 end
 
 @inline function visibility_point(m::MRing{T}, p) where {T}
-    u, v = _getuv(p)
-    return _mring_vis(m, u, v)
-end
-
-@inline function _mring_vis(m::MRing{T}, u, v) where {T}
-    (; α, β) = m
+    @unpack_params α, β = m(p)
     k = T(2π) * sqrt(u^2 + v^2) + eps(T)
     vis = besselj0(k) + zero(T) * im
     θ = atan(-u, v)

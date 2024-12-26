@@ -440,10 +440,12 @@ true
 renormed(model::M, f) where {M<:AbstractModel} = ModifiedModel(model, Renormalize(f))
 @inline doesnot_uv_modify(::Renormalize) = true
 
-Base.:*(model::AbstractModel, f::Number) = renormed(model, f)
-Base.:*(f::Number, model::AbstractModel) = renormed(model, f)
-Base.:/(f::Number, model::AbstractModel) = renormed(model, inv(f))
-Base.:/(model::AbstractModel, f::Number) = renormed(model, inv(f))
+const ModNum = Union{Number, ComradeBase.DomainParams}
+
+Base.:*(model::AbstractModel, f::ModNum) = renormed(model, f)
+Base.:*(f::ModNum, model::AbstractModel) = renormed(model, f)
+Base.:/(f::ModNum, model::AbstractModel) = renormed(model, inv(f))
+Base.:/(model::AbstractModel, f::ModNum) = renormed(model, inv(f))
 # Dispatch on RenormalizedModel so that I just make a new RenormalizedModel with a different f
 # This will make it easier on the compiler.
 # Base.:*(model::ModifiedModel, f::Number) = renormed(model.model, model.scale*f)

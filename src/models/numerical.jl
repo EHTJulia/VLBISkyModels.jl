@@ -11,7 +11,7 @@ function _fft(img::AbstractArray{<:StokesParams{<:Real}})
     return StructArray{StokesParams{eltype(I)}}((vI, vQ, vU, vV))
 end
 
-function _fft(img::AbstractArray{<:Real})
+function _fft(img::AbstractArray{<:Real}, region=1:ndims(img))
     vI = complex(img)
     fft!(vI, 1:2)
     return vI
