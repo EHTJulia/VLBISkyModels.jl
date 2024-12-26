@@ -77,7 +77,7 @@ function convolve!(img::SpatialIntensityMap{<:Real}, m::AbstractModel)
     ComradeBase.baseimage(img) isa FillArrays.Fill && return img
 
     @assert visanalytic(typeof(m)) isa IsAnalytic "Convolving model must have an analytic Fourier transform currently"
-    p = plan_rfft(baseimage(img))
+    p = plan_rfft(baseimage(img), 1:2)
 
     # plan_rfft uses just the positive first axis to respect real conjugate symmetry
     (; X, Y) = img
@@ -92,7 +92,7 @@ function convolve!(img::SpatialIntensityMap{<:Real}, m::AbstractModel)
 
     # Conjugate because Comrade uses +2πi exponent
     vis .*= conj.(visibility_point.(Ref(m), puv))
-    pinv = plan_irfft(vis, size(img, 1))
+    pinv = plan_irfft(vis, size(img, 1), 1:2)
     mul!(baseimage(img), pinv, vis)
     return img
 end

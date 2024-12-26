@@ -73,7 +73,7 @@ end
 function create_forward_plan(alg::FFTAlg, imgdomain::AbstractRectiGrid,
                              ::AbstractSingleDomain)
     pimg = padimage(ComradeBase.allocate_map(Array{eltype(imgdomain)}, imgdomain), alg)
-    plan = plan_fft(pimg; flags=alg.flags)
+    plan = plan_fft(pimg, 1:2; flags=alg.flags)
     return FFTPlan(alg, plan)
 end
 
@@ -97,13 +97,13 @@ FFTW.plan_fft(A::AbstractArray{<:StokesParams}, args...) = plan_fft(stokes(A, :I
 
 function inverse_plan(plan::FFTPlan)
     a = zeros(eltype(plan.plan), size(plan.plan))
-    ip = plan_ifft(a; flags=plan.alg.flags)
+    ip = plan_ifft(a, 1:2; flags=plan.alg.flags)
     return FFTPlan(plan.alg, ip)
 end
 
 function applyft(plan::FFTPlan, img::AbstractArray{<:Number})
     pimg = padimage(img, plan.alg)
-    return fftshift(plan.plan * pimg)
+    return fftshift(plan.plan * pimg, 1:2)
 end
 
 function applyft(plan::FFTPlan,

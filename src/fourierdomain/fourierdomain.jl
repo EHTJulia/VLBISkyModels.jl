@@ -84,9 +84,9 @@ If you are extending Fourier transform stuff please use these functions
 to ensure that the centroid is being properly computed.
 """
 function uviterator(nx, dx, ny, dy)
-    U = fftshift(fftfreq(nx, inv(dx)))
-    V = fftshift(fftfreq(ny, inv(dy)))
-    return (; U, V)
+    u = fftshift(fftfreq(nx, inv(dx)))
+    v = fftshift(fftfreq(ny, inv(dy)))
+    return U(u), V(v)
 end
 
 """
@@ -100,8 +100,9 @@ For the inverse see [`xygrid`](@ref)
 """
 function uvgrid(grid::AbstractRectiGrid)
     (; X, Y) = grid
-    uu, vv = uviterator(length(X), step(X), length(Y), step(Y))
-    puv = merge((U=uu, V=vv), delete(named_dims(grid), (:X, :Y)))
+    uvg = uviterator(length(X), step(X), length(Y), step(Y))
+    pft = dims(grid)[3:end]
+    puv = (uvg..., pft...)
     g = RectiGrid(puv; executor=executor(grid), header=header(grid))
     return g
 end

@@ -388,8 +388,9 @@ doesnot_uv_modify(::Shift) = true
 @inline radialextent_modified(r::Real, t::Shift) = r + max(abs(t.Δx), abs(t.Δy))
 
 @inline function transform_image(model, transform::Shift, p)
-    X = p.X - transform.Δx
-    Y = p.Y - transform.Δy
+    @unpack_params Δx, Δy = transform(p)
+    X = p.X - Δx
+    Y = p.Y - Δy
     return update_xy(p, (;X, Y))
 end
 
