@@ -556,7 +556,9 @@ struct Rotate{T} <: ModelModifier{T}
     end
 end
 
-function ComradeBase.getparam(m::Rotate{T}, s::Symbol, p) where {T<:ComradeBase.DomainParams}
+function ComradeBase.getparam(m::Rotate{T},
+                              s::Symbol,
+                              p) where {T<:ComradeBase.DomainParams}
     m = getproperty(m, s)
     mr = Rotate(ComradeBase.build_param(m, p))
     return getproperty(mr, s)
