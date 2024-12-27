@@ -547,10 +547,19 @@ true
 struct Rotate{T} <: ModelModifier{T}
     s::T
     c::T
-    function Rotate(ξ::F) where {F}
+    function Rotate(ξ::F) where {F<:Real}
         s, c = sincos(ξ)
         return new{F}(s, c)
     end
+    function Rotate(ξ::ComradeBase.DomainParams)
+        return new{eltype(ξ)}(ξ, ξ)
+    end
+end
+
+function ComradeBase.getparam(m::Rotate{T}, s::Symbol, p) where {T<:DomainParams}
+    m = getproperty(m, s)
+    mr = Rotate(ComradeBase.build_param(m, p))
+    return getproperty(mr, s)
 end
 
 """
