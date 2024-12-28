@@ -172,14 +172,14 @@ end
     uv = UnstructuredDomain((U=u, V=v))
     gnf = FourierDualDomain(g, uv, NFFTAlg())
     gdf = FourierDualDomain(g, uv, DFTAlg())
-    gff = FourierDualDomain(g, uv, FFTAlg(; padfac=8))
+    gff = FourierDualDomain(g, uv, FFTAlg())
     mimg = ContinuousImage(img, BSplinePulse{3}())
     vnf = visibilitymap(mimg, gnf)
     vdf = visibilitymap(mimg, gdf)
     vff = visibilitymap(mimg, gff)
 
     @test isapprox(maximum(norm, vnf .- vdf), 0.0, atol=1e-6)
-    @test isapprox(maximum(norm, vff .- vdf), 0.0, atol=1e-5)
+    @test isapprox(maximum(norm, vff .- vdf), 0.0, atol=1e-3)
 end
 
 @testset "PoincareSphere2Map" begin

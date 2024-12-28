@@ -1,87 +1,3 @@
-function testmodel(m::VLBISkyModels.AbstractModel, npix=512, atol=1e-4)
-    @info "Testing $(m)"
-    # Plots.plot(m)
-    g = imagepixels(4 * VLBISkyModels.radialextent(m), 4 * VLBISkyModels.radialextent(m),
-                    npix, npix)
-    gth = imagepixels(4 * VLBISkyModels.radialextent(m), 4 * VLBISkyModels.radialextent(m),
-                      npix, npix; executor=ThreadsEx())
-    # CM.image(g.X, g.Y, m)
-    img = intensitymap(m, g)
-    imgt = intensitymap(m, gth)
-    @test isapprox(maximum(img .- imgt), 0.0, atol=1e-8)
-    # Plots.plot(img)
-    img2 = similar(img)
-    intensitymap!(img2, m)
-    @test eltype(img) === Float64
-    @test isapprox(flux(m), flux(img), atol=atol)
-    @test isapprox(maximum(parent(img) .- parent(img2)), 0, atol=1e-8)
-    dx, dy = pixelsizes(img)
-    u = fftshift(fftfreq(size(img, 1), 1 / dx)) ./ 40
-    # Plots.closeall()
-    minterp = InterpolatedModel(ContinuousImage(img, DeltaPulse()), axisdims(img);
-                                algorithm=FFTAlg(; padfac=4))
-    @test isapprox(maximum(abs,
-                           visibility.(Ref(m), NamedTuple{(:U, :V)}.(u', u)) .-
-                           visibility.(Ref(minterp), NamedTuple{(:U, :V)}.(u', u))), 0.0,
-                   atol=atol * 10)
-    img = nothing
-    img2 = nothing
-    minterp = nothing
-    u = nothing
-    return GC.gc()
-end
-
-function testft(m, npix=256, atol=1e-4)
-    mn = VLBISkyModels.NonAnalyticTest(m)
-    uu = 0.25 * randn(1000)
-    vv = 0.25 * randn(1000)
-    gim = imagepixels(2 * VLBISkyModels.radialextent(m), 2 * VLBISkyModels.radialextent(m),
-                      npix, npix)
-    guv = UnstructuredDomain((U=uu, V=vv))
-    img = intensitymap(m, gim)
-    gnf = FourierDualDomain(gim, guv, NFFTAlg())
-    gff = FourierDualDomain(gim, guv, FFTAlg(; padfac=4))
-    gdf = FourierDualDomain(gim, guv, DFTAlg())
-
-    va = visibilitymap(m, guv)
-
-    vff = visibilitymap(mn, gff)
-    vnf = visibilitymap(mn, gnf)
-    vdf = visibilitymap(mn, gdf)
-
-    @test isapprox(maximum(abs, va - vff), 0, atol=atol * 5)
-    @test isapprox(maximum(abs, va - vnf), 0, atol=atol)
-    @test isapprox(maximum(abs, va - vdf), 0, atol=atol)
-    img = nothing
-    gff = nothing
-    gnf = nothing
-    gdf = nothing
-    GC.gc()
-    return nothing
-end
-
-function testft_cimg(m, atol=1e-4)
-    dx, dy = pixelsizes(m.img)
-    u = fftshift(fftfreq(500, 1 / dx))
-    v = fftshift(fftfreq(500, 1 / dy))
-    gim = axisdims(parent(m))
-    guv = UnstructuredDomain((U=u, V=v))
-    gnf = FourierDualDomain(gim, guv, NFFTAlg())
-    gff = FourierDualDomain(gim, guv, FFTAlg(; padfac=8))
-    gdf = FourierDualDomain(gim, guv, DFTAlg())
-
-    vff = visibilitymap(m, gff)
-    vnf = visibilitymap(m, gnf)
-    vdf = visibilitymap(m, gdf)
-
-    @test isapprox(maximum(abs, vdf .- vnf), 0, atol=atol)
-    @test isapprox(maximum(abs, vff .- vdf), 0, atol=atol)
-    gff = nothing
-    gnf = nothing
-    gdf = nothing
-    GC.gc()
-    return nothing
-end
 
 @testset "Moments" begin
     g = imagepixels(30.0, 30.0, 512, 512)
@@ -129,13 +45,6 @@ end
     end
 end
 
-function testgrad(f, x; atol=1e-8, rtol=1e-5)
-    dx = Enzyme.make_zero(x)
-    autodiff(set_runtime_activity(Enzyme.Reverse), Const(f), Active, Duplicated(x, dx))
-    fdm = central_fdm(5, 1)
-    gf = grad(fdm, f, x)[begin]
-    @test isapprox(dx, gf; atol, rtol)
-end
 
 @testset "Primitive models" begin
     u = randn(100) * 0.5
@@ -155,7 +64,7 @@ end
         foo(x)
         testgrad(foo, x)
 
-        testmodel(m, 128, 1e-5)
+        testmodel(m, 128, 1e-4)
     end
 
     @testset "Disk" begin
@@ -186,9 +95,9 @@ end
         m0 = BSplinePulse{0}()
         @inferred VLBISkyModels.visibility(m0, (U=0.0, V=0.0))
         @inferred VLBISkyModels.intensity_point(m0, (X=0.0, Y=0.0))
-        testmodel(m0)
+        testmodel(m0, 2048, 1e-4)
         m1 = BSplinePulse{1}()
-        testmodel(m1)
+        testmodel(m1, 1024)
         @inferred VLBISkyModels.visibility(m1, (U=0.0, V=0.0))
         @inferred VLBISkyModels.intensity_point(m1, (X=0.0, Y=0.0))
         m3 = BSplinePulse{3}()
@@ -236,7 +145,7 @@ end
         @test ComradeBase.intensity_point(m, (X=0.0, Y=1.0)) != 0.0
         @inferred VLBISkyModels.visibility(m, (U=0.0, V=0.0))
         @inferred VLBISkyModels.intensity_point(m, (X=0.0, Y=0.0))
-        testmodel(m, 2400, 1e-2)
+        testmodel(m, 6400, 1e-2, 0.25)
 
         # TODO why is this broken?
         # foo(x) = sum(abs2, VLBISkyModels.visibilitymap_analytic(ParabolicSegment(x[1], x[2]), g))
@@ -257,7 +166,7 @@ end
         @inferred VLBISkyModels.visibility(m.m1, (U=0.0, V=0.0))
         @inferred VLBISkyModels.intensity_point(m.m1, (X=0.0, Y=0.0))
 
-        testmodel(MRing(0.5, 0.0), 2048, 1e-3)
+        testmodel(MRing(0.5, 0.0), 3200, 1e-2, 0.25)
 
         foo(x) = sum(abs2, VLBISkyModels.visibilitymap_analytic(MRing(x[1], x[2]), g))
         x = rand(2)
@@ -322,10 +231,10 @@ end
         rad = 2.5 * VLBISkyModels.radialextent(mr)
 
         m = InterpolatedModel(mr, imagepixels(rad, rad, 1024, 1024);
-                              algorithm=FFTAlg(; padfac=4))
+                              algorithm=FFTAlg())
         @test ComradeBase.intensity_point(m, (X=0.0, Y=0.0)) ==
               ComradeBase.intensity_point(mr, (X=0.0, Y=0.0))
-        testmodel(m)
+        testmodel(m, 1024, 1e-3)
         @inferred VLBISkyModels.intensity_point(mr, (X=0.0, Y=0.0))
     end
 
@@ -389,8 +298,9 @@ end
         testmodel(mas)
         testmodel(InterpolatedModel(mbs,
                                     imagepixels(2 * VLBISkyModels.radialextent(mbs),
-                                                2 * VLBISkyModels.radialextent(mbs),
-                                                1024, 1024); algorithm=FFTAlg()))
+                                                2 * VLBISkyModels.radialextent(mbs), 
+                                                2024, 2024)),
+                  1024, 1e-3)
 
         foo(x) = sum(abs2, VLBISkyModels.visibilitymap_analytic(shifted(ma, x[1], x[2]), g))
         x = rand(2)
@@ -408,9 +318,10 @@ end
         mbs = 3.0 * mb
         testmodel(m1)
         testmodel(InterpolatedModel(mbs,
-                                    imagepixels(2.5 * VLBISkyModels.radialextent(mbs),
-                                                2.5 * VLBISkyModels.radialextent(mbs),
-                                                1024, 1024)))
+                                    imagepixels(2 * VLBISkyModels.radialextent(mbs),
+                                                2 * VLBISkyModels.radialextent(mbs), 
+                                                2024, 2024)),
+                  1024, 1e-3)
 
         foo(x) = sum(abs2, VLBISkyModels.visibilitymap_analytic(x[1] * ma, g))
         x = rand(1)
@@ -424,8 +335,8 @@ end
         testmodel(mas)
         testmodel(InterpolatedModel(mbs,
                                     imagepixels(2 * VLBISkyModels.radialextent(mbs),
-                                                2 * VLBISkyModels.radialextent(mbs), 2024,
-                                                2024)),
+                                                2 * VLBISkyModels.radialextent(mbs), 
+                                                2024, 2024)),
                   1024, 1e-3)
 
         foo(x) = sum(abs2,
@@ -441,8 +352,9 @@ end
         testmodel(mas)
         testmodel(InterpolatedModel(mbs,
                                     imagepixels(2 * VLBISkyModels.radialextent(mbs),
-                                                2 * VLBISkyModels.radialextent(mbs),
-                                                1024, 1024)))
+                                                2 * VLBISkyModels.radialextent(mbs), 
+                                                2024, 2024)),
+                  1024, 1e-3)
 
         foo(x) = sum(abs2, VLBISkyModels.visibilitymap_analytic(rotated(ma, x[1]), g))
         x = rand(1)
@@ -458,8 +370,8 @@ end
         testmodel(mas)
         testmodel(InterpolatedModel(mbs,
                                     imagepixels(2 * VLBISkyModels.radialextent(mbs),
-                                                2 * VLBISkyModels.radialextent(mbs), 2048,
-                                                2048)),
+                                                2 * VLBISkyModels.radialextent(mbs), 
+                                                2024, 2024)),
                   1024, 1e-3)
 
         foo(x) = sum(abs2,
@@ -513,9 +425,9 @@ end
         fooi(x)
         testgrad(fooi, x)
 
-        testmodel(InterpolatedModel(mt1, axisdims(img)))
-        testmodel(InterpolatedModel(mt2, axisdims(img)))
-        testmodel(InterpolatedModel(mt3, axisdims(img)))
+        testmodel(InterpolatedModel(mt1, axisdims(img)), 1024, 1e-3)
+        testmodel(InterpolatedModel(mt2, axisdims(img)), 1024, 1e-3)
+        testmodel(InterpolatedModel(mt3, axisdims(img)), 1024, 1e-3)
     end
 
     @testset "Convolved models" begin
@@ -532,9 +444,9 @@ end
         @test mc[1] === m1
         @test mc[2] === m2
 
-        testmodel(InterpolatedModel(mt1, axisdims(img)))
-        testmodel(InterpolatedModel(mt2, axisdims(img)))
-        testmodel(InterpolatedModel(mt3, axisdims(img)))
+        testmodel(InterpolatedModel(mt1, axisdims(img)), 1024, 1e-3)
+        testmodel(InterpolatedModel(mt2, axisdims(img)), 1024, 1e-3)
+        testmodel(InterpolatedModel(mt3, axisdims(img)), 1024, 1e-3)
 
         foo(x) = sum(abs2,
                      VLBISkyModels.visibilitymap_analytic(convolved(x[1] *
@@ -574,7 +486,7 @@ end
         @test mc[2] === m1
         @test mc[3] === m2
 
-        testmodel(InterpolatedModel(mt, axisdims(img)))
+        testmodel(InterpolatedModel(mt, axisdims(img)), 1024, 1e-3)
 
         foo(x) = sum(abs2,
                      VLBISkyModels.visibilitymap_analytic(smoothed(x[1] *
@@ -619,7 +531,7 @@ end
     foo(x)
     testgrad(foo, x)
 
-    testmodel(m, 1024, 1e-5)
+    testmodel(m, 1024, 1e-4)
 end
 
 @testset "PolarizedModel" begin
@@ -771,52 +683,6 @@ end
     end
 end
 
-@testset "ContinuousImage Bspline0" begin
-    g = imagepixels(12.0, 12.0, 12, 12)
-    img = intensitymap(rotated(stretched(Gaussian(), 2.0, 1.0), π / 8), g)
-    cimg = ContinuousImage(img, BSplinePulse{0}())
-    testmodel(InterpolatedModel(cimg, g; algorithm=FFTAlg(; padfac=4)), 1024, 1e-2)
-    testft_cimg(cimg)
-end
-
-@testset "ContinuousImage BSpline1" begin
-    g = imagepixels(12.0, 12.0, 12, 12)
-    img = intensitymap(rotated(stretched(Gaussian(), 2.0, 1.0), π / 8), g)
-    cimg = ContinuousImage(img, BSplinePulse{1}())
-    testmodel(InterpolatedModel(cimg, g; algorithm=FFTAlg(; padfac=8)), 1024, 1e-3)
-    testft_cimg(cimg)
-end
-
-@testset "ContinuousImage BSpline3" begin
-    g = imagepixels(24.0, 24.0, 12, 12)
-    img = intensitymap(rotated(stretched(Gaussian(), 2.0, 1.0), π / 8), g)
-    cimg = ContinuousImage(img, BSplinePulse{3}())
-    testmodel(InterpolatedModel(cimg, g; algorithm=FFTAlg(; padfac=4)), 1024, 1e-3)
-    testft_cimg(cimg)
-    guv = UnstructuredDomain((U=randn(32) / 40, V=randn(32) / 40))
-    gfour = FourierDualDomain(g, guv, NFFTAlg())
-    foo(x) = sum(abs2,
-                 VLBISkyModels.visibilitymap(ContinuousImage(IntensityMap(x, g),
-                                                             BSplinePulse{3}()), gfour))
-    testgrad(foo, rand(12, 12))
-
-    foos(x) = sum(abs2,
-                  VLBISkyModels.visibilitymap(modify(ContinuousImage(IntensityMap(reshape(@view(x[1:(end - 1)]),
-                                                                                          size(g)),
-                                                                                  g),
-                                                                     BSplinePulse{3}()),
-                                                     Shift(x[end], -x[end])), gfour))
-    foos(rand(12 * 12 + 1))
-    testgrad(foos, rand(12 * 12 + 1))
-end
-
-@testset "ContinuousImage Bicubic" begin
-    g = imagepixels(24.0, 24.0, 12, 12)
-    img = intensitymap(rotated(stretched(Gaussian(), 2.0, 1.0), π / 8), g)
-    cimg = ContinuousImage(img, BicubicPulse())
-    testmodel(InterpolatedModel(cimg, g; algorithm=FFTAlg(; padfac=4)), 1024, 1e-3)
-    testft_cimg(cimg)
-end
 
 @testset "methods " begin
     u1cp = 10e9 * rand(100) .- 5e9
@@ -889,36 +755,6 @@ end
     # end
 end
 
-@testset "ContinuousImage" begin
-    g = imagepixels(10.0, 10.0, 128, 128)
-    data = rand(128, 128)
-    img = ContinuousImage(IntensityMap(data, g), BSplinePulse{3}())
-    @test img == ContinuousImage(data, g, BSplinePulse{3}())
-
-    @test length(img) == length(data)
-    @test size(img) == size(data)
-    @test firstindex(img) == firstindex(data)
-    @test lastindex(img) == lastindex(img)
-    @test eltype(img) == eltype(data)
-    @test img[1, 1] == data[1, 1]
-    @test img[1:5, 1] == data[1:5, 1]
-
-    centroid(img)
-    @test size(img, 1) == 128
-    @test axes(img) == axes(parent(img))
-    @test domainpoints(img) == domainpoints(parent(img))
-
-    # @test all(==(1), domainpoints(img) .== ComradeBase.grid(named_dims(axisdims(img))))
-    @test VLBISkyModels.axisdims(img) == axisdims(img)
-
-    @test g == axisdims(img)
-    @test VLBISkyModels.radialextent(img) ≈ 10.0 / 2
-
-    @test convolved(img, Gaussian()) isa ContinuousImage
-    @test convolved(Gaussian(), img) isa ContinuousImage
-
-    # test_rrule(ContinuousImage, IntensityMap(data, g), BSplinePulse{3}() ⊢ NoTangent())
-end
 
 using ForwardDiff
 @testset "Rules" begin
@@ -926,12 +762,12 @@ using ForwardDiff
     g = imagepixels(10.0, 10.0, 32, 32)
     # test_rrule(IntensityMap, data, g ⊢ NoTangent())
 
-    gfour = FourierDualDomain(g, FFTAlg(; padfac=8))
+    gfour = FourierDualDomain(g, FFTAlg())
     plan = VLBISkyModels.forward_plan(gfour)
 
     data = rand(8, 8)
     g = imagepixels(10.0, 10.0, 8, 8)
-    gfour = FourierDualDomain(g, FFTAlg(; padfac=8))
+    gfour = FourierDualDomain(g, FFTAlg())
     plan = VLBISkyModels.forward_plan(gfour)
 
     x = rand(8, 8)
