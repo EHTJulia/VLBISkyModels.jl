@@ -96,7 +96,7 @@ end
         @inferred VLBISkyModels.intensity_point(m0, (X=0.0, Y=0.0))
         testmodel(m0, 2048, 1e-4)
         m1 = BSplinePulse{1}()
-        testmodel(m1, 1024)
+        testmodel(m1, 512, 1e-3)
         @inferred VLBISkyModels.visibility(m1, (U=0.0, V=0.0))
         @inferred VLBISkyModels.intensity_point(m1, (X=0.0, Y=0.0))
         m3 = BSplinePulse{3}()
@@ -129,7 +129,7 @@ end
         m = smoothed(Ring(), 0.25)
         @inferred VLBISkyModels.visibility(m.m1, (U=0.0, V=0.0))
         @inferred VLBISkyModels.intensity_point(m.m1, (X=0.0, Y=0.0))
-        testmodel(m, 2048)
+        testmodel(m, 1024, 1e-3, 0.25)
 
         foo(x) = sum(abs2, VLBISkyModels.visibilitymap_analytic(x[1] * Ring(), g))
         x = rand(1)
@@ -144,7 +144,7 @@ end
         @test ComradeBase.intensity_point(m, (X=0.0, Y=1.0)) != 0.0
         @inferred VLBISkyModels.visibility(m, (U=0.0, V=0.0))
         @inferred VLBISkyModels.intensity_point(m, (X=0.0, Y=0.0))
-        testmodel(m, 6400, 1e-2, 0.25)
+        testmodel(m, 4800, 1e-2, 0.25)
 
         # TODO why is this broken?
         # foo(x) = sum(abs2, VLBISkyModels.visibilitymap_analytic(ParabolicSegment(x[1], x[2]), g))

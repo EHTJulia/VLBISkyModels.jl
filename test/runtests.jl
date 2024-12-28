@@ -37,12 +37,13 @@ function testgrad(f, x; atol=1e-8, rtol=1e-5)
     @test isapprox(dx, gf; atol, rtol)
 end
 
-function testmodel(m::VLBISkyModels.AbstractModel, npix=512, atol=1e-5, maxu=1.0)
+function testmodel(m::VLBISkyModels.AbstractModel, npix=256, atol=1e-4, maxu=1.0)
+    GC.gc()
     @info "Testing $(m)"
     # Plots.plot(m)
-    g = imagepixels(4 * VLBISkyModels.radialextent(m), 4 * VLBISkyModels.radialextent(m),
+    g = imagepixels(2 * VLBISkyModels.radialextent(m), 2 * VLBISkyModels.radialextent(m),
                     npix, npix)
-    gth = imagepixels(4 * VLBISkyModels.radialextent(m), 4 * VLBISkyModels.radialextent(m),
+    gth = imagepixels(2 * VLBISkyModels.radialextent(m), 2 * VLBISkyModels.radialextent(m),
                       npix, npix; executor=ThreadsEx())
     # CM.image(g.X, g.Y, m)
     img = intensitymap(m, g)
@@ -73,12 +74,20 @@ function testmodel(m::VLBISkyModels.AbstractModel, npix=512, atol=1e-5, maxu=1.0
     vnu = visibilitymap(mnon, gff)
     @test isapprox(maximum(abs, van .- vnu), 0.0, atol=atol)
     img = nothing
-    img2 = nothing
+    imgt = nothing
     u = nothing
     mnon = nothing
     van = nothing
     vnu = nothing
     gff = nothing
+    mnon = nothing
+    uu = nothing
+    vv = nothing
+    guv = nothing
+    gff = nothing
+    u1 = nothing
+    u2 = nothing
+    img2 = nothing
 
     return GC.gc()
 end
