@@ -11,9 +11,9 @@ function _fft(img::AbstractArray{<:StokesParams{<:Real}})
     return StructArray{StokesParams{eltype(I)}}((vI, vQ, vU, vV))
 end
 
-function _fft(img::AbstractArray{<:Real}, region=1:ndims(img))
+function _fft(img::AbstractArray{<:Real})
     vI = complex(img)
-    fft!(vI, region)
+    fft!(vI, 1:2)
     return vI
 end
 
@@ -74,7 +74,7 @@ function visibilitymap_numeric!(vis::IntensityMap, m::AbstractModel)
     gridxy = xygrid(grid)
     img = allocate_imgmap(m, gridxy)
     intensitymap!(img, m)
-    tildeI = _fft(parent(img), 1:2)
+    tildeI = _fft(parent(img))
     baseimage(vis) .= fftshift(tildeI, 1:2)
     phasecenter!(vis, gridxy, grid)
     return nothing
