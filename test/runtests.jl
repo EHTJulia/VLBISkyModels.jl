@@ -57,24 +57,28 @@ function testmodel(m::VLBISkyModels.AbstractModel, npix=512, atol=1e-5, maxu=1.0
     dx, dy = pixelsizes(img)
     dx = max(VLBISkyModels.radialextent(m) / 128, dx)
     u1 = fftshift(fftfreq(size(img, 1), 1 / dx)) ./ 40
-    u2 = range(-1 / (4 * dx), 1 / (4 * dx), length=size(img, 1)÷2)*maxu
+    u2 = range(-1 / (4 * dx), 1 / (4 * dx); length=size(img, 1) ÷ 2) * maxu
     if maximum(u2) > maximum(u1)
         u = u1
     else
         u = u2
     end
-    uu = vec(u.*ones(length(u))')
-    vv = vec(ones(length(u)).*u')
+    uu = vec(u .* ones(length(u))')
+    vv = vec(ones(length(u)) .* u')
     guv = UnstructuredDomain((U=uu, V=vv))
     gff = FourierDualDomain(g, guv, NFFTAlg())
     # Plots.closeall()
     mnon = ContinuousImage(img, DeltaPulse())
     van = visibilitymap(m, guv)
     vnu = visibilitymap(mnon, gff)
-    @test isapprox(maximum(abs,van .- vnu), 0.0, atol=atol)
+    @test isapprox(maximum(abs, van .- vnu), 0.0, atol=atol)
     img = nothing
     img2 = nothing
     u = nothing
+    mnon = nothing
+    van = nothing
+    vnu = nothing
+    gff = nothing
 
     return GC.gc()
 end
@@ -115,7 +119,7 @@ function testft_cimg(m, atol=1e-4)
     gim = axisdims(parent(m))
     guv = UnstructuredDomain((U=u, V=v))
     gnf = FourierDualDomain(gim, guv, NFFTAlg())
-    gff = FourierDualDomain(gim, guv, FFTAlg(;padfac=20))
+    gff = FourierDualDomain(gim, guv, FFTAlg(; padfac=20))
     gdf = FourierDualDomain(gim, guv, DFTAlg())
 
     vff = visibilitymap(m, gff)
@@ -123,15 +127,13 @@ function testft_cimg(m, atol=1e-4)
     vdf = visibilitymap(m, gdf)
 
     @test isapprox(maximum(abs, vdf .- vnf), 0, atol=atol)
-    @test isapprox(maximum(abs, vff .- vdf), 0, atol=atol*10)
+    @test isapprox(maximum(abs, vff .- vdf), 0, atol=atol * 10)
     gff = nothing
     gnf = nothing
     gdf = nothing
     GC.gc()
     return nothing
 end
-
-
 
 @testset "VLBISkyModels.jl" begin
     include("models.jl")

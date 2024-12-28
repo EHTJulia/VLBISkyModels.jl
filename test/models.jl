@@ -45,7 +45,6 @@ end
     end
 end
 
-
 @testset "Primitive models" begin
     u = randn(100) * 0.5
     v = randn(100) * 0.5
@@ -298,7 +297,7 @@ end
         testmodel(mas)
         testmodel(InterpolatedModel(mbs,
                                     imagepixels(2 * VLBISkyModels.radialextent(mbs),
-                                                2 * VLBISkyModels.radialextent(mbs), 
+                                                2 * VLBISkyModels.radialextent(mbs),
                                                 2024, 2024)),
                   1024, 1e-3)
 
@@ -319,9 +318,9 @@ end
         testmodel(m1)
         testmodel(InterpolatedModel(mbs,
                                     imagepixels(2 * VLBISkyModels.radialextent(mbs),
-                                                2 * VLBISkyModels.radialextent(mbs), 
+                                                2 * VLBISkyModels.radialextent(mbs),
                                                 2024, 2024)),
-                  1024, 1e-3)
+                  2024, 1e-3)
 
         foo(x) = sum(abs2, VLBISkyModels.visibilitymap_analytic(x[1] * ma, g))
         x = rand(1)
@@ -335,7 +334,7 @@ end
         testmodel(mas)
         testmodel(InterpolatedModel(mbs,
                                     imagepixels(2 * VLBISkyModels.radialextent(mbs),
-                                                2 * VLBISkyModels.radialextent(mbs), 
+                                                2 * VLBISkyModels.radialextent(mbs),
                                                 2024, 2024)),
                   1024, 1e-3)
 
@@ -352,7 +351,7 @@ end
         testmodel(mas)
         testmodel(InterpolatedModel(mbs,
                                     imagepixels(2 * VLBISkyModels.radialextent(mbs),
-                                                2 * VLBISkyModels.radialextent(mbs), 
+                                                2 * VLBISkyModels.radialextent(mbs),
                                                 2024, 2024)),
                   1024, 1e-3)
 
@@ -370,7 +369,7 @@ end
         testmodel(mas)
         testmodel(InterpolatedModel(mbs,
                                     imagepixels(2 * VLBISkyModels.radialextent(mbs),
-                                                2 * VLBISkyModels.radialextent(mbs), 
+                                                2 * VLBISkyModels.radialextent(mbs),
                                                 2024, 2024)),
                   1024, 1e-3)
 
@@ -683,7 +682,6 @@ end
     end
 end
 
-
 @testset "methods " begin
     u1cp = 10e9 * rand(100) .- 5e9
     v1cp = 10e9 * rand(100) .- 5e9
@@ -754,7 +752,6 @@ end
     #     # test_rrule(VLBISkyModels._nuft, plan ⊢ NoTangent(), baseimage(img))
     # end
 end
-
 
 using ForwardDiff
 @testset "Rules" begin

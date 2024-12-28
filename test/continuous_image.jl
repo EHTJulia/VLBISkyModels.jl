@@ -75,4 +75,3 @@ end
 
     # test_rrule(ContinuousImage, IntensityMap(data, g), BSplinePulse{3}() ⊢ NoTangent())
 end
-

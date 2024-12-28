@@ -63,7 +63,7 @@ end
 
 using NamedTupleTools
 
-myselect(p, kg) = map(k->p[k], kg)
+myselect(p, kg) = map(k -> p[k], kg)
 
 # internal function that creates the interpolator objector to evaluate the FT.
 function create_interpolator(g, vis::AbstractArray{<:Complex,N}, pulse) where {N}
@@ -75,14 +75,14 @@ function create_interpolator(g, vis::AbstractArray{<:Complex,N}, pulse) where {N
     kg = keys(g)
     visre = real(vis)
     visim = imag(vis)
-    f = let kg=kg, itp=itp, visre=visre, visim=visim, pulse=pulse
-        p->begin
+    f = let kg = kg, itp = itp, visre = visre, visim = visim, pulse = pulse
+        p -> begin
             pl = visibility_point(pulse, p)
             # xx = select(p, kg)
             x = SVector{N}(myselect(p, kg))
             vreal = interpolate(itp, visre, x)
             vimag = interpolate(itp, visim, x)
-            return pl * (vreal + 1im * vimag)    
+            return pl * (vreal + 1im * vimag)
         end
     end
 end
@@ -106,9 +106,13 @@ function create_interpolator(g, vis::StructArray{<:StokesParams}, pulse)
     function (p)
         pl = visibility_point(pulse, p)
         x = SVector(values(p))
-        return StokesParams(interpolate(itp, vIreal, x) * pl + 1im * interpolate(itp, vIimag, x) * pl,
-                            interpolate(itp, vQreal, x) * pl + 1im * interpolate(itp, vQimag, x) * pl,
-                            interpolate(itp, vUreal, x) * pl + 1im * interpolate(itp, vUimag, x) * pl,
-                            interpolate(itp, vVreal, x) * pl + 1im * interpolate(itp, vVimag, x) * pl)
+        return StokesParams(interpolate(itp, vIreal, x) * pl +
+                            1im * interpolate(itp, vIimag, x) * pl,
+                            interpolate(itp, vQreal, x) * pl +
+                            1im * interpolate(itp, vQimag, x) * pl,
+                            interpolate(itp, vUreal, x) * pl +
+                            1im * interpolate(itp, vUimag, x) * pl,
+                            interpolate(itp, vVreal, x) * pl +
+                            1im * interpolate(itp, vVimag, x) * pl)
     end
 end

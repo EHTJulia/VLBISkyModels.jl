@@ -80,7 +80,7 @@ function create_forward_plan(alg::FFTAlg, imgdomain::AbstractRectiGrid,
     return FFTPlan(alg, plan)
 end
 
-function padimage(img::IntensityMap{T, N}, alg::FFTAlg) where {T,N}
+function padimage(img::IntensityMap{T,N}, alg::FFTAlg) where {T,N}
     padfac = alg.padfac
     ny, nx = size(img)
     nnx = nextprod((2, 3, 5, 7), padfac * nx)
