@@ -241,7 +241,7 @@ radialextent(::MRing{T}) where {T} = convert(T, 3 / 2)
     x, y = _getxy(p)
     r = hypot(x, y)
     θ = atan(-x, y)
-    dr = T(0.025)
+    dr = T(0.02)
     @unpack_params α, β = m(p)
     if (abs(r - 1) < dr / 2)
         acc = one(T)
@@ -257,6 +257,7 @@ end
 
 @inline function visibility_point(m::MRing{T}, p) where {T}
     @unpack_params α, β = m(p)
+    u, v = _getuv(p)
     k = T(2π) * sqrt(u^2 + v^2) + eps(T)
     vis = besselj0(k) + zero(T) * im
     θ = atan(-u, v)
@@ -455,7 +456,7 @@ visanalytic(::Type{<:ExtendedRing}) = NotAnalytic()
 
 radialextent(::ExtendedRing{T}) where {T} = convert(T, 6)
 
-@fastmath function intensity_point(m::ExtendedRing{T}, p) where {T}
+@fastmath @inline function intensity_point(m::ExtendedRing{T}, p) where {T}
     x, y = _getxy(p)
     r = hypot(x, y) + eps(T)
     @unpack_params shape = m(p)
