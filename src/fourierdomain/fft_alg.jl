@@ -16,7 +16,7 @@ Base.@kwdef struct FFTAlg{T} <: FourierTransform
     Note we actually round up to use
     small prime factor.
     """
-    padfac::Int = 4
+    padfac::Int = 12
     """
     FFTW flags or wisdom for the transformation. The default is `FFTW.ESTIMATE`,
     but you can use `FFTW.MEASURE` for better performance if you plan on evaluating

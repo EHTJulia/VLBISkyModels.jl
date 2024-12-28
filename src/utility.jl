@@ -22,8 +22,8 @@ end
 struct InterpolatedImage{I,P} <: AbstractModel
     img::I
     itp::P
-    function InterpolatedImage(img::SpatialIntensityMap)
-        itp = BilinearInterpolator(img.X, img.Y, img, StrictBoundaries())
+    function InterpolatedImage(img::IntensityMap)
+        itp = RectangleGrid(map(ComradeBase.basedim, dims(img))...)
         return new{typeof(img),typeof(itp)}(img, itp)
     end
 end
@@ -41,9 +41,9 @@ end
     X, Y = g.X, g.Y
     (X[begin] > p.X || p.X > X[end]) && return zero(eltype(m.img))
     (Y[begin] > p.Y || p.Y > Y[end]) && return zero(eltype(m.img))
-    return m.itp(p.X, p.Y) / (dx * dy)
+    return interpolate(m.itp, m.img, SVector(values(p))) / (dx * dy)
 end
-function ModifiedModel(img::SpatialIntensityMap,
+function ModifiedModel(img::IntensityMap,
                        transforms::NTuple{N,ModelModifier}) where {N}
     ms = ModifiedModel(InterpolatedImage(img), transforms)
     return intensitymap(ms, axisdims(img))
@@ -57,7 +57,7 @@ This modifies the `img` by applying the `transforms...` returning a transformed 
 !!! note
 Unlike when `modify` is applied to a `<:AbstractModel` this returns an already modified image.
 """
-modify(img::SpatialIntensityMap, transforms...) = ModifiedModel(img, transforms)
+modify(img::IntensityMap, transforms...) = ModifiedModel(img, transforms)
 
 """
     convolve!(img::IntensityMap, m::AbstractModel)
@@ -72,7 +72,7 @@ convolve!(img, Gaussian())
 This method does not automatically pad your image. If there is substantial flux at the boundaries
 you will start to see artifacts.
 """
-function convolve!(img::SpatialIntensityMap{<:Real}, m::AbstractModel)
+function convolve!(img::IntensityMap{<:Real}, m::AbstractModel)
     # short circuit if fill array since convolve is invariant
     ComradeBase.baseimage(img) isa FillArrays.Fill && return img
 
@@ -81,10 +81,11 @@ function convolve!(img::SpatialIntensityMap{<:Real}, m::AbstractModel)
 
     # plan_rfft uses just the positive first axis to respect real conjugate symmetry
     (; X, Y) = img
-    U = rfftfreq(size(img, 1), inv(step(X)))
-    V = fftfreq(size(img, 2), inv(step(Y)))
-
-    griduv = RectiGrid((; U, V))
+    u = U(rfftfreq(size(img, 1), inv(step(X))))
+    v = V(fftfreq(size(img, 2), inv(step(Y))))
+    ds = (u, v, dims(img)[3:end]...)
+    griduv = RectiGrid(ds; 
+                       executor=executor(img), header=header(img))
     puv = domainpoints(griduv)
 
     # TODO maybe ask a user to pass a vis buffer as well?
@@ -112,19 +113,19 @@ For the inplace version of the function see [`convolve!`](@ref)
 This method does not automatically pad your image. If there is substantial flux at the boundaries
 you will start to see artifacts.
 """
-function convolve(img::SpatialIntensityMap{<:Real}, m::AbstractModel)
+function convolve(img::IntensityMap{<:Real}, m::AbstractModel)
     cimg = copy(img)
     return convolve!(cimg, m)
 end
 
-function convolve(img::SpatialIntensityMap{<:StokesParams}, m::AbstractModel)
+function convolve(img::IntensityMap{<:StokesParams}, m::AbstractModel)
     g = axisdims(img)
     bimg = copy(baseimage(img))
     cimg = IntensityMap(StructArray(bimg), g, refdims(img), name(img))
     return convolve!(cimg, m)
 end
 
-function convolve!(img::SpatialIntensityMap{<:StokesParams}, m)
+function convolve!(img::IntensityMap{<:StokesParams}, m)
     convolve!(stokes(img, :I), m)
     convolve!(stokes(img, :Q), m)
     convolve!(stokes(img, :U), m)
@@ -133,13 +134,13 @@ function convolve!(img::SpatialIntensityMap{<:StokesParams}, m)
 end
 
 """
-    smooth(img::SpatialIntensityMap)
+    smooth(img::IntensityMap)
 
 Smooths the `img` using a symmetric Gaussian with σ standard deviation.
 
 For more flexible convolution please see [`convolve`](@ref).
 """
-function smooth(img::SpatialIntensityMap, σ::Number)
+function smooth(img::IntensityMap, σ::Number)
     return convolve(img, modify(Gaussian(), Stretch(σ)))
 end
 
@@ -163,7 +164,7 @@ end
 
 Regrids the spatial parts of an image `img` on the new domain `g`
 """
-function regrid(img::SpatialIntensityMap, g::RectiGrid)
+function regrid(img::IntensityMap, g::RectiGrid)
     fimg = VLBISkyModels.InterpolatedImage(img)
     return intensitymap(fimg, g)
 end
