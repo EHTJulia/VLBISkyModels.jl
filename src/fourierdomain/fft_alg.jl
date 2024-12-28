@@ -31,8 +31,11 @@ function build_padded_uvgrid(grid::AbstractRectiGrid, alg::FFTAlg)
     ny, nx = size(grid)
     nnx = nextprod((2, 3, 5, 7), padfac * nx)
     nny = nextprod((2, 3, 5, 7), padfac * ny)
-    u, v = uviterator(nnx, step(X), nny, step(Y))
-    return (U=u, V=v)
+    uvg = uviterator(nnx, step(X), nny, step(Y))
+    pft = dims(grid)[3:end]
+    puv = (uvg..., pft...)
+    g = RectiGrid(puv; executor=executor(grid), header=header(grid))
+    return g
 end
 
 """
@@ -77,12 +80,13 @@ function create_forward_plan(alg::FFTAlg, imgdomain::AbstractRectiGrid,
     return FFTPlan(alg, plan)
 end
 
-function padimage(img::IntensityMap, alg::FFTAlg)
+function padimage(img::IntensityMap{T, N}, alg::FFTAlg) where {T,N}
     padfac = alg.padfac
     ny, nx = size(img)
     nnx = nextprod((2, 3, 5, 7), padfac * nx)
     nny = nextprod((2, 3, 5, 7), padfac * ny)
-    return PaddedView(zero(eltype(img)), img, (nny, nnx))
+    dims = (nnx, nny, size(img)[3:end]...)
+    return PaddedView(zero(eltype(img)), img, dims)
 end
 
 function padimage(img::IntensityMap{<:StokesParams}, alg::FFTAlg)

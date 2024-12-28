@@ -13,11 +13,11 @@ end
 
 function _fft(img::AbstractArray{<:Real}, region=1:ndims(img))
     vI = complex(img)
-    fft!(vI, 1:2)
+    fft!(vI, region)
     return vI
 end
 
-function AbstractFFTs.ifft!(vis::AbstractArray{<:StokesParams}, region)
+function AbstractFFTs.ifft!(vis::AbstractArray{<:StokesParams}, region=1:ndims(vis))
     vI = stokes(vis, :I)
     vQ = stokes(vis, :Q)
     vU = stokes(vis, :U)
