@@ -171,7 +171,7 @@ end
 end
 
 @inline function visibilitymap_numeric(model::AddModel{M1,M2},
-                                       p::AbstractFourierDualDomain) where {M1,M2}
+                                       p::FourierDualDomain) where {M1,M2}
     return _visibilitymap(visanalytic(M1), model.m1, p) .+
            _visibilitymap(visanalytic(M2), model.m2, p)
 end
@@ -263,7 +263,7 @@ flux(m::ConvolvedModel) = flux(m.m1) * flux(m.m2)
 end
 
 @inline function visibilitymap_numeric(model::ConvolvedModel{M1,M2},
-                                       p::AbstractFourierDualDomain) where {M1,M2}
+                                       p::FourierDualDomain) where {M1,M2}
     return _visibilitymap(visanalytic(M1), model.m1, p) .*
            _visibilitymap(visanalytic(M2), model.m2, p)
 end

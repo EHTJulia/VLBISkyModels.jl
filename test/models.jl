@@ -54,6 +54,7 @@ end
 
     @testset "Gaussian" begin
         m = Gaussian()
+        test_opt(m)
         @test amplitude(m, (U=0.0, V=0.0)) == abs(visibility(m, (U=0.0, V=0.0)))
         @inferred VLBISkyModels.visibility(m, (U=0.0, V=0.0))
         @inferred VLBISkyModels.intensity_point(m, (X=0.0, Y=0.0))
@@ -68,6 +69,7 @@ end
 
     @testset "Disk" begin
         m = smoothed(Disk(), 0.25)
+        test_opt(Disk())
         @inferred VLBISkyModels.visibility(m.m1, (U=0.0, V=0.0))
         @inferred VLBISkyModels.intensity_point(m.m1, (X=0.0, Y=0.0))
         testmodel(m)
@@ -80,6 +82,7 @@ end
 
     @testset "SlashedDisk" begin
         m = smoothed(SlashedDisk(0.5), 0.25)
+        test_opt(SlashedDisk(0.5))
         @inferred VLBISkyModels.visibility(m.m1, (U=0.0, V=0.0))
         @inferred VLBISkyModels.intensity_point(m.m1, (X=0.0, Y=0.0))
         testmodel(m)
@@ -92,22 +95,27 @@ end
 
     @testset "Pulses" begin
         m0 = BSplinePulse{0}()
+        test_opt(m0)
         @inferred VLBISkyModels.visibility(m0, (U=0.0, V=0.0))
         @inferred VLBISkyModels.intensity_point(m0, (X=0.0, Y=0.0))
         testmodel(m0, 2048, 1e-4)
         m1 = BSplinePulse{1}()
+        test_opt(m1)
         testmodel(m1, 512, 1e-3)
         @inferred VLBISkyModels.visibility(m1, (U=0.0, V=0.0))
         @inferred VLBISkyModels.intensity_point(m1, (X=0.0, Y=0.0))
         m3 = BSplinePulse{3}()
-        testmodel(m3)
+        test_opt(m3)
+        testmodel(m3, 512, 1e-3)
         @inferred VLBISkyModels.visibility(m3, (U=0.0, V=0.0))
         @inferred VLBISkyModels.intensity_point(m3, (X=0.0, Y=0.0))
         m4 = BicubicPulse()
+        test_opt(m4)
         testmodel(m4)
         @inferred VLBISkyModels.visibility(m4, (U=0.0, V=0.0))
         @inferred VLBISkyModels.intensity_point(m4, (X=0.0, Y=0.0))
         m5 = RaisedCosinePulse()
+        test_opt(m5)
         testmodel(m5)
         @inferred VLBISkyModels.visibility(m5, (U=0.0, V=0.0))
         @inferred VLBISkyModels.intensity_point(m5, (X=0.0, Y=0.0))
@@ -115,18 +123,22 @@ end
 
     @testset "Butterworth" begin
         m1 = Butterworth{1}()
+        test_opt(m1)
         testmodel(m1)
         @inferred VLBISkyModels.visibility(m1, (U=0.0, V=0.0))
         m2 = Butterworth{2}()
+        test_opt(m2)
         testmodel(m2)
         @inferred VLBISkyModels.visibility(m2, (U=0.0, V=0.0))
         m3 = Butterworth{3}()
+        test_opt(m3)
         testmodel(m3)
         @inferred VLBISkyModels.visibility(m3, (U=0.0, V=0.0))
     end
 
     @testset "Ring" begin
         m = smoothed(Ring(), 0.25)
+        test_opt(Ring())
         @inferred VLBISkyModels.visibility(m.m1, (U=0.0, V=0.0))
         @inferred VLBISkyModels.intensity_point(m.m1, (X=0.0, Y=0.0))
         testmodel(m, 1024, 1e-3, 0.25)
@@ -139,6 +151,7 @@ end
 
     @testset "ParabolicSegment" begin
         m = ParabolicSegment()
+        test_opt(ParabolicSegment())
         m2 = ParabolicSegment(2.0, 2.0)
         @test stretched(m, 2.0, 2.0) == m2
         @test ComradeBase.intensity_point(m, (X=0.0, Y=1.0)) != 0.0
@@ -158,10 +171,11 @@ end
         β = [0.1]
         #test_rrule(VLBISkyModels.visibility_point, MRing(α, β), 0.5, 0.25)
         # We convolve it to remove some pixel effects
+        test_opt(MRing(α, β))
         m = convolved(MRing(α, β), stretched(Gaussian(), 0.1, 0.1))
         m2 = convolved(MRing(α[1], β[1]), stretched(Gaussian(), 0.1, 0.1))
         @test visibility(m, (U=0.1, V=0.1)) == visibility(m2, (U=0.1, V=0.1))
-        testmodel(m, 2048, 1e-3)
+        testmodel(m, 1024, 1e-3)
         @inferred VLBISkyModels.visibility(m.m1, (U=0.0, V=0.0))
         @inferred VLBISkyModels.intensity_point(m.m1, (X=0.0, Y=0.0))
 
@@ -228,12 +242,7 @@ end
     @testset "ExtendedRing" begin
         mr = ExtendedRing(8.0)
         rad = 2.5 * VLBISkyModels.radialextent(mr)
-
-        m = InterpolatedModel(mr, imagepixels(rad, rad, 1024, 1024);
-                              algorithm=FFTAlg())
-        @test ComradeBase.intensity_point(m, (X=0.0, Y=0.0)) ==
-              ComradeBase.intensity_point(mr, (X=0.0, Y=0.0))
-        testmodel(m, 1024, 1e-3)
+        testft_nonan(mr)
         @inferred VLBISkyModels.intensity_point(mr, (X=0.0, Y=0.0))
     end
 
@@ -295,11 +304,9 @@ end
         mas = shifted(ma, 0.1, 0.1)
         mbs = shifted(mb, 0.1, 0.1)
         testmodel(mas)
-        testmodel(InterpolatedModel(mbs,
-                                    imagepixels(2 * VLBISkyModels.radialextent(mbs),
-                                                2 * VLBISkyModels.radialextent(mbs),
-                                                2024, 2024)),
-                  1024, 1e-3)
+        @test ComradeBase.intensity_point(mbs, (X=0.5, Y=0.5)) ≈
+              ComradeBase.intensity_point(mb, (X=0.4, Y=0.4))
+        testft_nonan(mbs)
 
         foo(x) = sum(abs2, VLBISkyModels.visibilitymap_analytic(shifted(ma, x[1], x[2]), g))
         x = rand(2)
@@ -315,12 +322,10 @@ end
         @test visibility(m1, p) == visibility(m2, p)
         @test visibility(m2, p) == visibility(m2inv, p)
         mbs = 3.0 * mb
-        testmodel(m1)
-        testmodel(InterpolatedModel(mbs,
-                                    imagepixels(2 * VLBISkyModels.radialextent(mbs),
-                                                2 * VLBISkyModels.radialextent(mbs),
-                                                2024, 2024)),
-                  2024, 1e-3)
+        testmodel(3 * m1)
+        testft_nonan(mbs)
+        @test ComradeBase.intensity_point(mbs, (X=0.5, Y=0.5)) ≈
+              3 * ComradeBase.intensity_point(mb, (X=0.5, Y=0.5))
 
         foo(x) = sum(abs2, VLBISkyModels.visibilitymap_analytic(x[1] * ma, g))
         x = rand(1)
@@ -332,12 +337,9 @@ end
         mas = stretched(ma, 5.0, 4.0)
         mbs = stretched(mb, 5.0, 4.0)
         testmodel(mas)
-        testmodel(InterpolatedModel(mbs,
-                                    imagepixels(2 * VLBISkyModels.radialextent(mbs),
-                                                2 * VLBISkyModels.radialextent(mbs),
-                                                2024, 2024)),
-                  1024, 1e-3)
-
+        @test ComradeBase.intensity_point(mbs, (X=0.5, Y=0.5)) ≈
+              ComradeBase.intensity_point(mb, (X=0.5 / 5, Y=0.5 / 4)) / 20
+        testft_nonan(mbs)
         foo(x) = sum(abs2,
                      VLBISkyModels.visibilitymap_analytic(stretched(ma, x[1], x[2]), g))
         x = rand(2)
@@ -349,12 +351,11 @@ end
         mas = rotated(ma, π / 3)
         mbs = rotated(mb, π / 3)
         testmodel(mas)
-        testmodel(InterpolatedModel(mbs,
-                                    imagepixels(2 * VLBISkyModels.radialextent(mbs),
-                                                2 * VLBISkyModels.radialextent(mbs),
-                                                2024, 2024)),
-                  1024, 1e-3)
-
+        @test ComradeBase.intensity_point(mbs, (X=0.5, Y=0.5)) ≈
+              ComradeBase.intensity_point(mb,
+                                          (X=0.5 * cos(π / 3) + 0.5 * sin(π / 3),
+                                           Y=-0.5 * sin(π / 3) + 0.5 * cos(π / 3)))
+        testft_nonan(mbs)
         foo(x) = sum(abs2, VLBISkyModels.visibilitymap_analytic(rotated(ma, x[1]), g))
         x = rand(1)
         foo(x)
@@ -363,15 +364,17 @@ end
 
     @testset "AllMods" begin
         mas = rotated(stretched(shifted(ma, 0.5, 0.5), 5.0, 4.0), π / 3)
-        mas2 = modify(ma, Shift(0.5, 0.5), Stretch(5.0, 4.0), Rotate(π / 4))
+        mas2 = modify(ma, Shift(0.1, 0.1), Stretch(5.0, 4.0), Rotate(π / 4))
         @test typeof(mas2) === typeof(mas)
         mbs = rotated(stretched(shifted(mb, 0.5, 0.5), 5.0, 4.0), π / 3)
         testmodel(mas)
-        testmodel(InterpolatedModel(mbs,
-                                    imagepixels(2 * VLBISkyModels.radialextent(mbs),
-                                                2 * VLBISkyModels.radialextent(mbs),
-                                                2024, 2024)),
-                  1024, 1e-3)
+        @test ComradeBase.intensity_point(mbs, (X=0.5, Y=0.5)) ≈
+              ComradeBase.intensity_point(mb,
+                                          (X=0.5 * cos(π / 3) / 5 - 0.5 * sin(π / 3) / 5 -
+                                             0.5,
+                                           Y=0.5 * sin(π / 3) / 4 + 0.5 * cos(π / 3) / 4 -
+                                             0.5)) / 20
+        testft_nonan(mbs)
 
         foo(x) = sum(abs2,
                      VLBISkyModels.visibilitymap_analytic(modify(ma, Shift(x[1], x[2]),
@@ -395,7 +398,7 @@ end
     guv = UnstructuredDomain((U=u, V=v, Ti=t, Fr=f))
 
     @testset "Add models" begin
-        g = imagepixels(20.0, 20.0, 1024, 1024)
+        g = imagepixels(20.0, 20.0, 256, 256)
         mt1 = m1 + m2
         img = allocate_imgmap(mt1, g)
         mt2 = shifted(m1, 1.0, 1.0) + m2
@@ -404,6 +407,9 @@ end
         @test mc[1] === m1
         @test mc[2] === m2
         @test flux(mt1) ≈ flux(m1) + flux(m2)
+        @test ComradeBase.intensity_point(mt1, (X=0.5, Y=-0.5)) ≈
+              ComradeBase.intensity_point(m1, (X=0.5, Y=-0.5)) +
+              ComradeBase.intensity_point(m2, (X=0.5, Y=-0.5))
 
         foo(x) = sum(abs2,
                      VLBISkyModels.visibilitymap_analytic(x[1] *
@@ -424,18 +430,32 @@ end
         fooi(x)
         testgrad(fooi, x)
 
-        testmodel(InterpolatedModel(mt1, axisdims(img)), 1024, 1e-3)
-        testmodel(InterpolatedModel(mt2, axisdims(img)), 1024, 1e-3)
-        testmodel(InterpolatedModel(mt3, axisdims(img)), 1024, 1e-3)
+        gfour = FourierDualDomain(g, guv, NFFTAlg())
+        testmodel(m1 + m1)
+        testft_nonan(mt1)
+        testft_nonan(mt2)
+        testft_nonan(mt3)
+        @test intensitymap(mt1, g) ≈
+              intensitymap(m1, gfour) + intensitymap(m2, gfour)
+        @test intensitymap(m1 + m1, g) ≈ 2 * intensitymap(m1, g)
+        @test visibilitymap(mt1, gfour) ≈
+              visibilitymap(m1, gfour) + visibilitymap(m2, gfour)
+        @test visibilitymap(m1 + m1, gfour) ≈ 2 * visibilitymap(m1, gfour)
     end
 
     @testset "Convolved models" begin
-        g = imagepixels(20.0, 20.0, 1024, 1024)
+        g = imagepixels(20.0, 20.0, 256, 256)
         guv = UnstructuredDomain((U=randn(32), V=randn(32)))
         gfour = FourierDualDomain(g, guv, NFFTAlg())
         mt1 = convolved(m1, m2)
         img = allocate_imgmap(mt1, g)
         @test intensitymap(mt1, g) ≈ intensitymap(mt1, gfour)
+
+        @test intensitymap(stretched(m1, sqrt(2)), gfour) ≈
+              intensitymap(convolved(m1, m1), gfour)
+
+        @test visibilitymap(stretched(m1, sqrt(2)), gfour) ≈
+              visibilitymap(convolved(m1, m1), gfour)
 
         mt2 = convolved(shifted(m1, 1.0, 1.0), m2)
         mt3 = convolved(shifted(m1, 1.0, 1.0), 0.5 * stretched(m2, 0.9, 0.8))
@@ -443,9 +463,15 @@ end
         @test mc[1] === m1
         @test mc[2] === m2
 
-        testmodel(InterpolatedModel(mt1, axisdims(img)), 1024, 1e-3)
-        testmodel(InterpolatedModel(mt2, axisdims(img)), 1024, 1e-3)
-        testmodel(InterpolatedModel(mt3, axisdims(img)), 1024, 1e-3)
+        testft_nonan(mt1)
+        testft_nonan(mt2)
+        testft_nonan(mt3)
+        @test visibilitymap(mt1, gfour) ≈
+              visibilitymap(m1, gfour) .* visibilitymap(m2, gfour)
+        @test visibilitymap(mt2, gfour) ≈
+              visibilitymap(mt2.m1, gfour) .* visibilitymap(m2, gfour)
+        @test visibilitymap(mt3, gfour) ≈
+              visibilitymap(mt3.m1, gfour) .* visibilitymap(mt3.m2, gfour)
 
         foo(x) = sum(abs2,
                      VLBISkyModels.visibilitymap_analytic(convolved(x[1] *
@@ -470,7 +496,7 @@ end
     end
 
     @testset "All composite" begin
-        g = imagepixels(20.0, 20.0, 1024, 1024)
+        g = imagepixels(20.0, 20.0, 256, 256)
         guv = UnstructuredDomain((U=randn(32), V=randn(32)))
         gfour = FourierDualDomain(g, guv, NFFTAlg())
 
@@ -485,8 +511,7 @@ end
         @test mc[2] === m1
         @test mc[3] === m2
 
-        testmodel(InterpolatedModel(mt, axisdims(img)), 1024, 1e-3)
-
+        testft_nonan(mt)
         foo(x) = sum(abs2,
                      VLBISkyModels.visibilitymap_analytic(smoothed(x[1] *
                                                                    stretched(Disk(), x[2],
@@ -530,7 +555,7 @@ end
     foo(x)
     testgrad(foo, x)
 
-    testmodel(m, 1024, 1e-4)
+    testmodel(m, 512, 1e-4)
 end
 
 @testset "PolarizedModel" begin

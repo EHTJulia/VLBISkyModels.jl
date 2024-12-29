@@ -2,9 +2,9 @@ using VLBISkyModels
 using ChainRulesTestUtils
 using ChainRulesCore
 using FiniteDifferences
-using Zygote
 using FFTW
 using Plots
+using JET
 using Statistics
 using Test
 using Serialization
@@ -41,9 +41,9 @@ function testmodel(m::VLBISkyModels.AbstractModel, npix=256, atol=1e-4, maxu=1.0
     GC.gc()
     @info "Testing $(m)"
     # Plots.plot(m)
-    g = imagepixels(2 * VLBISkyModels.radialextent(m), 2 * VLBISkyModels.radialextent(m),
+    g = imagepixels(3 * VLBISkyModels.radialextent(m), 3 * VLBISkyModels.radialextent(m),
                     npix, npix)
-    gth = imagepixels(2 * VLBISkyModels.radialextent(m), 2 * VLBISkyModels.radialextent(m),
+    gth = imagepixels(3 * VLBISkyModels.radialextent(m), 3 * VLBISkyModels.radialextent(m),
                       npix, npix; executor=ThreadsEx())
     # CM.image(g.X, g.Y, m)
     img = intensitymap(m, g)
@@ -121,6 +121,32 @@ function testft(m, npix=256, atol=1e-4)
     return nothing
 end
 
+function testft_nonan(mn, npix=256, atol=1e-4)
+    uu = push!(0.25 * randn(25), 0.0)
+    vv = push!(0.25 * randn(25), 0.0)
+    gim = imagepixels(3 * VLBISkyModels.radialextent(mn),
+                      3 * VLBISkyModels.radialextent(mn),
+                      npix, npix)
+    guv = UnstructuredDomain((U=uu, V=vv))
+    img = intensitymap(mn, gim)
+    gnf = FourierDualDomain(gim, guv, NFFTAlg())
+    gff = FourierDualDomain(gim, guv, FFTAlg())
+    gdf = FourierDualDomain(gim, guv, DFTAlg())
+
+    vff = visibilitymap(mn, gff)
+    vnf = visibilitymap(mn, gnf)
+    vdf = visibilitymap(mn, gdf)
+
+    @test isapprox(maximum(abs, vnf - vff), 0, atol=atol * 15)
+    @test isapprox(maximum(abs, vnf - vdf), 0, atol=atol)
+    img = nothing
+    gff = nothing
+    gnf = nothing
+    gdf = nothing
+    GC.gc()
+    return nothing
+end
+
 function testft_cimg(m, atol=1e-4)
     dx, dy = pixelsizes(m.img)
     u = fftshift(fftfreq(500, 1 / dx))
@@ -142,6 +168,16 @@ function testft_cimg(m, atol=1e-4)
     gdf = nothing
     GC.gc()
     return nothing
+end
+
+function test_opt(m::M) where {M}
+    if ComradeBase.imanalytic(M) == ComradeBase.IsAnalytic()
+        @test_opt ComradeBase.intensity_point(m, (X=0.0, Y=0.0, Fr=230e9, Ti=0.0))
+    end
+
+    if ComradeBase.visanalytic(M) == ComradeBase.IsAnalytic()
+        @test_opt ComradeBase.visibility_point(m, (U=0.0, V=0.0, Fr=230e9, Ti=0.0))
+    end
 end
 
 @testset "VLBISkyModels.jl" begin
