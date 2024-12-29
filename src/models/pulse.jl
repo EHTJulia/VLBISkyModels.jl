@@ -77,6 +77,9 @@ end
     end
 end
 
+@inline radialextent(::BSplinePulse{N}) where {N} = max(N,1)
+
+
 """
     $(TYPEDEF)
     BicubicPulse(b = 0.5)
