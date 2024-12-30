@@ -105,6 +105,7 @@ function κ(k::BicubicPulse, x::T) where {T}
         return zero(T)
     end
 end
+radialextent(::BicubicPulse{T}) where {T} = T(2)
 
 function ω(m::BicubicPulse{T}, u) where {T}
     b = m.b
@@ -145,6 +146,8 @@ function κ(k::RaisedCosinePulse, x::T) where {T}
         return zero(T)
     end
 end
+
+radialextent(κ::RaisedCosinePulse) = 1+κ.rolloff
 
 function ω(k::RaisedCosinePulse, u::T) where {T}
     β = k.rolloff

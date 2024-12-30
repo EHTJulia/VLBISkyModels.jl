@@ -111,7 +111,7 @@ end
         @inferred VLBISkyModels.intensity_point(m3, (X=0.0, Y=0.0))
         m4 = BicubicPulse()
         test_opt(m4)
-        testmodel(m4, 512, radmul=1.0)
+        testmodel(m4)
         @inferred VLBISkyModels.visibility(m4, (U=0.0, V=0.0))
         @inferred VLBISkyModels.intensity_point(m4, (X=0.0, Y=0.0))
         m5 = RaisedCosinePulse()
