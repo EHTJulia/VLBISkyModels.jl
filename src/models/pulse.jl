@@ -77,8 +77,7 @@ end
     end
 end
 
-@inline radialextent(::BSplinePulse{N}) where {N} = max(N,1)
-
+@inline radialextent(::BSplinePulse{N}) where {N} = max(N, 1)
 
 """
     $(TYPEDEF)
@@ -147,7 +146,7 @@ function κ(k::RaisedCosinePulse, x::T) where {T}
     end
 end
 
-radialextent(κ::RaisedCosinePulse) = 1+κ.rolloff
+radialextent(κ::RaisedCosinePulse) = 1 + κ.rolloff
 
 function ω(k::RaisedCosinePulse, u::T) where {T}
     β = k.rolloff
