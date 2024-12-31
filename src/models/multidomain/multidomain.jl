@@ -38,6 +38,10 @@ domain. Essentially is `m.s <: DomainParams` then `m.s` is evaluated at the para
 If `m.s` is not a subtype of `DomainParams` then `m.s` is returned.
 
 !!! warn
+    Developers should not typically overload this function and instead
+    target [`build_params`](@ref).
+
+!!! warn
     This feature is experimental and is not considered part of the public stable API.
 
 """

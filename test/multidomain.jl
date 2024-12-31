@@ -311,13 +311,13 @@ end
 end
 
 @testset "multidomain visibilities" begin
-    m = modify(Gauss(), Stretch(TaylorSpectral(1.0, 1.0, 1.0)))
+    m = modify(Gaussian(), Stretch(TaylorSpectral(1.0, 1.0, 1.0)))
     x = range(-5.0, 5.0; length=512)
     Fr = [1.0, 2.0]
     g = RectiGrid((; X=x, Y=x, Fr=Fr))
     img = intensitymap(m, g)
 
-    m2 = modify(Gauss(), Stretch(2.0))
+    m2 = modify(Gaussian(), Stretch(2.0))
     img2 = intensitymap(m2, RectiGrid((; X=x, Y=x)))
     @unpack_params a = m2((; Fr=2.0))
     @test a ≈ 2.0
