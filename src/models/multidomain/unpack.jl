@@ -22,7 +22,8 @@ macro unpack_params(args)
         throw(ArgumentError("Expression needs to be of the form a, b, = c(p)"))
     items, suitcase = args.args
     items = isa(items, Symbol) ? [items] : items.args
-    hasproperty(suitcase, :head) || throw(ArgumentError("RHS of expression must be of form m(p)"))
+    hasproperty(suitcase, :head) ||
+        throw(ArgumentError("RHS of expression must be of form m(p)"))
     suitcase.head != :call && throw(ArgumentError("RHS of expression must be of form m(p)"))
     m, p = suitcase.args[1], suitcase.args[2]
     paraminstance = gensym()

@@ -440,7 +440,7 @@ true
 renormed(model::M, f) where {M<:AbstractModel} = ModifiedModel(model, Renormalize(f))
 @inline doesnot_uv_modify(::Renormalize) = true
 
-const ModNum = Union{Number, DomainParams}
+const ModNum = Union{Number,DomainParams}
 
 Base.:*(model::AbstractModel, f::ModNum) = renormed(model, f)
 Base.:*(f::ModNum, model::AbstractModel) = renormed(model, f)
@@ -557,8 +557,8 @@ struct Rotate{T} <: ModelModifier{T}
 end
 
 function getparam(m::Rotate{T},
-                              s::Symbol,
-                              p) where {T<:DomainParams}
+                  s::Symbol,
+                  p) where {T<:DomainParams}
     m = getproperty(m, s)
     mr = Rotate(build_param(m, p))
     return getproperty(mr, s)

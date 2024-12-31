@@ -1,6 +1,5 @@
 export getparam, @unpack_params
 
-
 """
     abstract type DomainParams
 
@@ -27,7 +26,6 @@ abstract type DomainParams end
 
 abstract type FrequencyParams <: DomainParams end
 abstract type TimeParams <: DomainParams end
-
 
 """
     getparam(m, s::Symbol, p)

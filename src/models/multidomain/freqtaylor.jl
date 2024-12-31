@@ -23,7 +23,6 @@ then the expansion is of order 1.
 """
 TaylorSpectral(param, index::Real, freq0) = TaylorSpectral(param, (index,), freq0)
 
-
 @fastmath @inline function build_param(model::TaylorSpectral{N}, p) where {N}
     lf = log(p.Fr / model.freq0)
     arg = reduce(+, ntuple(n -> @inbounds(model.index[n]) * lf^n, Val(N)))

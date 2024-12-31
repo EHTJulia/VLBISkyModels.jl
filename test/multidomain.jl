@@ -319,9 +319,9 @@ end
 
     m2 = modify(Gaussian(), Stretch(2.0))
     img2 = intensitymap(m2, RectiGrid((; X=x, Y=x)))
-    @unpack_params a = m2((; Fr=2.0))
-    @test a ≈ 2.0
+    @unpack_params α, β = m2.transform[1]((; Fr=2.0))
+    @test α ≈ 2.0
+    @test β ≈ 2.0
 
     @test img[Fr=2] ≈ img2
 end
-

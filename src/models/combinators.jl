@@ -246,9 +246,9 @@ julia> convolved(m1, m2) == smoothed(m1, 1.0)
 m1 = Disk()
 ```
 """
-smoothed(m, σ::Union{Number, DomainParams}) = convolved(m,
-                                                                   stretched(Gaussian(), σ,
-                                                                             σ))
+smoothed(m, σ::Union{Number,DomainParams}) = convolved(m,
+                                                       stretched(Gaussian(), σ,
+                                                                 σ))
 
 @inline imanalytic(::Type{<:ConvolvedModel}) = NotAnalytic()
 
