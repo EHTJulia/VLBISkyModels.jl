@@ -11,21 +11,24 @@ The interface is simple and to extend this with your own time and frequency mode
 most users will just need to define 
 
 ```julia
-struct MyDomainParam <: DomainParams end
-function build_param(param::MyDomainParam, p)
+struct MyDomainParam{T} <: DomainParams{T} end
+function build_param(param::MyDomainParam{Float64}, p)
     ...
 end
 where `p` is the point where the model will be evaluated at. For an
 example see the [`TaylorSpectralModel`](@ref).
 
+To evaluate the parameter family at a point `p` in the frequency and time 
+domain use `build_param(param, p)` or just `param(p)`.
+
 For a model parameterized with a `<:DomainParams` the a use should access 
 the parameters with [`getparam`](@ref) or the `@unpack_params` macro.
 ```
 """
-abstract type DomainParams end
+abstract type DomainParams{T} end
 
-abstract type FrequencyParams <: DomainParams end
-abstract type TimeParams <: DomainParams end
+abstract type FrequencyParams{T} <: DomainParams{T} end
+abstract type TimeParams{T} <: DomainParams{T} end
 
 """
     getparam(m, s::Symbol, p)
@@ -61,6 +64,10 @@ parameter at the point `p`.
 """
 @inline function build_param(param::Any, p)
     return param
+end
+
+function (m::DomainParams)(p)
+    return build_param(m, p)
 end
 
 include("unpack.jl")

@@ -34,13 +34,6 @@ function.
 """
 abstract type ModelModifier{T} end
 
-function getparam(m::ModelModifier, s::Symbol, p)
-    return build_param(getproperty(m, s), p)
-end
-function getparam(m::ModelModifier, ::Val{s}, p) where {s}
-    return build_param(getproperty(m, s), p)
-end
-
 """
     scale_image(model::AbstractModifier, x, y)
 
@@ -365,15 +358,35 @@ julia> modify(Gaussian(), Shift(2.0, 1.0)) == shifted(Gaussian(), 2.0, 1.0)
 true
 ```
 """
-struct Shift{T} <: ModelModifier{T}
-    Δx::T
-    Δy::T
+struct Shift{T,T1,T2} <: ModelModifier{T}
+    Δx::T1
+    Δy::T2
 end
 
 #function ShiftedModel(model::AbstractModel, Δx::Number, Δy::Number)
 #    T =
 #    return ShiftedModel{(model, promote(Δx, Δy)...)
 #end
+
+function Shift(a::Number, b::Number)
+    T = promote_type(typeof(a), typeof(b))
+    return Shift{T,typeof(a),typeof(b)}(a, b)
+end
+
+function Shift(a::DomainParams{P}, b) where {P}
+    T = promote_type(P, typeof(b))
+    return Shift{T,typeof(a),typeof(b)}(a, b)
+end
+
+function Shift(a, b::DomainParams{P}) where {P}
+    T = promote_type(P, typeof(a))
+    return Shift{T,typeof(a),typeof(b)}(a, b)
+end
+
+function Shift(a::DomainParams{P1}, b::DomainParams{P2}) where {P1,P2}
+    T = promote_type(P1, P2)
+    return Shift{T,typeof(a),typeof(b)}(a, b)
+end
 
 """
     $(SIGNATURES)
@@ -489,9 +502,29 @@ julia> Stretch(2.0) == Stretch(2.0, 2.0)
 true
 ```
 """
-struct Stretch{T} <: ModelModifier{T}
-    α::T
-    β::T
+struct Stretch{T,T1,T2} <: ModelModifier{T}
+    α::T1
+    β::T2
+end
+
+function Stretch(a::Number, b::Number)
+    T = promote_type(typeof(a), typeof(b))
+    return Stretch{T,typeof(a),typeof(b)}(a, b)
+end
+
+function Stretch(a::DomainParams{P}, b) where {P}
+    T = promote_type(P, typeof(b))
+    return Stretch{T,typeof(a),typeof(b)}(a, b)
+end
+
+function Stretch(a, b::DomainParams{P}) where {P}
+    T = promote_type(P, typeof(a))
+    return Stretch{T,typeof(a),typeof(b)}(a, b)
+end
+
+function Stretch(a::DomainParams{P1}, b::DomainParams{P2}) where {P1,P2}
+    T = promote_type(P1, P2)
+    return Stretch{T,typeof(a),typeof(b)}(a, b)
 end
 
 Stretch(r) = Stretch(r, r)
@@ -552,7 +585,7 @@ struct Rotate{T} <: ModelModifier{T}
         return new{F}(s, c)
     end
     function Rotate(ξ::DomainParams)
-        return new{eltype(ξ)}(ξ, ξ)
+        return new{typeof(ξ)}(ξ, ξ)
     end
 end
 
