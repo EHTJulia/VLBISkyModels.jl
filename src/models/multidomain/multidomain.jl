@@ -37,7 +37,7 @@ If `m.s` is not a subtype of `DomainParams` then `m.s` is returned.
 
 !!! warn
     Developers should not typically overload this function and instead
-    target [`build_params`](@ref).
+    target [`build_param`](@ref).
 
 !!! warn
     This feature is experimental and is not considered part of the public stable API.
