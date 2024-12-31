@@ -18,8 +18,10 @@ Pages = ["api.md"]
 
 ```@docs
 VLBISkyModels.DomainParams
+VLBISkyModels.build_params
 VLBISkyModels.getparam
 VLBISkyModels.@unpack_params
+
 ```
 
 ### Time Frequency Domain

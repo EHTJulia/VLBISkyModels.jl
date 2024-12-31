@@ -51,6 +51,14 @@ end
     return getparam(m, s, p)
 end
 
+"""
+    build_param(param::DomainParams, p)
+
+Constucts the parameters for the `param` model at the point `p`
+in the (X/U, Y/V, Ti, Fr) domain. This is a required function for
+any `<: DomainParams` and must return a number for the specific
+parameter at the point `p`.
+"""
 @inline function build_param(param::Any, p)
     return param
 end
