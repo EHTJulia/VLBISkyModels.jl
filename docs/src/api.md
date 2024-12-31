@@ -14,6 +14,19 @@ Pages = ["api.md"]
 
 ## Model Definitions
 
+### Model Parameter Unpackaing
+
+```@docs
+VLBISkyModels.getparam
+VLBISkyModels.@unpack_params
+```
+
+### Time Frequency Domain
+
+```@docs
+VLBISkyModels.TaylorSpectral
+```
+
 ### Combinators
 
 ```@docs

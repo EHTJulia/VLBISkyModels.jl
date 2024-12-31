@@ -65,8 +65,6 @@ ComradeBase.intensitymap_analytic
 ComradeBase.intensitymap_analytic!
 ComradeBase.intensitymap_numeric
 ComradeBase.intensitymap_numeric!
-ComradeBase.getparam
-ComradeBase.@unpack_params
 ```
 
 ### Image Domain
@@ -124,12 +122,6 @@ PolarizedTypes.basis_components
 PolarizedTypes.basis_transform
 PolarizedTypes.polarization
 PolarizedTypes.fracpolarization
-```
-
-## Multidomain
-
-```@docs
-ComradeBase.TaylorSpectral
 ```
 
 ## Internal Methods not part of public API
