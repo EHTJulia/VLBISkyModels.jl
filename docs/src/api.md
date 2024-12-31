@@ -18,7 +18,7 @@ Pages = ["api.md"]
 
 ```@docs
 VLBISkyModels.DomainParams
-VLBISkyModels.build_params(::Any, ::Any)
+VLBISkyModels.build_param
 VLBISkyModels.getparam
 VLBISkyModels.@unpack_params
 
