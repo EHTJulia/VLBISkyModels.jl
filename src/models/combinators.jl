@@ -246,7 +246,7 @@ julia> convolved(m1, m2) == smoothed(m1, 1.0)
 m1 = Disk()
 ```
 """
-smoothed(m, σ::Union{Number,ComradeBase.DomainParams}) = convolved(m,
+smoothed(m, σ::Union{Number, DomainParams}) = convolved(m,
                                                                    stretched(Gaussian(), σ,
                                                                              σ))
 

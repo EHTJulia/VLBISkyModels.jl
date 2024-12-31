@@ -34,11 +34,11 @@ function.
 """
 abstract type ModelModifier{T} end
 
-function ComradeBase.getparam(m::ModelModifier, s::Symbol, p)
-    return ComradeBase.build_param(getproperty(m, s), p)
+function getparam(m::ModelModifier, s::Symbol, p)
+    return build_param(getproperty(m, s), p)
 end
-function ComradeBase.getparam(m::ModelModifier, ::Val{s}, p) where {s}
-    return ComradeBase.build_param(getproperty(m, s), p)
+function getparam(m::ModelModifier, ::Val{s}, p) where {s}
+    return build_param(getproperty(m, s), p)
 end
 
 """
@@ -440,7 +440,7 @@ true
 renormed(model::M, f) where {M<:AbstractModel} = ModifiedModel(model, Renormalize(f))
 @inline doesnot_uv_modify(::Renormalize) = true
 
-const ModNum = Union{Number,ComradeBase.DomainParams}
+const ModNum = Union{Number, DomainParams}
 
 Base.:*(model::AbstractModel, f::ModNum) = renormed(model, f)
 Base.:*(f::ModNum, model::AbstractModel) = renormed(model, f)
@@ -551,16 +551,16 @@ struct Rotate{T} <: ModelModifier{T}
         s, c = sincos(ξ)
         return new{F}(s, c)
     end
-    function Rotate(ξ::ComradeBase.DomainParams)
+    function Rotate(ξ::DomainParams)
         return new{eltype(ξ)}(ξ, ξ)
     end
 end
 
-function ComradeBase.getparam(m::Rotate{T},
+function getparam(m::Rotate{T},
                               s::Symbol,
-                              p) where {T<:ComradeBase.DomainParams}
+                              p) where {T<:DomainParams}
     m = getproperty(m, s)
-    mr = Rotate(ComradeBase.build_param(m, p))
+    mr = Rotate(build_param(m, p))
     return getproperty(mr, s)
 end
 
