@@ -17,6 +17,7 @@ Pages = ["api.md"]
 ### Model Parameter Unpackaing
 
 ```@docs
+VLBISkyModels.DomainParams
 VLBISkyModels.getparam
 VLBISkyModels.@unpack_params
 ```
