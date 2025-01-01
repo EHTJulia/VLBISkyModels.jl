@@ -402,6 +402,49 @@ end
         test_modifier(m1, mb, 1.5 * mb, gfr)
         test_modifier(mn, mbn, 1.5 * mbn, gfr)
     end
+
+    @testset "Multi modifiers" begin
+        mb = Gaussian()
+        mbn = ExtendedRing(8.0)
+        tss = TaylorSpectral(1.0, 1.0, 345e9)
+        tsx = TaylorSpectral(1.0, 1.0, 230e9, -1.0)
+        tsr = TaylorSpectral(1.0, 1.0, 345e9, -1.0)
+
+        m1 = modify(Gaussian(), Stretch(tss, 1.0), Shift(tsx, 0.0), Rotate(tsr))
+        test_modifier(m1,
+                      modify(Gaussian(),
+                             Stretch(tss((; Fr=230e9)), 1.0),
+                             Shift(tsx((; Fr=230e9)), 0.0),
+                             Rotate(tsr((; Fr=230e9)))),
+                      modify(Gaussian(),
+                             Stretch(tss((; Fr=345e9)), 1.0),
+                             Shift(tsx((; Fr=345e9)), 0.0),
+                             Rotate(tsr((; Fr=345e9)))),
+                      gfr)
+    end
+end
+
+@testset "Add model" begin
+    gXY = imagepixels(40.0, 40.0, 256, 256)
+    g = RectiGrid((; X=gXY.X, Y=gXY.Y, Fr=[230e9, 345e9]))
+    u = randn(50) .* 0.25
+    v = randn(50) .* 0.25
+    ti = range(1.0, 3.0; length=50)
+    fr = vcat(fill(230e9, 25), fill(345e9, 25))
+    guv = UnstructuredDomain((; U=u, V=v, Fr=fr, Ti=ti))
+    gfr = FourierDualDomain(g, guv, NFFTAlg())
+
+    ts = TaylorSpectral(1.0, 1.0, 230e9)
+    m1 = modify(Gaussian(), Stretch(ts))
+    m2 = ExtendedRing(8.0)
+    ts3 = TaylorSpectral(8.0, 1.0, 230e9)
+    m3 = ExtendedRing(ts3)
+
+    test_modifier(m1 + m2, Gaussian() + m2, modify(Gaussian(), Stretch(1.5)) + m2, gfr)
+    test_modifier(m1 + m1, 2 * Gaussian(), modify(Gaussian(), Stretch(1.5)) * 2, gfr)
+    test_modifier(m1 + m3, Gaussian() + m2,
+                  modify(Gaussian(), Stretch(1.5)) + ExtendedRing(8 * 1.5),
+                  gfr)
 end
 
 @testset "Convolution Multdomain" begin

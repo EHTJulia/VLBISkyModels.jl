@@ -456,10 +456,11 @@ visanalytic(::Type{<:ExtendedRing}) = NotAnalytic()
 
 radialextent(::ExtendedRing{T}) where {T} = convert(T, 6)
 
-@fastmath @inline function intensity_point(m::ExtendedRing{T}, p) where {T}
+@fastmath @inline function intensity_point(m::ExtendedRing, p)
     x, y = _getxy(p)
-    r = hypot(x, y) + eps(T)
     @unpack_params shape = m(p)
+    T = typeof(shape)
+    r = hypot(x, y) + eps(T)
     β = (shape + 1)
     α = shape
     return β^α * r^(-α - 2) * exp(-β / r) / gamma(α) / (2 * T(π))
