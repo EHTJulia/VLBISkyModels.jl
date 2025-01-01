@@ -49,7 +49,7 @@ function intensity_point(θ::CosineRing{N,M}, p) where {N,M}
     r = sqrt(ex^2 + ey^2)
     dr2 = (r - 1)^2
     #construct the slash
-    n = one(typeof(s[1]))
+    n = one(typeof(r))
     @inbounds for i in 1:M
         n -= s[i] * cos(i * (ϕ - ξs[i]))
     end
