@@ -312,13 +312,12 @@ end
 
 @testset "TaylorSpectral" begin
     ts = TaylorSpectral(1.0, 1.0, 230.0, -1.0)
-    @test ts((;Fr=230.0)) ≈ 0.0
-    @test ts((;Fr=345.0)) ≈ 0.5
+    @test ts((; Fr=230.0)) ≈ 0.0
+    @test ts((; Fr=345.0)) ≈ 0.5
 
     ts2 = TaylorSpectral(1.0, (0.0, 1.0), 230.0)
-    @test ts2((;Fr=230.0)) ≈ 1.0
-    @test ts2((;Fr=345.0)) ≈ 1.0*exp(log(1.5)^2)
-
+    @test ts2((; Fr=230.0)) ≈ 1.0
+    @test ts2((; Fr=345.0)) ≈ 1.0 * exp(log(1.5)^2)
 end
 
 function test_modifier(m, m230, m345, gfr)
