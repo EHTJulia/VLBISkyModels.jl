@@ -5,8 +5,9 @@ struct TaylorSpectral{N,P,T<:NTuple{N},F<:Real,P0} <: FrequencyParams{P}
     index::T
     freq0::F
     p0::P0
-    """
-    TaylorSpectral(param, index::NTuple{N}, freq0::Real, p0=zero(param)) -> TaylorSpectral{N}
+
+    @doc"""
+    TaylorSpectral(param, index::NTuple{N}, freq0::Real, p0=zero(param))
 
     Creates a frequency model that expands the parameter in a Taylor series defined by 
         `param * exp(∑ₙ index[n] * log(Fr / freq0)^n)` + p0.
