@@ -116,9 +116,9 @@ julia> t = RingTemplate(rad, azi)
   - `αouter` the power law index for `r≥1`.
 
 """
-struct RadialDblPower{T} <: AbstractRadial
-    αinner::T
-    αouter::T
+struct RadialDblPower{T1,T2} <: AbstractRadial
+    αinner::T1
+    αouter::T2
 end
 
 radialextent(d::RadialDblPower{T}) where {T} = 1 + convert(T, 50^(1 / d.αouter))
@@ -154,9 +154,9 @@ julia> t = RingTemplate(rad, azi)
   - `γ` : the asymmetry of the ring
 
 """
-struct RadialJohnsonSU{T} <: AbstractRadial
-    σ::T
-    γ::T
+struct RadialJohnsonSU{T1,T2} <: AbstractRadial
+    σ::T1
+    γ::T2
 end
 
 radialextent(d::RadialJohnsonSU) = 1 + 5 * d.σ
@@ -195,10 +195,10 @@ struct RadialTruncExp{T} <: AbstractRadial
     σ::T
 end
 
-@fastmath function radial_profile(d::RadialTruncExp{T}, p) where {T}
+@fastmath function radial_profile(d::RadialTruncExp, p)
     @unpack_params σ = d(p)
     r = p.r
-    r < 1 && return zero(T)
+    r < 1 && return zero(typeof(σ))
     return exp(-(r - 1) / (σ))
 end
 
@@ -250,17 +250,20 @@ julia> t = RingTemplate(rad, azi)
 
 
 """
-struct AzimuthalCosine{T,N} <: AbstractAzimuthal
-    s::NTuple{N,T}
-    ξs::NTuple{N,T}
+struct AzimuthalCosine{N,T1,T2} <: AbstractAzimuthal
+    s::NTuple{N,T1}
+    ξs::NTuple{N,T2}
 end
 
 AzimuthalCosine(s::Real, ξs::Real) = AzimuthalCosine((s,), (ξs,))
+AzimuthalCosine(s::DomainParams, ξs::DomainParams) = AzimuthalCosine((s,), (ξs,))
+AzimuthalCosine(s::Real, ξs::DomainParams) = AzimuthalCosine((s,), (ξs,))
+AzimuthalCosine(s::DomainParams, ξs::Real) = AzimuthalCosine((s,), (ξs,))
 
-@inline @fastmath function azimuthal_profile(d::AzimuthalCosine{T,N}, p) where {T,N}
+@inline @fastmath function azimuthal_profile(d::AzimuthalCosine{N}, p) where {N}
     @unpack_params s, ξs = d(p)
     ϕ = p.ϕ
-    mapreduce(+, 1:N; init=one(T)) do n
+    mapreduce(+, 1:N; init=one(typeof(s[1]))) do n
         return -s[n] * cos(n * ϕ - ξs[n])
     end
 end

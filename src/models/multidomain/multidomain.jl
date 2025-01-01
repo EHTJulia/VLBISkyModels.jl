@@ -66,6 +66,10 @@ parameter at the point `p`.
     return param
 end
 
+function build_param(param::NTuple, p)
+    return map(x -> build_param(x, p), param)
+end
+
 function (m::DomainParams)(p)
     return build_param(m, p)
 end

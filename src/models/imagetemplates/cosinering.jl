@@ -40,7 +40,7 @@ function CosineRing(r0,
     return modify(CosineRing(σ0 / r0, σ ./ r0, ξσ, s, ξs), Stretch(r0), Shift(x0, y0))
 end
 
-function intensity_point(θ::CosineRing{N,M,T}, p) where {N,M,T}
+function intensity_point(θ::CosineRing{N,M}, p) where {N,M}
     (; X, Y) = p
     @unpack_params s, ξs, σ, ξσ, σ0 = θ(p)
     ex = X
@@ -49,9 +49,9 @@ function intensity_point(θ::CosineRing{N,M,T}, p) where {N,M,T}
     r = sqrt(ex^2 + ey^2)
     dr2 = (r - 1)^2
     #construct the slash
-    n = one(T)
+    n = one(typeof(s[1]))
     @inbounds for i in 1:M
-        n -= s[i] * cos(i * (ϕ - θ.ξs[i]))
+        n -= s[i] * cos(i * (ϕ - ξs[i]))
     end
 
     σs = σ0

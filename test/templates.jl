@@ -29,6 +29,11 @@ end
                  VLBISkyModels.intensitymap_analytic(GaussianRing(x[1], x[2], x[3], x[4]),
                                                      g))
     testgrad(foo, rand(4))
+
+    ts = TaylorSpectral(0.1, 1.0, 230.0)
+    t2 = RingTemplate(RadialGaussian(ts), AzimuthalUniform())
+    @test ComradeBase.intensity_point(t, (;X=0.1, Y=0.0, Fr=230.0)) ≈
+          ComradeBase.intensity_point(t2, (;X=0.1, Y=0.0, Fr=230.0))
 end
 
 @testset "EllipticalGaussianRing" begin
@@ -50,6 +55,34 @@ end
     dr = RadialDblPower(3.00, 5.0)
     jr = RadialJohnsonSU(0.5, 1.0)
     tr = RadialTruncExp(1.0)
+
+    grf = RadialGaussian(TaylorSpectral(0.1, 1.0, 230.0))
+    drf = RadialDblPower(TaylorSpectral(3.00, 1.0, 230.0), TaylorSpectral(5.0, 1.0, 230.0))
+    jrf = RadialJohnsonSU(TaylorSpectral(0.5, 1.0, 230.0), TaylorSpectral(1.0, 1.0, 230.0))
+    trf = RadialTruncExp(TaylorSpectral(1.0, 1.0, 230.0))
+
+    for (r, rf) in zip((gr, dr, tr, jr), (grf, drf, trf, jrf))
+        p = (;X= 0.5, Y=0.0, Fr=230.0)
+        Azu = AzimuthalUniform()
+        @test ComradeBase.intensity_point(RingTemplate(r, Azu), p) ≈
+              ComradeBase.intensity_point(RingTemplate(rf, Azu), p)
+
+        azc = AzimuthalCosine(0.5, 0.0)
+        azcf1= AzimuthalCosine(TaylorSpectral(0.5, 1.0, 230.0), TaylorSpectral(1.0, 1.0, 230.0, -1.0))
+        azcf2= AzimuthalCosine(TaylorSpectral(0.5, 1.0, 230.0), 0.0)
+        @test ComradeBase.intensity_point(RingTemplate(r, azc), p) ≈
+              ComradeBase.intensity_point(RingTemplate(rf, azcf1), p)
+        @test ComradeBase.intensity_point(RingTemplate(r, azc), p) ≈
+              ComradeBase.intensity_point(RingTemplate(rf, azcf2), p)
+
+        @test_opt ComradeBase.intensity_point(RingTemplate(rf, azcf1), p)
+        @test_opt ComradeBase.intensity_point(RingTemplate(rf, azcf2), p)
+
+    end
+    
+
+    
+
     rads = (gr, dr, tr, jr)
     g = imagepixels(fovx, fovy, npix, npix)
 

@@ -310,20 +310,15 @@ end
     @test test2dgaussian(512, DFTAlg())
 end
 
-@testset "multidomain visibilities" begin
-    m = modify(Gaussian(), Stretch(TaylorSpectral(1.0, 1.0, 1.0)))
-    x = range(-5.0, 5.0; length=512)
-    Fr = [1.0, 2.0]
-    g = RectiGrid((; X=x, Y=x, Fr=Fr))
-    img = intensitymap(m, g)
+@testset "TaylorSpectral" begin
+    ts = TaylorSpectral(1.0, 1.0, 230.0, -1.0)
+    @test ts((;Fr=230.0)) ≈ 0.0
+    @test ts((;Fr=345.0)) ≈ 0.5
 
-    m2 = modify(Gaussian(), Stretch(2.0))
-    img2 = intensitymap(m2, RectiGrid((; X=x, Y=x)))
-    @unpack_params α, β = m2.transform[1]((; Fr=2.0))
-    @test α ≈ 2.0
-    @test β ≈ 2.0
+    ts2 = TaylorSpectral(1.0, (0.0, 1.0), 230.0)
+    @test ts2((;Fr=230.0)) ≈ 1.0
+    @test ts2((;Fr=345.0)) ≈ 1.0*exp(log(1.5)^2)
 
-    @test img[Fr=2] ≈ img2
 end
 
 function test_modifier(m, m230, m345, gfr)
