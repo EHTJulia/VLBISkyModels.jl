@@ -188,9 +188,9 @@ end
     include("continuous_image.jl")
     include("templates.jl")
     include("polarized.jl")
+    include("multidomain.jl")
     include("utility.jl")
     include("viz.jl")
     include("io.jl")
     include("stokesintensitymap.jl")
-    include("multidomain.jl")
 end

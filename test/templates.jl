@@ -122,6 +122,14 @@ end
     test_template(EllipticalSlashedGaussianRing(10.0, 1.0, 0.1, 0.5, 0.5, 0.0, 0.0, 0.0))
     t3 = CosineRing(0.1, (0.1,), (0.0,), (), ())
     test_template(t3)
+    tsp = TaylorSpectral(0.1, 1.0, 230.0)
+    tsp1= TaylorSpectral(1.0, 1.0, 230.0, -1.0)
+
+    t4 = CosineRing(tsp, (tsp,), (tsp1,), (), ())
+    p = (;X=1.0, Y=0.0, Fr=230.0)
+    @test ComradeBase.intensity_point(t3, p) ≈
+          ComradeBase.intensity_point(t4, p)
+
 
     g = imagepixels(10.0, 10.0, 64, 64)
     img1 = intensitymap(t1, g)
