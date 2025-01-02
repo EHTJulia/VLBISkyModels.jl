@@ -311,193 +311,195 @@ end
 end
 
 @testset "Multidomain models" begin
-@testset "TaylorSpectral" begin
-    ts = TaylorSpectral(1.0, 1.0, 230.0, -1.0)
-    @test ts((; Fr=230.0)) ≈ 0.0
-    @test ts((; Fr=345.0)) ≈ 0.5
+    @testset "TaylorSpectral" begin
+        ts = TaylorSpectral(1.0, 1.0, 230.0, -1.0)
+        @test ts((; Fr=230.0)) ≈ 0.0
+        @test ts((; Fr=345.0)) ≈ 0.5
 
-    ts2 = TaylorSpectral(1.0, (0.0, 1.0), 230.0)
-    @test ts2((; Fr=230.0)) ≈ 1.0
-    @test ts2((; Fr=345.0)) ≈ 1.0 * exp(log(1.5)^2)
-end
-
-function test_modifier(m, m230, m345, gfr)
-    gXY = RectiGrid((; X=gfr.imgdomain.X, Y=gfr.imgdomain.Y))
-    img = intensitymap(m, gfr)
-    img230 = intensitymap(m230, gXY)
-    img345 = intensitymap(m345, gXY)
-    @test img[Fr=1] ≈ img230 atol = 1e-8
-    @test img[Fr=2] ≈ img345 atol = 1e-8
-
-    vmf = visibilitymap(m, gfr)
-    v230 = visibilitymap(m230, gfr)[1:25]
-    v345 = visibilitymap(m345, gfr)[26:50]
-    @test vmf[1:25] ≈ v230 atol = 1e-8
-    @test vmf[26:50] ≈ v345 atol = 1e-8
-end
-
-@testset "Modifiers Multidomain" begin
-    gXY = imagepixels(40.0, 40.0, 256, 256)
-    g = RectiGrid((; X=gXY.X, Y=gXY.Y, Fr=[230e9, 345e9]))
-    u = randn(50) .* 0.25
-    v = randn(50) .* 0.25
-    ti = range(1.0, 3.0; length=50)
-    fr = vcat(fill(230e9, 25), fill(345e9, 25))
-    guv = UnstructuredDomain((; U=u, V=v, Fr=fr, Ti=ti))
-    gfr = FourierDualDomain(g, guv, NFFTAlg())
-
-    @testset "Stretch" begin
-        ts = TaylorSpectral(1.0, 1.0, 230e9)
-        m1 = modify(Gaussian(), Stretch(ts, 1.0))
-        mn = modify(ExtendedRing(8.0), Stretch(ts, 1.0))
-        test_modifier(m1, Gaussian(), modify(Gaussian(), Stretch(1.5, 1.0)), gfr)
-        test_modifier(mn, ExtendedRing(8.0), modify(ExtendedRing(8.0), Stretch(1.5, 1.0)),
-                      gfr)
-
-        m1 = modify(Gaussian(), Stretch(1.0, ts))
-        mn = modify(ExtendedRing(8.0), Stretch(1.0, ts))
-        test_modifier(m1, Gaussian(), modify(Gaussian(), Stretch(1.0, 1.5)), gfr)
-        test_modifier(mn, ExtendedRing(8.0), modify(ExtendedRing(8.0), Stretch(1.0, 1.5)),
-                      gfr)
-
-        m1 = modify(Gaussian(), Stretch(ts, ts))
-        mn = modify(ExtendedRing(8.0), Stretch(ts, ts))
-        test_modifier(m1, Gaussian(), modify(Gaussian(), Stretch(1.5, 1.5)), gfr)
-        test_modifier(mn, ExtendedRing(8.0), modify(ExtendedRing(8.0), Stretch(1.5, 1.5)),
-                      gfr)
+        ts2 = TaylorSpectral(1.0, (0.0, 1.0), 230.0)
+        @test ts2((; Fr=230.0)) ≈ 1.0
+        @test ts2((; Fr=345.0)) ≈ 1.0 * exp(log(1.5)^2)
     end
 
-    @testset "Rotate" begin
-        RM = 1.0
-        mb = modify(Gaussian(), Stretch(2.0, 1.0))
-        mbn = modify(ExtendedRing(8.0), Stretch(2.0, 1.0))
-        tev = TaylorSpectral(RM, 2.0, 230e9, -RM) # zeropoint the RM at 230 GHz
-        m1 = modify(mb, Rotate(tev))
-        mn = modify(mbn, Rotate(tev))
-        test_modifier(m1, mb, modify(mb, Rotate(RM * (345 / 230)^2 - RM)), gfr)
-        test_modifier(mn, mbn, modify(mbn, Rotate(RM * (345 / 230)^2 - RM)), gfr)
+    function test_modifier(m, m230, m345, gfr)
+        gXY = RectiGrid((; X=gfr.imgdomain.X, Y=gfr.imgdomain.Y))
+        img = intensitymap(m, gfr)
+        img230 = intensitymap(m230, gXY)
+        img345 = intensitymap(m345, gXY)
+        @test img[Fr=1] ≈ img230 atol = 1e-8
+        @test img[Fr=2] ≈ img345 atol = 1e-8
+
+        vmf = visibilitymap(m, gfr)
+        v230 = visibilitymap(m230, gfr)[1:25]
+        v345 = visibilitymap(m345, gfr)[26:50]
+        @test vmf[1:25] ≈ v230 atol = 1e-8
+        @test vmf[26:50] ≈ v345 atol = 1e-8
     end
 
-    @testset "Shift" begin
-        mb = Gaussian()
-        mbn = ExtendedRing(8.0)
-        ts = TaylorSpectral(1.0, 1.0, 230e9, -1.0)
-        m1 = modify(mb, Shift(ts, 0.0))
-        mn = modify(mbn, Shift(ts, 0.0))
-        test_modifier(m1, mb, modify(mb, Shift(0.5, 0.0)), gfr)
-        test_modifier(mn, mbn, modify(mbn, Shift(0.5, 0.0)), gfr)
-    end
-
-    @testset "Renormalize" begin
-        mb = Gaussian()
-        mbn = ExtendedRing(8.0)
-        ts = TaylorSpectral(1.0, 1.0, 230e9)
-        m1 = ts * mb
-        mn = ts * mbn
-        test_modifier(m1, mb, 1.5 * mb, gfr)
-        test_modifier(mn, mbn, 1.5 * mbn, gfr)
-    end
-
-    @testset "Multi modifiers" begin
-        mb = Gaussian()
-        mbn = ExtendedRing(8.0)
-        tss = TaylorSpectral(1.0, 1.0, 345e9)
-        tsx = TaylorSpectral(1.0, 1.0, 230e9, -1.0)
-        tsr = TaylorSpectral(1.0, 1.0, 345e9, -1.0)
-
-        m1 = modify(Gaussian(), Stretch(tss, 1.0), Shift(tsx, 0.0), Rotate(tsr))
-        test_modifier(m1,
-                      modify(Gaussian(),
-                             Stretch(tss((; Fr=230e9)), 1.0),
-                             Shift(tsx((; Fr=230e9)), 0.0),
-                             Rotate(tsr((; Fr=230e9)))),
-                      modify(Gaussian(),
-                             Stretch(tss((; Fr=345e9)), 1.0),
-                             Shift(tsx((; Fr=345e9)), 0.0),
-                             Rotate(tsr((; Fr=345e9)))),
-                      gfr)
-    end
-
-    gfr = nothing
-    GC.gc()
-end
-
-@testset "Add model" begin
-    gXY = imagepixels(40.0, 40.0, 256, 256)
-    g = RectiGrid((; X=gXY.X, Y=gXY.Y, Fr=[230e9, 345e9]))
-    u = randn(50) .* 0.25
-    v = randn(50) .* 0.25
-    ti = range(1.0, 3.0; length=50)
-    fr = vcat(fill(230e9, 25), fill(345e9, 25))
-    guv = UnstructuredDomain((; U=u, V=v, Fr=fr, Ti=ti))
-    gfr = FourierDualDomain(g, guv, NFFTAlg())
-
-    ts = TaylorSpectral(1.0, 1.0, 230e9)
-    m1 = modify(Gaussian(), Stretch(ts))
-    m2 = ExtendedRing(8.0)
-    ts3 = TaylorSpectral(8.0, 1.0, 230e9)
-    m3 = ExtendedRing(ts3)
-
-    test_modifier(m1 + m2, Gaussian() + m2, modify(Gaussian(), Stretch(1.5)) + m2, gfr)
-    test_modifier(m1 + m1, 2 * Gaussian(), modify(Gaussian(), Stretch(1.5)) * 2, gfr)
-    test_modifier(m1 + m3, Gaussian() + m2,
-                  modify(Gaussian(), Stretch(1.5)) + ExtendedRing(8 * 1.5),
-                  gfr)
-
-    gfr = nothing
-    GC.gc()
-end
-
-@testset "Convolution Multdomain" begin
-    @testset "Frequency only" begin
-        m1 = modify(Gaussian(), Stretch(1.0))
-        m2 = modify(Gaussian(), Stretch(TaylorSpectral(1.0, 1.0, 230e9)))
-
-        mtr230 = modify(Gaussian(), Stretch(sqrt(2)))
-        mtr345 = modify(Gaussian(), Stretch(sqrt(1 + (345 / 230)^2)))
-        gXY = imagepixels(20.0, 20.0, 256, 256)
+    @testset "Modifiers Multidomain" begin
+        gXY = imagepixels(40.0, 40.0, 256, 256)
         g = RectiGrid((; X=gXY.X, Y=gXY.Y, Fr=[230e9, 345e9]))
-        @test intensitymap(convolved(m1, m2), g)[Fr=1] ≈ intensitymap(mtr230, gXY) atol = 1e-8
-        @test intensitymap(convolved(m1, m2), g)[Fr=2] ≈ intensitymap(mtr345, gXY) atol = 1e-8
-
         u = randn(50) .* 0.25
         v = randn(50) .* 0.25
         ti = range(1.0, 3.0; length=50)
         fr = vcat(fill(230e9, 25), fill(345e9, 25))
         guv = UnstructuredDomain((; U=u, V=v, Fr=fr, Ti=ti))
-        vmf = visibilitymap(convolved(m1, m2), guv)
-        v230 = visibilitymap(mtr230, guv)[1:25]
-        v345 = visibilitymap(mtr345, guv)[26:50]
+        gfr = FourierDualDomain(g, guv, NFFTAlg())
 
-        @test vmf[1:25] ≈ v230 atol = 1e-8
-        @test vmf[26:50] ≈ v345 atol = 1e-8
+        @testset "Stretch" begin
+            ts = TaylorSpectral(1.0, 1.0, 230e9)
+            m1 = modify(Gaussian(), Stretch(ts, 1.0))
+            mn = modify(ExtendedRing(8.0), Stretch(ts, 1.0))
+            test_modifier(m1, Gaussian(), modify(Gaussian(), Stretch(1.5, 1.0)), gfr)
+            test_modifier(mn, ExtendedRing(8.0),
+                          modify(ExtendedRing(8.0), Stretch(1.5, 1.0)),
+                          gfr)
+
+            m1 = modify(Gaussian(), Stretch(1.0, ts))
+            mn = modify(ExtendedRing(8.0), Stretch(1.0, ts))
+            test_modifier(m1, Gaussian(), modify(Gaussian(), Stretch(1.0, 1.5)), gfr)
+            test_modifier(mn, ExtendedRing(8.0),
+                          modify(ExtendedRing(8.0), Stretch(1.0, 1.5)),
+                          gfr)
+
+            m1 = modify(Gaussian(), Stretch(ts, ts))
+            mn = modify(ExtendedRing(8.0), Stretch(ts, ts))
+            test_modifier(m1, Gaussian(), modify(Gaussian(), Stretch(1.5, 1.5)), gfr)
+            test_modifier(mn, ExtendedRing(8.0),
+                          modify(ExtendedRing(8.0), Stretch(1.5, 1.5)),
+                          gfr)
+        end
+
+        @testset "Rotate" begin
+            RM = 1.0
+            mb = modify(Gaussian(), Stretch(2.0, 1.0))
+            mbn = modify(ExtendedRing(8.0), Stretch(2.0, 1.0))
+            tev = TaylorSpectral(RM, 2.0, 230e9, -RM) # zeropoint the RM at 230 GHz
+            m1 = modify(mb, Rotate(tev))
+            mn = modify(mbn, Rotate(tev))
+            test_modifier(m1, mb, modify(mb, Rotate(RM * (345 / 230)^2 - RM)), gfr)
+            test_modifier(mn, mbn, modify(mbn, Rotate(RM * (345 / 230)^2 - RM)), gfr)
+        end
+
+        @testset "Shift" begin
+            mb = Gaussian()
+            mbn = ExtendedRing(8.0)
+            ts = TaylorSpectral(1.0, 1.0, 230e9, -1.0)
+            m1 = modify(mb, Shift(ts, 0.0))
+            mn = modify(mbn, Shift(ts, 0.0))
+            test_modifier(m1, mb, modify(mb, Shift(0.5, 0.0)), gfr)
+            test_modifier(mn, mbn, modify(mbn, Shift(0.5, 0.0)), gfr)
+        end
+
+        @testset "Renormalize" begin
+            mb = Gaussian()
+            mbn = ExtendedRing(8.0)
+            ts = TaylorSpectral(1.0, 1.0, 230e9)
+            m1 = ts * mb
+            mn = ts * mbn
+            test_modifier(m1, mb, 1.5 * mb, gfr)
+            test_modifier(mn, mbn, 1.5 * mbn, gfr)
+        end
+
+        @testset "Multi modifiers" begin
+            mb = Gaussian()
+            mbn = ExtendedRing(8.0)
+            tss = TaylorSpectral(1.0, 1.0, 345e9)
+            tsx = TaylorSpectral(1.0, 1.0, 230e9, -1.0)
+            tsr = TaylorSpectral(1.0, 1.0, 345e9, -1.0)
+
+            m1 = modify(Gaussian(), Stretch(tss, 1.0), Shift(tsx, 0.0), Rotate(tsr))
+            test_modifier(m1,
+                          modify(Gaussian(),
+                                 Stretch(tss((; Fr=230e9)), 1.0),
+                                 Shift(tsx((; Fr=230e9)), 0.0),
+                                 Rotate(tsr((; Fr=230e9)))),
+                          modify(Gaussian(),
+                                 Stretch(tss((; Fr=345e9)), 1.0),
+                                 Shift(tsx((; Fr=345e9)), 0.0),
+                                 Rotate(tsr((; Fr=345e9)))),
+                          gfr)
+        end
+
+        gfr = nothing
+        GC.gc()
     end
 
-    @testset "Frequency+Time" begin
-        m1 = modify(Gaussian(), Stretch(1.0))
-        m2 = modify(Gaussian(), Stretch(TaylorSpectral(1.0, 1.0, 230e9)))
-
-        mtr230 = modify(Gaussian(), Stretch(sqrt(2)))
-        mtr345 = modify(Gaussian(), Stretch(sqrt(1 + (345 / 230)^2)))
-        gXY = imagepixels(20.0, 20.0, 256, 256)
-        g = RectiGrid((; X=gXY.X, Y=gXY.Y, Ti=1.0:2.0, Fr=[230e9, 345e9]))
-        @test intensitymap(convolved(m1, m2), g)[Ti=1, Fr=1] ≈ intensitymap(mtr230, gXY) atol = 1e-8
-        @test intensitymap(convolved(m1, m2), g)[Ti=1, Fr=2] ≈ intensitymap(mtr345, gXY) atol = 1e-8
-        @test intensitymap(convolved(m1, m2), g)[Ti=2, Fr=1] ≈ intensitymap(mtr230, gXY) atol = 1e-8
-        @test intensitymap(convolved(m1, m2), g)[Ti=2, Fr=2] ≈ intensitymap(mtr345, gXY) atol = 1e-8
-
+    @testset "Add model" begin
+        gXY = imagepixels(40.0, 40.0, 256, 256)
+        g = RectiGrid((; X=gXY.X, Y=gXY.Y, Fr=[230e9, 345e9]))
         u = randn(50) .* 0.25
         v = randn(50) .* 0.25
         ti = range(1.0, 3.0; length=50)
         fr = vcat(fill(230e9, 25), fill(345e9, 25))
         guv = UnstructuredDomain((; U=u, V=v, Fr=fr, Ti=ti))
-        vmf = visibilitymap(convolved(m1, m2), guv)
-        v230 = visibilitymap(mtr230, guv)[1:25]
-        v345 = visibilitymap(mtr345, guv)[26:50]
+        gfr = FourierDualDomain(g, guv, NFFTAlg())
 
-        @test vmf[1:25] ≈ v230 atol = 1e-8
-        @test vmf[26:50] ≈ v345 atol = 1e-8
+        ts = TaylorSpectral(1.0, 1.0, 230e9)
+        m1 = modify(Gaussian(), Stretch(ts))
+        m2 = ExtendedRing(8.0)
+        ts3 = TaylorSpectral(8.0, 1.0, 230e9)
+        m3 = ExtendedRing(ts3)
+
+        test_modifier(m1 + m2, Gaussian() + m2, modify(Gaussian(), Stretch(1.5)) + m2, gfr)
+        test_modifier(m1 + m1, 2 * Gaussian(), modify(Gaussian(), Stretch(1.5)) * 2, gfr)
+        test_modifier(m1 + m3, Gaussian() + m2,
+                      modify(Gaussian(), Stretch(1.5)) + ExtendedRing(8 * 1.5),
+                      gfr)
+
+        gfr = nothing
+        GC.gc()
     end
-end
 
+    @testset "Convolution Multdomain" begin
+        @testset "Frequency only" begin
+            m1 = modify(Gaussian(), Stretch(1.0))
+            m2 = modify(Gaussian(), Stretch(TaylorSpectral(1.0, 1.0, 230e9)))
+
+            mtr230 = modify(Gaussian(), Stretch(sqrt(2)))
+            mtr345 = modify(Gaussian(), Stretch(sqrt(1 + (345 / 230)^2)))
+            gXY = imagepixels(20.0, 20.0, 256, 256)
+            g = RectiGrid((; X=gXY.X, Y=gXY.Y, Fr=[230e9, 345e9]))
+            @test intensitymap(convolved(m1, m2), g)[Fr=1] ≈ intensitymap(mtr230, gXY) atol = 1e-8
+            @test intensitymap(convolved(m1, m2), g)[Fr=2] ≈ intensitymap(mtr345, gXY) atol = 1e-8
+
+            u = randn(50) .* 0.25
+            v = randn(50) .* 0.25
+            ti = range(1.0, 3.0; length=50)
+            fr = vcat(fill(230e9, 25), fill(345e9, 25))
+            guv = UnstructuredDomain((; U=u, V=v, Fr=fr, Ti=ti))
+            vmf = visibilitymap(convolved(m1, m2), guv)
+            v230 = visibilitymap(mtr230, guv)[1:25]
+            v345 = visibilitymap(mtr345, guv)[26:50]
+
+            @test vmf[1:25] ≈ v230 atol = 1e-8
+            @test vmf[26:50] ≈ v345 atol = 1e-8
+        end
+
+        @testset "Frequency+Time" begin
+            m1 = modify(Gaussian(), Stretch(1.0))
+            m2 = modify(Gaussian(), Stretch(TaylorSpectral(1.0, 1.0, 230e9)))
+
+            mtr230 = modify(Gaussian(), Stretch(sqrt(2)))
+            mtr345 = modify(Gaussian(), Stretch(sqrt(1 + (345 / 230)^2)))
+            gXY = imagepixels(20.0, 20.0, 256, 256)
+            g = RectiGrid((; X=gXY.X, Y=gXY.Y, Ti=1.0:2.0, Fr=[230e9, 345e9]))
+            @test intensitymap(convolved(m1, m2), g)[Ti=1, Fr=1] ≈ intensitymap(mtr230, gXY) atol = 1e-8
+            @test intensitymap(convolved(m1, m2), g)[Ti=1, Fr=2] ≈ intensitymap(mtr345, gXY) atol = 1e-8
+            @test intensitymap(convolved(m1, m2), g)[Ti=2, Fr=1] ≈ intensitymap(mtr230, gXY) atol = 1e-8
+            @test intensitymap(convolved(m1, m2), g)[Ti=2, Fr=2] ≈ intensitymap(mtr345, gXY) atol = 1e-8
+
+            u = randn(50) .* 0.25
+            v = randn(50) .* 0.25
+            ti = range(1.0, 3.0; length=50)
+            fr = vcat(fill(230e9, 25), fill(345e9, 25))
+            guv = UnstructuredDomain((; U=u, V=v, Fr=fr, Ti=ti))
+            vmf = visibilitymap(convolved(m1, m2), guv)
+            v230 = visibilitymap(mtr230, guv)[1:25]
+            v345 = visibilitymap(mtr345, guv)[26:50]
+
+            @test vmf[1:25] ≈ v230 atol = 1e-8
+            @test vmf[26:50] ≈ v345 atol = 1e-8
+        end
+    end
 end
