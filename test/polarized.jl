@@ -23,12 +23,12 @@ end
     g = imagepixels(10.0, 10.0, 512, 512)
     s = map(length, dims(g))
     tsp = TaylorSpectral(0.1, 1.0, 230.0)
-    mf= PolarizedModel(Gaussian(), tsp * Gaussian(), 0.1 * Gaussian(), 0.1 * Gaussian())
-    @test ComradeBase.intensity_point(mf, (;X=0.1, Y=0.0, Fr=230.0)) ≈
-          ComradeBase.intensity_point(m, (;X=0.1, Y=0.0, Fr=230.0))
+    mf = PolarizedModel(Gaussian(), tsp * Gaussian(), 0.1 * Gaussian(), 0.1 * Gaussian())
+    @test ComradeBase.intensity_point(mf, (; X=0.1, Y=0.0, Fr=230.0)) ≈
+          ComradeBase.intensity_point(m, (; X=0.1, Y=0.0, Fr=230.0))
 
-    @test ComradeBase.visibility_point(mf, (;U=0.1, V=0.0, Fr=230.0)) ≈
-          ComradeBase.visibility_point(m, (;U=0.1, V=0.0, Fr=230.0))
+    @test ComradeBase.visibility_point(mf, (; U=0.1, V=0.0, Fr=230.0)) ≈
+          ComradeBase.visibility_point(m, (; U=0.1, V=0.0, Fr=230.0))
 
     u = fftshift(fftfreq(length(g.X), 1 / step(g.X)))
     uv = RectiGrid((U(u), V(-u)))

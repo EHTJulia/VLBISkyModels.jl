@@ -310,6 +310,7 @@ end
     @test test2dgaussian(512, DFTAlg())
 end
 
+@testset "Multidomain models" begin
 @testset "TaylorSpectral" begin
     ts = TaylorSpectral(1.0, 1.0, 230.0, -1.0)
     @test ts((; Fr=230.0)) ≈ 0.0
@@ -416,6 +417,9 @@ end
                              Rotate(tsr((; Fr=345e9)))),
                       gfr)
     end
+
+    gfr = nothing
+    GC.gc()
 end
 
 @testset "Add model" begin
@@ -439,6 +443,9 @@ end
     test_modifier(m1 + m3, Gaussian() + m2,
                   modify(Gaussian(), Stretch(1.5)) + ExtendedRing(8 * 1.5),
                   gfr)
+
+    gfr = nothing
+    GC.gc()
 end
 
 @testset "Convolution Multdomain" begin
@@ -491,4 +498,6 @@ end
         @test vmf[1:25] ≈ v230 atol = 1e-8
         @test vmf[26:50] ≈ v345 atol = 1e-8
     end
+end
+
 end
