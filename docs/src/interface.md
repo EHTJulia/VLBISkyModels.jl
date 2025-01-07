@@ -10,7 +10,7 @@ To see how this works, we will go through a simplified implementation of the Gau
 of an image feature from VLBI data. To construct a Gaussian model, we will first define a struct:
 
 ```julia
-struct MyGaussian{T} <: VLBISkyModels.AbstractModel 
+struct MyGaussian{T} <: VLBISkyModels.AbstractModel
     size::T
 end
 ```
@@ -20,16 +20,16 @@ where `size` is the standard deviation of the gaussian.
 !!! note
     We typically do not include a `size` field in the model because a generic `size` can be specified
     with the [`modify`](@ref) function. However, for the sake of this example, we will include it,
-    since it will highlight how to make models frequency dependent. 
+    since it will highlight how to make models frequency dependent.
 
-To specify the model we need to tell `VLBISkyModels` how we will represent the model in the image 
+To specify the model we need to tell `VLBISkyModels` how we will represent the model in the image
 and visibility domain. For a Gaussian, both the image and visibilty domain are analytic. These
-are specified with the traits [`visanalytic`](@ref) and [`imanalytic`](@ref):
+are specified with the traits [`ComradeBase.visanalytic`](@ref) and [`ComradeBase.imanalytic`](@ref):
 
 ```julia
 # Fourier and image domains are analytic
-VLBISkyModels.visanalytic(::Type{<:MyGaussian}) = IsAnalytic()
-VLBISkyModels.imanalytic(::Type{<:MyGaussian}) = IsAnalytic()
+ComradeBase.visanalytic(::Type{<:MyGaussian}) = IsAnalytic()
+ComradeBase.imanalytic(::Type{<:MyGaussian}) = IsAnalytic()
 ```
 
 Finally, we can specify if the model is intrinsically polarized by using the `IsPolarized` and `NotPolarized()` trait
@@ -39,18 +39,18 @@ VLBISkyModels.ispolarized(::Type{<:MyGaussian}) = NotPolarized()
 ```
 
 !!! note
-    The actual implementation defines the Gaussian to be a subtype of `VLBISkyModels.GeometricModel`, 
-    which automatically defines these methods. However, for models that aren't a subtype of `GeometricModel`, 
+    The actual implementation defines the Gaussian to be a subtype of `VLBISkyModels.GeometricModel`,
+    which automatically defines these methods. However, for models that aren't a subtype of `GeometricModel`,
     we assume the image domain `IsAnalytic()` and the Fourier domain is `NotAnalytic()`.
 
-Since both the image and visibility domain representation of the Gaussian are analytic, we need to 
-define an `intensity_point` and `visibility_point` method. 
+Since both the image and visibility domain representation of the Gaussian are analytic, we need to
+define an `intensity_point` and `visibility_point` method.
 
 ```julia
 function ComradeBase.intensity_point(m::MyGaussian, p)
     (; X, Y) = p
     @unpack_params size = m(p)
-    return exp(-(X^2 + Y^2) * inv(2 * size^2)) * inv(2π*size)
+    return exp(-(X^2 + Y^2) * inv(2 * size^2)) * inv(2π * size)
 end
 
 function ComradeBase.visibility_point(m::MyGaussian, p) where {T}
@@ -59,7 +59,7 @@ function ComradeBase.visibility_point(m::MyGaussian, p) where {T}
 end
 ```
 
-Note that as of **0.6.6** we recommend retrieving the parameters of the model `m` using either 
+Note that as of **0.6.6** we recommend retrieving the parameters of the model `m` using either
 [`getparam`](@ref) or the convience macro [`@unpack_params`](@ref). This is because the parameters of the model
 may not be simple numbers but functions of time and frequency. Finally, not that `@unpack_params`
 is a macro that reduces boiler plate and is equivalent to,
@@ -78,7 +78,7 @@ adding multiple Gaussians and modifying them. For instance, with a flux of 2 Jy.
 
 ```julia
 using Plots
-gauss = 2.0*MyGaussian(1.0)
+gauss = 2.0 * MyGaussian(1.0)
 fig = plot(gauss; layout=(1, 2), size=(800, 300))
 plot!(fig[2], ellgauss; size=(800, 350))
 ```
@@ -100,24 +100,24 @@ Plots.scatter!(hypot.(u, v), abs.(veg); label="Elliptical Gaussian")
 
 ## Making the model frequency dependent
 
-To make the model frequency dependent we can use the existing [`DomainParams`](@ref) interface.
+To make the model frequency dependent we can use the existing [`VLBISkyModels.DomainParams`](@ref) interface.
 This defines how the model parameters behave as a function of frequency and time. For example,
 to make the size of the Gaussian frequency dependent we can use the [`TaylorSpectral`](@ref) type
 
 ```julia
 ν₀ = 230e9
 σ₀ = 1.0
-a  = 1.0
+a = 1.0
 size = TaylorSpectral(σ₀, a, ν₀)
 gauss = MyGaussian(size)
-ellgauss = 2.0*MyGaussian(size)
+ellgauss = 2.0 * MyGaussian(size)
 ```
 
 which will make a Gaussian whose size as a function of frequency is given by
 
 ```math
 \sigma(\nu) = \sigma_0 (\nu / \nu_0)^a
- ```
+```
 
 If we wanted a different function form for the frequency dependence, we can define a new type
 
@@ -132,11 +132,11 @@ which only requires a single method to be defined for it to work
 
 ```julia
 function VLBISkyModels.build_param(param::MyFreq, p)
-    return param.a + p.Fr/p.F0 
+    return param.a + p.Fr / p.F0
 end
 ```
 
-which says that the depends changes as a function of frequency linearly with a slope of `F0` and 
+which says that the depends changes as a function of frequency linearly with a slope of `F0` and
 a intercept of `a`. This can be used as follows
 
 ```julia
@@ -146,7 +146,7 @@ size = MyFreq(1.0, ν₀)
 gauss = MyGaussian(size)
 ```
 
-!!! note 
+!!! note
     This extension of the model to be time and frequency dependent is only necessary for models
     that aren't intrinsically dependent on time and frequency. For a model, that has some prescribed
     time and frequency dependence, the model should be defined explicitly in `intensity_point`/`visibility_point`
