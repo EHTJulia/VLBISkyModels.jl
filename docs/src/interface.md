@@ -146,7 +146,8 @@ size = MyFreq(1.0, ν₀)
 gauss = MyGaussian(size)
 ```
 
-Note that this extension of the model to be time and frequency dependent is only necessary for models
-that aren't intrinsically dependent on time and frequency. For a model, that has some prescribed
-time and frequency dependence, the model should be defined explicitly in `intensity_point`/`visibility_point`
-if they are analytic in the image/visibility domain respectively.
+!!! note 
+    This extension of the model to be time and frequency dependent is only necessary for models
+    that aren't intrinsically dependent on time and frequency. For a model, that has some prescribed
+    time and frequency dependence, the model should be defined explicitly in `intensity_point`/`visibility_point`
+    if they are analytic in the image/visibility domain respectively.
