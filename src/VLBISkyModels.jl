@@ -3,7 +3,6 @@ module VLBISkyModels
 using Accessors: @set
 using ArgCheck
 using AbstractFFTs
-using BasicInterpolators
 using ChainRulesCore
 using ForwardDiff
 using FITSIO
@@ -13,6 +12,7 @@ using EnzymeCore
 using EnzymeCore: EnzymeRules, Const, Active, Duplicated
 using FFTW
 using FillArrays
+using GridInterpolations
 using NFFT
 using NamedTupleTools
 using PaddedViews

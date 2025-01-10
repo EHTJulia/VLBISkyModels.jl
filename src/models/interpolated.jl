@@ -10,7 +10,7 @@ end
 @inline ispolarized(::Type{<:InterpolatedModel{M}}) where {M} = ispolarized(M)
 
 intensity_point(m::InterpolatedModel, p) = intensity_point(m.model, p)
-visibility_point(m::InterpolatedModel, p) = m.sitp(p.U, p.V)
+visibility_point(m::InterpolatedModel, p) = m.sitp(p)
 
 function Base.show(io::IO, m::InterpolatedModel)
     return print(io, "InterpolatedModel(", m.model, ")")
@@ -40,9 +40,8 @@ function build_intermodel(img::IntensityMap, plan, alg::FFTAlg, pulse=DeltaPulse
     grid = axisdims(img)
     griduv = build_padded_uvgrid(grid, alg)
     phasecenter!(vis, grid, griduv)
-    (; X, Y) = grid
-    (; U, V) = griduv
-    sitp = create_interpolator(U, V, vis, stretched(pulse, step(X), step(Y)))
+    dx, dy = pixelsizes(grid)
+    sitp = create_interpolator(griduv, vis, stretched(pulse, dx, dy))
     return sitp
 end
 
@@ -62,40 +61,58 @@ function intensitymap!(img::IntensityMap, m::InterpolatedModel)
     return intensitymap!(img, m.model)
 end
 
+using NamedTupleTools
+
+myselect(p, kg) = map(k -> p[k], kg)
+
 # internal function that creates the interpolator objector to evaluate the FT.
-function create_interpolator(U, V, vis::AbstractArray{<:Complex}, pulse)
+function create_interpolator(g, vis::AbstractArray{<:Complex,N}, pulse) where {N}
     # Construct the interpolator
     #itp = interpolate(vis, BSpline(Cubic(Line(OnGrid()))))
     #etp = extrapolate(itp, zero(eltype(vis)))
     #scale(etp, u, v)
-
-    p1 = BicubicInterpolator(U, V, real(vis), NoBoundaries())
-    p2 = BicubicInterpolator(U, V, imag(vis), NoBoundaries())
-    function (u, v)
-        pl = visibility_point(pulse, (U=u, V=v))
-        return pl * (p1(u, v) + 1im * p2(u, v))
+    itp = RectangleGrid(map(ComradeBase.basedim, dims(g))...)
+    kg = keys(g)
+    visre = real(vis)
+    visim = imag(vis)
+    f = let kg = kg, itp = itp, visre = visre, visim = visim, pulse = pulse
+        p -> begin
+            pl = visibility_point(pulse, p)
+            # xx = select(p, kg)
+            x = SVector{N}(myselect(p, kg))
+            vreal = interpolate(itp, visre, x)
+            vimag = interpolate(itp, visim, x)
+            return pl * (vreal + 1im * vimag)
+        end
     end
 end
 
-function create_interpolator(U, V, vis::StructArray{<:StokesParams}, pulse)
+function create_interpolator(g, vis::StructArray{<:StokesParams}, pulse)
     # Construct the interpolator
-    pI_real = BicubicInterpolator(U, V, real(vis.I), NoBoundaries())
-    pI_imag = BicubicInterpolator(U, V, imag(vis.I), NoBoundaries())
+    itp = RectangleGrid(map(ComradeBase.basedim, dims(g))...)
 
-    pQ_real = BicubicInterpolator(U, V, real(vis.Q), NoBoundaries())
-    pQ_imag = BicubicInterpolator(U, V, imag(vis.Q), NoBoundaries())
+    vIreal = real(vis.I)
+    vIimag = imag(vis.I)
 
-    pU_real = BicubicInterpolator(U, V, real(vis.U), NoBoundaries())
-    pU_imag = BicubicInterpolator(U, V, imag(vis.U), NoBoundaries())
+    vQreal = real(vis.Q)
+    vQimag = imag(vis.Q)
 
-    pV_real = BicubicInterpolator(U, V, real(vis.V), NoBoundaries())
-    pV_imag = BicubicInterpolator(U, V, imag(vis.V), NoBoundaries())
+    vUreal = real(vis.U)
+    vUimag = imag(vis.U)
 
-    function (u, v)
-        pl = visibility_point(pulse, (U=u, V=v))
-        return StokesParams(pI_real(u, v) * pl + 1im * pI_imag(u, v) * pl,
-                            pQ_real(u, v) * pl + 1im * pQ_imag(u, v) * pl,
-                            pU_real(u, v) * pl + 1im * pU_imag(u, v) * pl,
-                            pV_real(u, v) * pl + 1im * pV_imag(u, v) * pl)
+    vVreal = real(vis.V)
+    vVimag = imag(vis.V)
+
+    function (p)
+        pl = visibility_point(pulse, p)
+        x = SVector(values(p))
+        return StokesParams(interpolate(itp, vIreal, x) * pl +
+                            1im * interpolate(itp, vIimag, x) * pl,
+                            interpolate(itp, vQreal, x) * pl +
+                            1im * interpolate(itp, vQimag, x) * pl,
+                            interpolate(itp, vUreal, x) * pl +
+                            1im * interpolate(itp, vUimag, x) * pl,
+                            interpolate(itp, vVreal, x) * pl +
+                            1im * interpolate(itp, vVimag, x) * pl)
     end
 end

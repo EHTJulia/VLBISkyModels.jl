@@ -5,6 +5,7 @@
 /docs/build/
 /docs/Manifest.toml
 /test/Manifest.toml
+/test/.CondaPkg
 examples/Manifest.toml
 .vscode/launch.json
 .vscode/settings.json

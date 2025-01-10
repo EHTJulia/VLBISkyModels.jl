@@ -16,7 +16,7 @@ Base.@kwdef struct FFTAlg{T} <: FourierTransform
     Note we actually round up to use
     small prime factor.
     """
-    padfac::Int = 4
+    padfac::Int = 12
     """
     FFTW flags or wisdom for the transformation. The default is `FFTW.ESTIMATE`,
     but you can use `FFTW.MEASURE` for better performance if you plan on evaluating
@@ -31,8 +31,11 @@ function build_padded_uvgrid(grid::AbstractRectiGrid, alg::FFTAlg)
     ny, nx = size(grid)
     nnx = nextprod((2, 3, 5, 7), padfac * nx)
     nny = nextprod((2, 3, 5, 7), padfac * ny)
-    u, v = uviterator(nnx, step(X), nny, step(Y))
-    return (U=u, V=v)
+    uvg = uviterator(nnx, step(X), nny, step(Y))
+    pft = dims(grid)[3:end]
+    puv = (uvg..., pft...)
+    g = RectiGrid(puv; executor=executor(grid), header=header(grid))
+    return g
 end
 
 """
@@ -73,16 +76,17 @@ end
 function create_forward_plan(alg::FFTAlg, imgdomain::AbstractRectiGrid,
                              ::AbstractSingleDomain)
     pimg = padimage(ComradeBase.allocate_map(Array{eltype(imgdomain)}, imgdomain), alg)
-    plan = plan_fft(pimg; flags=alg.flags)
+    plan = plan_fft(pimg, 1:2; flags=alg.flags)
     return FFTPlan(alg, plan)
 end
 
-function padimage(img::IntensityMap, alg::FFTAlg)
+function padimage(img::IntensityMap{T,N}, alg::FFTAlg) where {T,N}
     padfac = alg.padfac
     ny, nx = size(img)
     nnx = nextprod((2, 3, 5, 7), padfac * nx)
     nny = nextprod((2, 3, 5, 7), padfac * ny)
-    return PaddedView(zero(eltype(img)), img, (nny, nnx))
+    dims = (nnx, nny, size(img)[3:end]...)
+    return PaddedView(zero(eltype(img)), img, dims)
 end
 
 function padimage(img::IntensityMap{<:StokesParams}, alg::FFTAlg)
@@ -97,13 +101,13 @@ FFTW.plan_fft(A::AbstractArray{<:StokesParams}, args...) = plan_fft(stokes(A, :I
 
 function inverse_plan(plan::FFTPlan)
     a = zeros(eltype(plan.plan), size(plan.plan))
-    ip = plan_ifft(a; flags=plan.alg.flags)
+    ip = plan_ifft(a, 1:2; flags=plan.alg.flags)
     return FFTPlan(plan.alg, ip)
 end
 
 function applyft(plan::FFTPlan, img::AbstractArray{<:Number})
     pimg = padimage(img, plan.alg)
-    return fftshift(plan.plan * pimg)
+    return fftshift(plan.plan * pimg, 1:2)
 end
 
 function applyft(plan::FFTPlan,

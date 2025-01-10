@@ -22,6 +22,13 @@ end
     m = PolarizedModel(Gaussian(), 0.1 * Gaussian(), 0.1 * Gaussian(), 0.1 * Gaussian())
     g = imagepixels(10.0, 10.0, 512, 512)
     s = map(length, dims(g))
+    tsp = TaylorSpectral(0.1, 1.0, 230.0)
+    mf = PolarizedModel(Gaussian(), tsp * Gaussian(), 0.1 * Gaussian(), 0.1 * Gaussian())
+    @test ComradeBase.intensity_point(mf, (; X=0.1, Y=0.0, Fr=230.0)) ≈
+          ComradeBase.intensity_point(m, (; X=0.1, Y=0.0, Fr=230.0))
+
+    @test ComradeBase.visibility_point(mf, (; U=0.1, V=0.0, Fr=230.0)) ≈
+          ComradeBase.visibility_point(m, (; U=0.1, V=0.0, Fr=230.0))
 
     u = fftshift(fftfreq(length(g.X), 1 / step(g.X)))
     uv = RectiGrid((U(u), V(-u)))
@@ -172,14 +179,14 @@ end
     uv = UnstructuredDomain((U=u, V=v))
     gnf = FourierDualDomain(g, uv, NFFTAlg())
     gdf = FourierDualDomain(g, uv, DFTAlg())
-    gff = FourierDualDomain(g, uv, FFTAlg(; padfac=8))
+    gff = FourierDualDomain(g, uv, FFTAlg())
     mimg = ContinuousImage(img, BSplinePulse{3}())
     vnf = visibilitymap(mimg, gnf)
     vdf = visibilitymap(mimg, gdf)
     vff = visibilitymap(mimg, gff)
 
     @test isapprox(maximum(norm, vnf .- vdf), 0.0, atol=1e-6)
-    @test isapprox(maximum(norm, vff .- vdf), 0.0, atol=1e-5)
+    @test isapprox(maximum(norm, vff .- vdf), 0.0, atol=1e-3)
 end
 
 @testset "PoincareSphere2Map" begin

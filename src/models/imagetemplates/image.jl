@@ -45,7 +45,7 @@ end
 
 @inline function intensity_point(θ::LogSpiral, p)
     (; X, Y) = p
-    (; κ, σ, δϕ) = θ
+    @unpack_params κ, σ, δϕ = θ(p)
     #Set up the spiral
     k = sqrt(1 - κ * κ) / κ
     rc = exp(k * 10π) #This finds where we should start our spiral arm from
@@ -95,7 +95,7 @@ struct Constant{T} <: AbstractImageTemplate
     """
     scale::T
 end
-@inline intensity_point(c::Constant{T}, p) where {T} = inv(c.scale)^2
+@inline intensity_point(c::Constant, p) = inv(getparam(c, :scale, p))^2
 radialextent(::Constant{T}) where {T} = one(T)
 
 """
@@ -116,11 +116,11 @@ struct GaussDisk{T} <: AbstractImageTemplate
     α::T
 end
 
-@inline function intensity_point(θ::GaussDisk{T}, p) where {T}
-    (; α) = θ
+@inline function intensity_point(θ::GaussDisk, p)
+    @unpack_params α = θ(p)
     r = hypot(p.X, p.Y)
     if (r < 1)
-        return one(T)
+        return one(typeof(r))
     else
         return exp(-(r - 1)^2 / (2 * α^2))
     end
