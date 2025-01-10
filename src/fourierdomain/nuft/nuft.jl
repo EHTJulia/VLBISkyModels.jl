@@ -144,12 +144,8 @@ end
     for i in eachindex(iminds, visinds)
         imind = iminds[i]
         visind = visinds[i]
-        # TODO
-        # If visinds are consecutive then we can use the in-place _nuft!:
-        # _nuft!(visind, plans[imind], @view(img[:, :, imind...])
         vis_view = @view(vis_list[visind])
         _nuft!(vis_view, plans[imind], @view(img[:, :, imind]))
-        # After the todo this wont be required
     end
     return vis_list
 end

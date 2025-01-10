@@ -81,6 +81,7 @@ imanalytic(::Type{<:ContinuousImage}) = IsAnalytic()
 radialextent(c::ContinuousImage) = maximum(values(fieldofview(c.img))) / 2
 
 function intensity_point(m::ContinuousImage, p)
+    @unpack_params img = m(p)
     dx, dy = pixelsizes(m.img)
     sum = zero(eltype(m.img))
     ms = stretched(m.kernel, dx, dy)
@@ -178,14 +179,14 @@ function visibilitymap_numeric(m::ModifiedModel{M,T},
     ispol = ispolarized(M)
     vbase = visibilitymap_numeric(m.model, p)
     puv = visdomain(p)
-    _apply_scaling!(ispol, m.transform, vbase, puv.U, puv.V)
+    _apply_scaling!(ispol, m.transform, vbase, puv)
     return vbase
 end
 
-@inline function _apply_scaling!(mbase, t::Tuple, vbase, u, v)
+@inline function _apply_scaling!(mbase, t::Tuple, vbase, p)
     # out = similar(vbase)
     pvbase = parent(vbase)
-    uc = unitscale(Complex{eltype(u)}, mbase)
-    pvbase .= last.(modify_uv.(Ref(mbase), Ref(t), u, v, Ref(uc))) .* pvbase
+    uc = unitscale(Complex{eltype(p.U)}, mbase)
+    pvbase .= last.(modify_uv.(Ref(mbase), Ref(t), domainpoints(p), Ref(uc))) .* pvbase
     return nothing
 end

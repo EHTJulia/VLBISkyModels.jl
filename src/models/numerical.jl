@@ -3,7 +3,7 @@ function _fft(img::AbstractArray{<:StokesParams{<:Real}})
     vQ = complex(stokes(img, :Q))
     vU = complex(stokes(img, :U))
     vV = complex(stokes(img, :V))
-    p = plan_fft!(vI)
+    p = plan_fft!(vI, 1:2)
     p * vI
     p * vQ
     p * vU
@@ -13,11 +13,11 @@ end
 
 function _fft(img::AbstractArray{<:Real})
     vI = complex(img)
-    fft!(vI)
+    fft!(vI, 1:2)
     return vI
 end
 
-function AbstractFFTs.ifft!(vis::AbstractArray{<:StokesParams}, region)
+function AbstractFFTs.ifft!(vis::AbstractArray{<:StokesParams}, region=1:ndims(vis))
     vI = stokes(vis, :I)
     vQ = stokes(vis, :Q)
     vU = stokes(vis, :U)
@@ -30,15 +30,15 @@ function AbstractFFTs.ifft!(vis::AbstractArray{<:StokesParams}, region)
     return StructArray{StokesParams{eltype(I)}}((vI, vQ, vU, vV))
 end
 
-function AbstractFFTs.fftshift(vis::AbstractArray{<:StokesParams})
+function AbstractFFTs.fftshift(vis::AbstractArray{<:StokesParams}, region=1:ndims(vis))
     vI = stokes(vis, :I)
     vQ = stokes(vis, :Q)
     vU = stokes(vis, :U)
     vV = stokes(vis, :V)
-    return StructArray{StokesParams{eltype(I)}}((fftshift(vI),
-                                                 fftshift(vQ),
-                                                 fftshift(vU),
-                                                 fftshift(vV)))
+    return StructArray{StokesParams{eltype(I)}}((fftshift(vI, region),
+                                                 fftshift(vQ, region),
+                                                 fftshift(vU, region),
+                                                 fftshift(vV, region)))
 end
 
 # Special because I just want to do the straight FFT thing no matter what
@@ -48,8 +48,8 @@ function intensitymap_numeric!(img::IntensityMap, m::AbstractModel)
     # We do this so the array isn't a StructArray
     vis = allocate_vismap(m, griduv)
     visibilitymap!(vis, m)
-    visk = ifftshift(parent(phasedecenter!(vis, grid, griduv)))
-    ifft!(visk)
+    visk = ifftshift(parent(phasedecenter!(vis, grid, griduv)), 1:2)
+    ifft!(visk, 1:2)
     img .= real.(visk)
     return nothing
 end
@@ -75,7 +75,7 @@ function visibilitymap_numeric!(vis::IntensityMap, m::AbstractModel)
     img = allocate_imgmap(m, gridxy)
     intensitymap!(img, m)
     tildeI = _fft(parent(img))
-    baseimage(vis) .= fftshift(tildeI)
+    baseimage(vis) .= fftshift(tildeI, 1:2)
     phasecenter!(vis, gridxy, grid)
     return nothing
 end

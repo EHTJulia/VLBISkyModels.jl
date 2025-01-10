@@ -35,7 +35,8 @@ convolved(m1::AbstractModel, m2::MultiComponentModel) = convolved(m2, m1)
 
 function intensity_point(m::MultiComponentModel, p)
     s = zero(p.X)
-    for i in eachindex(m.x, m.y, m.flux)
+    @unpack_params x, y, flux = m(p)
+    for i in eachindex(x, y, flux)
         s += ComradeBase.intensity_point(m[i], p)
     end
     return s
@@ -43,7 +44,8 @@ end
 
 function visibility_point(m::MultiComponentModel, p)
     s = zero(Complex{eltype(p.U)})
-    for i in eachindex(m.x, m.y, m.flux)
+    @unpack_params x, y, flux = m(p)
+    for i in eachindex(x, y, flux)
         s += ComradeBase.visibility_point(m[i], p)
     end
     return s
