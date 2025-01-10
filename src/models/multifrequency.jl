@@ -12,13 +12,9 @@ $(FIELDS)
 """
 struct Multifrequency{B<:ContinuousImage, F<:Number, S<:AbstractSpectralModel} <: ComradeBase.AbstractModel
     """
-    Base image model (e.g. Gaussian, ContinuousImage)
+    Base image model (ContinuousImage only)
     """
     base::B
-    """
-    Reference frequency in Hz
-    """
-    ν0::F
     """
     Multifrequency spectral model
     """
@@ -49,22 +45,27 @@ end
 #visibility_point(M::Multifrequency{B},p) where {B} = visibility_point(B)
 
 
-"""
-    $(TYPEDEF)
-Taylor expansion spectral model of order n for multifrequency imaging.
-
-This is the same multifrequency model implemented in ehtim (Chael et al., 2023).
-
+#"""
+#    $(TYPEDEF)
+#Taylor expansion spectral model of order n for multifrequency imaging. Applies to Continuous Image models only.
+#
+#This is the same multifrequency model implemented in ehtim (Chael et al., 2023).
+#
 # Fields
-$(FIELDS)
-"""
-struct TaylorSpectral{C<:NTuple} <: AbstractSpectralModel
-    """
-    Taylor expansion coefficients.
-    Tuple of coefficients.
-    """
-    c::C
-end
+#$(FIELDS)
+#"""
+#struct TaylorSpectral{C<:NTuple, ν0<:Real} <: AbstractSpectralModel
+#    """
+#    A tuple containing the Taylor expansion coefficients.
+#    c[1] is the spectral index α, c[2] is the spectral curvature β, etc.
+#    The coeffecients can be either constant values, or arrays with dimensions equal to that of the base image I0.
+#    """
+#    c::C
+#    """
+#    The expansion reference frequency.
+#    """
+#    ν0::C
+#end
 
 function order(::TaylorSpectral{<:NTuple{N}}) where N
     return N
