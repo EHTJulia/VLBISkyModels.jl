@@ -356,10 +356,10 @@ end
                           gfr)
 
             m1 = modify(Gaussian(), Stretch(1.0, ts))
-            mn = modify(ExtendedRing(8.0), Stretch(1.0, ts))
+            mn = modify(TBlob(8.0), Stretch(1.0, ts))
             test_modifier(m1, Gaussian(), modify(Gaussian(), Stretch(1.0, 1.5)), gfr)
-            test_modifier(mn, ExtendedRing(8.0),
-                          modify(ExtendedRing(8.0), Stretch(1.0, 1.5)),
+            test_modifier(mn, TBlob(8.0),
+                          modify(TBlob(8.0), Stretch(1.0, 1.5)),
                           gfr)
 
             m1 = modify(Gaussian(), Stretch(ts, ts))
