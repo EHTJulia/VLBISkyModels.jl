@@ -53,6 +53,7 @@ VLBISkyModels.Disk
 VLBISkyModels.SlashedDisk
 VLBISkyModels.ExtendedRing
 VLBISkyModels.Gaussian
+VLBISkyModels.TBlob
 VLBISkyModels.MRing
 VLBISkyModels.Ring
 VLBISkyModels.ParabolicSegment
