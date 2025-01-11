@@ -444,7 +444,7 @@ end
         test_modifier(m1 + m2, Gaussian() + m2, modify(Gaussian(), Stretch(1.5)) + m2, gfr)
         test_modifier(m1 + m1, 2 * Gaussian(), modify(Gaussian(), Stretch(1.5)) * 2, gfr)
         test_modifier(m1 + m3, Gaussian() + m2,
-                      modify(Gaussian(), Stretch(1.5)) + ExtendedRing(8 * 1.5),
+                      modify(Gaussian(), Stretch(1.5)) + TBlob(8 * 1.5),
                       gfr)
 
         gfr = nothing
