@@ -439,7 +439,7 @@ end
         m1 = modify(Gaussian(), Stretch(ts))
         m2 = ExtendedRing(8.0)
         ts3 = TaylorSpectral(8.0, 1.0, 230e9)
-        m3 = ExtendedRing(ts3)
+        m3 = TBlob(ts3)
 
         test_modifier(m1 + m2, Gaussian() + m2, modify(Gaussian(), Stretch(1.5)) + m2, gfr)
         test_modifier(m1 + m1, 2 * Gaussian(), modify(Gaussian(), Stretch(1.5)) * 2, gfr)

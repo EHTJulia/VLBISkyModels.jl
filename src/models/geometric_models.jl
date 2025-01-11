@@ -55,7 +55,7 @@ end
     return exp(-2 * T(π)^2 * (u^2 + v^2)) + zero(T)im
 end
 
-struct TBlob{T} <: GeometricModel{T} 
+struct TBlob{T} <: GeometricModel{T}
     slope::T
     norm::T
     function TBlob(slope::Number)
@@ -70,19 +70,18 @@ struct TBlob{T} <: GeometricModel{T}
 end
 visanalytic(::Type{<:TBlob}) = NotAnalytic()
 
-@inline tblobnorm(s) = gamma((s+2)/2)*inv(gamma(s/2)s*π)
+@inline tblobnorm(s) = gamma((s + 2) / 2) * inv(gamma(s / 2)s * π)
 @inline getnorm(m, p) = m.norm
 @inline getnorm(s::TBlob{<:DomainParams}, p) = tblobnorm(s.norm(p))
-radialextent(m::TBlob) = 5*m.slope/(m.slope-2)
+radialextent(m::TBlob) = 5 * m.slope / (m.slope - 2)
 
 function intensity_point(m::TBlob{T}, p) where {T}
     x, y = _getxy(p)
     r² = x^2 + y^2
     @unpack_params slope = m(p)
     norm = getnorm(m, p)
-    return norm * (1 + r²/slope)^(-(slope+2)/2)
+    return norm * (1 + r² / slope)^(-(slope + 2) / 2)
 end
-
 
 @doc raw"""
     Disk{T}() where {T}
