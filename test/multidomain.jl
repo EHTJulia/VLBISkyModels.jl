@@ -356,10 +356,10 @@ end
                           gfr)
 
             m1 = modify(Gaussian(), Stretch(1.0, ts))
-            mn = modify(ExtendedRing(8.0), Stretch(1.0, ts))
+            mn = modify(TBlob(8.0), Stretch(1.0, ts))
             test_modifier(m1, Gaussian(), modify(Gaussian(), Stretch(1.0, 1.5)), gfr)
-            test_modifier(mn, ExtendedRing(8.0),
-                          modify(ExtendedRing(8.0), Stretch(1.0, 1.5)),
+            test_modifier(mn, TBlob(8.0),
+                          modify(TBlob(8.0), Stretch(1.0, 1.5)),
                           gfr)
 
             m1 = modify(Gaussian(), Stretch(ts, ts))
@@ -439,12 +439,12 @@ end
         m1 = modify(Gaussian(), Stretch(ts))
         m2 = ExtendedRing(8.0)
         ts3 = TaylorSpectral(8.0, 1.0, 230e9)
-        m3 = ExtendedRing(ts3)
+        m3 = TBlob(ts3)
 
         test_modifier(m1 + m2, Gaussian() + m2, modify(Gaussian(), Stretch(1.5)) + m2, gfr)
         test_modifier(m1 + m1, 2 * Gaussian(), modify(Gaussian(), Stretch(1.5)) * 2, gfr)
-        test_modifier(m1 + m3, Gaussian() + m2,
-                      modify(Gaussian(), Stretch(1.5)) + ExtendedRing(8 * 1.5),
+        test_modifier(m1 + m3, Gaussian() + TBlob(8.0),
+                      modify(Gaussian(), Stretch(1.5)) + TBlob(8 * 1.5),
                       gfr)
 
         gfr = nothing
