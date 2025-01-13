@@ -10,11 +10,15 @@ Spectral Model object.
 # Fields
 $(FIELDS)
 """
-struct Multifrequency{B<:ContinuousImage, F<:Number, S<:AbstractSpectralModel} <: ComradeBase.AbstractModel
+struct Multifrequency{B<:ContinuousImage, F<:Number, S<:FrequencyParams} <: ComradeBase.AbstractModel
     """
     Base image model (ContinuousImage only)
     """
     base::B
+    """
+    The base image reference frequency.
+    """
+    ν0::F
     """
     Multifrequency spectral model
     """
@@ -22,7 +26,7 @@ struct Multifrequency{B<:ContinuousImage, F<:Number, S<:AbstractSpectralModel} <
 end
 
 # defining the mandatory methods for a Comrade AbstractModel
-visanalytic(::Type{Multifrequency{B}}) where {B} = NotAnalytic() #visanalytic(B)
+visanalytic(::Type{Multifrequency{B}}) where {B} = NotAnalytic()
 imanalytic(::Type{Multifrequency{B}}) where {B} = imanalytic(B)
 
 radialextent(::Type{Multifrequency{B}}) where {B} = radialextent(B)
@@ -67,7 +71,7 @@ end
 #    ν0::C
 #end
 
-function order(::TaylorSpectral{<:NTuple{N}}) where N
+function order(::TaylorSpectral{N}) where N
     return N
 end
 
@@ -76,16 +80,17 @@ Applies Taylor Series spectral model to image data.
 
 Generates image data at frequency ν with respect to the reference frequency ν0.
 """
-function applyspectral(I0::AbstractArray, spec::TaylorSpectral, ν::N, ν0::N) where {N<:Number}
+function applyspectral(I0::AbstractArray, spec::TaylorSpectral, ν::N) where {N<:Number}
     data = copy(I0)
-    applyspectral!(data, spec, ν, ν0)
+    applyspectral!(data, spec, ν)
     return data
 end
 
 
-function applyspectral!(I0::AbstractArray, spec::TaylorSpectral{T}, ν::N, ν0::N) where {N<:Number, T<:Tuple{Vararg{<:Matrix}}}
+function applyspectral!(I0::AbstractArray, spec::TaylorSpectral, ν::N) where {N<:Number}
+    ν0 = spec.freq0
     x = log(ν/ν0) # frequency to evaluate taylor expansion
-    c = spec.c
+    c = spec.index
 
     n = order(spec)
     xlist = ntuple(i -> x^i, n) # creating a tuple to hold the frequency powers
@@ -97,26 +102,12 @@ function applyspectral!(I0::AbstractArray, spec::TaylorSpectral{T}, ν::N, ν0::
     return I0
 end
 
-function applyspectral!(I0::AbstractArray, spec::TaylorSpectral{T}, ν::N, ν0::N) where {N<:Number, T<:Tuple{<:Number}}
-    x = log(ν/ν0) # frequency to evaluate taylor expansion
-    c = spec.c
-
-    n = order(spec)
-    xlist = ntuple(i -> x^i, n) # creating a tuple to hold the frequency powers
-
-    for i in eachindex(I0) # doing expansion one pixel at a time
-        exparg = sum(c .* xlist)
-        I0[i] = I0[i] * exp(exparg)
-    end
-    return I0
-end
-
 """Given a multifrequency model (base image & spectral model), creates a new Continuous image model at frequency ν."""
 function generatemodel(MF::Multifrequency, ν::N) where {N<:Number}
     image = parent(MF.base) # ContinuousImage -> SpatialIntensityMap
     I0 = parent(image) # SpatialIntensityMap -> Array
     
-    data = applyspectral(I0,MF.spec,ν,MF.ν0) # base image model, spectral model, frequency to generate new image
+    data = applyspectral(I0,MF.spec,ν) # base image model, spectral model, frequency to generate new image
     
     new_intensitymap = IntensityMap(data, getfield(image, :grid), getfield(image, :refdims), getfield(image, :name))
     return ContinuousImage(new_intensitymap,MF.base.kernel)
@@ -140,9 +131,8 @@ end
 """
 Build a multifrequency image cube to hold images at all frequencies.
 """
-function build_imagecube(m, mfgrid)
+function build_imagecube(m::Multifrequency, mfgrid::RectiGrid)
     I0 = parent(m.base) # base image IntensityMap 
-    ν0 = m.ν0
     spec = m.spec
     νlist = mfgrid.Fr 
 
@@ -150,7 +140,7 @@ function build_imagecube(m, mfgrid)
 
     for i in eachindex(νlist) # setting the image each frequency to first equal the base image and then apply spectral model
         imgcube[:,:,i] .= I0 
-        applyspectral!(@view(imgcube[:,:,i]), spec, νlist[i], ν0) # @view modifies existing image cube inplace --- don't create new object
+        applyspectral!(@view(imgcube[:,:,i]), spec, νlist[i]) # @view modifies existing image cube inplace --- don't create new object
     end
 
     return imgcube
