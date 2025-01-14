@@ -38,14 +38,10 @@ flux(::Type{Multifrequency{B}}) where {B} = flux(B)
 intensity_point(M::Multifrequency{B}, p) where {B} = intensity_point(M.base, p)
 
 function intensity_point(M::Multifrequency, p)
-    I0 = intensity_point(M.base, p)
-    αimg = ContinuousImage(IntensityMap(M.spec[1], axisdims(M.base)), M.base.kernel)
-
-    αpoint = intensity_point(αimg, p)
-
-    exparg = αpoint * log(p.Fr / ν0)
-
-    return I0 * exp(exparg)
+    I0 = parent(M.base)
+    I_img = applyspectral(I0, M.spec, p.Fr)
+    I_model = ContinuousImage(I_img, M.base.kernel)
+    return intensity_point(I_model, p)
 end
 
 #visibility_point(M::Multifrequency{B},p) where {B} = visibility_point(B)
@@ -87,7 +83,10 @@ function applyspectral(I0::AbstractArray, spec::TaylorSpectral, ν::N) where {N<
     return data
 end
 
-function applyspectral!(I0::AbstractArray, spec::TaylorSpectral, ν::N) where {N<:Number}
+function applyspectral!(I0::AbstractArray,
+                        spec::TaylorSpectral{<:Any,<:DataType,
+                                             <:Tuple{Vararg{<:AbstractArray}},<:Number,
+                                             <:Number}, ν::Number)
     ν0 = spec.freq0
     x = log(ν / ν0) # frequency to evaluate taylor expansion
     c = spec.index
@@ -97,6 +96,23 @@ function applyspectral!(I0::AbstractArray, spec::TaylorSpectral, ν::N) where {N
 
     for i in eachindex(I0) # doing expansion one pixel at a time
         exparg = sum(getindex.(c, i) .* xlist)
+        I0[i] = I0[i] * exp(exparg)
+    end
+    return I0
+end
+
+function applyspectral!(I0::AbstractArray,
+                        spec::TaylorSpectral{<:Any,<:DataType,<:Tuple{Vararg{<:Number}},
+                                             <:Number,<:Number}, ν::Number)
+    ν0 = spec.freq0
+    x = log(ν / ν0) # frequency to evaluate taylor expansion
+    c = spec.index
+
+    n = order(spec)
+    xlist = ntuple(i -> x^i, n) # creating a tuple to hold the frequency powers
+
+    for i in eachindex(I0) # doing expansion one pixel at a time
+        exparg = sum(c .* xlist)
         I0[i] = I0[i] * exp(exparg)
     end
     return I0
