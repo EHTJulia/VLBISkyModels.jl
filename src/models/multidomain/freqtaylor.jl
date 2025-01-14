@@ -25,9 +25,10 @@ struct TaylorSpectral{N,P,T<:NTuple{N},F<:Real,P0} <: FrequencyParams{P}
     end
 
     function TaylorSpectral(index::NTuple{N}, freq0::Real) where {N}
-        param=Nothing
-        p0=0
-        return new{N,typeof(param),typeof(index),typeof(freq0),typeof(p0)}(param, index, freq0, 0)
+        param = Nothing
+        p0 = 0
+        return new{N,typeof(param),typeof(index),typeof(freq0),typeof(p0)}(param, index,
+                                                                           freq0, 0)
     end
 end
 

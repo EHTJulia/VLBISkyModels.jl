@@ -18,6 +18,7 @@ end
 where `size` is the standard deviation of the gaussian.
 
 !!! note
+    
     We typically do not include a `size` field in the model because a generic `size` can be specified
     with the [`modify`](@ref) function. However, for the sake of this example, we will include it,
     since it will highlight how to make models frequency dependent.
@@ -39,6 +40,7 @@ VLBISkyModels.ispolarized(::Type{<:MyGaussian}) = NotPolarized()
 ```
 
 !!! note
+    
     The actual implementation defines the Gaussian to be a subtype of `VLBISkyModels.GeometricModel`,
     which automatically defines these methods. However, for models that aren't a subtype of `GeometricModel`,
     we assume the image domain `IsAnalytic()` and the Fourier domain is `NotAnalytic()`.
@@ -147,6 +149,7 @@ gauss = MyGaussian(size)
 ```
 
 !!! note
+    
     This extension of the model to be time and frequency dependent is only necessary for models
     that aren't intrinsically dependent on time and frequency. For a model, that has some prescribed
     time and frequency dependence, the model should be defined explicitly in `intensity_point`/`visibility_point`

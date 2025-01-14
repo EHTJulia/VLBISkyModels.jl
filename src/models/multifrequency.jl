@@ -1,4 +1,5 @@
-export Multifrequency, TaylorSpectral, applyspectral, applyspectral!, generatemodel, visibilitymap_numeric, build_imagecube, mfimagepixels
+export Multifrequency, TaylorSpectral, applyspectral, applyspectral!, generatemodel,
+       visibilitymap_numeric, build_imagecube, mfimagepixels
 
 """Abstract type to hold all multifrequency spectral models"""
 abstract type AbstractSpectralModel end
@@ -10,7 +11,8 @@ Spectral Model object.
 # Fields
 $(FIELDS)
 """
-struct Multifrequency{B<:ContinuousImage, F<:Number, S<:FrequencyParams} <: ComradeBase.AbstractModel
+struct Multifrequency{B<:ContinuousImage,F<:Number,S<:FrequencyParams} <:
+       ComradeBase.AbstractModel
     """
     Base image model (ContinuousImage only)
     """
@@ -33,21 +35,20 @@ radialextent(::Type{Multifrequency{B}}) where {B} = radialextent(B)
 
 flux(::Type{Multifrequency{B}}) where {B} = flux(B)
 
-intensity_point(M::Multifrequency{B},p) where {B} = intensity_point(M.base,p)
+intensity_point(M::Multifrequency{B}, p) where {B} = intensity_point(M.base, p)
 
-function intensity_point(M::Multifrequency,p)
-    I0 = intensity_point(M.base,p)
-    αimg = ContinuousImage(IntensityMap(M.spec[1],axisdims(M.base)), M.base.kernel)
+function intensity_point(M::Multifrequency, p)
+    I0 = intensity_point(M.base, p)
+    αimg = ContinuousImage(IntensityMap(M.spec[1], axisdims(M.base)), M.base.kernel)
 
-    αpoint = intensity_point(αimg,p)
-    
-    exparg = αpoint * log(p.Fr/ν0)
+    αpoint = intensity_point(αimg, p)
+
+    exparg = αpoint * log(p.Fr / ν0)
 
     return I0 * exp(exparg)
 end
 
 #visibility_point(M::Multifrequency{B},p) where {B} = visibility_point(B)
-
 
 #"""
 #    $(TYPEDEF)
@@ -71,7 +72,7 @@ end
 #    ν0::C
 #end
 
-function order(::TaylorSpectral{N}) where N
+function order(::TaylorSpectral{N}) where {N}
     return N
 end
 
@@ -86,17 +87,16 @@ function applyspectral(I0::AbstractArray, spec::TaylorSpectral, ν::N) where {N<
     return data
 end
 
-
 function applyspectral!(I0::AbstractArray, spec::TaylorSpectral, ν::N) where {N<:Number}
     ν0 = spec.freq0
-    x = log(ν/ν0) # frequency to evaluate taylor expansion
+    x = log(ν / ν0) # frequency to evaluate taylor expansion
     c = spec.index
 
     n = order(spec)
     xlist = ntuple(i -> x^i, n) # creating a tuple to hold the frequency powers
 
     for i in eachindex(I0) # doing expansion one pixel at a time
-        exparg = sum(getindex.(c,i).*xlist)
+        exparg = sum(getindex.(c, i) .* xlist)
         I0[i] = I0[i] * exp(exparg)
     end
     return I0
@@ -106,14 +106,16 @@ end
 function generatemodel(MF::Multifrequency, ν::N) where {N<:Number}
     image = parent(MF.base) # ContinuousImage -> SpatialIntensityMap
     I0 = parent(image) # SpatialIntensityMap -> Array
-    
-    data = applyspectral(I0,MF.spec,ν) # base image model, spectral model, frequency to generate new image
-    
-    new_intensitymap = IntensityMap(data, getfield(image, :grid), getfield(image, :refdims), getfield(image, :name))
-    return ContinuousImage(new_intensitymap,MF.base.kernel)
+
+    data = applyspectral(I0, MF.spec, ν) # base image model, spectral model, frequency to generate new image
+
+    new_intensitymap = IntensityMap(data, getfield(image, :grid), getfield(image, :refdims),
+                                    getfield(image, :name))
+    return ContinuousImage(new_intensitymap, MF.base.kernel)
 end
 
-function visibilitymap_numeric(m::Multifrequency{<:ContinuousImage}, grid::AbstractFourierDualDomain)
+function visibilitymap_numeric(m::Multifrequency{<:ContinuousImage},
+                               grid::AbstractFourierDualDomain)
     checkspatialgrid(axisdims(m.base), grid.imgdomain) # compare base image dimensions to spatial dimensions of data cube
     imgcube = build_imagecube(m, grid.imgdomain)
     vis = applyft(forward_plan(grid), imgcube)
@@ -127,26 +129,27 @@ function checkspatialgrid(imgdims, grid)
                                "do not match. This is not currently supported."))
 end
 
-
 """
 Build a multifrequency image cube to hold images at all frequencies.
 """
 function build_imagecube(m::Multifrequency, mfgrid::RectiGrid)
     I0 = parent(m.base) # base image IntensityMap 
     spec = m.spec
-    νlist = mfgrid.Fr 
+    νlist = mfgrid.Fr
 
     imgcube = allocate_imgmap(m.base, mfgrid) # build 3D cube of IntensityMap objects
 
     for i in eachindex(νlist) # setting the image each frequency to first equal the base image and then apply spectral model
-        imgcube[:,:,i] .= I0 
-        applyspectral!(@view(imgcube[:,:,i]), spec, νlist[i]) # @view modifies existing image cube inplace --- don't create new object
+        imgcube[:, :, i] .= I0
+        applyspectral!(@view(imgcube[:, :, i]), spec, νlist[i]) # @view modifies existing image cube inplace --- don't create new object
     end
 
     return imgcube
 end
 
-function mfimagepixels(fovx::Real, fovy::Real, nx::Integer, ny::Integer, νlist::Vector, x0::Real=0, y0::Real=0; executor=Serial(), header=ComradeBase.NoHeader())
+function mfimagepixels(fovx::Real, fovy::Real, nx::Integer, ny::Integer, νlist::Vector,
+                       x0::Real=0, y0::Real=0; executor=Serial(),
+                       header=ComradeBase.NoHeader())
     @assert (nx > 0) && (ny > 0) "Number of pixels must be positive"
 
     psizex = fovx / nx
