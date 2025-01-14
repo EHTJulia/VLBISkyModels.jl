@@ -30,12 +30,8 @@ end
 # defining the mandatory methods for a Comrade AbstractModel
 visanalytic(::Type{Multifrequency{B}}) where {B} = NotAnalytic()
 imanalytic(::Type{Multifrequency{B}}) where {B} = imanalytic(B)
-
 radialextent(::Type{Multifrequency{B}}) where {B} = radialextent(B)
-
 flux(::Type{Multifrequency{B}}) where {B} = flux(B)
-
-intensity_point(M::Multifrequency{B}, p) where {B} = intensity_point(M.base, p)
 
 function intensity_point(M::Multifrequency, p)
     I0 = parent(M.base)
