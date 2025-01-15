@@ -79,10 +79,7 @@ function applyspectral(I0::AbstractArray, spec::TaylorSpectral, ν::N) where {N<
     return data
 end
 
-function applyspectral!(I0::AbstractArray,
-                        spec::TaylorSpectral{<:Any,<:DataType,
-                                             <:Tuple{Vararg{<:AbstractArray}},<:Number,
-                                             <:Number}, ν::Number)
+function applyspectral!(I0::AbstractArray, spec::TaylorSpectral, ν::Number)
     ν0 = spec.freq0
     x = log(ν / ν0) # frequency to evaluate taylor expansion
     c = spec.index
@@ -91,24 +88,11 @@ function applyspectral!(I0::AbstractArray,
     xlist = ntuple(i -> x^i, n) # creating a tuple to hold the frequency powers
 
     for i in eachindex(I0) # doing expansion one pixel at a time
-        exparg = sum(getindex.(c, i) .* xlist)
-        I0[i] = I0[i] * exp(exparg)
-    end
-    return I0
-end
-
-function applyspectral!(I0::AbstractArray,
-                        spec::TaylorSpectral{<:Any,<:DataType,<:Tuple{Vararg{<:Number}},
-                                             <:Number,<:Number}, ν::Number)
-    ν0 = spec.freq0
-    x = log(ν / ν0) # frequency to evaluate taylor expansion
-    c = spec.index
-
-    n = order(spec)
-    xlist = ntuple(i -> x^i, n) # creating a tuple to hold the frequency powers
-
-    for i in eachindex(I0) # doing expansion one pixel at a time
-        exparg = sum(c .* xlist)
+        if typeof(c) <: Tuple{Vararg{<:AbstractArray}}
+            exparg = sum(getindex.(c, i) .* xlist)
+        elseif typeof(c) <: Tuple{Vararg{<:Number}}
+            exparg = sum(c .* xlist)
+        end
         I0[i] = I0[i] * exp(exparg)
     end
     return I0
