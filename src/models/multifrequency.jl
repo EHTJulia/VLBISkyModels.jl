@@ -121,8 +121,7 @@ function generatemodel(MF::Multifrequency, ν::N) where {N<:Number}
 
     data = applyspectral(I0, MF.spec, ν) # base image model, spectral model, frequency to generate new image
 
-    new_intensitymap = IntensityMap(data, getfield(image, :grid), getfield(image, :refdims),
-                                    getfield(image, :name))
+    new_intensitymap = rebuild(image; data=data)
     return ContinuousImage(new_intensitymap, MF.base.kernel)
 end
 
@@ -159,7 +158,7 @@ function build_imagecube(m::Multifrequency, mfgrid::RectiGrid)
     return imgcube
 end
 
-function mfimagepixels(fovx::Real, fovy::Real, nx::Integer, ny::Integer, νlist::Vector,
+function mfimagepixels(fovx::Real, fovy::Real, nx::Integer, ny::Integer, νlist::AbstractVector,
                        x0::Real=0, y0::Real=0; executor=Serial(),
                        header=ComradeBase.NoHeader())
     @assert (nx > 0) && (ny > 0) "Number of pixels must be positive"
