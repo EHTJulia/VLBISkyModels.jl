@@ -18,7 +18,6 @@ end
 where `size` is the standard deviation of the gaussian.
 
 !!! note
-    
     We typically do not include a `size` field in the model because a generic `size` can be specified
     with the [`modify`](@ref) function. However, for the sake of this example, we will include it,
     since it will highlight how to make models frequency dependent.
