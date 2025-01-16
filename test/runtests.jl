@@ -193,4 +193,5 @@ end
     include("viz.jl")
     include("io.jl")
     include("stokesintensitymap.jl")
+    include("multifrequency.jl")
 end
