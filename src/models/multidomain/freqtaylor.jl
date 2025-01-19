@@ -36,9 +36,21 @@ function TaylorSpectral(param, index::Real, freq0, p0=zero(param))
     return TaylorSpectral(param, (index,), freq0, p0)
 end
 
-@fastmath @inline function build_param(model::TaylorSpectral{N}, p) where {N}
-    lf = log(p.Fr / model.freq0)
+# This allows Julia to do LICM on the inner loop
+@fastmath Base.@assume_effects :nothrow @noinline mylog(x) = x>0 ? log(x) : NaN
+
+@fastmath @inline function build_param(model::TaylorSpectral{N}, p, cache) where {N}
+    # return model.param + model.p0
+    lf = cache.lf
     arg = reduce(+, ntuple(n -> @inbounds(model.index[n]) * lf^n, Val(N)))
     param = model.param * exp(arg) + model.p0
     return param
+end
+
+function build_cache(model::TaylorSpectral, p)
+    return (lf = mylog(p.Fr / model.freq0),)
+end
+
+@fastmath @inline function build_param(model::TaylorSpectral, p)
+    return build_param(model, p, build_cache(model, p))
 end

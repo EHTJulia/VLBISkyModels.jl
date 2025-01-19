@@ -30,6 +30,9 @@ abstract type DomainParams{T} end
 abstract type FrequencyParams{T} <: DomainParams{T} end
 abstract type TimeParams{T} <: DomainParams{T} end
 
+@inline paramtype(::Type{<:DomainParams{T}}) where {T} = paramtype(T)
+@inline paramtype(T::Type{<:Any}) = T
+
 """
     getparam(m, s::Symbol, p)
 
@@ -66,15 +69,15 @@ parameter at the point `p`.
     return param
 end
 
-function build_param(param::NTuple, p)
+@inline function build_param(param::NTuple, p)
     return map(x -> build_param(x, p), param)
 end
 
-function build_param(param::AbstractArray, p)
+@inline function build_param(param::AbstractArray, p)
     return map(x -> build_param(x, p), param)
 end
 
-function (m::DomainParams)(p)
+@inline function (m::DomainParams)(p)
     return build_param(m, p)
 end
 

@@ -110,9 +110,10 @@ function intensity_point(m::SlashedDisk{T}, p) where {T}
     end
 end
 
-function visibility_point(m::SlashedDisk{T}, p) where {T}
+function visibility_point(m::SlashedDisk{D}, p) where {D}
     u, v = _getuv(p)
     @unpack_params slash = m(p)
+    T = paramtype(D)
     k = 2 * T(π) * sqrt(u^2 + v^2) + eps(T)
     s = 1 - slash
     norm = 2 / (1 + s) / k

@@ -81,14 +81,15 @@ imanalytic(::Type{<:ContinuousImage}) = IsAnalytic()
 radialextent(c::ContinuousImage) = maximum(values(fieldofview(c.img))) / 2
 
 function intensity_point(m::ContinuousImage, p)
-    @unpack_params img = m(p)
+    img = parent(m)
     dx, dy = pixelsizes(m.img)
-    sum = zero(eltype(m.img))
+    T = typeof(build_param(first(img), p))
+    sum = zero(T)
     ms = stretched(m.kernel, dx, dy)
     @inbounds for (I, p0) in pairs(domainpoints(m.img))
         dp = (X=(p.X - p0.X), Y=(p.Y - p0.Y))
         k = intensity_point(ms, dp)
-        sum += m.img[I] * k
+        sum += build_param(m.img[I], p) * k
     end
     return sum
 end
@@ -114,6 +115,21 @@ convolved(cimg::AbstractModel, m::ContinuousImage) = convolved(m, cimg)
     checkgrid(axisdims(m), imgdomain(grid))
     img = parent(m)
     vis = applyft(forward_plan(grid), img)
+    return applypulse!(vis, m.kernel, grid)
+end
+
+@inline function visibilitymap_numeric(m::ContinuousImage{I}, grid::FourierDualDomain) where {D<:DomainParams, I<:IntensityMap{D}}
+    checkgrid(axisdims(m), spatialdims(imgdomain(grid)))
+    img = parent(m)
+    gimg = imgdomain(grid)
+    T = paramtype(D)
+    mfimg = DimensionalData.rebuild(img, similar(parent(img), T, size(gimg)), dims(gimg))
+    dimp = DimArray(domainpoints(gimg), dims(gimg))
+    @inbounds for i in DimIndices(dimp)
+        pfr = dimp[i]
+        mfimg[i] = @inline build_param(img[i[1:2]], pfr)
+    end
+    vis = applyft(forward_plan(grid), mfimg)
     return applypulse!(vis, m.kernel, grid)
 end
 
@@ -160,6 +176,8 @@ function visibilitymap_numeric(m::ContinuousImage,
     minterp = InterpolatedModel(m, grid)
     return visibilitymap(minterp, visdomain(grid))
 end
+
+spatialdims(g) = dims(g)[1:2]
 
 function checkgrid(imgdims, grid)
     return !(dims(imgdims) == dims(grid)) &&
