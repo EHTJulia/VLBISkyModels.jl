@@ -246,6 +246,13 @@ end
         @inferred VLBISkyModels.intensity_point(mr, (X=0.0, Y=0.0))
     end
 
+    @testset "TBlob" begin
+        mr = TBlob(8.0)
+        rad = 2.5 * VLBISkyModels.radialextent(mr)
+        testft_nonan(mr)
+        @inferred VLBISkyModels.intensity_point(mr, (X=0.0, Y=0.0))
+    end
+
     @testset "M87 model test" begin
         xopt = (rad=21.895093363492155,
                 wid=2.1113838380637815,
