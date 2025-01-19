@@ -30,9 +30,6 @@ abstract type DomainParams{T} end
 abstract type FrequencyParams{T} <: DomainParams{T} end
 abstract type TimeParams{T} <: DomainParams{T} end
 
-@inline paramtype(::Type{<:DomainParams{T}}) where {T} = paramtype(T)
-@inline paramtype(T::Type{<:Any}) = T
-
 """
     paramtype(::Type{<:DomainParams})
 

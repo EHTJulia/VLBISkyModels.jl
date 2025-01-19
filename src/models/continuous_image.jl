@@ -13,11 +13,15 @@ and visibility location. The image model is
 where `Iᵢⱼ` are the flux densities of the image `img` and κ is the intensity function for the
 `kernel`.
 """
-struct ContinuousImage{A<:IntensityMap,P} <: AbstractModel
+struct ContinuousImage{A, G, P} <: AbstractModel
     """
     Discrete representation of the image.
     """
-    img::A
+    array::A
+    """
+    grid of the image
+    """
+    grid::G
     """
     Image Kernel that transforms from the discrete image to a continuous one. This is
     sometimes called a pulse function in `eht-imaging`.
@@ -37,33 +41,29 @@ end
 function ComradeBase.ispolarized(::Type{<:ContinuousImage{A}}) where {A<:IntensityMap{<:Real}}
     return NotPolarized()
 end
-ComradeBase.flux(m::ContinuousImage) = flux(parent(m)) * flux(m.kernel)
+ComradeBase.flux(m::ContinuousImage) = flux(IntensityMap(m.array, m.grid)) * flux(m.kernel)
 
 function ComradeBase.stokes(cimg::ContinuousImage, v)
     return ContinuousImage(stokes(parent(cimg), v), cimg.kernel)
 end
 ComradeBase.centroid(m::ContinuousImage) = centroid(parent(m))
-Base.parent(m::ContinuousImage) = m.img
-Base.length(m::ContinuousImage) = length(parent(m))
-Base.size(m::ContinuousImage) = size(parent(m))
-Base.size(m::ContinuousImage, i::Int) = size(parent(m), i::Int)
-Base.firstindex(m::ContinuousImage) = firstindex(parent(m))
-Base.lastindex(m::ContinuousImage) = lastindex(parent(m))
+Base.parent(m::ContinuousImage) = m.array
+Base.length(m::ContinuousImage) = length(m.grid)
+Base.size(m::ContinuousImage) = size(m.grid)
+Base.size(m::ContinuousImage, i::Int) = size(m.grid, i::Int)
+Base.firstindex(m::ContinuousImage) = firstindex(domainpoints(m.grid))
+Base.lastindex(m::ContinuousImage) = lastindex(domainpoints(m.grid))
 
-Base.eltype(::ContinuousImage{A,P}) where {A,P} = eltype(A)
+Base.eltype(::ContinuousImage{A,P}) where {A<:AbstractMatrix,P} = eltype(A)
+Base.eltype(::ContinuousImage{A,P}) where {T,A<:DomainParams{T},P} = T
 
 Base.getindex(img::ContinuousImage, args...) = getindex(parent(img), args...)
 Base.axes(m::ContinuousImage) = axes(parent(m))
-ComradeBase.domainpoints(m::ContinuousImage) = domainpoints(parent(m))
-ComradeBase.axisdims(m::ContinuousImage) = axisdims(parent(m))
+ComradeBase.domainpoints(m::ContinuousImage) = domainpoints(m.grid)
+ComradeBase.axisdims(m::ContinuousImage) = m.grid
 
 function ContinuousImage(img::IntensityMap, pulse::Pulse)
-    return ContinuousImage{typeof(img),typeof(pulse)}(img, pulse)
-end
-
-function ContinuousImage(im::AbstractMatrix, g::AbstractRectiGrid, pulse)
-    img = IntensityMap(im, g)
-    return ContinuousImage(img, pulse)
+    return ContinuousImage{typeof(parent(img)),typeof(axisdims(img)), typeof(pulse)}(parent(img), axisdims(img), pulse)
 end
 
 function InterpolatedModel(model::ContinuousImage,
@@ -82,17 +82,29 @@ radialextent(c::ContinuousImage) = maximum(values(fieldofview(c.img))) / 2
 
 function intensity_point(m::ContinuousImage, p)
     img = parent(m)
-    dx, dy = pixelsizes(m.img)
+    dx, dy = pixelsizes(m.grid)
     T = typeof(build_param(first(img), p))
     sum = zero(T)
     ms = stretched(m.kernel, dx, dy)
-    @inbounds for (I, p0) in pairs(domainpoints(m.img))
+    @inbounds for (I, p0) in pairs(domainpoints(m))
         dp = (X=(p.X - p0.X), Y=(p.Y - p0.Y))
         k = intensity_point(ms, dp)
-        sum += build_param(m.img[I], p) * k
+        sum += build_param(m.array[I], p) * k
     end
     return sum
 end
+
+function intensitymap_analytic!(img::IntensityMap, m::ContinuousImage{<:DomainParams})
+    dft = dims(img)[3:end]
+    darr = DimArray(domainpoints(RectiGrid(dft)), dft)
+    for TF  in DimIndices(darr)
+        p0 = build_param(m.array, darr[TF])
+        mtf = ContinuousImage(p0,spatialdims(img), m.kernel)
+        intensitymap_analytic!(@view(img[TF]), mtf)
+    end
+    return nothing
+end
+
 
 function convolved(cimg::ContinuousImage, m::AbstractModel)
     return ContinuousImage(cimg.img, convolved(cimg.kernel, m))
@@ -118,12 +130,11 @@ convolved(cimg::AbstractModel, m::ContinuousImage) = convolved(m, cimg)
     return applypulse!(vis, m.kernel, grid)
 end
 
-@inline function visibilitymap_numeric(m::ContinuousImage{I}, grid::FourierDualDomain) where {D<:DomainParams, I<:IntensityMap{D}}
+@inline function visibilitymap_numeric(m::ContinuousImage{I}, grid::FourierDualDomain) where {D<:DomainParams, I<:AbstractArray{D}}
     checkgrid(axisdims(m), spatialdims(imgdomain(grid)))
-    img = parent(m)
+    img = IntensityMap(m.array, m.grid)
     gimg = imgdomain(grid)
-    T = paramtype(D)
-    mfimg = DimensionalData.rebuild(img, similar(parent(img), T, size(gimg)), dims(gimg))
+    mfimg = allocate_imgmap(m, gimg)
     dimp = DimArray(domainpoints(gimg), dims(gimg))
     @inbounds for i in DimIndices(dimp)
         pfr = dimp[i]
@@ -132,6 +143,21 @@ end
     vis = applyft(forward_plan(grid), mfimg)
     return applypulse!(vis, m.kernel, grid)
 end
+
+@inline function visibilitymap_numeric(m::ContinuousImage{D}, grid::FourierDualDomain) where {D<:DomainParams}
+    checkgrid(axisdims(m), spatialdims(imgdomain(grid)))
+    gimg = imgdomain(grid)
+    mfimg = allocate_imgmap(m, gimg)
+    dft = dims(gimg)[3:end]
+    darr = DimArray(domainpoints(RectiGrid(dft)), dft)
+    @inbounds for TF in DimIndices(darr)
+        pfr = darr[TF]
+        build_param!(@view(mfimg[TF]), m.array, pfr)
+    end
+    vis = applyft(forward_plan(grid), mfimg)
+    return applypulse!(vis, m.kernel, grid)
+end
+
 
 @inline function visibilitymap_numeric(m::ContinuousImage,
                                        grid::FourierDualDomain{GI,GV,<:FFTAlg}) where {GI<:AbstractSingleDomain,
@@ -177,7 +203,8 @@ function visibilitymap_numeric(m::ContinuousImage,
     return visibilitymap(minterp, visdomain(grid))
 end
 
-spatialdims(g) = dims(g)[1:2]
+spatialdims(g::RectiGrid) = RectiGrid(dims(g)[1:2]; executor=executor(g), header=header(g))
+spatialdims(img::IntensityMap) = spatialdims(axisdims(img))
 
 function checkgrid(imgdims, grid)
     return !(dims(imgdims) == dims(grid)) &&

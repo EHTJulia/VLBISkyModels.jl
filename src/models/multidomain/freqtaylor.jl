@@ -39,18 +39,33 @@ end
 # This allows Julia to do LICM on the inner loop
 @fastmath Base.@assume_effects :nothrow @noinline mylog(x) = x>0 ? log(x) : NaN
 
-@fastmath @inline function build_param(model::TaylorSpectral{N}, p, cache) where {N}
+@fastmath @inline function build_param(model::TaylorSpectral{N}, p) where {N}
     # return model.param + model.p0
-    lf = cache.lf
+    lf = mylog(p.Fr / model.freq0)
     arg = reduce(+, ntuple(n -> @inbounds(model.index[n]) * lf^n, Val(N)))
     param = model.param * exp(arg) + model.p0
     return param
 end
 
-function build_cache(model::TaylorSpectral, p)
-    return (lf = mylog(p.Fr / model.freq0),)
+@fastmath @inline function build_param(model::TaylorSpectral{N, <:AbstractArray}, p) where {N}
+    # return model.param + model.p0
+    lf = mylog(p.Fr / model.freq0)
+    out = similar(model.param)
+    for i in eachindex(model.param)
+        arg = reduce(+, ntuple(n -> @inbounds(model.index[n][i]) * lf^n, Val(N)))
+        out[i] = model.param[i] * exp(arg) + model.p0[i]
+    end
+    return out
 end
 
-@fastmath @inline function build_param(model::TaylorSpectral, p)
-    return build_param(model, p, build_cache(model, p))
+@fastmath @inline function build_param!(out, model::TaylorSpectral{N, <:AbstractArray}, p) where {N}
+    # return model.param + model.p0
+    lf = mylog(p.Fr / model.freq0)
+    for i in eachindex(out, model.param)
+        arg = reduce(+, ntuple(n -> @inbounds(model.index[n][i]) * lf^n, Val(N)))
+        out[i] = model.param[i] * exp(arg) + model.p0[i]
+    end
+    return out
 end
+
+
