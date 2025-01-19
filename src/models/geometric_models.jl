@@ -43,15 +43,17 @@ By default if T isn't given, `Gaussian` defaults to `Float64`
 """
 struct Gaussian{T} <: GeometricModel{T} end
 Gaussian() = Gaussian{Float64}()
-radialextent(::Gaussian{T}) where {T} = convert(T, 5)
+radialextent(::Gaussian{T}) where {T} = convert(paramtype(T), 5)
 
-@inline function intensity_point(::Gaussian{T}, p) where {T}
+@inline function intensity_point(::Gaussian{D}, p) where {D}
     x, y = _getxy(p)
+    T = paramtype(D)
     return exp(-(x^2 + y^2) / 2) / T(2 * pi)
 end
 
-@inline function visibility_point(::Gaussian{T}, p) where {T}
+@inline function visibility_point(::Gaussian{D}, p) where {D}
     u, v = _getuv(p)
+    T = paramtype(D)
     return exp(-2 * T(π)^2 * (u^2 + v^2)) + zero(T)im
 end
 """
@@ -87,7 +89,7 @@ visanalytic(::Type{<:TBlob}) = NotAnalytic()
 @inline getnorm(s::TBlob{<:DomainParams}, p) = tblobnorm(s.norm(p))
 radialextent(m::TBlob) = 5 * m.slope / (m.slope - 2)
 
-function intensity_point(m::TBlob{T}, p) where {T}
+function intensity_point(m::TBlob, p)
     x, y = _getxy(p)
     r² = x^2 + y^2
     @unpack_params slope = m(p)
@@ -109,14 +111,16 @@ By default if T isn't given, `Disk` defaults to `Float64`
 struct Disk{T} <: GeometricModel{T} end
 Disk() = Disk{Float64}()
 
-@inline function intensity_point(::Disk{T}, p) where {T}
+@inline function intensity_point(::Disk{D}, p) where {D}
     x, y = _getxy(p)
     r = x^2 + y^2
-    return r < 1 ? one(T) / (π) : zero(T)
+    T = paramtype(D)
+    return r < 1 ? one(T) / T(π) : zero(T)
 end
 
-@inline function visibility_point(::Disk{T}, p) where {T}
+@inline function visibility_point(::Disk{D}, p) where {D}
     u, v = _getuv(p)
+    T = paramtype(D)
     ur = 2 * T(π) * (sqrt(u^2 + v^2) + eps(T))
     return 2 * besselj1(ur) / (ur) + zero(T)im
 end
@@ -138,8 +142,9 @@ struct SlashedDisk{T} <: GeometricModel{T}
     slash::T
 end
 
-function intensity_point(m::SlashedDisk{T}, p) where {T}
+function intensity_point(m::SlashedDisk{D}, p) where {D}
     x, y = _getxy(p)
+    T = paramtype(D)
     r2 = x^2 + y^2
     @unpack_params slash = m(p)
     s = 1 - slash
@@ -151,8 +156,9 @@ function intensity_point(m::SlashedDisk{T}, p) where {T}
     end
 end
 
-function visibility_point(m::SlashedDisk{T}, p) where {T}
+function visibility_point(m::SlashedDisk{D}, p) where {D}
     u, v = _getuv(p)
+    T = paramtype(D)
     @unpack_params slash = m(p)
     k = 2 * T(π) * sqrt(u^2 + v^2) + eps(T)
     s = 1 - slash
@@ -167,7 +173,7 @@ function visibility_point(m::SlashedDisk{T}, p) where {T}
     return norm * (v1 + v3)
 end
 
-radialextent(::SlashedDisk{T}) where {T} = convert(T, 3)
+radialextent(::SlashedDisk{T}) where {T} = convert(paramtype(T), 3)
 
 """
     $(TYPEDEF)
@@ -180,12 +186,12 @@ By default if `T` isn't given, `Gaussian` defaults to `Float64`
 """
 struct Ring{T} <: GeometricModel{T} end
 Ring() = Ring{Float64}()
-radialextent(::Ring{T}) where {T} = convert(T, 3 / 2)
+radialextent(::Ring{T}) where {T} = convert(paramtype(T), 3 / 2)
 
-@inline function intensity_point(::Ring{T}, p) where {T}
+@inline function intensity_point(::Ring{D}, p) where {D}
     x, y = _getxy(p)
+    T = paramtype(D)
     r = hypot(x, y)
-    θ = atan(x, y)
     dr = T(1e-2)
     if (abs(r - 1) < dr / 2)
         acc = one(T)
@@ -195,8 +201,9 @@ radialextent(::Ring{T}) where {T} = convert(T, 3 / 2)
     end
 end
 
-@inline function visibility_point(::Ring{T}, p) where {T}
+@inline function visibility_point(::Ring{D}, p) where {D}
     u, v = _getuv(p)
+    T = paramtype(D)
     k = 2 * T(π) * sqrt(u^2 + v^2) + eps(T)
     vis = besselj0(k) + zero(T) * im
     return vis
@@ -276,10 +283,11 @@ end
 # Depreciate this method since we are moving to vectors for simplificty
 #@deprecate MRing(a::Tuple, b::Tuple) MRing(a::AbstractVector, b::AbstractVector)
 
-radialextent(::MRing{T}) where {T} = convert(T, 3 / 2)
+radialextent(::MRing{T}) where {T} = convert(paramtype(T), 3 / 2)
 
-@inline function intensity_point(m::MRing{T}, p) where {T}
+@inline function intensity_point(m::MRing{D}, p) where {D}
     x, y = _getxy(p)
+    T = paramtype(D)
     r = hypot(x, y)
     θ = atan(-x, y)
     dr = T(0.02)
@@ -296,8 +304,9 @@ radialextent(::MRing{T}) where {T} = convert(T, 3 / 2)
     end
 end
 
-@inline function visibility_point(m::MRing{T}, p) where {T}
+@inline function visibility_point(m::MRing{D}, p) where {D}
     @unpack_params α, β = m(p)
+    T = paramtype(D)
     u, v = _getuv(p)
     k = T(2π) * sqrt(u^2 + v^2) + eps(T)
     vis = besselj0(k) + zero(T) * im
@@ -433,7 +442,8 @@ function _crescentnorm(m::ConcordanceCrescent, p)
     return 2 / (π * f)
 end
 
-function intensity_point(m::ConcordanceCrescent{T}, p) where {T}
+function intensity_point(m::ConcordanceCrescent{D}, p) where {D}
+    T = paramtype(D)
     x, y = _getxy(p)
     r2 = x^2 + y^2
     norm = _crescentnorm(m, p)
@@ -445,8 +455,9 @@ function intensity_point(m::ConcordanceCrescent{T}, p) where {T}
     end
 end
 
-function visibility_point(m::ConcordanceCrescent{T}, p) where {T}
+function visibility_point(m::ConcordanceCrescent{D}, p) where {D}
     u, v = _getuv(p)
+    T = paramtype(D)
     k = 2 * T(π) * sqrt(u^2 + v^2) + eps(T)
     norm = T(π) * _crescentnorm(m, p) / k
     @unpack_params router, rinner, shift, slash = m(p)
@@ -495,7 +506,7 @@ struct ExtendedRing{T} <: GeometricModel{T}
 end
 visanalytic(::Type{<:ExtendedRing}) = NotAnalytic()
 
-radialextent(::ExtendedRing{T}) where {T} = convert(T, 6)
+radialextent(::ExtendedRing{T}) where {T} = convert(paramtype(T), 6)
 
 @fastmath @inline function intensity_point(m::ExtendedRing, p)
     x, y = _getxy(p)
@@ -533,9 +544,10 @@ This is just a convenience function for `stretched(ParabolicSegment(), a, h)`
     return stretched(ParabolicSegment(), a, h)
 end
 
-function intensity_point(::ParabolicSegment{T}, p) where {T}
+function intensity_point(::ParabolicSegment{D}, p) where {D}
     x, y = _getxy(p)
     yw = (1 - x^2)
+    T = paramtype(D)
     if abs(y - yw) < T(0.01 / 2) && abs(x) < 1
         return 1 / T(2 * 0.01)
     else
@@ -543,8 +555,9 @@ function intensity_point(::ParabolicSegment{T}, p) where {T}
     end
 end
 
-function visibility_point(::ParabolicSegment{T}, p) where {T}
+function visibility_point(::ParabolicSegment{D}, p) where {D}
     u, v = _getuv(p)
+    T = paramtype(D)
     ϵ = sqrt(eps(T))
     vϵ = complex(v + ϵ)
     phase = cispi(T(3) / 4 + 2 * vϵ + u^2 / (2 * vϵ))
