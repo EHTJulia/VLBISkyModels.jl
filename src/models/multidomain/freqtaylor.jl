@@ -39,33 +39,33 @@ end
 # This allows Julia to do LICM on the inner loop
 @fastmath Base.@assume_effects :nothrow @noinline mylog(x) = x>0 ? log(x) : NaN
 
+@fastmath @inline function _taylorspec(param, index::NTuple{N}, lf, p0) where {N}
+    arg = reduce(+, ntuple(n -> @inbounds(index[n]) * lf^n, Val(N)))
+    return param * exp(arg) + p0
+end
+
 @fastmath @inline function build_param(model::TaylorSpectral{N}, p) where {N}
     # return model.param + model.p0
     lf = mylog(p.Fr / model.freq0)
-    arg = reduce(+, ntuple(n -> @inbounds(model.index[n]) * lf^n, Val(N)))
-    param = model.param * exp(arg) + model.p0
-    return param
+    return _taylorspec(model.param, model.index, lf, model.p0)
 end
 
 @fastmath @inline function build_param(model::TaylorSpectral{N, <:AbstractArray}, p) where {N}
-    # return model.param + model.p0
-    lf = mylog(p.Fr / model.freq0)
     out = similar(model.param)
-    for i in eachindex(model.param)
-        arg = reduce(+, ntuple(n -> @inbounds(model.index[n][i]) * lf^n, Val(N)))
-        out[i] = model.param[i] * exp(arg) + model.p0[i]
-    end
-    return out
+    return build_param!(out, model, p)
 end
 
 @fastmath @inline function build_param!(out, model::TaylorSpectral{N, <:AbstractArray}, p) where {N}
     # return model.param + model.p0
     lf = mylog(p.Fr / model.freq0)
-    for i in eachindex(out, model.param)
-        arg = reduce(+, ntuple(n -> @inbounds(model.index[n][i]) * lf^n, Val(N)))
-        out[i] = model.param[i] * exp(arg) + model.p0[i]
+    @inbounds for i in eachindex(out, model.param)
+        index = _getindices(model.index, i)
+        out[i] = _taylorspec(model.param[i], index, lf, model.p0[i])
     end
     return out
 end
+
+@inline _getindices(index::NTuple{N, <:AbstractArray}, i) where {N} = ntuple(n->index[n][i], Val(N))
+@inline _getindices(index::NTuple, i) = index
 
 

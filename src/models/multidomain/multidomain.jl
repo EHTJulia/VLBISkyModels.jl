@@ -12,7 +12,7 @@ most users will just need to define
 
 ```julia
 struct MyDomainParam{T} <: DomainParams{T} end
-function build_param(param::MyDomainParam{Float64}, p)
+function build_param(param::MyDomainParam{T}, p) where {T}
     ...
 end
 where `p` is the point where the model will be evaluated at. For an
