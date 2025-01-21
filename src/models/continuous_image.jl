@@ -125,7 +125,7 @@ convolved(cimg::AbstractModel, m::ContinuousImage) = convolved(m, cimg)
 @inline function visibilitymap_numeric(m::ContinuousImage, grid::FourierDualDomain)
     # We need to make sure that the grid is the same size as the image
     checkgrid(axisdims(m), imgdomain(grid))
-    img = parent(m)
+    img = IntensityMap(m.array, m.grid)
     vis = applyft(forward_plan(grid), img)
     return applypulse!(vis, m.kernel, grid)
 end
