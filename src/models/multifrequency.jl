@@ -145,7 +145,8 @@ function build_imagecube(m::Multifrequency, mfgrid::RectiGrid)
     return imgcube
 end
 
-function mfimagepixels(fovx::Real, fovy::Real, nx::Integer, ny::Integer, νlist::AbstractVector,
+function mfimagepixels(fovx::Real, fovy::Real, nx::Integer, ny::Integer,
+                       νlist::AbstractVector,
                        x0::Real=0, y0::Real=0; executor=Serial(),
                        header=ComradeBase.NoHeader())
     @assert (nx > 0) && (ny > 0) "Number of pixels must be positive"
