@@ -31,6 +31,15 @@ abstract type FrequencyParams{T} <: DomainParams{T} end
 abstract type TimeParams{T} <: DomainParams{T} end
 
 """
+    paramtype(::Type{<:DomainParams})
+
+Computes the base parameter type of the DomainParams. If `!<:DomainParams` then it just returns
+the type. 
+"""
+@inline paramtype(::Type{<:DomainParams{T}}) where {T} = paramtype(T)
+@inline paramtype(T::Type{<:Any}) = T
+
+"""
     getparam(m, s::Symbol, p)
 
 Gets the parameter value `s` from the model `m` evaluated at the domain `p`. 
