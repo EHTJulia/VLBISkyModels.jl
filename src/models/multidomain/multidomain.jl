@@ -39,7 +39,6 @@ the type.
 @inline paramtype(::Type{<:DomainParams{T}}) where {T} = paramtype(T)
 @inline paramtype(T::Type{<:Any}) = T
 
-
 """
     getparam(m, s::Symbol, p)
 
