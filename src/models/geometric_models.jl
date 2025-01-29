@@ -72,7 +72,7 @@ unit Gaussian.
 struct TBlob{T} <: GeometricModel{T}
     slope::T
     norm::T
-        function TBlob(slope::Number)
+    function TBlob(slope::Number)
         T = typeof(slope)
         norm = tblobnorm(slope)
         return new{T}(slope, norm)
