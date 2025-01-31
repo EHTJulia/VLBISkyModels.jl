@@ -316,7 +316,7 @@ function Makie.plot!(plot::PolImage)
     p = lift(x -> getindex(x, 1), points)
     len = lift(x -> getindex(x, 2), points)
     col = lift(x -> getindex(x, 3), points)
-    rot = lift(x -> getindex(x, 4), points)
+    rot = lift(x -> -getindex(x, 4), points)
     lenmul = lift(x -> getindex(x, 5), points)
 
     pc = lift(plot.pcolorrange, plot.plot_total, img) do pc, pt, img
