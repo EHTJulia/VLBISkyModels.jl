@@ -124,7 +124,7 @@ function EnzymeRules.augmented_primal(config::EnzymeRules.RevConfigWidth,
     return EnzymeRules.AugmentedReturn(primal, shadow, tape)
 end
 
-@noinline function EnzymeRules.reverse(config::EnzymeRules.RevConfigWidth,
+function EnzymeRules.reverse(config::EnzymeRules.RevConfigWidth,
                                        ::Const{typeof(_jlnuft!)},
                                        ::Type{<:Const}, tape,
                                        out::Duplicated, A::Const{<:NFFTPlan},
