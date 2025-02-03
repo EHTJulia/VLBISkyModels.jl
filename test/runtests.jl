@@ -16,6 +16,7 @@ using Enzyme
 using LinearAlgebra
 using Downloads
 using BenchmarkTools
+using EnzymeTestUtils
 
 function FiniteDifferences.to_vec(k::IntensityMap)
     v, b = to_vec(DD.data(k))
@@ -181,6 +182,14 @@ function test_opt(m::M) where {M}
     if ComradeBase.visanalytic(M) == ComradeBase.IsAnalytic()
         @test_opt ComradeBase.visibility_point(m, (U=0.0, V=0.0, Fr=230e9, Ti=0.0))
     end
+end
+
+## Test ForwardDiff
+x = ones(2)
+A = [1.0 2.0; 3.0 4.0]
+b = [2.0, 2.0]
+for Tret in (Const,), Tx in (Const, Duplicated), Tb in (Const, Duplicated)
+    test_forward(VLBISkyModels._jlnuft!, Tret, (x, Tx), (A, Const), (b, Tb))
 end
 
 @testset "VLBISkyModels.jl" begin

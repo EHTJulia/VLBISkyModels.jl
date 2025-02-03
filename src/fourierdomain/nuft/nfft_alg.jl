@@ -107,6 +107,45 @@ end
     return nothing
 end
 
+function forward(
+    config::EnzymeRules.FwdConfig,
+    func::Const{typeof(_jlnuft!)}, 
+    RT, 
+    out::Duplicated, A::Const{<:NFFTPlan},
+    b::Duplicated{<:AbstractArray{<:Real}}
+) 
+    if EnzymeRules.needs_primal(config) && EnzymeRules.needs_shadow(config)
+        if EnzymeRules.width(config) == 1
+            func.val(out.dval, A, b.dval)
+            return Duplicated(
+                func.val(out.val, A.val, b.val), 
+                out.dval     
+            )
+        else
+            func.val.(out.dval, Ref(A), b.dval)
+            return BatchDuplicated(
+                func.val(out.val, A.val, b.val), 
+                ntuple(
+                    i -> out.dval[i], Val(EnzymeRules.width(config))
+                )
+            )
+        end
+    elseif EnzymeRules.needs_shadow(config)
+        if EnzymeRules.width(config) == 1
+            func.val(out.dval, A, b.dval)
+            return out.dval
+        else
+            func.val.(out.dval, Ref(A), b.dval)
+            return ntuple(i -> out.dval[i], Val(EnzymeRules.width(config)))
+        end
+    elseif EnzymeRules.needs_primal(config)
+        return func.val(out.val, A.val, b.val)
+    else
+        return nothing
+    end
+end
+
+
 function EnzymeRules.augmented_primal(config::EnzymeRules.RevConfigWidth,
                                       ::Const{typeof(_jlnuft!)}, ::Type{<:Const},
                                       out::Duplicated,
@@ -123,6 +162,44 @@ function EnzymeRules.augmented_primal(config::EnzymeRules.RevConfigWidth,
     # cache_A = (EnzymeRules.overwritten(config)[3]) ? A.val : nothing
     return EnzymeRules.AugmentedReturn(primal, shadow, tape)
 end
+
+function EnzymeRules.reverse(config::EnzymeRules.RevConfigWidth,
+                                       ::Const{typeof(_jlnuft!)},
+                                       ::Type{<:Const}, tape,
+                                       out::Duplicated, A::Const{<:NFFTPlan},
+                                       b::Duplicated{<:AbstractArray{<:Real}})
+
+    # I think we don't need to cache this since A just has in internal temporary buffer
+    # that is used to store the results of things like the FFT.
+    # cache_A = (EnzymeRules.overwritten(config)[3]) ? A.val : nothing
+    # cache_A = tape
+    # if !(EnzymeRules.overwritten(config)[3])
+    #     cache_A = A.val
+    # end
+
+    outfwd = EnzymeRules.overwritten(config)[2] ? tape[1] : out
+    bfwd = EnzymeRules.overwritten(config)[4] ? tape[2] : b
+
+    # This is so Enzyme batch mode works
+    dbs = if EnzymeRules.width(config) == 1
+        (bfwd.dval,)
+    else
+        bfwd.dval
+    end
+
+    douts = if EnzymeRules.width(config) == 1
+        (outfwd.dval,)
+    else
+        outfwd.dval
+    end
+    for (db, dout) in zip(dbs, douts)
+        # TODO open PR on NFFT so we can do this in place.
+        db .+= real.(A.val' * dout)
+        dout .= 0
+    end
+    return (nothing, nothing, nothing)
+end
+
 
 function EnzymeRules.reverse(config::EnzymeRules.RevConfigWidth,
                                        ::Const{typeof(_jlnuft!)},
