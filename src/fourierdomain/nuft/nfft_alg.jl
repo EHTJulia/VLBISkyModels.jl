@@ -119,13 +119,11 @@ function forward(
         if EnzymeRules.width(config) == 1
             return Duplicated(out.val, out.dval)
         else
-            func.val.(out.dval, Ref(A), b.dval)
-            return BatchDuplicated(
-                func.val(out.val, A.val, b.val), 
-                ntuple(
-                    i -> out.dval[i], Val(EnzymeRules.width(config))
-                )
-            )
+            ntuple(Val(N)) do i
+                  Base.@_inline_meta
+                  func.val(out.dval[i], A, out.val[i])
+            end      
+            return BatchDuplicated(out.val, out.dval)
         end
     elseif EnzymeRules.needs_shadow(config)
         if EnzymeRules.width(config) == 1
