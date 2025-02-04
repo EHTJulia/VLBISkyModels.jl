@@ -109,9 +109,11 @@ end
 
 function EnzymeRules.augmented_primal(config::EnzymeRules.RevConfigWidth,
                                       ::Const{typeof(_jlnuft!)}, ::Type{<:Const},
-                                      out::Duplicated,
-                                      A::Const{<:NFFTPlan},
-                                      b::Duplicated{<:AbstractArray{<:Real}})
+                                      out::Annotation,
+                                      A::Annotation{<:NFFTPlan},
+                                      b::Annotation{<:AbstractArray{<:Real}})
+    isa(A, Const) ||
+        throw(ArgumentError("A must be a constant in NFFT. We don't support dynamic plans"))
     primal = EnzymeRules.needs_primal(config) ? out.val : nothing
     shadow = EnzymeRules.needs_shadow(config) ? out.dval : nothing
     cache_out = EnzymeRules.overwritten(config)[2] ? out : nothing
@@ -125,10 +127,10 @@ function EnzymeRules.augmented_primal(config::EnzymeRules.RevConfigWidth,
 end
 
 function EnzymeRules.reverse(config::EnzymeRules.RevConfigWidth,
-                                       ::Const{typeof(_jlnuft!)},
-                                       ::Type{<:Const}, tape,
-                                       out::Duplicated, A::Const{<:NFFTPlan},
-                                       b::Duplicated{<:AbstractArray{<:Real}})
+                             ::Const{typeof(_jlnuft!)},
+                             ::Type{RT}, tape,
+                             out::Annotation, A::Annotation{<:NFFTPlan},
+                             b::Annotation{<:AbstractArray{<:Real}}) where {RT}
 
     # I think we don't need to cache this since A just has in internal temporary buffer
     # that is used to store the results of things like the FFT.
@@ -137,6 +139,13 @@ function EnzymeRules.reverse(config::EnzymeRules.RevConfigWidth,
     # if !(EnzymeRules.overwritten(config)[3])
     #     cache_A = A.val
     # end
+    isa(A, Const) ||
+        throw(ArgumentError("A must be a constant in NFFT. We don't support dynamic plans"))
+
+    # There is no gradient to propagate so short
+    if isa(out, Const)
+        return (nothing, nothing, nothing)
+    end
 
     outfwd = EnzymeRules.overwritten(config)[2] ? tape[1] : out
     bfwd = EnzymeRules.overwritten(config)[4] ? tape[2] : b
