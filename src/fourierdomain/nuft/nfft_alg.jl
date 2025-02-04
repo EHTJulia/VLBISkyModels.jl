@@ -130,8 +130,11 @@ function forward(
             func.val(out.dval, A, b.dval)
             return out.dval
         else
-            func.val.(out.dval, Ref(A), b.dval)
-            return ntuple(i -> out.dval[i], Val(EnzymeRules.width(config)))
+             ntuple(Val(N)) do i
+                  Base.@_inline_meta
+                  func.val(out.dval[i], A, out.val[i])
+            end
+            return out.dval
         end
     elseif EnzymeRules.needs_primal(config)
         return func.val(out.val, A.val, b.val)
