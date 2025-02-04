@@ -115,8 +115,8 @@ function forward(
     b::Annotation{<:AbstractArray{<:Real}}
 ) 
     if EnzymeRules.needs_primal(config) && EnzymeRules.needs_shadow(config)
+        func.val(out.dval, A, b.dval)
         if EnzymeRules.width(config) == 1
-            func.val(out.dval, A, b.dval)
             return Duplicated(out.val, out.dval)
         else
             func.val.(out.dval, Ref(A), b.dval)
