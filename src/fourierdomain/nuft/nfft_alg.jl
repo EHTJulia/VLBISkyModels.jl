@@ -111,7 +111,7 @@ function forward(
     config::EnzymeRules.FwdConfig,
     func::Const{typeof(_jlnuft!)}, 
     RT, 
-    out::Duplicated, A::Const{<:NFFTPlan},
+    out::Annotation{<:AbstractArray{<:Complex}}, A::Const{<:NFFTPlan},
     b::Duplicated{<:AbstractArray{<:Real}}
 ) 
     if EnzymeRules.needs_primal(config) && EnzymeRules.needs_shadow(config)
