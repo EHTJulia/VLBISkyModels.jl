@@ -137,7 +137,8 @@ function forward(
             return out.dval
         end
     elseif EnzymeRules.needs_primal(config)
-        return func.val(out.val, A.val, b.val)
+        func.val(out.val, A.val, b.val)
+        return out.val
     else
         return nothing
     end
