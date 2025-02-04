@@ -117,10 +117,7 @@ function forward(
     if EnzymeRules.needs_primal(config) && EnzymeRules.needs_shadow(config)
         if EnzymeRules.width(config) == 1
             func.val(out.dval, A, b.dval)
-            return Duplicated(
-                func.val(out.val, A.val, b.val), 
-                out.dval     
-            )
+            return Duplicated(out.val, out.dval)
         else
             func.val.(out.dval, Ref(A), b.dval)
             return BatchDuplicated(
