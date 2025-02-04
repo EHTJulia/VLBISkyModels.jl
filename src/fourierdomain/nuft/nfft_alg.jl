@@ -112,7 +112,7 @@ function forward(
     func::Const{typeof(_jlnuft!)}, 
     RT, 
     out::Annotation{<:AbstractArray{<:Complex}}, A::Const{<:NFFTPlan},
-    b::Duplicated{<:AbstractArray{<:Real}}
+    b::Annotation{<:AbstractArray{<:Real}}
 ) 
     if EnzymeRules.needs_primal(config) && EnzymeRules.needs_shadow(config)
         if EnzymeRules.width(config) == 1
