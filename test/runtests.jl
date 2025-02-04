@@ -202,4 +202,5 @@ end
     include("viz.jl")
     include("io.jl")
     include("stokesintensitymap.jl")
+    include("rules.jl")
 end
