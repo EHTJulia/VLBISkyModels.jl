@@ -107,15 +107,17 @@ end
     return nothing
 end
 
-function forward(
+function EnzymeRules.forward(
     config::EnzymeRules.FwdConfig,
     func::Const{typeof(_jlnuft!)}, 
-    RT, 
+    ::Type{RT}, 
     out::Annotation{<:AbstractArray{<:Complex}}, A::Const{<:NFFTPlan},
     b::Annotation{<:AbstractArray{<:Real}}
-) 
+) where RT
+
     if EnzymeRules.needs_primal(config) && EnzymeRules.needs_shadow(config)
         func.val(out.dval, A, b.dval)
+
         if EnzymeRules.width(config) == 1
             return Duplicated(out.val, out.dval)
         else
