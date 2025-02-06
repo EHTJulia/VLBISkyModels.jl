@@ -115,13 +115,13 @@ function EnzymeRules.forward(
     b::Annotation{<:AbstractArray{<:Real}}
 ) where RT
     # Forward rule does not have to return any primal or shadow since the original function returned nothing
-    func.val(out.dval, A, b.dval)
     if EnzymeRules.width(config) == 1
+        func.val(out.dval, A.val, b.dval)
         return nothing
     else
          ntuple(Val(N)) do i
               Base.@_inline_meta
-              func.val(out.dval[i], A, out.val[i])
+              func.val(out.dval[i], A.val, b.dval[i])
         end
         return nothing
     end
