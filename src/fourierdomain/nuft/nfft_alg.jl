@@ -114,36 +114,18 @@ function EnzymeRules.forward(
     out::Annotation{<:AbstractArray{<:Complex}}, A::Const{<:NFFTPlan},
     b::Annotation{<:AbstractArray{<:Real}}
 ) where RT
-
-    if EnzymeRules.needs_primal(config) && EnzymeRules.needs_shadow(config)
-        func.val(out.dval, A, b.dval)
-
-        if EnzymeRules.width(config) == 1
-            return Duplicated(out.val, out.dval)
-        else
-            ntuple(Val(N)) do i
-                  Base.@_inline_meta
-                  func.val(out.dval[i], A, out.val[i])
-            end      
-            return BatchDuplicated(out.val, out.dval)
-        end
-    elseif EnzymeRules.needs_shadow(config)
-        if EnzymeRules.width(config) == 1
-            func.val(out.dval, A, b.dval)
-            return out.dval
-        else
-             ntuple(Val(N)) do i
-                  Base.@_inline_meta
-                  func.val(out.dval[i], A, out.val[i])
-            end
-            return out.dval
-        end
-    elseif EnzymeRules.needs_primal(config)
-        func.val(out.val, A.val, b.val)
-        return out.val
+    # Forward rule does not have to return any primal or shadow since the original function returned nothing
+    func.val(out.dval, A, b.dval)
+    if EnzymeRules.width(config) == 1
+        return nothing
     else
+         ntuple(Val(N)) do i
+              Base.@_inline_meta
+              func.val(out.dval[i], A, out.val[i])
+        end
         return nothing
     end
+    return nothing
 end
 
 
