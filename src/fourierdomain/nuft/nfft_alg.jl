@@ -118,9 +118,9 @@ function EnzymeRules.forward(
     if EnzymeRules.width(config) == 1
         func.val(out.dval, A.val, b.dval)
     else
-         ntuple(EnzymeRules.width(config)) do i
-              Base.@_inline_meta
-              func.val(out.dval[i], A.val, b.dval[i])
+        ntuple(EnzymeRules.width(config)) do i
+            Base.@_inline_meta
+            func.val(out.dval[i], A.val, b.dval[i])
         end
     end
     return nothing
