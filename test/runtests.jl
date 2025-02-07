@@ -16,6 +16,7 @@ using Enzyme
 using LinearAlgebra
 using Downloads
 using BenchmarkTools
+using EnzymeTestUtils
 
 function FiniteDifferences.to_vec(k::IntensityMap)
     v, b = to_vec(DD.data(k))

@@ -6,7 +6,7 @@ function EnzymeTestUtils.test_approx(::VLBISkyModels.NFFT.NFFTPlan,
     return true
 end
 
-@testset "nfft reverse rule" begin
+@testset "nfft Enzyme rules" begin
     out = zeros(ComplexF64, 10)
     n = 16
     k = rand(2, 10) .- 0.5
@@ -15,5 +15,9 @@ end
     for Tret in (Duplicated, BatchDuplicated), Tb in (Duplicated, BatchDuplicated)
         are_activities_compatible(Const, Tret, Tb) || continue
         test_reverse(VLBISkyModels._jlnuft!, Const, (out, Tret), (plan, Const), (b, Tb))
+    end
+    for Tret in (Duplicated, BatchDuplicated), Tb in (Duplicated, BatchDuplicated)
+        are_activities_compatible(Const, Tret, Tb) || continue
+        test_forward(VLBISkyModels._jlnuft!, Const, (out, Tret), (plan, Const), (b, Tb))
     end
 end
