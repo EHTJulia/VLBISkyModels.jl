@@ -117,13 +117,11 @@ function EnzymeRules.forward(
     # Forward rule does not have to return any primal or shadow since the original function returned nothing
     if EnzymeRules.width(config) == 1
         func.val(out.dval, A.val, b.dval)
-        return nothing
     else
          ntuple(EnzymeRules.width(config)) do i
               Base.@_inline_meta
               func.val(out.dval[i], A.val, b.dval[i])
         end
-        return nothing
     end
     return nothing
 end
