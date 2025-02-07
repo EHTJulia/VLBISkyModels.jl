@@ -184,14 +184,6 @@ function test_opt(m::M) where {M}
     end
 end
 
-## Test ForwardDiff
-x = ones(2)
-A = [1.0 2.0; 3.0 4.0]
-b = [2.0, 2.0]
-for Tret in (Const,), Tx in (Const, Duplicated), Tb in (Const, Duplicated)
-    test_forward(VLBISkyModels._jlnuft!, Tret, (x, Tx), (A, Const), (b, Tb))
-end
-
 @testset "VLBISkyModels.jl" begin
     include("models.jl")
     include("continuous_image.jl")

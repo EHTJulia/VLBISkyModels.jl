@@ -119,7 +119,7 @@ function EnzymeRules.forward(
         func.val(out.dval, A.val, b.dval)
         return nothing
     else
-         ntuple(Val(N)) do i
+         ntuple(EnzymeRules.width(config)) do i
               Base.@_inline_meta
               func.val(out.dval[i], A.val, b.dval[i])
         end
