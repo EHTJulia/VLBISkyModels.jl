@@ -107,25 +107,24 @@ end
     return nothing
 end
 
-function EnzymeRules.forward(
-    config::EnzymeRules.FwdConfig,
-    func::Const{typeof(_jlnuft!)}, 
-    ::Type{RT}, 
-    out::Annotation{<:AbstractArray{<:Complex}}, A::Const{<:NFFTPlan},
-    b::Annotation{<:AbstractArray{<:Real}}
-) where RT
+function EnzymeRules.forward(config::EnzymeRules.FwdConfig,
+                             func::Const{typeof(_jlnuft!)},
+                             ::Type{RT},
+                             out::Annotation{<:AbstractArray{<:Complex}},
+                             A::Const{<:NFFTPlan},
+                             b::Annotation{<:AbstractArray{<:Real}}) where {RT}
     # Forward rule does not have to return any primal or shadow since the original function returned nothing
+    func.val(out.val, A.val, b.val)
     if EnzymeRules.width(config) == 1
         func.val(out.dval, A.val, b.dval)
     else
         ntuple(EnzymeRules.width(config)) do i
             Base.@_inline_meta
-            func.val(out.dval[i], A.val, b.dval[i])
+            return func.val(out.dval[i], A.val, b.dval[i])
         end
     end
     return nothing
 end
-
 
 function EnzymeRules.augmented_primal(config::EnzymeRules.RevConfigWidth,
                                       ::Const{typeof(_jlnuft!)}, ::Type{<:Const},
@@ -189,5 +188,3 @@ function EnzymeRules.reverse(config::EnzymeRules.RevConfigWidth,
     end
     return (nothing, nothing, nothing)
 end
-
-
