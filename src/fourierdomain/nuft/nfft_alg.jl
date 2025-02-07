@@ -191,39 +191,3 @@ function EnzymeRules.reverse(config::EnzymeRules.RevConfigWidth,
 end
 
 
-function EnzymeRules.reverse(config::EnzymeRules.RevConfigWidth,
-                                       ::Const{typeof(_jlnuft!)},
-                                       ::Type{<:Const}, tape,
-                                       out::Duplicated, A::Const{<:NFFTPlan},
-                                       b::Duplicated{<:AbstractArray{<:Real}})
-
-    # I think we don't need to cache this since A just has in internal temporary buffer
-    # that is used to store the results of things like the FFT.
-    # cache_A = (EnzymeRules.overwritten(config)[3]) ? A.val : nothing
-    # cache_A = tape
-    # if !(EnzymeRules.overwritten(config)[3])
-    #     cache_A = A.val
-    # end
-
-    outfwd = EnzymeRules.overwritten(config)[2] ? tape[1] : out
-    bfwd = EnzymeRules.overwritten(config)[4] ? tape[2] : b
-
-    # This is so Enzyme batch mode works
-    dbs = if EnzymeRules.width(config) == 1
-        (bfwd.dval,)
-    else
-        bfwd.dval
-    end
-
-    douts = if EnzymeRules.width(config) == 1
-        (outfwd.dval,)
-    else
-        outfwd.dval
-    end
-    for (db, dout) in zip(dbs, douts)
-        # TODO open PR on NFFT so we can do this in place.
-        db .+= real.(A.val' * dout)
-        dout .= 0
-    end
-    return (nothing, nothing, nothing)
-end
