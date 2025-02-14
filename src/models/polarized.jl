@@ -322,17 +322,6 @@ where `a,b,c,d` are real numbers with no conditions, and `p=√(a² + b² + c²)
         pimgV[i] = tmp * d[i]
     end
 
-    # p = @.. sqrt(b ^ 2 + c ^ 2 + d ^ 2)
-    # ea = @.. exp(a)
-    # tmp = @.. ea * sinh(p) * inv(p)
-    # pimgI = @.. ea * cosh(p)
-    # pimgQ = @.. tmp * b
-    # pimgU = @.. tmp * c
-    # pimgV = @.. tmp * d
-    # stokesI = pimgI
-    # stokesQ = pimgQ
-    # stokesU = pimgU
-    # stokesV = pimgV
     return stokes_intensitymap(pimgI, pimgQ, pimgU, pimgV, grid)
 end
 
