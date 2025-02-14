@@ -125,8 +125,8 @@ radialextent(d::RadialDblPower{T}) where {T} = 1 + convert(T, 50^(1 / d.αouter)
 
 @inline @fastmath function radial_profile(d::RadialDblPower, p)
     @unpack_params αinner, αouter = d(p)
-    r = p.r
-    return r^αinner / (1 + r^(αouter + αinner + 1))
+    r = p.r + eps(typeof(p.r)) #avoid singularity at r=0
+    return r^αinner * inv(1 + r^(αinner + αouter + 1)) # we do it like this to avoid underflow
 end
 
 """
