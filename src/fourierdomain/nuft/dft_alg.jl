@@ -10,6 +10,7 @@ since it's easy to define derivatives.
 struct DFTAlg <: NUFT end
 
 # internal function that creates an DFT matrix/plan to use used for the img.
+_rot(u, v, c, s) = (c * u - s * v, s * u + c * v)
 function plan_nuft_spatial(::DFTAlg, imagegrid::AbstractRectiGrid,
                            visdomain::UnstructuredDomain)
     visp = domainpoints(visdomain)
@@ -18,8 +19,7 @@ function plan_nuft_spatial(::DFTAlg, imagegrid::AbstractRectiGrid,
     dft = similar(Array{Complex{eltype(imagegrid)}}, length(visdomain),
                   size(imagegrid)[1:2]...)
     @fastmath for i in eachindex(Y), j in eachindex(X), k in eachindex(visp)
-        u = uv.U[k]
-        v = uv.V[k]
+        u, v = _rot(uv.U[k], uv.V[k], c, s)
         # - sign is taken care of in _visibilitymap
         dft[k, j, i] = cispi(2(u * X[j] + v * Y[i]))
     end

@@ -75,13 +75,18 @@ function create_interpolator(g, vis::AbstractArray{<:Complex,N}, pulse) where {N
     kg = keys(g)
     visre = real(vis)
     visim = imag(vis)
+    s, c = sincos(posang(g))
     f = let kg = kg, itp = itp, visre = visre, visim = visim, pulse = pulse
         p -> begin
             pl = visibility_point(pulse, p)
             # xx = select(p, kg)
             x = SVector{N}(myselect(p, kg))
-            vreal = interpolate(itp, visre, x)
-            vimag = interpolate(itp, visim, x)
+            # - sign is because we need to move into the frame of the vertical-horizontal image
+            U2 = _rotatex(x.U, x.V, c, -s)
+            V2 = _rotatey(x.U, x.V, c, -s)
+            x2 = update_uv(x, (;U=U2, V=V2))
+            vreal = interpolate(itp, visre, x2)
+            vimag = interpolate(itp, visim, x2)
             return pl * (vreal + 1im * vimag)
         end
     end
@@ -105,7 +110,11 @@ function create_interpolator(g, vis::StructArray{<:StokesParams}, pulse)
 
     function (p)
         pl = visibility_point(pulse, p)
-        x = SVector(values(p))
+        # - sign is because we need to move into the frame of the vertical-horizontal image
+        U2 = _rotatex(x.U, x.V, c, -s)
+        V2 = _rotatey(x.U, x.V, c, -s)
+        p2 = update_uv(p, (;U=U2, V=V2))
+        x = SVector(values(p2))
         return StokesParams(interpolate(itp, vIreal, x) * pl +
                             1im * interpolate(itp, vIimag, x) * pl,
                             interpolate(itp, vQreal, x) * pl +
