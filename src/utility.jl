@@ -39,13 +39,13 @@ end
     g = axisdims(m.img)
     dx, dy = pixelsizes(g)
     X, Y = g.X, g.Y
-    s, c = sincos(ComradeBase.posang(g))
-    X2 = _rotatex(p.X, p.Y, c, -s)
-    Y2 = _rotatey(p.X, p.Y, c, -s)
+    rm = rotmat(g)'
+    X2 = _rotatex(p.X, p.Y, rm)
+    Y2 = _rotatey(p.X, p.Y, rm)
     (X[begin] > X2 || X2 > X[end]) && return zero(eltype(m.img))
     (Y[begin] > Y2 || Y2 > Y[end]) && return zero(eltype(m.img))
     # - sign is because we need to move into the frame of the vertical-horizontal image
-    p2 = update_xy(p, (;X=X2, Y=Y2))
+    p2 = ComradeBase.update_spat(p, X2, Y2)
     return interpolate(m.itp, m.img, SVector(values(p2))) / (dx * dy)
 end
 function ModifiedModel(img::IntensityMap,

@@ -61,41 +61,41 @@ end
 
 const VectorDim = Union{AbstractVector,DD.Dimension}
 
-# function Makie.expand_dimensions(t::CellGrid, x::VectorDim, y::VectorDim,
-#                                  m::VLBISkyModels.AbstractModel)
-#     img = intensitymap(m, RectiGrid((X(x), Y(y))))
-#     return Makie.expand_dimensions(t, img)
-# end
+function Makie.expand_dimensions(t::CellGrid, x::VectorDim, y::VectorDim,
+                                 m::VLBISkyModels.AbstractModel)
+    img = intensitymap(m, RectiGrid((X(x), Y(y))))
+    return Makie.expand_dimensions(t, img)
+end
 
-# function Makie.expand_dimensions(t::VertexGrid, x::VectorDim, y::VectorDim,
-#                                  m::VLBISkyModels.AbstractModel)
-#     img = intensitymap(m, RectiGrid((X(x), Y(y))))
-#     return Makie.expand_dimensions(t, img)
-# end
+function Makie.expand_dimensions(t::VertexGrid, x::VectorDim, y::VectorDim,
+                                 m::VLBISkyModels.AbstractModel)
+    img = intensitymap(m, RectiGrid((X(x), Y(y))))
+    return Makie.expand_dimensions(t, img)
+end
 
-# function Makie.expand_dimensions(t::ImageLike, x::VectorDim, y::VectorDim,
-#                                  m::VLBISkyModels.AbstractModel)
-#     img = intensitymap(m, RectiGrid((X(x), Y(y))))
-#     return Makie.expand_dimensions(t, img)
-# end
+function Makie.expand_dimensions(t::ImageLike, x::VectorDim, y::VectorDim,
+                                 m::VLBISkyModels.AbstractModel)
+    img = intensitymap(m, RectiGrid((X(x), Y(y))))
+    return Makie.expand_dimensions(t, img)
+end
 
-# function Makie.expand_dimensions(t::CellGrid, g::VLBISkyModels.AbstractRectiGrid,
-#                                  m::VLBISkyModels.AbstractModel)
-#     img = intensitymap(m, g)
-#     return Makie.expand_dimensions(t, img)
-# end
+function Makie.expand_dimensions(t::CellGrid, g::VLBISkyModels.AbstractRectiGrid,
+                                 m::VLBISkyModels.AbstractModel)
+    img = intensitymap(m, g)
+    return Makie.expand_dimensions(t, img)
+end
 
-# function Makie.expand_dimensions(t::VertexGrid, g::VLBISkyModels.AbstractRectiGrid,
-#                                  m::VLBISkyModels.AbstractModel)
-#     img = intensitymap(m, g)
-#     return Makie.expand_dimensions(t, img)
-# end
+function Makie.expand_dimensions(t::VertexGrid, g::VLBISkyModels.AbstractRectiGrid,
+                                 m::VLBISkyModels.AbstractModel)
+    img = intensitymap(m, g)
+    return Makie.expand_dimensions(t, img)
+end
 
-# function Makie.expand_dimensions(t::ImageLike, g::VLBISkyModels.AbstractRectiGrid,
-#                                  m::VLBISkyModels.AbstractModel)
-#     img = intensitymap(m, g)
-#     return Makie.expand_dimensions(t, img)
-# end
+function Makie.expand_dimensions(t::ImageLike, g::VLBISkyModels.AbstractRectiGrid,
+                                 m::VLBISkyModels.AbstractModel)
+    img = intensitymap(m, g)
+    return Makie.expand_dimensions(t, img)
+end
 
 function polintensity(s::StokesParams)
     return sqrt(s.Q^2 + s.U^2 + s.V^2)
@@ -264,7 +264,7 @@ function Makie.plot!(plot::PolImage{<:Tuple{<:IntensityMap{<:StokesParams}}})
     points = lift(img, plot.nvec,
                   plot.min_frac, plot.min_pol_frac,
                   plot.length_norm,
-                  plot.plot_total, pa,) do img, nvec, Icut, pcut, length_norm, ptot, pa
+                  plot.plot_total) do img, nvec, Icut, pcut, length_norm, ptot
         X = img.X
         Y = img.Y
         Xvec = range(X[begin + 1], X[end - 1]; length=nvec)
@@ -287,13 +287,14 @@ function Makie.plot!(plot::PolImage{<:Tuple{<:IntensityMap{<:StokesParams}}})
         rot = eltype(stokes(img, :I))[]
 
         lenmul = 10 * dx / nvec / maxL .* length_norm
-
         dimg = img
+        rm = rotmat(axisdims(img))'
         for y0 in Yvec
             for x0 in Xvec
                 s = dimg[X=Near(x0), Y=Near(y0)]
-                x = VLBISkyModels._rotatex(x0, y0, cos(pa), -sin(pa))
-                y = VLBISkyModels._rotatey(x0, y0, cos(pa), -sin(pa))
+                xyr = rm * SVector(x0, y0)
+                x = xyr[1]
+                y = xyr[2]
                 psi, leni, coli, roti = polparams(x, y, s, maxL ./ length_norm ./ 5, ptot)
 
                 if ptot

@@ -103,7 +103,7 @@ function uvgrid(grid::AbstractRectiGrid)
     uvg = uviterator(length(X), step(X), length(Y), step(Y))
     pft = dims(grid)[3:end]
     puv = (uvg..., pft...)
-    g = RectiGrid(puv; executor=executor(grid), header=header(grid))
+    g = RectiGrid(puv; executor=executor(grid), header=header(grid), posang=posang(grid))
     return g
 end
 
@@ -137,7 +137,7 @@ function xygrid(grid::AbstractRectiGrid)
     (; U, V) = grid
     x, y = xyiterator(length(U), step(U), length(V), step(V))
     pxy = merge((X=X(x), Y=Y(y)), delete(named_dims(grid), (:U, :V)))
-    g = RectiGrid(pxy; executor=executor(grid), header=header(grid))
+    g = RectiGrid(pxy; executor=executor(grid), header=header(grid), posang=posang(grid))
     return g
 end
 

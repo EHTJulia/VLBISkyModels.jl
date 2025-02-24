@@ -34,7 +34,7 @@ function build_padded_uvgrid(grid::AbstractRectiGrid, alg::FFTAlg)
     uvg = uviterator(nnx, step(X), nny, step(Y))
     pft = dims(grid)[3:end]
     puv = (uvg..., pft...)
-    g = RectiGrid(puv; executor=executor(grid), header=header(grid))
+    g = RectiGrid(puv; executor=executor(grid), header=header(grid), posang=posang(grid))
     return g
 end
 
@@ -124,6 +124,7 @@ end
     (; U, V) = griduv
     x0 = first(X)
     y0 = first(Y)
+    # no need to rotate here since this is correct for the FFT
     @. vis = conj(vis * cispi(-2 * (U * x0 + V' * y0)))
     return vis
 end
@@ -133,6 +134,7 @@ end
     (; U, V) = griduv
     x0 = first(X)
     y0 = first(Y)
+    # no need to rotate here since this is correct for the FFT
     @. vis = conj(vis) * cispi(2 * (U * x0 + V' * y0))
     return vis
 end

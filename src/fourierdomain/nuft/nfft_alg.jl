@@ -34,8 +34,8 @@ end
 # This a new function is overloaded to handle when NUFTPlan has plans
 # as dictionaries in the case of Ti or Fr case
 
-_rotatex(u, v, c, s) = c * u + s * v
-_rotatey(u, v, c, s) = -s * u + c * v
+_rotatex(u, v, rm) = dot(rm[1, :], SVector(u, v))
+_rotatey(u, v, rm) = dot(rm[2, :], SVector(u, v))
 
 function plan_nuft_spatial(alg::NFFTAlg, imagegrid::AbstractRectiGrid,
                            visdomain::UnstructuredDomain)
@@ -44,11 +44,10 @@ function plan_nuft_spatial(alg::NFFTAlg, imagegrid::AbstractRectiGrid,
     dpx = pixelsizes(imagegrid)
     dx = dpx.X
     dy = dpx.Y
-    s, c = sincos(ComradeBase.posang(imagegrid))
+    rm = ComradeBase.rotmat(imagegrid)'
     # Here we flip the sign because the NFFT uses the -2pi convention
-    # -s is because we need to move into the frame of the vertical-horizontal image
-    uv2[1, :] .= -_rotatex.(visp.U, visp.V, c, -s) .* dx
-    uv2[2, :] .= -_rotatey.(visp.U, visp.V, c, -s) .* dy
+    uv2[1, :] .= -_rotatex.(visp.U, visp.V, Ref(rm)) .* dx
+    uv2[2, :] .= -_rotatey.(visp.U, visp.V, Ref(rm)) .* dy
     (; reltol, precompute, fftflags) = alg
     plan = plan_nfft(uv2, size(imagegrid)[1:2]; reltol, precompute, fftflags)
     return plan
@@ -60,9 +59,9 @@ function make_phases(::NFFTAlg, imgdomain::AbstractRectiGrid, visdomain::Unstruc
     visp = domainpoints(visdomain)
     u = visp.U
     v = visp.V
-    s, c = sincos(ComradeBase.posang(imgdomain))
+    rm = ComradeBase.rotmat(imgdomain)'
     # Correct for the nFFT phase center and the img phase center
-    return cispi.((_rotatex.(u, v, c, -s) .* (dx - 2 * x0) .+ _rotatey.(u, v, c, -s) .* (dy - 2 * y0)))
+    return cispi.((_rotatex.(u, v, Ref(rm)) .* (dx - 2 * x0) .+ _rotatey.(u, v, Ref(rm)) .* (dy - 2 * y0)))
 end
 
 # Allow NFFT to work with ForwardDiff.

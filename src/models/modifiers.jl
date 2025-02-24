@@ -204,99 +204,6 @@ function modify(m::AbstractModel, transforms...)
     return ModifiedModel(m, transforms)
 end
 
-# @inline function apply_uv_transform(m::AbstractModifier, t::TransformState)
-#     ut, vt = transform_uv(m, t.u, t.v)
-#     scale = t.scale*scale_uv(m, t.u, t.v)
-#     return apply_uv_transform(basemodel(m), TransformState(ut, vt, scale))
-# end
-
-# @inline function apply_uv_transform(::AbstractModel, t::TransformState)
-#     return t
-# end
-
-# @inline function apply_uv_transform(m::AbstractModifier, u, v, scale)
-#     ut, vt = transform_uv(m, u, v)
-#     scale = scale*scale_uv(m, u, v)
-#     return apply_uv_transform(basemodel(m), ut, vt, scale)
-# end
-
-# @inline function apply_uv_transform(::AbstractModel, u, v, scale)
-#     return (u, v), scale
-# end
-
-# @inline function _visibilitymap(m::AbstractModifier, u, v, time, freq)
-#     uv, scale = apply_uv_transform(m, u, v)
-#     ut = first.(uv)
-#     vt = last.(uv)
-#     scale.*_visibilitymap(unmodified(m), ut, vt, time, freq)
-# end
-
-# # function visibilitymap(m, p::NamedTuple)
-# #     m = Base.Fix1(m∘NamedTuple{keys(p)})
-# #     return visibilitymap(m, NamedTuple{keys(p)}(p))
-# # end
-
-# function apply_uv_transform(m::AbstractModifier, u::AbstractVector, v::AbstractVector)
-#     res = apply_uv_transform.(Ref(m), u, v, 1.0)
-#     return first.(res), last.(res)
-# end
-
-# function apply_uv_transform(m::AbstractModifier, u::AbstractVector, v::AbstractVector)
-#     res = apply_uv_transform.(Ref(m), u, v, 1.0)
-#     return getindex.(res,1), getindex.(res,2), getindex.(res,3)
-#     res = apply_uv_transform.(Ref(m), u, v, 1.0)
-#     return getindex.(res,1), getindex.(res,2), getindex.(res,3)
-# end
-# @inline function _visibilitymap(m::M, p) {M<:AbstractModifier}
-
-# @inline function _visibilitymap(m::M, p) {M<:AbstractModifier}
-
-#     return _visibilitymap(visanalytic(M), m, u, v, args...)
-# end
-
-# @inline function _visibilitymap(m::AbstractModifier{M}, p) where {M}
-#     return _visibilitymap(ispolarized(M), m, p)
-# end
-
-# @inline function _visibilitymap(m::AbstractModifier, p)
-#     (;U, V) = p
-#     st = StructArray{TransformState{eltype(U), Complex{eltype(U)}}}(u=U, v=V, scale=fill(one(Complex{eltype(U)}), length(U)))
-#     auv = Base.Fix1(apply_uv_transform, m)
-#     mst = map(auv, st)
-#     mst.scale.*visibilitymap(unmodified(m), (U=mst.u, V=mst.v))
-# end
-
-function update_uv(p::NamedTuple, uv)
-    p1 = @set p.U = uv.U
-    p2 = @set p1.V = uv.V
-    return p2
-end
-
-function update_xy(p::NamedTuple, xy)
-    p1 = @set p.X = xy.X
-    p2 = @set p1.Y = xy.Y
-    return p2
-end
-
-# @inline function _visibilitymap(::IsPolarized, m::AbstractModifier, p)
-#     (;U, V) = p
-
-#     S = eltype(U)
-#     unit = StokesParams(complex(one(S)), complex(one(S)), complex(one(S)),complex(one(S)))
-#     st = StructArray{TransformState{eltype(U), typeof(unit)}}(u=U, v=V, scale=Fill(unit, length(U)))
-#     mst = apply_uv_transform.(Ref(m), st)
-
-#     pup = update_uv(p, (U=mst.u, V=mst.v))
-#     mst.scale.*visibilitymap(unmodified(m), pup)
-# end
-
-# @inline function _visibilitymap(m::AbstractModifier, p)
-#     (;U, V) = p
-#     st = StructArray{TransformState{eltype(U), Complex{eltype(U)}}}(u=U, v=V, scale=fill(one(Complex{eltype(U)}), length(U)))
-#     mst = apply_uv_transform.(Ref(m), st)
-#     pup = update_uv(p, (U=mst.u, V=mst.v))
-#     mst.scale.*visibilitymap(unmodified(m), pup)
-# end
 
 @inline function visibility_point(m::M, p) where {M<:ModifiedModel}
     mbase = m.model
@@ -405,7 +312,7 @@ doesnot_uv_modify(::Shift) = true
     @unpack_params Δx, Δy = transform(p)
     X = p.X - Δx
     Y = p.Y - Δy
-    return update_xy(p, (; X, Y))
+    return update_spat(p, X, Y)
 end
 
 @inline transform_uv(model, ::Shift, p) = p
@@ -544,7 +451,7 @@ stretched(model, α) = stretched(model, α, α)
     (; X, Y) = p
     @unpack_params α, β = transform(p)
     # @show p
-    pt = update_xy(p, (; X=X / α, Y=Y / β))
+    pt = update_spat(p, X / α, Y / β)
     # @show pt
     return pt
 end
@@ -552,7 +459,7 @@ end
 @inline function transform_uv(m, transform::Stretch, p)
     (; U, V) = p
     @unpack_params α, β = transform(p)
-    return update_uv(p, (; U=U * α, V=V * β))
+    return update_spat(p, U * α, V * β)
 end
 
 @inline function scale_image(m, transform::Stretch, p)
@@ -618,7 +525,7 @@ posangle(model::Rotate) = atan(model.s, model.c)
     (; X, Y) = p
     Xr = c * X - s * Y
     Yr = s * X + c * Y
-    pt = update_xy(p, (; X=Xr, Y=Yr))
+    pt = update_spat(p, Xr, Yr)
     return pt
 end
 
@@ -627,7 +534,7 @@ end
     (; U, V) = p
     Ur = c * U - s * V
     Vr = s * U + c * V
-    return update_uv(p, (; U=Ur, V=Vr))
+    return update_spat(p, Ur, Vr)
 end
 
 @inline scale_image(::NotPolarized, model::Rotate, p) = one(typeof(getparam(model, :s, p)))
