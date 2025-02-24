@@ -4,6 +4,7 @@ using VLBISkyModels
 using Makie
 using DimensionalData
 using ComradeBase: basedim
+using StaticArrays
 
 const DD = DimensionalData
 

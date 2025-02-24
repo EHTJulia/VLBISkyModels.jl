@@ -72,7 +72,6 @@ function create_interpolator(g, vis::AbstractArray{<:Complex,N}, pulse) where {N
     kg = keys(g)
     visre = real(vis)
     visim = imag(vis)
-    @info posang(g)
     # - sign is because we need to move into the frame of the vertical-horizontal image
     rm = ComradeBase.rotmat(g)'
     f = let kg = kg, itp = itp, visre = visre, visim = visim, pulse = pulse
