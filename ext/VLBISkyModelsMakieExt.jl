@@ -191,13 +191,9 @@ end
 
 # # We need this because DimensionalData tries to be too dang smart
 function Makie.convert_arguments(::Type{<:PolImage}, img::IntensityMap{<:StokesParams,2}, args...)
-    @info "HERE"
     return (img,)
 end
 
-# function Makie.expand_dimensions(::Type{<:PolImage}, img::IntensityMap{<:StokesParams,2}, args...)
-#     return (img,)
-# end
 
 # function Makie.MakieCore.conversion_trait(P::Type{<:PolImage})
 #     # @info "HERE"
@@ -429,8 +425,8 @@ function _imgviz!(fig, ax, img::IntensityMap{<:Real}; scale_length=fieldofview(i
     colgap!(fig.layout, 15)
 
     trim!(fig.layout)
-    xlims!(ax, (last(img.X)), (first(img.X)))
-    ylims!(ax, (first(img.Y)), (last(img.Y)))
+    # xlims!(ax, (last(img.X)), (first(img.X)))
+    # ylims!(ax, (first(img.Y)), (last(img.Y)))
 
     return Makie.FigureAxisPlot(fig, ax, hm)
 end
@@ -465,8 +461,8 @@ function _imgviz!(fig, ax, img::IntensityMap{<:StokesParams};
     colgap!(fig.layout, 15)
     rowgap!(fig.layout, 15)
     trim!(fig.layout)
-    xlims!(ax, (last(img.X)), (first(img.X)))
-    ylims!(ax, (first(img.Y)), (last(img.Y)))
+    # xlims!(ax, (last(img.X)), (first(img.X)))
+    # ylims!(ax, (first(img.Y)), (last(img.Y)))
     return Makie.FigureAxisPlot(fig, ax, hm)
 end
 
