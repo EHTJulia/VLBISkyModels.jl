@@ -289,7 +289,7 @@ function Makie.plot!(plot::PolImage{<:Tuple{<:IntensityMap{<:StokesParams}}})
 
         lenmul = 10 * dx / nvec / maxL .* length_norm
         dimg = img
-        rm = rotmat(axisdims(img))'
+        rm = rotmat(axisdims(img))
         for y0 in Yvec
             for x0 in Xvec
                 s = dimg[X=Near(x0), Y=Near(y0)]
