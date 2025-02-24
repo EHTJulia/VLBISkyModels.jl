@@ -204,7 +204,6 @@ function modify(m::AbstractModel, transforms...)
     return ModifiedModel(m, transforms)
 end
 
-
 @inline function visibility_point(m::M, p) where {M<:ModifiedModel}
     mbase = m.model
     transform = m.transform

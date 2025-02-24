@@ -91,8 +91,7 @@ function convolve!(img::IntensityMap{<:Real}, m::AbstractModel)
     ds = (u, v, dims(img)[3:end]...)
     griduv = RectiGrid(ds;
                        executor=executor(img), header=header(img),
-                       posang=ComradeBase.posang(axisdims(img))
-                       )
+                       posang=ComradeBase.posang(axisdims(img)))
     puv = domainpoints(griduv)
 
     # TODO maybe ask a user to pass a vis buffer as well?

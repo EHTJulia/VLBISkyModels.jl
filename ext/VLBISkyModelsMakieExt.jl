@@ -191,10 +191,10 @@ Makie.@recipe(PolImage, img) do scene
 end
 
 # # We need this because DimensionalData tries to be too dang smart
-function Makie.convert_arguments(::Type{<:PolImage}, img::IntensityMap{<:StokesParams,2}, args...)
+function Makie.convert_arguments(::Type{<:PolImage}, img::IntensityMap{<:StokesParams,2},
+                                 args...)
     return (img,)
 end
-
 
 # function Makie.MakieCore.conversion_trait(P::Type{<:PolImage})
 #     # @info "HERE"
@@ -252,13 +252,12 @@ function Makie.plot!(plot::PolImage{<:Tuple{<:IntensityMap{<:StokesParams}}})
     #     return crange
     # end
     hm = heatmap!(plot, Xo, Yo, imgI;
-             colormap=plot.colormap,
-             colorscale=plot.colorscale,
-             colorrange=plot.colorrange,
-             alpha=plot.alpha,
-             nan_color=plot.nan_color,
-             lowclip=plot.lowclip,
-             )
+                  colormap=plot.colormap,
+                  colorscale=plot.colorscale,
+                  colorrange=plot.colorrange,
+                  alpha=plot.alpha,
+                  nan_color=plot.nan_color,
+                  lowclip=plot.lowclip,)
 
     rotate!(hm, pa[])
 
@@ -389,10 +388,10 @@ function imageviz(img::IntensityMap;
     dkwargs = Dict(kwargs)
     if eltype(img) <: Real
         res = get(dkwargs, :size, (625, 500))
-        cmap= get(dkwargs, :colormap, :inferno)
+        cmap = get(dkwargs, :colormap, :inferno)
     else
         res = get(dkwargs, :size, (640, 600))
-        cmap= get(dkwargs, :colormap, :grayC)
+        cmap = get(dkwargs, :colormap, :grayC)
     end
 
     bkgcolor = isnothing(backgroundcolor) ? Makie.to_colormap(cmap)[begin] : backgroundcolor
@@ -406,9 +405,8 @@ function imageviz(img::IntensityMap;
     dxdy = prod(rad2μas.(values(pixelsizes(img))))
 
     imguas = IntensityMap(parent(img) ./ dxdy,
-                          RectiGrid((X(rad2μas(img.X)), Y(rad2μas(img.Y))); 
-                          posang=ComradeBase.posang(axisdims(img)))
-                        )
+                          RectiGrid((X(rad2μas(img.X)), Y(rad2μas(img.Y)));
+                                    posang=ComradeBase.posang(axisdims(img))))
     pl = _imgviz!(fig, ax, imguas; scale_length, dkwargs...)
     resize_to_layout!(fig)
     return pl
@@ -510,22 +508,19 @@ function DDM._surface2(A::IntensityMap, plotfunc, attributes, replacements)
 
     # Plot attribute generation
     dx, dy = DD.dims(A2)
-    user_attributes = Makie.Attributes(; 
-        transformation=(;rotation=-ComradeBase.posang(axisdims(A))),
-        interpolate=false,
-        attributes...)
-    plot_attributes = Makie.Attributes(; 
-        axis=(; 
-            xlabel=DD.label(dx),
-            ylabel=DD.label(dy),
-            title=DD.refdims_title(A),
-        ),
-    )
+    user_attributes = Makie.Attributes(;
+                                       transformation=(;
+                                                       rotation=-ComradeBase.posang(axisdims(A))),
+                                       interpolate=false,
+                                       attributes...)
+    plot_attributes = Makie.Attributes(;
+                                       axis=(;
+                                             xlabel=DD.label(dx),
+                                             ylabel=DD.label(dy),
+                                             title=DD.refdims_title(A),),)
     merged_attributes = merge(user_attributes, plot_attributes, lookup_attributes)
 
     return A1, A2, args, merged_attributes
 end
-
-
 
 end

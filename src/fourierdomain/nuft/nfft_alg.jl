@@ -61,7 +61,8 @@ function make_phases(::NFFTAlg, imgdomain::AbstractRectiGrid, visdomain::Unstruc
     v = visp.V
     rm = ComradeBase.rotmat(imgdomain)'
     # Correct for the nFFT phase center and the img phase center
-    return cispi.((_rotatex.(u, v, Ref(rm)) .* (dx - 2 * x0) .+ _rotatey.(u, v, Ref(rm)) .* (dy - 2 * y0)))
+    return cispi.((_rotatex.(u, v, Ref(rm)) .* (dx - 2 * x0) .+
+                   _rotatey.(u, v, Ref(rm)) .* (dy - 2 * y0)))
 end
 
 # Allow NFFT to work with ForwardDiff.

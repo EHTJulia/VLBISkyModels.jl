@@ -20,7 +20,7 @@ function plan_nuft_spatial(::DFTAlg, imagegrid::AbstractRectiGrid,
     dft = similar(Array{Complex{eltype(imagegrid)}}, length(visdomain),
                   size(imagegrid)[1:2]...)
     @fastmath for i in eachindex(Y), j in eachindex(X), k in eachindex(visp)
-        uvr = rmat*SVector(uv.U[k], uv.V[k])
+        uvr = rmat * SVector(uv.U[k], uv.V[k])
         u = uvr[1]
         v = uvr[2]
         # - sign is taken care of in _visibilitymap
