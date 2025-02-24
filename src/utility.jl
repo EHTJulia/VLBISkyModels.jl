@@ -89,9 +89,7 @@ function convolve!(img::IntensityMap{<:Real}, m::AbstractModel)
     u = U(rfftfreq(size(img, 1), inv(step(X))))
     v = V(fftfreq(size(img, 2), inv(step(Y))))
     ds = (u, v, dims(img)[3:end]...)
-    griduv = RectiGrid(ds;
-                       executor=executor(img), header=header(img),
-                       posang=ComradeBase.posang(axisdims(img)))
+    griduv = rebuild(axisdims(img); dims=ds)
     puv = domainpoints(griduv)
 
     # TODO maybe ask a user to pass a vis buffer as well?

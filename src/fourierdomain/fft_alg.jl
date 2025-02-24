@@ -34,7 +34,7 @@ function build_padded_uvgrid(grid::AbstractRectiGrid, alg::FFTAlg)
     uvg = uviterator(nnx, step(X), nny, step(Y))
     pft = dims(grid)[3:end]
     puv = (uvg..., pft...)
-    g = RectiGrid(puv; executor=executor(grid), header=header(grid), posang=posang(grid))
+    g = rebuild(grid; dims=puv)
     return g
 end
 
