@@ -381,7 +381,9 @@ be queried by typing `?polimage` in the REPL.
 
 """
 function imageviz(img::IntensityMap;
-                  scale_length=rad2μas(fieldofview(img).X / 4), kwargs...)
+                  scale_length=rad2μas(fieldofview(img).X / 4),
+                  backgroundcolor=nothing,
+                  kwargs...)
     dkwargs = Dict(kwargs)
     if eltype(img) <: Real
         res = get(dkwargs, :size, (625, 500))
@@ -390,10 +392,13 @@ function imageviz(img::IntensityMap;
         res = get(dkwargs, :size, (640, 600))
         cmap= get(dkwargs, :colormap, :grayC)
     end
+
+    bkgcolor = isnothing(backgroundcolor) ? Makie.to_colormap(cmap)[begin] : backgroundcolor
+
     delete!(dkwargs, :size)
     fig = Figure(; size=res)
     ax = Axis(fig[1, 1]; xreversed=true, aspect=DataAspect(), tellheight=true,
-              tellwidth=true, backgroundcolor=Makie.to_colormap(cmap)[begin])
+              tellwidth=true, backgroundcolor=bkgcolor)
     hidedecorations!(ax)
 
     dxdy = prod(rad2μas.(values(pixelsizes(img))))
@@ -417,6 +422,7 @@ function _imgviz!(fig, ax, img::IntensityMap{<:Real}; scale_length=fieldofview(i
     delete!(dkwargs, :colormap)
 
     hm = heatmap!(ax, img; colorrange=crange, colormap=cmap, dkwargs...)
+    rotate!(hm, -ComradeBase.posang(axisdims(img)))
 
     color = Makie.to_colormap(cmap)[end]
     add_scalebar!(ax, img, scale_length, color)
