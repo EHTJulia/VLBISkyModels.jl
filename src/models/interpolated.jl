@@ -68,18 +68,20 @@ myselect(p, kg) = map(k -> p[k], kg)
 # internal function that creates the interpolator objector to evaluate the FT.
 function create_interpolator(g, vis::AbstractArray{<:Complex,N}, pulse) where {N}
     # Construct the interpolator
-    #itp = interpolate(vis, BSpline(Cubic(Line(OnGrid()))))
-    #etp = extrapolate(itp, zero(eltype(vis)))
-    #scale(etp, u, v)
     itp = RectangleGrid(map(ComradeBase.basedim, dims(g))...)
     kg = keys(g)
     visre = real(vis)
     visim = imag(vis)
+    # - sign is because we need to move into the frame of the vertical-horizontal image
+    rm = ComradeBase.rotmat(g)'
     f = let kg = kg, itp = itp, visre = visre, visim = visim, pulse = pulse
         p -> begin
             pl = visibility_point(pulse, p)
             # xx = select(p, kg)
-            x = SVector{N}(myselect(p, kg))
+            U2 = _rotatex(p.U, p.V, rm)
+            V2 = _rotatey(p.U, p.V, rm)
+            p2 = update_spat(p, U2, V2)
+            x = SVector{N}(myselect(p2, kg))
             vreal = interpolate(itp, visre, x)
             vimag = interpolate(itp, visim, x)
             return pl * (vreal + 1im * vimag)
@@ -90,6 +92,7 @@ end
 function create_interpolator(g, vis::StructArray{<:StokesParams}, pulse)
     # Construct the interpolator
     itp = RectangleGrid(map(ComradeBase.basedim, dims(g))...)
+    kg = keys(g)
 
     vIreal = real(vis.I)
     vIimag = imag(vis.I)
@@ -103,9 +106,14 @@ function create_interpolator(g, vis::StructArray{<:StokesParams}, pulse)
     vVreal = real(vis.V)
     vVimag = imag(vis.V)
 
+    # - sign is because we need to move into the frame of the vertical-horizontal image
+    rm = ComradeBase.rotmat(g)'
     function (p)
         pl = visibility_point(pulse, p)
-        x = SVector(values(p))
+        U2 = _rotatex(p.U, p.V, rm)
+        V2 = _rotatey(p.U, p.V, rm)
+        p2 = update_spat(p, U2, V2)
+        x = SVector(myselect(p2, kg))
         return StokesParams(interpolate(itp, vIreal, x) * pl +
                             1im * interpolate(itp, vIimag, x) * pl,
                             interpolate(itp, vQreal, x) * pl +

@@ -59,8 +59,8 @@ function _extract_fits_image(f::FITSIO.ImageHDU{T}) where {T}
     nx = Int(header["NAXIS1"])
     ny = Int(header["NAXIS2"])
 
-    psizex = abs(float(header["CDELT1"])) * π / 180
-    psizey = abs(float(header["CDELT2"])) * π / 180
+    psizex = deg2rad(abs(float(header["CDELT1"])))
+    psizey = deg2rad(abs(float(header["CDELT2"])))
     # We assume that the pixel center is in the middle of the image
     x0c = float(header["CRPIX1"]) - nx / 2 - 0.5
     y0c = float(header["CRPIX2"]) - ny / 2 - 0.5
@@ -71,6 +71,12 @@ function _extract_fits_image(f::FITSIO.ImageHDU{T}) where {T}
         dec = float(header["OBSDEC"])
     catch
         @warn "No OBSRA or OBSDEC in header setting to 180.0, 0.0"
+    end
+
+    if haskey(header, "CROTA2")
+        pa = -deg2rad(float(header["CROTA2"]))
+    else
+        pa = zero(psizex)
     end
 
     #Get frequency
@@ -105,7 +111,7 @@ function _extract_fits_image(f::FITSIO.ImageHDU{T}) where {T}
     end
     info = ComradeBase.MinimalHeader(source, ra, dec, mjd, freq)
     g = imagepixels(psizex * nx, psizey * ny, nx, ny, x0c * psizex, y0c * psizey;
-                    header=info)
+                    header=info, posang=pa)
     imap = IntensityMap(image, g)
     return imap
 end
@@ -143,6 +149,11 @@ function _prepare_header(image, stokes="I")
                   "CTYPE2",
                   "CDELT1",
                   "CDELT2",
+                  "CD1_1",
+                  "CD1_2",
+                  "CD2_1",
+                  "CD2_2",
+                  "CROTA2",
                   "OBSRA",
                   "OBSDEC",
                   "FREQ",
@@ -155,6 +166,9 @@ function _prepare_header(image, stokes="I")
 
     x0c, y0c = phasecenter(image)
     psizex, psizey = pixelsizes(image)
+    rmat = rotmat(axisdims(image))
+    CD1 = -rad2deg(psizex)
+    CD2 = rad2deg(psizey)
     values = [true,
               -64,
               2,
@@ -164,8 +178,13 @@ function _prepare_header(image, stokes="I")
               head.source,
               "RA---SIN",
               "DEC---SIN",
-              rad2deg(psizex),
-              rad2deg(psizey),
+              CD1,
+              CD2,
+              CD1 * rmat[1, 1],
+              CD2 * rmat[1, 2],
+              CD1 * rmat[2, 1],
+              CD2 * rmat[2, 2],
+              -rad2deg(posang(axisdims(image))),
               head.RA,
               head.DEC,
               head.F,
@@ -178,6 +197,11 @@ function _prepare_header(image, stokes="I")
     comments = ["conforms to FITS standard",
                 "array data type",
                 "number of array dimensions",
+                "",
+                "",
+                "",
+                "",
+                "",
                 "",
                 "",
                 "",

@@ -195,4 +195,5 @@ end
     include("io.jl")
     include("stokesintensitymap.jl")
     include("rules.jl")
+    include("rotgrid.jl")
 end

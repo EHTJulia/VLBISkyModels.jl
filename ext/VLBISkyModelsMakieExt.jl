@@ -4,8 +4,11 @@ using VLBISkyModels
 using Makie
 using DimensionalData
 using ComradeBase: basedim
+using StaticArrays
 
 const DD = DimensionalData
+
+const DDM = Base.get_extension(DD, :DimensionalDataMakie)
 
 import VLBISkyModels: polimage, polimage!, imageviz
 
@@ -14,21 +17,21 @@ import VLBISkyModels: polimage, polimage!, imageviz
 #     return (X), (Y), parent(img)
 # end
 
-function Makie.expand_dimensions(::CellGrid, img::SpatialIntensityMap)
-    (; X, Y) = img
-    return (X), (Y), parent(img)
+# function Makie.expand_dimensions(::CellGrid, img::SpatialIntensityMap)
+#     (; X, Y) = img
+#     return (X), (Y), parent(img)
+# end
+
+function Makie.expand_dimensions(::NoConversion, img::SpatialIntensityMap)
+    # (; X, Y) = img
+    return (img,)
 end
 
-function Makie.expand_dimensions(::VertexGrid, img::SpatialIntensityMap)
-    (; X, Y) = img
-    return (X), (Y), parent(img)
-end
-
-function Makie.expand_dimensions(::ImageLike, img::SpatialIntensityMap)
-    (; X, Y) = img
-    rX, rY = ((X, Y))
-    return first(rX) .. last(rX), first(rY) .. last(rY), parent(img)
-end
+# function Makie.expand_dimensions(::ImageLike, img::SpatialIntensityMap)
+#     (; X, Y) = img
+#     rX, rY = ((X, Y))
+#     return first(rX) .. last(rX), first(rY) .. last(rY), parent(img)
+# end
 
 # function Makie.convert_arguments(::CellGrid, x, y, img::AbstractMatrix{<:StokesParams})
 #     return x, y, stokes(img, :I)
@@ -52,11 +55,10 @@ end
 #     return Makie.expand_dimensions(g, imgI)
 # end
 
-# function Makie.expand_dimensions(g::ImageLike,
-#                                  img::SpatialIntensityMap{<:StokesParams})
-#     imgI = stokes(img, :I)
-#     return Makie.expand_dimensions(g, imgI)
-# end
+function Makie.expand_dimensions(g::ImageLike,
+                                 img::SpatialIntensityMap{<:StokesParams})
+    return img
+end
 
 const VectorDim = Union{AbstractVector,DD.Dimension}
 
@@ -169,7 +171,7 @@ $(Makie.ATTRIBUTES)
     you need to have `xreversed=true` when defining your axis.
 
 """
-Makie.@recipe(PolImage, X, Y, img) do scene
+Makie.@recipe(PolImage, img) do scene
     return Makie.Attributes(;
                             colormap=:grayC,
                             colorrange=Makie.automatic,
@@ -189,23 +191,19 @@ Makie.@recipe(PolImage, X, Y, img) do scene
 end
 
 # # We need this because DimensionalData tries to be too dang smart
-# function Makie.convert_arguments(::Type{<:PolImage}, img::IntensityMap{<:StokesParams,2}, args...)
-#     @info "HERE"
-#     return (img,)
-# end
-
-# function Makie.expand_dimensions(::Type{<:PolImage}, img::IntensityMap{<:StokesParams,2}, args...)
-#     return (img,)
-# end
-
-function Makie.MakieCore.conversion_trait(::Type{<:PolImage})
-    # @info "HERE"
-    return VertexGrid()
+function Makie.convert_arguments(::Type{<:PolImage}, img::IntensityMap{<:StokesParams,2},
+                                 args...)
+    return (img,)
 end
 
-# function Makie.convert_arguments(::Type{<:PolImage}, img::IntensityMap)
-#     return (IntensityMap(img),)
+# function Makie.MakieCore.conversion_trait(P::Type{<:PolImage})
+#     # @info "HERE"
+#     return P
 # end
+
+function Makie.convert_arguments(::Type{<:PolImage}, img::IntensityMap)
+    return (IntensityMap(img),)
+end
 
 # function Makie.plottype(::SpatialIntensityMap{<:StokesParams})
 #     return PolImage{<:Tuple{<:IntensityMap{<:StokesParams}}}
@@ -234,33 +232,34 @@ function lin_params(x, y, s, xmin)
     return p, len, col, rot
 end
 
-function Makie.plot!(plot::PolImage)
+function Makie.plot!(plot::PolImage{<:Tuple{<:IntensityMap{<:StokesParams}}})
     # @extract plot (X, Y, img)
 
-    Xo = plot[1]
-    Yo = plot[2]
-    imgo = plot[3]
-
-    img = lift(imgo, Xo, Yo) do img, X, Y
-        return IntensityMap(img, RectiGrid((; X, Y)))
-    end
+    img = plot[1]
 
     imgI = lift(img) do img
         return parent(stokes(img, :I))
     end
+
+    Xo = @lift $img.X
+    Yo = @lift $img.Y
+
+    pa = @lift -ComradeBase.posang(axisdims($img))
 
     # plot the stokes I image
     # cr = lift(plot.colorrange, imgI) do crange, imgI
     #     (crange == Makie.automatic) && return (0.0, maximum(imgI)*1.01)
     #     return crange
     # end
-    heatmap!(plot, Xo, Yo, imgI;
-             colormap=plot.colormap,
-             colorscale=plot.colorscale,
-             colorrange=plot.colorrange,
-             alpha=plot.alpha,
-             nan_color=plot.nan_color,
-             lowclip=plot.lowclip)
+    hm = heatmap!(plot, Xo, Yo, imgI;
+                  colormap=plot.colormap,
+                  colorscale=plot.colorscale,
+                  colorrange=plot.colorrange,
+                  alpha=plot.alpha,
+                  nan_color=plot.nan_color,
+                  lowclip=plot.lowclip,)
+
+    rotate!(hm, pa[])
 
     points = lift(img, plot.nvec,
                   plot.min_frac, plot.min_pol_frac,
@@ -288,11 +287,14 @@ function Makie.plot!(plot::PolImage)
         rot = eltype(stokes(img, :I))[]
 
         lenmul = 10 * dx / nvec / maxL .* length_norm
-
         dimg = img
-        for y in Yvec
-            for x in Xvec
-                s = dimg[X=Near(x), Y=Near(y)]
+        rm = rotmat(axisdims(img))
+        for y0 in Yvec
+            for x0 in Xvec
+                s = dimg[X=Near(x0), Y=Near(y0)]
+                xyr = rm * SVector(x0, y0)
+                x = xyr[1]
+                y = xyr[2]
                 psi, leni, coli, roti = polparams(x, y, s, maxL ./ length_norm ./ 5, ptot)
 
                 if ptot
@@ -380,23 +382,30 @@ be queried by typing `?polimage` in the REPL.
 
 """
 function imageviz(img::IntensityMap;
-                  scale_length=rad2μas(fieldofview(img).X / 4), kwargs...)
+                  scale_length=rad2μas(fieldofview(img).X / 4),
+                  backgroundcolor=nothing,
+                  kwargs...)
     dkwargs = Dict(kwargs)
     if eltype(img) <: Real
         res = get(dkwargs, :size, (625, 500))
+        cmap = get(dkwargs, :colormap, :inferno)
     else
         res = get(dkwargs, :size, (640, 600))
+        cmap = get(dkwargs, :colormap, :grayC)
     end
+
+    bkgcolor = isnothing(backgroundcolor) ? Makie.to_colormap(cmap)[begin] : backgroundcolor
+
     delete!(dkwargs, :size)
     fig = Figure(; size=res)
     ax = Axis(fig[1, 1]; xreversed=true, aspect=DataAspect(), tellheight=true,
-              tellwidth=true)
+              tellwidth=true, backgroundcolor=bkgcolor)
     hidedecorations!(ax)
 
     dxdy = prod(rad2μas.(values(pixelsizes(img))))
-
+    gua = rebuild(axisdims(img); dims=(X(rad2μas(img.X)), Y(rad2μas(img.Y))))
     imguas = IntensityMap(parent(img) ./ dxdy,
-                          RectiGrid((X(rad2μas(img.X)), Y(rad2μas(img.Y)))))
+                          gua)
     pl = _imgviz!(fig, ax, imguas; scale_length, dkwargs...)
     resize_to_layout!(fig)
     return pl
@@ -412,16 +421,17 @@ function _imgviz!(fig, ax, img::IntensityMap{<:Real}; scale_length=fieldofview(i
     delete!(dkwargs, :colormap)
 
     hm = heatmap!(ax, img; colorrange=crange, colormap=cmap, dkwargs...)
+    rotate!(hm, -ComradeBase.posang(axisdims(img)))
 
     color = Makie.to_colormap(cmap)[end]
     add_scalebar!(ax, img, scale_length, color)
 
-    Colorbar(fig[1, 2], hm; label="Brightness (Jy/μas)", tellheight=true)
+    Colorbar(fig[1, 2], hm; label="Brightness (Jy/μas²)", tellheight=true)
     colgap!(fig.layout, 15)
 
     trim!(fig.layout)
-    xlims!(ax, (last(img.X)), (first(img.X)))
-    ylims!(ax, (first(img.Y)), (last(img.Y)))
+    # xlims!(ax, (last(img.X)), (first(img.X)))
+    # ylims!(ax, (first(img.Y)), (last(img.Y)))
 
     return Makie.FigureAxisPlot(fig, ax, hm)
 end
@@ -443,7 +453,7 @@ function _imgviz!(fig, ax, img::IntensityMap{<:StokesParams};
     color = Makie.to_colormap(cmap)[end]
     add_scalebar!(ax, img, scale_length, color)
 
-    Colorbar(fig[1, 2], getfield(hm, :plots)[1]; label="Brightness (Jy/μas)",
+    Colorbar(fig[1, 2], getfield(hm, :plots)[1]; label="Brightness (Jy/μas²)",
              tellheight=true)
 
     if pt
@@ -456,8 +466,8 @@ function _imgviz!(fig, ax, img::IntensityMap{<:StokesParams};
     colgap!(fig.layout, 15)
     rowgap!(fig.layout, 15)
     trim!(fig.layout)
-    xlims!(ax, (last(img.X)), (first(img.X)))
-    ylims!(ax, (first(img.Y)), (last(img.Y)))
+    # xlims!(ax, (last(img.X)), (first(img.X)))
+    # ylims!(ax, (first(img.Y)), (last(img.Y)))
     return Makie.FigureAxisPlot(fig, ax, hm)
 end
 
@@ -474,6 +484,42 @@ function add_scalebar!(ax, img, scale_length, color)
     return text!(ax, (barx[1] + (barx[2] - barx[1]) / 2), bary[1] + fovy / 64;
                  text="$(round(Int, sl)) μas",
                  align=(:center, :bottom), color=color)
+end
+
+# Horrible hack until I can figure out how to prevent DD from taking over
+# my recipes
+function DDM._surface2(A::IntensityMap, plotfunc, attributes, replacements)
+    # Array/Dimension manipulation
+    A1 = DDM._prepare_for_makie(A, replacements)
+    lookup_attributes, newdims = DDM._split_attributes(A1)
+    A2 = DDM._restore_dim_names(set(A1, map(Pair, newdims, newdims)...), A, replacements)
+    P = Makie.Plot{plotfunc}
+    PTrait = Makie.conversion_trait(P, A2)
+    # We define conversions by trait for all of the explicitly overridden functions,
+    # so we can just use the trait here.
+    args = Makie.convert_arguments(PTrait, A2)
+
+    # if status === true
+    #     args = converted
+    # else
+    #     args = Makie.convert_arguments(P, converted...)
+    # end
+
+    # Plot attribute generation
+    dx, dy = DD.dims(A2)
+    user_attributes = Makie.Attributes(;
+                                       transformation=(;
+                                                       rotation=-ComradeBase.posang(axisdims(A))),
+                                       interpolate=false,
+                                       attributes...)
+    plot_attributes = Makie.Attributes(;
+                                       axis=(;
+                                             xlabel=DD.label(dx),
+                                             ylabel=DD.label(dy),
+                                             title=DD.refdims_title(A),),)
+    merged_attributes = merge(user_attributes, plot_attributes, lookup_attributes)
+
+    return A1, A2, args, merged_attributes
 end
 
 end

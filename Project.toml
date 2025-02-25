@@ -1,7 +1,7 @@
 name = "VLBISkyModels"
 uuid = "d6343c73-7174-4e0f-bb64-562643efbeca"
 authors = ["Paul Tiede <ptiede91@gmail.com> and contributors"]
-version = "0.6.9"
+version = "0.6.10"
 
 [deps]
 AbstractFFTs = "621f4979-c628-5d54-868e-fcf4e3e8185c"
@@ -35,14 +35,14 @@ StructArrays = "09ab397b-f2b6-538f-b94a-2f83cf4a842a"
 Makie = "ee78f7c6-11fb-53f2-987a-cfe4a2b5a57a"
 
 [extensions]
-VLBISkyModelsMakieExt = "Makie"
+VLBISkyModelsMakieExt = ["Makie", "DimensionalData"]
 
 [compat]
 AbstractFFTs = "1"
 Accessors = "0.1"
 ArgCheck = "2"
 ChainRulesCore = "1"
-ComradeBase = "0.8.7"
+ComradeBase = "0.9.0"
 DelimitedFiles = "1"
 DimensionalData = "0.27, 0.28, 0.29.2"
 DocStringExtensions = "0.6,0.7,0.8,0.9"

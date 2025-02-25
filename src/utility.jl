@@ -39,9 +39,14 @@ end
     g = axisdims(m.img)
     dx, dy = pixelsizes(g)
     X, Y = g.X, g.Y
-    (X[begin] > p.X || p.X > X[end]) && return zero(eltype(m.img))
-    (Y[begin] > p.Y || p.Y > Y[end]) && return zero(eltype(m.img))
-    return interpolate(m.itp, m.img, SVector(values(p))) / (dx * dy)
+    rm = rotmat(g)'
+    X2 = _rotatex(p.X, p.Y, rm)
+    Y2 = _rotatey(p.X, p.Y, rm)
+    (X[begin] > X2 || X2 > X[end]) && return zero(eltype(m.img))
+    (Y[begin] > Y2 || Y2 > Y[end]) && return zero(eltype(m.img))
+    # - sign is because we need to move into the frame of the vertical-horizontal image
+    p2 = ComradeBase.update_spat(p, X2, Y2)
+    return interpolate(m.itp, m.img, SVector(values(p2))) / (dx * dy)
 end
 function ModifiedModel(img::IntensityMap,
                        transforms::NTuple{N,ModelModifier}) where {N}
@@ -84,8 +89,7 @@ function convolve!(img::IntensityMap{<:Real}, m::AbstractModel)
     u = U(rfftfreq(size(img, 1), inv(step(X))))
     v = V(fftfreq(size(img, 2), inv(step(Y))))
     ds = (u, v, dims(img)[3:end]...)
-    griduv = RectiGrid(ds;
-                       executor=executor(img), header=header(img))
+    griduv = rebuild(axisdims(img); dims=ds)
     puv = domainpoints(griduv)
 
     # TODO maybe ask a user to pass a vis buffer as well?
