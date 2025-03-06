@@ -133,7 +133,10 @@ function applypulse!(vis, pulse, gfour::AbstractFourierDualDomain)
     # through the broadcast
     pvis = parent(vis)
     dp = domainpoints(guv)
-    pvis .*= visibility_point.(Ref(mp), dp)
+    for i in eachindex(pvis, dp)
+        pvis[i] *= visibility_point(mp, dp[i])
+    end
+    # pvis .*= visibility_point.(Ref(mp), dp)
     return vis
 end
 
@@ -185,8 +188,12 @@ end
 
 @inline function _apply_scaling!(mbase, t::Tuple, vbase, p)
     # out = similar(vbase)
-    pvbase = parent(vbase)
+    pvbase = baseimage(vbase)
     uc = unitscale(Complex{eltype(p.U)}, mbase)
-    pvbase .= last.(modify_uv.(Ref(mbase), Ref(t), domainpoints(p), Ref(uc))) .* pvbase
+    dp = domainpoints(p)
+    for I in eachindex(pvbase, dp)
+        pvbase[I] = last(modify_uv(mbase, t, dp[I], uc)) * pvbase[I]
+    end
+    # pvbase .= last.(modify_uv.(Ref(mbase), Ref(t), domainpoints(p), Ref(uc))) .* pvbase
     return nothing
 end
