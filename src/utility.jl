@@ -22,10 +22,15 @@ end
 struct InterpolatedImage{I,P} <: AbstractModel
     img::I
     itp::P
-    function InterpolatedImage(img::IntensityMap)
-        itp = RectangleGrid(map(ComradeBase.basedim, dims(img))...)
-        return new{typeof(img),typeof(itp)}(img, itp)
-    end
+end
+
+function InterpolatedImage(img::IntensityMap)
+    itp = RectangleGrid(map(ComradeBase.basedim, dims(img))...)
+    return InterpolatedImage{typeof(img), typeof(itp)}(img, itp)
+end
+
+function InterpolatedImage(img::IntensityMap, itp::RectangleGrid)
+    return InterpolatedImage{typeof(img), typeof(itp)}(img, itp)
 end
 
 imanalytic(::Type{<:InterpolatedImage}) = IsAnalytic()
