@@ -1,4 +1,4 @@
-export PolarizedModel, coherencymatrix, PoincareSphere2Map, PolExp2Map, stokes_intensitymap,
+export PolarizedModel, coherencymatrix, PoincareSphere2Map, PolExp2Map, PolExp2Map2, stokes_intensitymap,
        SingleStokes
 
 import ComradeBase: AbstractPolarizedModel, m̆, evpa, CoherencyMatrix, StokesParams
@@ -312,7 +312,7 @@ where `a,b,c,d` are real numbers with no conditions, and `p=√(a² + b² + c²)
     pimgV = similar(d)
 
     # This is just faster because it is a 1 pass algorithm
-    @inbounds @simd for i in eachindex(pimgI, pimgQ, pimgU, pimgV)
+    @inbounds for i in eachindex(pimgI, pimgQ, pimgU, pimgV)
         p = sqrt(b[i]^2 + c[i]^2 + d[i]^2)
         ea = exp(a[i])
         tmp = ea * sinh(p) / p
@@ -323,6 +323,31 @@ where `a,b,c,d` are real numbers with no conditions, and `p=√(a² + b² + c²)
     end
 
     return stokes_intensitymap(pimgI, pimgQ, pimgU, pimgV, grid)
+end
+
+@fastmath function PolExp2Map!(a::AbstractArray,
+                              b::AbstractArray,
+                              c::AbstractArray,
+                              d::AbstractArray,
+                              grid::AbstractRectiGrid)
+
+    # This is just faster because it is a 1 pass algorithm
+    @inbounds for i in eachindex(a, b, c, d)
+        p = sqrt(b[i]^2 + c[i]^2 + d[i]^2)
+        ip = inv(p)
+        ea = exp(a[i])
+        ep = exp(p)
+        iep = inv(ep)
+        sh = (ep - iep) / 2
+        ch = (ep + iep) / 2
+        tmp  = ea * sh * ip
+        a[i] = ea * ch
+        b[i] = tmp * b[i]
+        c[i] = tmp * c[i]
+        d[i] = tmp * d[i]
+    end
+
+    return stokes_intensitymap(a, b, c, d, grid)
 end
 
 """
