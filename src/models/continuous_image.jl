@@ -178,7 +178,7 @@ const ScalingTransform = Union{Shift,Renormalize}
 function visibilitymap_numeric(m::ModifiedModel{M,T},
                                p::FourierDualDomain) where {M<:ContinuousImage,N,
                                                             T<:NTuple{N,
-                                                                      <:ScalingTransform}}
+                                                                      ScalingTransform}}
     ispol = ispolarized(M)
     vbase = visibilitymap_numeric(m.model, p)
     puv = visdomain(p)
@@ -191,7 +191,7 @@ end
     pvbase = baseimage(vbase)
     uc = unitscale(Complex{eltype(p.U)}, mbase)
     dp = domainpoints(p)
-    for I in eachindex(pvbase, dp)
+    @inbounds for I in eachindex(pvbase, dp)
         pvbase[I] = last(modify_uv(mbase, t, dp[I], uc)) * pvbase[I]
     end
     # pvbase .= last.(modify_uv.(Ref(mbase), Ref(t), domainpoints(p), Ref(uc))) .* pvbase

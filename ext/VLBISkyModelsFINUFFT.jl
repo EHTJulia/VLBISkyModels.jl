@@ -1,97 +1,91 @@
-export NFFTAlg
+module VLBISkyModelsFINUFFT
+using VLBISkyModels 
+using ComradeBase: AbstractRectiGrid, UnstructuredDomain, domainpoints
+using VLBISkyModels: FINUFFTAlg, FINUFFTPlan, AdjointFINPlan, _nuft!, _jlnuft!
+using EnzymeCore: EnzymeRules
+using EnzymeCore
 
-"""
-    NFFTAlg
-Uses a non-uniform FFT to compute the visibilitymap.
-You can optionally pass uv which are the uv positions you will
-compute the NFFT at. This can allow for the NFFT plan to be cached improving
-performance
+using FINUFFT
 
-# Fields
-$(FIELDS)
-
-"""
-Base.@kwdef struct NFFTAlg{T,N,F} <: NUFT
-    """
-    Amount to pad the image
-    """
-    padfac::Int = 1
-    """
-    relative tolerance of the NFFT
-    """
-    reltol::T = 1e-9
-    """
-    NFFT interpolation algorithm.
-    """
-    precompute::N = NFFT.TENSOR
-    """
-    Flag passed to inner AbstractFFT. The fastest FFTW is FFTW.MEASURE but takes the longest
-    to precompute
-    """
-    fftflags::F = FFTW.MEASURE
-end
-
-# This a new function is overloaded to handle when NUFTPlan has plans
-# as dictionaries in the case of Ti or Fr case
-
-_rotatex(u, v, rm) = dot(rm[1, :], SVector(u, v))
-_rotatey(u, v, rm) = dot(rm[2, :], SVector(u, v))
-
-function plan_nuft_spatial(alg::NFFTAlg, imagegrid::AbstractRectiGrid,
-                           visdomain::UnstructuredDomain)
+function VLBISkyModels.plan_nuft_spatial(alg::FINUFFTAlg, imgdomain::AbstractRectiGrid,
+                              visdomain::UnstructuredDomain)
+    # check_image_uv(imagegrid, visdomain) 
+    # Check if Ti or Fr in visdomain are subset of imgdomain Ti or Fr if present
     visp = domainpoints(visdomain)
-    uv2 = similar(visp.U, (2, length(visdomain)))
-    dpx = pixelsizes(imagegrid)
-    dx = dpx.X
-    dy = dpx.Y
-    rm = ComradeBase.rotmat(imagegrid)'
-    # Here we flip the sign because the NFFT uses the -2pi convention
-    uv2[1, :] .= -_rotatex.(visp.U, visp.V, Ref(rm)) .* dx
-    uv2[2, :] .= -_rotatey.(visp.U, visp.V, Ref(rm)) .* dy
-    (; reltol, precompute, fftflags) = alg
-    plan = plan_nfft(uv2, size(imagegrid)[1:2]; reltol, precompute, fftflags)
-    return plan
-end
-
-function make_phases(::NFFTAlg, imgdomain::AbstractRectiGrid, visdomain::UnstructuredDomain)
+    U = visp.U
+    V = visp.V
+    T = eltype(U)
     dx, dy = pixelsizes(imgdomain)
-    x0, y0 = phasecenter(imgdomain)
-    visp = domainpoints(visdomain)
-    u = visp.U
-    v = visp.V
     rm = ComradeBase.rotmat(imgdomain)'
-    # Correct for the nFFT phase center and the img phase center
-    return cispi.((_rotatex.(u, v, Ref(rm)) .* (dx - 2 * x0) .+
-                   _rotatey.(u, v, Ref(rm)) .* (dy - 2 * y0)))
+    # No sign flip because we will use the FINUFFT +1 sign convention
+    u = convert(T, 2π) .* VLBISkyModels._rotatex.(U, V, Ref(rm)) .* dx
+    v = convert(T, 2π) .* VLBISkyModels._rotatey.(U, V, Ref(rm)) .* dy
+    fftw = Cint(alg.fftflags) # Convert our plans to correct numeric type
+    pfor = FINUFFT.finufft_makeplan(2, collect(size(imgdomain)[1:2]), +1, 1, alg.reltol; 
+                                nthreads=alg.threads,
+                                fftw=fftw, dtype=T, upsampfac=2.0)
+    FINUFFT.finufft_setpts!(pfor, u, v)
+    # Now we construct the adjoint plan as well
+    padj = FINUFFT.finufft_makeplan(1, collect(size(imgdomain)[1:2]), -1, 1, alg.reltol; 
+                                nthreads=alg.threads,
+                                fftw=fftw, dtype=T, upsampfac=2.0)
+    FINUFFT.finufft_setpts!(padj, u, v)
+    ccache = similar(U, Complex{T}, size(imgdomain)[1:2])
+    p = FINUFFTPlan(size(u), size(imgdomain)[1:2], pfor, padj, ccache)
+
+    # finalizer(p -> begin
+    # #println("Run FINUFFT finalizer")
+    # FINUFFT.finufft_destroy!(p.forward)
+    # FINUFFT.finufft_destroy!(p.adjoint)
+    # end, p)
+    return p
 end
 
-# Allow NFFT to work with ForwardDiff.
+function VLBISkyModels.make_phases(::FINUFFTAlg, imgdomain::AbstractRectiGrid, visdomain::UnstructuredDomain)
+    # These use the same phases to just use the same code since it doesn't depend on NFFTAlg at all.
+    return VLBISkyModels.make_phases(NFFTAlg(), imgdomain, visdomain)
+end
 
-
-# We split on a strided array since NFFT.jl only works on those
-# and for StridedArrays we can potentially save an allocation
-@inline function _nuft!(out::StridedArray, A::NFFTPlan, b::StridedArray)
+@inline function VLBISkyModels._nuft!(out::StridedArray, A::FINUFFTPlan, b::StridedArray)
     _jlnuft!(out, A, b)
     return nothing
 end
 
-@inline function _nuft!(out::AbstractArray, A::NFFTPlan, b::AbstractArray)
+@inline function VLBISkyModels._nuft!(out::AbstractArray, A::FINUFFTPlan, b::AbstractArray)
     tmp = similar(out)
     _jlnuft!(tmp, A, b)
     out .= tmp
     return nothing
 end
 
-@inline function _jlnuft!(out, A, b)
-    mul!(out, A, b)
+@inline function VLBISkyModels._jlnuft!(out, A::FINUFFTPlan, b::AbstractArray{<:Real})
+    bc = A.ccache
+    bc .= b
+    FINUFFT.finufft_exec!(A.forward, bc, out)
     return nothing
 end
+
+@inline function VLBISkyModels._jlnuft!(out, A::AdjointFINPlan, b::AbstractArray{<:Complex})
+    bc = A.ccache
+    FINUFFT.finufft_exec!(A.forward, b, bc)
+    out .= real.(bc)
+    return nothing
+end
+
+@inline function _jlnuftadd!(out, A::AdjointFINPlan, b::AbstractArray{<:Complex})
+    bc = A.ccache
+    FINUFFT.finufft_exec!(A.forward, b, bc)
+    out .+= real.(bc)
+    return nothing
+end
+
+
 
 function EnzymeRules.forward(config::EnzymeRules.FwdConfig,
                              func::Const{typeof(_jlnuft!)},
                              ::Type{RT},
                              out::Annotation{<:AbstractArray{<:Complex}},
-                             A::Const{<:NFFTPlan},
+                             A::Const{<:FINUFFTPlan},
                              b::Annotation{<:AbstractArray{<:Real}}) where {RT}
     # Forward rule does not have to return any primal or shadow since the original function returned nothing
     func.val(out.val, A.val, b.val)
@@ -109,7 +103,7 @@ end
 function EnzymeRules.augmented_primal(config::EnzymeRules.RevConfigWidth,
                                       ::Const{typeof(_jlnuft!)}, ::Type{<:Const},
                                       out::Annotation,
-                                      A::Annotation{<:NFFTPlan},
+                                      A::Annotation{<:FINUFFTPlan},
                                       b::Annotation{<:AbstractArray{<:Real}})
     isa(A, Const) ||
         throw(ArgumentError("A must be a constant in NFFT. We don't support dynamic plans"))
@@ -128,7 +122,7 @@ end
 function EnzymeRules.reverse(config::EnzymeRules.RevConfigWidth,
                              ::Const{typeof(_jlnuft!)},
                              ::Type{RT}, tape,
-                             out::Annotation, A::Annotation{<:NFFTPlan},
+                             out::Annotation, A::Annotation{<:FINUFFTPlan},
                              b::Annotation{<:AbstractArray{<:Real}}) where {RT}
 
     # I think we don't need to cache this since A just has in internal temporary buffer
@@ -163,8 +157,10 @@ function EnzymeRules.reverse(config::EnzymeRules.RevConfigWidth,
     end
     for (db, dout) in zip(dbs, douts)
         # TODO open PR on NFFT so we can do this in place.
-        db .+= real.(A.val' * dout)
+        _jlnuftadd!(db, adjoint(A.val), dout)
         dout .= 0
     end
     return (nothing, nothing, nothing)
+end
+
 end
