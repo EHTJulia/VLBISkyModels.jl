@@ -67,7 +67,6 @@ end
 
 # Allow NFFT to work with ForwardDiff.
 
-
 # We split on a strided array since NFFT.jl only works on those
 # and for StridedArrays we can potentially save an allocation
 @inline function _nuft!(out::StridedArray, A::NFFTPlan, b::StridedArray)

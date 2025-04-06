@@ -177,7 +177,6 @@ function _frule_nuft(A::NUFTPlan, b::AbstractArray{<:ForwardDiff.Dual{T,V,P}}) w
     return out
 end
 
-
 include(joinpath(@__DIR__, "nfft_alg.jl"))
 
 include(joinpath(@__DIR__, "dft_alg.jl"))

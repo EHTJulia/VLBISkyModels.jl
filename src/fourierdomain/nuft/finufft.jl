@@ -28,7 +28,6 @@ Base.@kwdef struct FINUFFTAlg{T,N,F} <: NUFT
     fftflags::F = FFTW.MEASURE
 end
 
-
 # This is an internal struct that holds the plans for the forward and inverse plans.
 # We need this for the adjoint where we need to use the inverse plan
 struct FINUFFTPlan{T,VS,IS,P1,P2,A}
@@ -41,11 +40,11 @@ struct FINUFFTPlan{T,VS,IS,P1,P2,A}
     ccache::A # Complex image cache that should prevent allocations
 end
 
-function FINUFFTPlan(vsize::VS, isize::IS, forward::P1, adjoint::P2, compleximg::A) where {VS,IS,P1,P2,A}
+function FINUFFTPlan(vsize::VS, isize::IS, forward::P1, adjoint::P2,
+                     compleximg::A) where {VS,IS,P1,P2,A}
     T = typeof(compleximg[1].re)
     return FINUFFTPlan{T,VS,IS,P1,P2,A}(vsize, isize, forward, adjoint, compleximg)
 end
-
 
 Base.eltype(::FINUFFTPlan{T}) where {T} = Complex{T}
 Base.size(p::FINUFFTPlan) = p.vsize
