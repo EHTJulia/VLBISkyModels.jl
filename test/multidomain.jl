@@ -93,15 +93,29 @@ end
     x = randn(Nx, Nx, Nt, Nf)
     dx = zeros(Nx, Nx, Nt, Nf)
 
-    alg = NFFTAlg()
-    pnf = create_domains(Nx, alg; Nt=Nt, Nf=Nf)
-    check4dautodiff(pnf, x, dx)
-    finite_dx = test4Dgrad(pnf, x)
-    @test isapprox(dx, finite_dx, atol=1e-2)
+    @testset "NFFT.jl" begin
+        alg = NFFTAlg()
+        pnf = create_domains(Nx, alg; Nt=Nt, Nf=Nf)
+        check4dautodiff(pnf, x, dx)
+        finite_dx = test4Dgrad(pnf, x)
+        @test isapprox(dx, finite_dx, atol=1e-2)
+    end
 
-    pdf = create_domains(Nx, alg; Nt=Nt, Nf=Nf)
-    check4dautodiff(pdf, x, dx)
-    @test isapprox(dx, finite_dx, atol=1e-2)
+    @testset "FINUFFT" begin
+        alg = FINUFFTAlg()
+        pnf = create_domains(Nx, alg; Nt=Nt, Nf=Nf)
+        check4dautodiff(pnf, x, dx)
+        finite_dx = test4Dgrad(pnf, x)
+        @test isapprox(dx, finite_dx, atol=1e-2)
+    end
+
+    @testset "DFT" begin
+        alg = DFTAlg()
+        pnf = create_domains(Nx, alg; Nt=Nt, Nf=Nf)
+        check4dautodiff(pnf, x, dx)
+        finite_dx = test4Dgrad(pnf, x)
+        @test isapprox(dx, finite_dx, atol=1e-2)
+    end
 end
 
 # Time complexity tests
@@ -301,6 +315,14 @@ end
     @test test3dgaussians(1024, 10, NFFTAlg())
     @test test3dgaussians_freq(1024, 4, NFFTAlg())
     @test test2dgaussian(1024, NFFTAlg())
+
+    @test test4dgaussiansft(1024, 10, FINUFFTAlg())
+    @test test4dgaussiansft_swap(1024, 10, FINUFFTAlg())
+    @test test4dft_individual(1024, 10, FINUFFTAlg())
+    @test test3dgaussians(1024, 10, FINUFFTAlg())
+    @test test3dgaussians_freq(1024, 4, FINUFFTAlg())
+    @test test2dgaussian(1024, FINUFFTAlg())
+
 
     @test test4dgaussiansft(512, 2, DFTAlg())
     @test test4dgaussiansft_swap(512, 2, DFTAlg())

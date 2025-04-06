@@ -59,23 +59,35 @@ end
     return nothing
 end
 
-@inline function VLBISkyModels._jlnuft!(out, A::FINUFFTPlan, b::AbstractArray{<:Real})
-    bc = A.ccache
+@noinline function getcache(A::FINUFFTPlan)
+    return A.ccache
+end
+
+@noinline function getcache(A::AdjointFINPlan)
+    return A.plan.ccache
+end
+
+EnzymeRules.inactive(::typeof(getcache), args...) = nothing
+EnzymeRules.inactive_type(::Type{<:FINUFFT.finufft_plan}) = true
+
+
+function VLBISkyModels._jlnuft!(out, A::FINUFFTPlan, b::AbstractArray{<:Real})
+    bc = getcache(A)
     bc .= b
     FINUFFT.finufft_exec!(A.forward, bc, out)
     return nothing
 end
 
-@inline function VLBISkyModels._jlnuft!(out, A::AdjointFINPlan, b::AbstractArray{<:Complex})
-    bc = A.ccache
+function VLBISkyModels._jlnuft!(out, A::AdjointFINPlan, b::AbstractArray{<:Complex})
+    bc = getcache(A)
     FINUFFT.finufft_exec!(A.forward, b, bc)
     out .= real.(bc)
     return nothing
 end
 
-@inline function _jlnuftadd!(out, A::AdjointFINPlan, b::AbstractArray{<:Complex})
-    bc = A.ccache
-    FINUFFT.finufft_exec!(A.forward, b, bc)
+function _jlnuftadd!(out, A::AdjointFINPlan, b::AbstractArray{<:Complex})
+    bc = getcache(A)
+    FINUFFT.finufft_exec!(A.plan.adjoint, b, bc)
     out .+= real.(bc)
     return nothing
 end
@@ -87,13 +99,14 @@ function EnzymeRules.forward(config::EnzymeRules.FwdConfig,
                              A::Const{<:FINUFFTPlan},
                              b::Annotation{<:AbstractArray{<:Real}}) where {RT}
     # Forward rule does not have to return any primal or shadow since the original function returned nothing
-    func.val(out.val, A.val, b.val)
+    _jlnuft(out.val, A.val, b.val)
+
     if EnzymeRules.width(config) == 1
-        func.val(out.dval, A.val, b.dval)
+        _jlnuft(out.dval, A.val, b.dval)
     else
         ntuple(EnzymeRules.width(config)) do i
             Base.@_inline_meta
-            return func.val(out.dval[i], A.val, b.dval[i])
+            return _jlnuft(out.dval[i], A.val, b.dval[i])
         end
     end
     return nothing
@@ -161,5 +174,6 @@ function EnzymeRules.reverse(config::EnzymeRules.RevConfigWidth,
     end
     return (nothing, nothing, nothing)
 end
+
 
 end
