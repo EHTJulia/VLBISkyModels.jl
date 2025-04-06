@@ -70,7 +70,6 @@ end
 EnzymeRules.inactive(::typeof(getcache), args...) = nothing
 EnzymeRules.inactive_type(::Type{<:FINUFFT.finufft_plan}) = true
 
-
 function VLBISkyModels._jlnuft!(out, A::FINUFFTPlan, b::AbstractArray{<:Real})
     bc = getcache(A)
     bc .= b
@@ -174,6 +173,5 @@ function EnzymeRules.reverse(config::EnzymeRules.RevConfigWidth,
     end
     return (nothing, nothing, nothing)
 end
-
 
 end
