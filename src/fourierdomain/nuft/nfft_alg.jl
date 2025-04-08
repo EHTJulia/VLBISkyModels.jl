@@ -67,33 +67,6 @@ end
 
 # Allow NFFT to work with ForwardDiff.
 
-function _nuft(A::NUFTPlan, b::AbstractArray{<:ForwardDiff.Dual})
-    return _frule_nuft(A, b)
-end
-
-function _frule_nuft(A::NUFTPlan, b::AbstractArray{<:ForwardDiff.Dual{T,V,P}}) where {T,V,P}
-    # Compute the fft
-    p = getplan(A)
-    buffer = ForwardDiff.value.(b)
-    xtil = p * complex.(buffer)
-    out = similar(buffer, Complex{ForwardDiff.Dual{T,V,P}})
-    # Now take the deriv of nuft
-    ndxs = ForwardDiff.npartials(first(b))
-    dxtils = ntuple(ndxs) do n
-        buffer .= ForwardDiff.partials.(b, n)
-        return p * complex.(buffer)
-    end
-    out = similar(xtil, Complex{ForwardDiff.Dual{T,V,P}})
-    for i in eachindex(out)
-        dual = getindex.(dxtils, i)
-        prim = xtil[i]
-        red = ForwardDiff.Dual{T,V,P}(real(prim), ForwardDiff.Partials(real.(dual)))
-        imd = ForwardDiff.Dual{T,V,P}(imag(prim), ForwardDiff.Partials(imag.(dual)))
-        out[i] = Complex(red, imd)
-    end
-    return out
-end
-
 # We split on a strided array since NFFT.jl only works on those
 # and for StridedArrays we can potentially save an allocation
 @inline function _nuft!(out::StridedArray, A::NFFTPlan, b::StridedArray)

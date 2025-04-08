@@ -135,7 +135,7 @@ end
 Radial profile that given by positive unit radius Johnson SU distributions with the functional form
 
 ```julia
-    exp[-1/2(γ + arcsinh((r - μ)/σ)]^2*inv(1 + (r - 1)² + σ²)
+    exp[-1/2(γ + arcsinh((r - μ)/σ)²]*inv(1 + (r - 1)² + σ²)
 ```
 
 where controls σ ≥ 0 the width, and γ the asymmetry.
