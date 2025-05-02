@@ -78,11 +78,13 @@ parameter at the point `p`.
 end
 
 function build_param(param::NTuple, p)
-    return map(x -> build_param(x, p), param)
+    f = Base.Fix2(build_param, p)
+    return map(f, param)
 end
 
 function build_param(param::AbstractArray, p)
-    return map(x -> build_param(x, p), param)
+    f = Base.Fix2(build_param, p)
+    return map(f, param)
 end
 
 function (m::DomainParams)(p)
