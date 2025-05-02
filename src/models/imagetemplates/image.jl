@@ -116,7 +116,7 @@ struct GaussDisk{T} <: AbstractImageTemplate
     α::T
 end
 
-@inline function intensity_point(θ::GaussDisk, p)
+@inline @fastmath function intensity_point(θ::GaussDisk, p)
     @unpack_params α = θ(p)
     r = hypot(p.X, p.Y)
     if (r < 1)
