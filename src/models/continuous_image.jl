@@ -135,7 +135,7 @@ end
     img = IntensityMap(m.array, m.grid)
     gimg = imgdomain(grid)
     mfimg = allocate_imgmap(m, gimg)
-    dimp = DimArray(domainpoints(gimg), dims(gimg))
+    dimp = DimArray(parent(domainpoints(gimg)), dims(gimg))
     @inbounds for i in DimIndices(dimp)
         pfr = dimp[i]
         mfimg[i] = @inline build_param(img[i[1:2]], pfr)
@@ -149,7 +149,7 @@ end
     gimg = imgdomain(grid)
     mfimg = allocate_imgmap(m, gimg)
     dft = dims(gimg)[3:end]
-    darr = DimArray(domainpoints(RectiGrid(dft)), dft)
+    darr = DimArray(parent(domainpoints(RectiGrid(dft))), dft)
     Threads.@threads for TF in DimIndices(darr)
         pfr = darr[TF]
         build_param!(@view(mfimg[TF]), m.array, pfr)
@@ -238,6 +238,5 @@ end
     @inbounds for I in eachindex(pvbase, dp)
         pvbase[I] = last(modify_uv(mbase, t, dp[I], uc)) * pvbase[I]
     end
-    pvbase .= last.(modify_uv.(Ref(mbase), Ref(t), domainpoints(p), Ref(uc))) .* pvbase
     return nothing
 end
