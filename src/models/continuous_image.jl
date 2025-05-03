@@ -109,6 +109,19 @@ function intensitymap_analytic!(img::IntensityMap, m::ContinuousImage{<:DomainPa
     return nothing
 end
 
+function intensitymap_analytic!(img::IntensityMap, m::ModifiedModel{<:ContinuousImage{<:DomainParams}})
+    dft = dims(img)[3:end]
+    mb = unmodified(m.model)
+    darr = DimArray(parent(domainpoints(RectiGrid(dft))), dft)
+    for TF  in DimIndices(darr)
+        p0 = build_param(mb.array, darr[TF])
+        mtf = modify(ContinuousImage(p0, mb.grid, mb.kernel), m.transform...)
+        intensitymap_analytic!(@view(img[TF]), mtf)
+    end
+    return nothing
+end
+
+
 
 function convolved(cimg::ContinuousImage, m::AbstractModel)
     return ContinuousImage(cimg.img, convolved(cimg.kernel, m))
