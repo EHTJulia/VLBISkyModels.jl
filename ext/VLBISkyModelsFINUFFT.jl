@@ -87,7 +87,7 @@ function VLBISkyModels._jlnuft!(out, A::FINUFFTPlan, b::AbstractArray{<:Real})
     return nothing
 end
 
-function VLBISkyModels._jlnuft!(out, A::AdjointFINPlan, b::AbstractArray{<:Complex})
+function VLBISkyModels._jlnuft!(out::AbstractArray{<:Real}, A::AdjointFINPlan, b::AbstractArray{<:Complex})
     bc = getcache(A)
     FINUFFT.finufft_exec!(A.forward, b, bc)
     out .= real.(bc)
@@ -183,7 +183,6 @@ function EnzymeRules.reverse(
         outfwd.dval
     end
     for (db, dout) in zip(dbs, douts)
-        # TODO open PR on NFFT so we can do this in place.
         _jlnuftadd!(db, adjoint(A.val), dout)
         dout .= 0
     end
