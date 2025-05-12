@@ -51,9 +51,11 @@ end
 @fastmath @inline function build_param!(out, model::TaylorSpectral{N, <:AbstractArray}, p) where {N}
     # return model.param + model.p0
     lf = mylog(p.Fr / model.freq0)
+    mp = model.param
+    mp0 = model.p0
     @inbounds for i in eachindex(out, model.param)
         index = _getindices(model.index, i)
-        out[i] = _taylorspec(model.param[i], index, lf, model.p0[i])
+        out[i] = @inline _taylorspec(mp[i], index, lf, 0.0)
     end
     return out
 end
