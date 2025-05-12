@@ -167,9 +167,12 @@ end
     mfimg = allocate_imgmap(m, gimg)
     dft = dims(gimg)[3:end]
     darr = DimArray(parent(domainpoints(RectiGrid(dft))), dft)
+    ma = m.array
     Threads.@threads for TF in DimIndices(darr)
-        pfr = darr[TF]
-        build_param!(@view(mfimg[TF]), m.array, pfr)
+        pfr = @inline @inbounds darr[TF]
+        vmfimg = @inline @inbounds view(mfimg, TF)
+        @inline build_param!(vmfimg, ma, pfr)
+        nothing
     end
     vis = applyft(forward_plan(grid), mfimg)
     return applypulse!(vis, m.kernel, grid)
