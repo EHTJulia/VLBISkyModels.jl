@@ -65,7 +65,10 @@ end
 @inline function VLBISkyModels._nuft!(out::AbstractArray, A::FINUFFTPlan, b::AbstractArray)
     tmp = similar(out)
     _jlnuft!(tmp, A, b)
-    out .= tmp
+    for i in eachindex(out, tmp)
+        out[i] = tmp[i]
+    end
+    # out .= tmp
     return nothing
 end
 
