@@ -75,7 +75,7 @@ function VLBISkyModels._jlnuft!(out, A::FINUFFTPlan, b::AbstractArray{<:Real})
     return nothing
 end
 
-function VLBISkyModels._jlnuft!(out, A::AdjointFINPlan, b::AbstractArray{<:Complex})
+function VLBISkyModels._jlnuft!(out::AbstractArray{<:Real}, A::AdjointFINPlan, b::AbstractArray{<:Complex})
     bc = getcache(A)
     FINUFFT.finufft_exec!(A.forward, b, bc)
     out .= real.(bc)
