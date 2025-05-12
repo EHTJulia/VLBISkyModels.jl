@@ -317,12 +317,11 @@ end
 @inline transform_uv(model, ::Shift, p) = p
 
 @inline scale_image(m, ::Shift, p) = unitscale(p.X, m)
-# Curently we use exp here because enzyme has an issue with cispi that will be fixed soon.
-@inline function scale_uv(m, transform::Shift, p)
+@inline @fastmath function scale_uv(m, transform::Shift, p)
     @unpack_params Δx, Δy = transform(p)
     (; U, V) = p
     T = typeof(Δx)
-    return exp(2im * T(π) *
+    return cispi(2 *
                (U * Δx + V * Δy)) *
            unitscale(T, m)
 end
