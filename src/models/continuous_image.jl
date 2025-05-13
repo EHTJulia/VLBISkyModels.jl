@@ -35,24 +35,25 @@ function Base.show(io::IO, img::ContinuousImage{A,P}) where {A,P}
     return print(io, "ContinuousImage{$sA, $P}($(size(img)))")
 end
 
-function ComradeBase.ispolarized(::Type{<:ContinuousImage{A}}) where {A<:IntensityMap{<:StokesParams}}
+function ComradeBase.ispolarized(::Type{<:ContinuousImage{A}}) where {A<:AbstractArray{<:StokesParams}}
     return IsPolarized()
 end
-function ComradeBase.ispolarized(::Type{<:ContinuousImage{A}}) where {A<:IntensityMap{<:Real}}
+function ComradeBase.ispolarized(::Type{<:ContinuousImage{A}}) where {A<:AbstractArray{<:Real}}
     return NotPolarized()
 end
-ComradeBase.flux(m::ContinuousImage) = flux(IntensityMap(m.array, m.grid)) * flux(m.kernel)
+ComradeBase.flux(m::ContinuousImage) = flux(makemap(m)) * flux(m.kernel)
 
 function ComradeBase.stokes(cimg::ContinuousImage, v)
     return ContinuousImage(stokes(parent(cimg), v), cimg.kernel)
 end
-ComradeBase.centroid(m::ContinuousImage) = centroid(parent(m))
+makemap(cimg::ContinuousImage) = IntensityMap(parent(cimg), axisdims(cimg))
+ComradeBase.centroid(m::ContinuousImage) = centroid(makemap(m))
 Base.parent(m::ContinuousImage) = m.array
 Base.length(m::ContinuousImage) = length(m.grid)
 Base.size(m::ContinuousImage) = size(m.grid)
-Base.size(m::ContinuousImage, i::Int) = size(m.grid, i::Int)
-Base.firstindex(m::ContinuousImage) = firstindex(domainpoints(m.grid))
-Base.lastindex(m::ContinuousImage) = lastindex(domainpoints(m.grid))
+Base.size(m::ContinuousImage, i::Int) = length(dims(m.grid)[i])
+Base.firstindex(m::ContinuousImage) = firstindex(domainpoints(m.array))
+Base.lastindex(m::ContinuousImage) = lastindex(domainpoints(m.array))
 
 Base.eltype(::ContinuousImage{A,P}) where {A<:AbstractMatrix,P} = eltype(A)
 Base.eltype(::ContinuousImage{A,P}) where {T,A<:DomainParams{T},P} = T
@@ -69,7 +70,7 @@ end
 function InterpolatedModel(model::ContinuousImage,
                            d::FourierDualDomain{<:AbstractRectiGrid,<:AbstractSingleDomain,
                                                 <:FFTAlg})
-    img = parent(model)
+    img = makemap(model)
     sitp = build_intermodel(img, forward_plan(d), algorithm(d), model.kernel)
     return InterpolatedModel{typeof(model),typeof(sitp)}(model, sitp)
 end
@@ -138,14 +139,14 @@ convolved(cimg::AbstractModel, m::ContinuousImage) = convolved(m, cimg)
 @inline function visibilitymap_numeric(m::ContinuousImage, grid::FourierDualDomain)
     # We need to make sure that the grid is the same size as the image
     checkgrid(axisdims(m), imgdomain(grid))
-    img = IntensityMap(m.array, m.grid)
+    img = makemap(m)
     vis = applyft(forward_plan(grid), img)
     return applypulse!(vis, m.kernel, grid)
 end
 
 @inline function visibilitymap_numeric(m::ContinuousImage{I}, grid::FourierDualDomain) where {D<:DomainParams, I<:AbstractArray{D}}
     checkgrid(axisdims(m), spatialdims(imgdomain(grid)))
-    img = IntensityMap(m.array, m.grid)
+    img = makemap(m)
     gimg = imgdomain(grid)
     mfimg = allocate_imgmap(m, gimg)
     dimp = DimArray(parent(domainpoints(gimg)), dims(gimg))
