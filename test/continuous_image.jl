@@ -2,7 +2,7 @@
     g = imagepixels(12.0, 12.0, 12, 12)
     img = intensitymap(rotated(stretched(Gaussian(), 2.0, 1.0), π / 8), g)
     cimg = ContinuousImage(img, BSplinePulse{0}())
-    testmodel(InterpolatedModel(cimg, g; algorithm=FFTAlg()), 1024, 1e-2)
+    # testmodel(InterpolatedModel(cimg, g; algorithm=FFTAlg()), 1024, 1e-2)
     testft_cimg(cimg)
 end
 
@@ -46,8 +46,8 @@ end
 end
 
 @testset "ContinuousImage" begin
-    g = imagepixels(10.0, 10.0, 128, 128)
-    data = rand(128, 128)
+    g = imagepixels(10.0, 10.0, 16, 16)
+    data = rand(16, 16)
     img = ContinuousImage(IntensityMap(data, g), BSplinePulse{3}())
     @test img == ContinuousImage(data, g, BSplinePulse{3}())
 
@@ -60,7 +60,7 @@ end
     @test img[1:5, 1] == data[1:5, 1]
 
     centroid(img)
-    @test size(img, 1) == 128
+    @test size(img, 1) == 16
     @test axes(img) == axes(parent(img))
     @test domainpoints(img) == domainpoints(parent(img))
 

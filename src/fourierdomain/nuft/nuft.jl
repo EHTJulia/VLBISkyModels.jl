@@ -115,7 +115,11 @@ end
 
 function applyft(p::AbstractNUFTPlan, img::AbstractArray)
     vis = nuft(p, img)
-    vis .*= getphases(p)
+    ph = getphases(p)
+    for i in eachindex(vis, p)
+        vis[i] *= ph[i]
+    end
+    # vis .*= getphases(p)
     return vis
 end
 
