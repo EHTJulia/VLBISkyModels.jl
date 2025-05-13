@@ -80,7 +80,7 @@ end
     centroid(img)
     @test size(img, 1) == 16
     @test axes(img) == axes(parent(img))
-    @test domainpoints(img) == domainpoints(parent(img))
+    @test domainpoints(img) == domainpoints(axisdims(img))
 
     # @test all(==(1), domainpoints(img) .== ComradeBase.grid(named_dims(axisdims(img))))
     @test VLBISkyModels.axisdims(img) == axisdims(img)

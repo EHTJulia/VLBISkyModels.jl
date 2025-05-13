@@ -178,7 +178,7 @@ function testft_nonan(mn, npix = 256, atol = 1.0e-4)
 end
 
 function testft_cimg(m, atol = 1.0e-4)
-    dx, dy = pixelsizes(m.img)
+    dx, dy = pixelsizes(axisdims(m))
     u = fftshift(fftfreq(500, 1 / dx))
     v = fftshift(fftfreq(500, 1 / dy))
     gim = axisdims(parent(m))
