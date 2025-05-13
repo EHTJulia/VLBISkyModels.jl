@@ -22,7 +22,7 @@ function VLBISkyModels.plan_nuft_spatial(
     # No sign flip because we will use the FINUFFT +1 sign convention
     u = convert(T, 2π) .* VLBISkyModels._rotatex.(U, V, Ref(rm)) .* dx
     v = convert(T, 2π) .* VLBISkyModels._rotatey.(U, V, Ref(rm)) .* dy
-    fftw = Cint(alg.fftflags) # Convert our plans to correct numeric type
+    fftw = alg.fftflags # Convert our plans to correct numeric type
     pfor = FINUFFT.finufft_makeplan(
         2, collect(size(imgdomain)[1:2]), +1, 1, alg.reltol;
         nthreads = alg.threads,
