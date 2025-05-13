@@ -1,4 +1,5 @@
-export PolarizedModel, coherencymatrix, PoincareSphere2Map, PolExp2Map, PolExp2Map2, stokes_intensitymap,
+export PolarizedModel, coherencymatrix, PoincareSphere2Map, PolExp2Map, PolExp2Map2,
+       stokes_intensitymap,
        SingleStokes
 
 import ComradeBase: AbstractPolarizedModel, m̆, evpa, CoherencyMatrix, StokesParams
@@ -326,10 +327,10 @@ where `a,b,c,d` are real numbers with no conditions, and `p=√(a² + b² + c²)
 end
 
 @fastmath function PolExp2Map!(a::AbstractArray,
-                              b::AbstractArray,
-                              c::AbstractArray,
-                              d::AbstractArray,
-                              grid::AbstractRectiGrid)
+                               b::AbstractArray,
+                               c::AbstractArray,
+                               d::AbstractArray,
+                               grid::AbstractRectiGrid)
 
     # This is just faster because it is a 1 pass algorithm
     @inbounds for i in eachindex(a, b, c, d)
@@ -340,7 +341,7 @@ end
         iep = inv(ep)
         sh = (ep - iep) / 2
         ch = (ep + iep) / 2
-        tmp  = ea * sh * ip
+        tmp = ea * sh * ip
         a[i] = ea * ch
         b[i] = tmp * b[i]
         c[i] = tmp * c[i]

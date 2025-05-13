@@ -45,7 +45,13 @@ function plan_indices(imgdomain::AbstractRectiGrid, visdomain::UnstructuredDomai
         visind = findall(p -> _compare(nv, p), visp)
         dfs = diff(visind)
         if all(==(dfs[1]), dfs)
-            return (i, visind[1]:dfs[1]:visind[end])
+            if dfs[1] == 1
+                # Extract information to let it know we have a contiguous array
+                return (i, visind[1]:visind[end])
+            else
+                return (i, visind[1]:dfs[1]:visind[end])
+            end
+
         else
             return (i, visind)
         end
@@ -150,6 +156,35 @@ end
     return vis_list
 end
 
+function _nuft(A::NUFTPlan, b::AbstractArray{<:ForwardDiff.Dual})
+    return _frule_nuft(A, b)
+end
+
+function _frule_nuft(A::NUFTPlan, b::AbstractArray{<:ForwardDiff.Dual{T,V,P}}) where {T,V,P}
+    # Compute the fft
+    p = getplan(A)
+    buffer = ForwardDiff.value.(b)
+    xtil = p * complex.(buffer)
+    out = similar(buffer, Complex{ForwardDiff.Dual{T,V,P}})
+    # Now take the deriv of nuft
+    ndxs = ForwardDiff.npartials(first(b))
+    dxtils = ntuple(ndxs) do n
+        buffer .= ForwardDiff.partials.(b, n)
+        return p * complex.(buffer)
+    end
+    out = similar(xtil, Complex{ForwardDiff.Dual{T,V,P}})
+    for i in eachindex(out)
+        dual = getindex.(dxtils, i)
+        prim = xtil[i]
+        red = ForwardDiff.Dual{T,V,P}(real(prim), ForwardDiff.Partials(real.(dual)))
+        imd = ForwardDiff.Dual{T,V,P}(imag(prim), ForwardDiff.Partials(imag.(dual)))
+        out[i] = Complex(red, imd)
+    end
+    return out
+end
+
 include(joinpath(@__DIR__, "nfft_alg.jl"))
 
 include(joinpath(@__DIR__, "dft_alg.jl"))
+
+include(joinpath(@__DIR__, "finufft.jl"))

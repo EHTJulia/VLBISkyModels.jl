@@ -103,6 +103,7 @@ VLBISkyModels.uviterator
 VLBISkyModels.DFTAlg
 VLBISkyModels.FFTAlg
 VLBISkyModels.NFFTAlg
+VLBISkyModels.FINUFFTAlg
 VLBISkyModels.InterpolatedModel
 ```
 
