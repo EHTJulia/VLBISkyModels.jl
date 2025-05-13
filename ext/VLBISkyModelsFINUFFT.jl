@@ -33,11 +33,11 @@ function VLBISkyModels.plan_nuft_spatial(alg::FINUFFTAlg, imgdomain::AbstractRec
     ccache = similar(U, Complex{T}, size(imgdomain)[1:2])
     p = FINUFFTPlan(size(u), size(imgdomain)[1:2], pfor, padj, ccache)
 
-    # finalizer(p -> begin
+    finalizer(p -> begin
     # #println("Run FINUFFT finalizer")
-    # FINUFFT.finufft_destroy!(p.forward)
-    # FINUFFT.finufft_destroy!(p.adjoint)
-    # end, p)
+        FINUFFT.finufft_destroy!(p.forward)
+        FINUFFT.finufft_destroy!(p.adjoint)
+    end, p)
     return p
 end
 

@@ -30,14 +30,14 @@ end
 
 # This is an internal struct that holds the plans for the forward and inverse plans.
 # We need this for the adjoint where we need to use the inverse plan
-struct FINUFFTPlan{T,VS,IS,P1,P2,A}
-    vsize::VS # The size of the visibilities
-    isize::IS # The size of the image
+mutable struct FINUFFTPlan{T,VS,IS,P1,P2,A}
+    const vsize::VS # The size of the visibilities
+    const isize::IS # The size of the image
     """The forward img->vis plan."""
     forward::P1
     """The inverse vis->img plan."""
     adjoint::P1
-    ccache::A # Complex image cache that should prevent allocations
+    const ccache::A # Complex image cache that should prevent allocations
 end
 
 function FINUFFTPlan(vsize::VS, isize::IS, forward::P1, adjoint::P2,
