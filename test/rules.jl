@@ -1,8 +1,10 @@
 using EnzymeTestUtils
 
 # Hack so that it doesn't try to compare nfft plans since they are const and have a FF pointer
-function EnzymeTestUtils.test_approx(::VLBISkyModels.NFFT.NFFTPlan,
-                                     ::VLBISkyModels.NFFT.NFFTPlan, args...; kwargs...)
+function EnzymeTestUtils.test_approx(
+        ::VLBISkyModels.NFFT.NFFTPlan,
+        ::VLBISkyModels.NFFT.NFFTPlan, args...; kwargs...
+    )
     return true
 end
 

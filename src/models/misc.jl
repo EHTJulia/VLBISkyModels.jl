@@ -34,6 +34,6 @@ end
 @inline ConvolvedModel(m::ZeroModel, ::Any) = m
 @inline ConvolvedModel(::Any, m::ZeroModel) = m
 
-@inline ModifiedModel(z::ZeroModel, ::NTuple{N,<:ModelModifier}) where {N} = z
+@inline ModifiedModel(z::ZeroModel, ::NTuple{N, <:ModelModifier}) where {N} = z
 
 # __extract_tangent(::ZeroModel) = ZeroTangent()

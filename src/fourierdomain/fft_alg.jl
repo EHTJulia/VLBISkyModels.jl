@@ -34,7 +34,7 @@ function build_padded_uvgrid(grid::AbstractRectiGrid, alg::FFTAlg)
     uvg = uviterator(nnx, step(X), nny, step(Y))
     pft = dims(grid)[3:end]
     puv = (uvg..., pft...)
-    g = rebuild(grid; dims=puv)
+    g = rebuild(grid; dims = puv)
     return g
 end
 
@@ -57,8 +57,10 @@ function FourierDualDomain(imgdomain::AbstractRectiGrid, alg::FFTAlg)
     return FourierDualDomain(imgdomain, griduv, alg, plan_forward, plan_reverse)
 end
 
-function visibilitymap_numeric(m::AbstractModel,
-                               grid::FourierDualDomain{GI,GV,<:FFTAlg}) where {GI,GV}
+function visibilitymap_numeric(
+        m::AbstractModel,
+        grid::FourierDualDomain{GI, GV, <:FFTAlg}
+    ) where {GI, GV}
     minterp = InterpolatedModel(m, grid)
     return visibilitymap(minterp, visdomain(grid))
 end
@@ -68,19 +70,21 @@ end
 The cache used when the `FFT` algorithm is used to compute
 visibilties. This is an internal type and is not part of the public API
 """
-struct FFTPlan{A<:FFTAlg,P} <: AbstractPlan
+struct FFTPlan{A <: FFTAlg, P} <: AbstractPlan
     alg::A # FFT algorithm
     plan::P # FFT plan or matrix
 end
 
-function create_forward_plan(alg::FFTAlg, imgdomain::AbstractRectiGrid,
-                             ::AbstractSingleDomain)
+function create_forward_plan(
+        alg::FFTAlg, imgdomain::AbstractRectiGrid,
+        ::AbstractSingleDomain
+    )
     pimg = padimage(ComradeBase.allocate_map(Array{eltype(imgdomain)}, imgdomain), alg)
-    plan = plan_fft(pimg, 1:2; flags=alg.flags)
+    plan = plan_fft(pimg, 1:2; flags = alg.flags)
     return FFTPlan(alg, plan)
 end
 
-function padimage(img::IntensityMap{T,N}, alg::FFTAlg) where {T,N}
+function padimage(img::IntensityMap{T, N}, alg::FFTAlg) where {T, N}
     padfac = alg.padfac
     ny, nx = size(img)
     nnx = nextprod((2, 3, 5, 7), padfac * nx)
@@ -94,14 +98,14 @@ function padimage(img::IntensityMap{<:StokesParams}, alg::FFTAlg)
     pQ = padimage(stokes(img, :Q), alg)
     pU = padimage(stokes(img, :U), alg)
     pV = padimage(stokes(img, :V), alg)
-    return StructArray{eltype(img)}((I=pI, Q=pQ, U=pU, V=pV))
+    return StructArray{eltype(img)}((I = pI, Q = pQ, U = pU, V = pV))
 end
 
 FFTW.plan_fft(A::AbstractArray{<:StokesParams}, args...) = plan_fft(stokes(A, :I), args...)
 
 function inverse_plan(plan::FFTPlan)
     a = zeros(eltype(plan.plan), size(plan.plan))
-    ip = plan_ifft(a, 1:2; flags=plan.alg.flags)
+    ip = plan_ifft(a, 1:2; flags = plan.alg.flags)
     return FFTPlan(plan.alg, ip)
 end
 
@@ -110,13 +114,15 @@ function applyft(plan::FFTPlan, img::AbstractArray{<:Number})
     return fftshift(plan.plan * pimg, 1:2)
 end
 
-function applyft(plan::FFTPlan,
-                 img::AbstractArray{<:StokesParams})
+function applyft(
+        plan::FFTPlan,
+        img::AbstractArray{<:StokesParams}
+    )
     visI = applyft(plan, stokes(img, :I))
     visQ = applyft(plan, stokes(img, :Q))
     visU = applyft(plan, stokes(img, :U))
     visV = applyft(plan, stokes(img, :V))
-    return StructArray{StokesParams{eltype(visI)}}((I=visI, Q=visQ, U=visU, V=visV))
+    return StructArray{StokesParams{eltype(visI)}}((I = visI, Q = visQ, U = visU, V = visV))
 end
 
 @fastmath function phasedecenter!(vis, grid, griduv)
@@ -149,11 +155,13 @@ function AbstractFFTs.complexfloat(x::AbstractArray{<:ForwardDiff.Dual})
 end
 
 # Make a plan with Dual numbers
-function AbstractFFTs.plan_fft(x::AbstractArray{<:ForwardDiff.Dual}, region=1:ndims(x))
+function AbstractFFTs.plan_fft(x::AbstractArray{<:ForwardDiff.Dual}, region = 1:ndims(x))
     return plan_fft(zeros(ComplexF64, size(x)), region)
 end
-function AbstractFFTs.plan_fft(x::AbstractArray{<:Complex{<:ForwardDiff.Dual}},
-                               region=1:ndims(x))
+function AbstractFFTs.plan_fft(
+        x::AbstractArray{<:Complex{<:ForwardDiff.Dual}},
+        region = 1:ndims(x)
+    )
     return plan_fft(zeros(ComplexF64, size(x)), region)
 end
 
@@ -167,12 +175,16 @@ ForwardDiff.npartials(x::Complex{<:ForwardDiff.Dual}) = ForwardDiff.npartials(x.
 #=
 This is so ForwardDiff works with FFTW. I am very harsh on the `x` type because of type piracy.
 =#
-function Base.:*(p::AbstractFFTs.Plan,
-                 x::PaddedView{<:ForwardDiff.Dual{T,V,P},N,I,<:IntensityMap}) where {T,
-                                                                                     V,
-                                                                                     P,
-                                                                                     N,
-                                                                                     I}
+function Base.:*(
+        p::AbstractFFTs.Plan,
+        x::PaddedView{<:ForwardDiff.Dual{T, V, P}, N, I, <:IntensityMap}
+    ) where {
+        T,
+        V,
+        P,
+        N,
+        I,
+    }
     M = typeof(ForwardDiff.value(first(x)))
     cache = Matrix{M}(undef, size(x)...)
     cache .= ForwardDiff.value.(x)
@@ -182,12 +194,12 @@ function Base.:*(p::AbstractFFTs.Plan,
         cache .= ForwardDiff.partials.(x, n)
         return p * cache
     end
-    out = similar(cache, Complex{ForwardDiff.Dual{T,V,P}})
+    out = similar(cache, Complex{ForwardDiff.Dual{T, V, P}})
     for i in eachindex(out)
         dual = getindex.(dxtils, i)
         prim = xtil[i]
-        red = ForwardDiff.Dual{T,V,P}(real(prim), ForwardDiff.Partials(real.(dual)))
-        imd = ForwardDiff.Dual{T,V,P}(imag(prim), ForwardDiff.Partials(imag.(dual)))
+        red = ForwardDiff.Dual{T, V, P}(real(prim), ForwardDiff.Partials(real.(dual)))
+        imd = ForwardDiff.Dual{T, V, P}(imag(prim), ForwardDiff.Partials(imag.(dual)))
         out[i] = Complex(red, imd)
     end
     return out

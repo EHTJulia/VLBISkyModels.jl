@@ -17,7 +17,7 @@ function _fft(img::AbstractArray{<:Real})
     return vI
 end
 
-function AbstractFFTs.ifft!(vis::AbstractArray{<:StokesParams}, region=1:ndims(vis))
+function AbstractFFTs.ifft!(vis::AbstractArray{<:StokesParams}, region = 1:ndims(vis))
     vI = stokes(vis, :I)
     vQ = stokes(vis, :Q)
     vU = stokes(vis, :U)
@@ -30,15 +30,19 @@ function AbstractFFTs.ifft!(vis::AbstractArray{<:StokesParams}, region=1:ndims(v
     return StructArray{StokesParams{eltype(I)}}((vI, vQ, vU, vV))
 end
 
-function AbstractFFTs.fftshift(vis::AbstractArray{<:StokesParams}, region=1:ndims(vis))
+function AbstractFFTs.fftshift(vis::AbstractArray{<:StokesParams}, region = 1:ndims(vis))
     vI = stokes(vis, :I)
     vQ = stokes(vis, :Q)
     vU = stokes(vis, :U)
     vV = stokes(vis, :V)
-    return StructArray{StokesParams{eltype(I)}}((fftshift(vI, region),
-                                                 fftshift(vQ, region),
-                                                 fftshift(vU, region),
-                                                 fftshift(vV, region)))
+    return StructArray{StokesParams{eltype(I)}}(
+        (
+            fftshift(vI, region),
+            fftshift(vQ, region),
+            fftshift(vU, region),
+            fftshift(vV, region),
+        )
+    )
 end
 
 # Special because I just want to do the straight FFT thing no matter what
@@ -87,13 +91,21 @@ function visibilitymap_numeric(m::AbstractModel, grid::AbstractRectiGrid)
 end
 
 function intensitymap_numeric(::AbstractModel, ::UnstructuredDomain)
-    throw(ArgumentError("UnstructuredDomain not supported for numeric intensity maps." *
-                        "To make this well defined you must first specify a [`FourierDualDomain`](@ref)" *
-                        "for the grid."))
+    throw(
+        ArgumentError(
+            "UnstructuredDomain not supported for numeric intensity maps." *
+                "To make this well defined you must first specify a [`FourierDualDomain`](@ref)" *
+                "for the grid."
+        )
+    )
 end
 
 function visibilitymap_numeric(::AbstractModel, ::UnstructuredDomain)
-    throw(ArgumentError("UnstructuredDomain not supported for numeric intensity maps." *
-                        "To make this well defined you must first specify a [`FourierDualDomain`](@ref)" *
-                        "for the grid."))
+    throw(
+        ArgumentError(
+            "UnstructuredDomain not supported for numeric intensity maps." *
+                "To make this well defined you must first specify a [`FourierDualDomain`](@ref)" *
+                "for the grid."
+        )
+    )
 end

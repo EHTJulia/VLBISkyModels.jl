@@ -12,5 +12,5 @@
 
     display(imageviz(stokes(img, :I)))
     display(imageviz(img))
-    display(imageviz(img; plot_total=false))
+    display(imageviz(img; plot_total = false))
 end

@@ -1,7 +1,7 @@
 using RecipesBase
 using Printf
 
-@recipe function f(image::IntensityMap; uvscale=rad2μas)
+@recipe function f(image::IntensityMap; uvscale = rad2μas)
     #Define some constants
     #Construct the image grid in μas
 
@@ -128,10 +128,12 @@ using Printf
     end
 end
 
-@recipe function f(m::AbstractModel; uvscale=rad2μas,
-                   fovx=2 * radialextent(m), fovy=2 * radialextent(m),
-                   nx=512, ny=512,
-                   x0=0.0, y0=0.0)
+@recipe function f(
+        m::AbstractModel; uvscale = rad2μas,
+        fovx = 2 * radialextent(m), fovy = 2 * radialextent(m),
+        nx = 512, ny = 512,
+        x0 = 0.0, y0 = 0.0
+    )
     grid = imagepixels(fovx, fovy, nx, ny, x0, y0)
     image = intensitymap(m, grid)
     (; X, Y) = image

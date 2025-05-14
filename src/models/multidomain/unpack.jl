@@ -27,8 +27,10 @@ macro unpack_params(args)
     suitcase.head != :call && throw(ArgumentError("RHS of expression must be of form m(p)"))
     m, p = suitcase.args[1], suitcase.args[2]
     paraminstance = gensym()
-    kp = [:($key = getparam($paraminstance, Val{$(Expr(:quote, key))}(), $p))
-          for key in items]
+    kp = [
+        :($key = getparam($paraminstance, Val{$(Expr(:quote, key))}(), $p))
+            for key in items
+    ]
     kpblock = Expr(:block, kp...)
     expr = quote
         local $paraminstance = $m

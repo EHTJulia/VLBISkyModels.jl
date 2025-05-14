@@ -47,20 +47,20 @@ Converts a number from micro-arcseconds (μas) to rad
 export linearpol, mbreve, evpa, rad2μas, μas2rad
 
 using ComradeBase: AbstractDomain, AbstractSingleDomain, AbstractRectiGrid,
-                   AbstractModel, AbstractPolarizedModel,
-                   UnstructuredDomain, RectiGrid
+    AbstractModel, AbstractPolarizedModel,
+    UnstructuredDomain, RectiGrid
 
 import ComradeBase: flux, radialextent, intensitymap, intensitymap!,
-                    intensitymap_analytic, intensitymap_analytic!,
-                    intensitymap_numeric, intensitymap_numeric!,
-                    visibilitymap, visibilitymap!,
-                    _visibilitymap, _visibilitymap!,
-                    visibilitymap_analytic, visibilitymap_analytic!,
-                    visibilitymap_numeric, visibilitymap_numeric!,
-                    closure_phase, closure_phasemap,
-                    logclosure_amplitude, logclosure_amplitudemap,
-                    bispectrummap, bispectrum, allocate_imgmap, allocate_vismap,
-                    create_vismap, create_imgmap
+    intensitymap_analytic, intensitymap_analytic!,
+    intensitymap_numeric, intensitymap_numeric!,
+    visibilitymap, visibilitymap!,
+    _visibilitymap, _visibilitymap!,
+    visibilitymap_analytic, visibilitymap_analytic!,
+    visibilitymap_numeric, visibilitymap_numeric!,
+    closure_phase, closure_phasemap,
+    logclosure_amplitude, logclosure_amplitudemap,
+    bispectrummap, bispectrum, allocate_imgmap, allocate_vismap,
+    create_vismap, create_imgmap
 
 # Write your package code here.
 # include("stokes_image.jl")

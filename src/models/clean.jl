@@ -8,7 +8,7 @@ using DelimitedFiles
 Build a model with a base model type `beam` where fluxes, x, y corresond to the flux, and positions
 of the components. This can be used to construct clean like models.
 """
-struct MultiComponentModel{M<:AbstractModel,F,V<:AbstractVector} <: AbstractModel
+struct MultiComponentModel{M <: AbstractModel, F, V <: AbstractVector} <: AbstractModel
     base::M
     flux::F
     x::V
@@ -20,9 +20,11 @@ function radialextent(m::MultiComponentModel)
     return 2 * maximum(x -> hypot(x...), zip(m.x, m.y)) + radialextent(m.base)
 end
 
-@inline Base.getindex(m::MultiComponentModel, i::Int) = modify(m.base,
-                                                               Shift(m.x[i], m.y[i]),
-                                                               Renormalize(m.flux[i]))
+@inline Base.getindex(m::MultiComponentModel, i::Int) = modify(
+    m.base,
+    Shift(m.x[i], m.y[i]),
+    Renormalize(m.flux[i])
+)
 
 imanalytic(::Type{<:MultiComponentModel{M}}) where {M} = imanalytic(M)
 visanalytic(::Type{<:MultiComponentModel{M}}) where {M} = visanalytic(M)
@@ -57,13 +59,13 @@ end
 Load a clean component model from a file. The file can be a FITS file or a .mod file.
 If the beam argument is not given it will try to extract the beam from the FITS file.
 """
-function load_clean_components(fname, beam=nothing)
+function load_clean_components(fname, beam = nothing)
     endswith(fname, ".mod") && return load_clean_components_mod_file(fname, beam)
     return load_clean_components_fits(fname, beam)
 end
 
-function load_clean_components_fits(fname, beam=nothing)
-    FITS(fname) do fid
+function load_clean_components_fits(fname, beam = nothing)
+    return FITS(fname) do fid
         cc = fid["AIPS CC"]
         fl = read(cc, "FLUX")
         x = read(cc, "DELTAX")
@@ -109,12 +111,12 @@ function load_clean_components_fits(fname, beam=nothing)
     end
 end
 
-function load_clean_components_mod_file(fname, beam0=DeltaPulse())
+function load_clean_components_mod_file(fname, beam0 = DeltaPulse())
     beam = isnothing(beam) ? DeltaPulse() : beam0
     !endswith(fname, ".mod") &&
         @warn "File doesn't end with .mod are you sure this is a clean MOD file?"
     f, x, y = open(fname, "r") do io
-        out = readdlm(io; comments=true, comment_char='!')
+        out = readdlm(io; comments = true, comment_char = '!')
         f = out[:, 1]
         # components are stored in mas
         r = μas2rad(out[:, 2]) * 1000

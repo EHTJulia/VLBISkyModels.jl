@@ -11,7 +11,7 @@ performance
 $(FIELDS)
 
 """
-Base.@kwdef struct NFFTAlg{T,N,F} <: NUFT
+Base.@kwdef struct NFFTAlg{T, N, F} <: NUFT
     """
     Amount to pad the image
     """
@@ -19,7 +19,7 @@ Base.@kwdef struct NFFTAlg{T,N,F} <: NUFT
     """
     relative tolerance of the NFFT
     """
-    reltol::T = 1e-9
+    reltol::T = 1.0e-9
     """
     NFFT interpolation algorithm.
     """
@@ -37,8 +37,10 @@ end
 _rotatex(u, v, rm) = dot(rm[1, :], SVector(u, v))
 _rotatey(u, v, rm) = dot(rm[2, :], SVector(u, v))
 
-function plan_nuft_spatial(alg::NFFTAlg, imagegrid::AbstractRectiGrid,
-                           visdomain::UnstructuredDomain)
+function plan_nuft_spatial(
+        alg::NFFTAlg, imagegrid::AbstractRectiGrid,
+        visdomain::UnstructuredDomain
+    )
     visp = domainpoints(visdomain)
     uv2 = similar(visp.U, (2, length(visdomain)))
     dpx = pixelsizes(imagegrid)
@@ -61,8 +63,12 @@ function make_phases(::NFFTAlg, imgdomain::AbstractRectiGrid, visdomain::Unstruc
     v = visp.V
     rm = ComradeBase.rotmat(imgdomain)'
     # Correct for the nFFT phase center and the img phase center
-    return cispi.((_rotatex.(u, v, Ref(rm)) .* (dx - 2 * x0) .+
-                   _rotatey.(u, v, Ref(rm)) .* (dy - 2 * y0)))
+    return cispi.(
+        (
+            _rotatex.(u, v, Ref(rm)) .* (dx - 2 * x0) .+
+                _rotatey.(u, v, Ref(rm)) .* (dy - 2 * y0)
+        )
+    )
 end
 
 # Allow NFFT to work with ForwardDiff.
@@ -86,12 +92,14 @@ end
     return nothing
 end
 
-function EnzymeRules.forward(config::EnzymeRules.FwdConfig,
-                             func::Const{typeof(_jlnuft!)},
-                             ::Type{RT},
-                             out::Annotation{<:AbstractArray{<:Complex}},
-                             A::Const{<:NFFTPlan},
-                             b::Annotation{<:AbstractArray{<:Real}}) where {RT}
+function EnzymeRules.forward(
+        config::EnzymeRules.FwdConfig,
+        func::Const{typeof(_jlnuft!)},
+        ::Type{RT},
+        out::Annotation{<:AbstractArray{<:Complex}},
+        A::Const{<:NFFTPlan},
+        b::Annotation{<:AbstractArray{<:Real}}
+    ) where {RT}
     # Forward rule does not have to return any primal or shadow since the original function returned nothing
     func.val(out.val, A.val, b.val)
     if EnzymeRules.width(config) == 1
@@ -105,11 +113,13 @@ function EnzymeRules.forward(config::EnzymeRules.FwdConfig,
     return nothing
 end
 
-function EnzymeRules.augmented_primal(config::EnzymeRules.RevConfigWidth,
-                                      ::Const{typeof(_jlnuft!)}, ::Type{<:Const},
-                                      out::Annotation,
-                                      A::Annotation{<:NFFTPlan},
-                                      b::Annotation{<:AbstractArray{<:Real}})
+function EnzymeRules.augmented_primal(
+        config::EnzymeRules.RevConfigWidth,
+        ::Const{typeof(_jlnuft!)}, ::Type{<:Const},
+        out::Annotation,
+        A::Annotation{<:NFFTPlan},
+        b::Annotation{<:AbstractArray{<:Real}}
+    )
     isa(A, Const) ||
         throw(ArgumentError("A must be a constant in NFFT. We don't support dynamic plans"))
     primal = EnzymeRules.needs_primal(config) ? out.val : nothing
@@ -124,11 +134,13 @@ function EnzymeRules.augmented_primal(config::EnzymeRules.RevConfigWidth,
     return EnzymeRules.AugmentedReturn(primal, shadow, tape)
 end
 
-function EnzymeRules.reverse(config::EnzymeRules.RevConfigWidth,
-                             ::Const{typeof(_jlnuft!)},
-                             ::Type{RT}, tape,
-                             out::Annotation, A::Annotation{<:NFFTPlan},
-                             b::Annotation{<:AbstractArray{<:Real}}) where {RT}
+function EnzymeRules.reverse(
+        config::EnzymeRules.RevConfigWidth,
+        ::Const{typeof(_jlnuft!)},
+        ::Type{RT}, tape,
+        out::Annotation, A::Annotation{<:NFFTPlan},
+        b::Annotation{<:AbstractArray{<:Real}}
+    ) where {RT}
 
     # I think we don't need to cache this since A just has in internal temporary buffer
     # that is used to store the results of things like the FFT.

@@ -20,19 +20,37 @@ end
     cimg = ContinuousImage(img, BSplinePulse{3}())
     # testmodel(InterpolatedModel(cimg, g; algorithm=FFTAlg()), 1024, 1e-3)
     testft_cimg(cimg)
-    guv = UnstructuredDomain((U=randn(32) / 40, V=randn(32) / 40))
+    guv = UnstructuredDomain((U = randn(32) / 40, V = randn(32) / 40))
     gfour = FourierDualDomain(g, guv, NFFTAlg())
-    foo(x) = sum(abs2,
-                 VLBISkyModels.visibilitymap(ContinuousImage(IntensityMap(x, g),
-                                                             BSplinePulse{3}()), gfour))
+    foo(x) = sum(
+        abs2,
+        VLBISkyModels.visibilitymap(
+            ContinuousImage(
+                IntensityMap(x, g),
+                BSplinePulse{3}()
+            ), gfour
+        )
+    )
     testgrad(foo, rand(12, 12))
 
-    foos(x) = sum(abs2,
-                  VLBISkyModels.visibilitymap(modify(ContinuousImage(IntensityMap(reshape(@view(x[1:(end - 1)]),
-                                                                                          size(g)),
-                                                                                  g),
-                                                                     BSplinePulse{3}()),
-                                                     Shift(x[end], -x[end])), gfour))
+    foos(x) = sum(
+        abs2,
+        VLBISkyModels.visibilitymap(
+            modify(
+                ContinuousImage(
+                    IntensityMap(
+                        reshape(
+                            @view(x[1:(end - 1)]),
+                            size(g)
+                        ),
+                        g
+                    ),
+                    BSplinePulse{3}()
+                ),
+                Shift(x[end], -x[end])
+            ), gfour
+        )
+    )
     foos(rand(12 * 12 + 1))
     testgrad(foos, rand(12 * 12 + 1))
 end
