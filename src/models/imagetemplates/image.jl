@@ -5,7 +5,7 @@ Template type for a logarithmic spiral segment
 ## Fields
 $(FIELDS)
 """
-struct LogSpiral{T<:Real} <: AbstractImageTemplate
+struct LogSpiral{T <: Real} <: AbstractImageTemplate
     """ Unit curvature of the logarithmic spiral """
     κ::T
     """ thickness of the Gaussian spiral arm """

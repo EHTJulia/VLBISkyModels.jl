@@ -19,24 +19,24 @@ end
 
 # This is an internal struct that is use to modify IntensityMaps so that we can hook into
 # VLBISkyModels image modifier interface.
-struct InterpolatedImage{I,P} <: AbstractModel
+struct InterpolatedImage{I, P} <: AbstractModel
     img::I
     itp::P
 end
 
 function InterpolatedImage(img::IntensityMap)
     itp = RectangleGrid(map(ComradeBase.basedim, dims(img))...)
-    return InterpolatedImage{typeof(img),typeof(itp)}(img, itp)
+    return InterpolatedImage{typeof(img), typeof(itp)}(img, itp)
 end
 
 function InterpolatedImage(img::IntensityMap, itp::RectangleGrid)
-    return InterpolatedImage{typeof(img),typeof(itp)}(img, itp)
+    return InterpolatedImage{typeof(img), typeof(itp)}(img, itp)
 end
 
 imanalytic(::Type{<:InterpolatedImage}) = IsAnalytic()
 visanalytic(::Type{<:InterpolatedImage}) = NotAnalytic()
-ispolarized(::Type{<:InterpolatedImage{<:IntensityMap{T}}}) where {T<:Real} = NotPolarized()
-function ispolarized(::Type{<:InterpolatedImage{<:IntensityMap{T}}}) where {T<:StokesParams}
+ispolarized(::Type{<:InterpolatedImage{<:IntensityMap{T}}}) where {T <: Real} = NotPolarized()
+function ispolarized(::Type{<:InterpolatedImage{<:IntensityMap{T}}}) where {T <: StokesParams}
     return IsPolarized()
 end
 
@@ -53,8 +53,10 @@ end
     p2 = ComradeBase.update_spat(p, X2, Y2)
     return interpolate(m.itp, m.img, SVector(values(p2))) / (dx * dy)
 end
-function ModifiedModel(img::IntensityMap,
-                       transforms::NTuple{N,ModelModifier}) where {N}
+function ModifiedModel(
+        img::IntensityMap,
+        transforms::NTuple{N, ModelModifier}
+    ) where {N}
     ms = ModifiedModel(InterpolatedImage(img), transforms)
     return intensitymap(ms, axisdims(img))
 end
@@ -94,7 +96,7 @@ function convolve!(img::IntensityMap{<:Real}, m::AbstractModel)
     u = U(rfftfreq(size(img, 1), inv(step(X))))
     v = V(fftfreq(size(img, 2), inv(step(Y))))
     ds = (u, v, dims(img)[3:end]...)
-    griduv = rebuild(axisdims(img); dims=ds)
+    griduv = rebuild(axisdims(img); dims = ds)
     puv = domainpoints(griduv)
 
     # TODO maybe ask a user to pass a vis buffer as well?

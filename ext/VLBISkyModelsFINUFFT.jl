@@ -7,9 +7,11 @@ using EnzymeCore
 
 using FINUFFT
 
-function VLBISkyModels.plan_nuft_spatial(alg::FINUFFTAlg, imgdomain::AbstractRectiGrid,
-                                         visdomain::UnstructuredDomain)
-    # check_image_uv(imagegrid, visdomain) 
+function VLBISkyModels.plan_nuft_spatial(
+        alg::FINUFFTAlg, imgdomain::AbstractRectiGrid,
+        visdomain::UnstructuredDomain
+    )
+    # check_image_uv(imagegrid, visdomain)
     # Check if Ti or Fr in visdomain are subset of imgdomain Ti or Fr if present
     visp = domainpoints(visdomain)
     U = visp.U
@@ -21,28 +23,36 @@ function VLBISkyModels.plan_nuft_spatial(alg::FINUFFTAlg, imgdomain::AbstractRec
     u = convert(T, 2π) .* VLBISkyModels._rotatex.(U, V, Ref(rm)) .* dx
     v = convert(T, 2π) .* VLBISkyModels._rotatey.(U, V, Ref(rm)) .* dy
     fftw = Cint(alg.fftflags) # Convert our plans to correct numeric type
-    pfor = FINUFFT.finufft_makeplan(2, collect(size(imgdomain)[1:2]), +1, 1, alg.reltol;
-                                    nthreads=alg.threads,
-                                    fftw=fftw, dtype=T, upsampfac=2.0)
+    pfor = FINUFFT.finufft_makeplan(
+        2, collect(size(imgdomain)[1:2]), +1, 1, alg.reltol;
+        nthreads = alg.threads,
+        fftw = fftw, dtype = T, upsampfac = 2.0
+    )
     FINUFFT.finufft_setpts!(pfor, u, v)
     # Now we construct the adjoint plan as well
-    padj = FINUFFT.finufft_makeplan(1, collect(size(imgdomain)[1:2]), -1, 1, alg.reltol;
-                                    nthreads=alg.threads,
-                                    fftw=fftw, dtype=T, upsampfac=2.0)
+    padj = FINUFFT.finufft_makeplan(
+        1, collect(size(imgdomain)[1:2]), -1, 1, alg.reltol;
+        nthreads = alg.threads,
+        fftw = fftw, dtype = T, upsampfac = 2.0
+    )
     FINUFFT.finufft_setpts!(padj, u, v)
     ccache = similar(U, Complex{T}, size(imgdomain)[1:2])
     p = FINUFFTPlan(size(u), size(imgdomain)[1:2], pfor, padj, ccache)
 
-    finalizer(p -> begin
-                  # #println("Run FINUFFT finalizer")
-                  FINUFFT.finufft_destroy!(p.forward)
-                  FINUFFT.finufft_destroy!(p.adjoint)
-              end, p)
+    finalizer(
+        p -> begin
+            # #println("Run FINUFFT finalizer")
+            FINUFFT.finufft_destroy!(p.forward)
+            FINUFFT.finufft_destroy!(p.adjoint)
+        end, p
+    )
     return p
 end
 
-function VLBISkyModels.make_phases(::FINUFFTAlg, imgdomain::AbstractRectiGrid,
-                                   visdomain::UnstructuredDomain)
+function VLBISkyModels.make_phases(
+        ::FINUFFTAlg, imgdomain::AbstractRectiGrid,
+        visdomain::UnstructuredDomain
+    )
     # These use the same phases to just use the same code since it doesn't depend on NFFTAlg at all.
     return VLBISkyModels.make_phases(NFFTAlg(), imgdomain, visdomain)
 end
@@ -91,12 +101,14 @@ function _jlnuftadd!(out, A::AdjointFINPlan, b::AbstractArray{<:Complex})
     return nothing
 end
 
-function EnzymeRules.forward(config::EnzymeRules.FwdConfig,
-                             func::Const{typeof(_jlnuft!)},
-                             ::Type{RT},
-                             out::Annotation{<:AbstractArray{<:Complex}},
-                             A::Const{<:FINUFFTPlan},
-                             b::Annotation{<:AbstractArray{<:Real}}) where {RT}
+function EnzymeRules.forward(
+        config::EnzymeRules.FwdConfig,
+        func::Const{typeof(_jlnuft!)},
+        ::Type{RT},
+        out::Annotation{<:AbstractArray{<:Complex}},
+        A::Const{<:FINUFFTPlan},
+        b::Annotation{<:AbstractArray{<:Real}}
+    ) where {RT}
     # Forward rule does not have to return any primal or shadow since the original function returned nothing
     _jlnuft(out.val, A.val, b.val)
 
@@ -111,11 +123,13 @@ function EnzymeRules.forward(config::EnzymeRules.FwdConfig,
     return nothing
 end
 
-function EnzymeRules.augmented_primal(config::EnzymeRules.RevConfigWidth,
-                                      ::Const{typeof(_jlnuft!)}, ::Type{<:Const},
-                                      out::Annotation,
-                                      A::Annotation{<:FINUFFTPlan},
-                                      b::Annotation{<:AbstractArray{<:Real}})
+function EnzymeRules.augmented_primal(
+        config::EnzymeRules.RevConfigWidth,
+        ::Const{typeof(_jlnuft!)}, ::Type{<:Const},
+        out::Annotation,
+        A::Annotation{<:FINUFFTPlan},
+        b::Annotation{<:AbstractArray{<:Real}}
+    )
     isa(A, Const) ||
         throw(ArgumentError("A must be a constant in NFFT. We don't support dynamic plans"))
     primal = EnzymeRules.needs_primal(config) ? out.val : nothing
@@ -130,11 +144,13 @@ function EnzymeRules.augmented_primal(config::EnzymeRules.RevConfigWidth,
     return EnzymeRules.AugmentedReturn(primal, shadow, tape)
 end
 
-function EnzymeRules.reverse(config::EnzymeRules.RevConfigWidth,
-                             ::Const{typeof(_jlnuft!)},
-                             ::Type{RT}, tape,
-                             out::Annotation, A::Annotation{<:FINUFFTPlan},
-                             b::Annotation{<:AbstractArray{<:Real}}) where {RT}
+function EnzymeRules.reverse(
+        config::EnzymeRules.RevConfigWidth,
+        ::Const{typeof(_jlnuft!)},
+        ::Type{RT}, tape,
+        out::Annotation, A::Annotation{<:FINUFFTPlan},
+        b::Annotation{<:AbstractArray{<:Real}}
+    ) where {RT}
 
     # I think we don't need to cache this since A just has in internal temporary buffer
     # that is used to store the results of things like the FFT.

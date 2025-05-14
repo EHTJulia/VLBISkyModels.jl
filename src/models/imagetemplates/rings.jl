@@ -1,9 +1,9 @@
 export RingTemplate,
-       RadialGaussian, RadialDblPower, RadialTruncExp,
-       RadialJohnsonSU,
-       AzimuthalUniform, AzimuthalCosine,
-       GaussianRing, SlashedGaussianRing,
-       EllipticalGaussianRing, EllipticalSlashedGaussianRing
+    RadialGaussian, RadialDblPower, RadialTruncExp,
+    RadialJohnsonSU,
+    AzimuthalUniform, AzimuthalCosine,
+    GaussianRing, SlashedGaussianRing,
+    EllipticalGaussianRing, EllipticalSlashedGaussianRing
 
 # Convience function that creates a phase that matches the EHT convention
 ringphase(x, y) = atan(-x, -y)
@@ -31,7 +31,7 @@ julia> ring = modify(RingTemplate(rad, azi), Stretch(10.0), Shift(1.0, 2.0))
 ## Fields
 $(FIELDS)
 """
-struct RingTemplate{R<:AbstractRadial,A<:AbstractAzimuthal} <: AbstractImageTemplate
+struct RingTemplate{R <: AbstractRadial, A <: AbstractAzimuthal} <: AbstractImageTemplate
     """
     Radial profile of the ring
     """
@@ -116,7 +116,7 @@ julia> t = RingTemplate(rad, azi)
   - `αouter` the power law index for `r≥1`.
 
 """
-struct RadialDblPower{T1,T2} <: AbstractRadial
+struct RadialDblPower{T1, T2} <: AbstractRadial
     αinner::T1
     αouter::T2
 end
@@ -154,7 +154,7 @@ julia> t = RingTemplate(rad, azi)
   - `γ` : the asymmetry of the ring
 
 """
-struct RadialJohnsonSU{T1,T2} <: AbstractRadial
+struct RadialJohnsonSU{T1, T2} <: AbstractRadial
     σ::T1
     γ::T2
 end
@@ -250,9 +250,9 @@ julia> t = RingTemplate(rad, azi)
 
 
 """
-struct AzimuthalCosine{N,T1,T2} <: AbstractAzimuthal
-    s::NTuple{N,T1}
-    ξs::NTuple{N,T2}
+struct AzimuthalCosine{N, T1, T2} <: AbstractAzimuthal
+    s::NTuple{N, T1}
+    ξs::NTuple{N, T2}
 end
 
 AzimuthalCosine(s::Real, ξs::Real) = AzimuthalCosine((s,), (ξs,))
@@ -263,7 +263,7 @@ AzimuthalCosine(s::DomainParams, ξs::Real) = AzimuthalCosine((s,), (ξs,))
 @inline @fastmath function azimuthal_profile(d::AzimuthalCosine{N}, p) where {N}
     @unpack_params s, ξs = d(p)
     ϕ = p.ϕ
-    mapreduce(+, 1:N; init=one(typeof(s[1]))) do n
+    mapreduce(+, 1:N; init = one(typeof(s[1]))) do n
         return -s[n] * cos(n * ϕ - ξs[n])
     end
 end
@@ -308,8 +308,10 @@ modify(GaussianRing(σ/r0), Stretch(r0), Shift(x0, y0))
 
 
 """
-@inline GaussianRing(r0, σ, x0, y0) = modify(GaussianRing(σ / r0), Stretch(r0),
-                                             Shift(x0, y0))
+@inline GaussianRing(r0, σ, x0, y0) = modify(
+    GaussianRing(σ / r0), Stretch(r0),
+    Shift(x0, y0)
+)
 
 """
     $(SIGNATURES)
@@ -331,8 +333,10 @@ RingTemplate(RadialGaussian(σ), AzimuthalCosine((s,), (zero(s),)))
 ```
 
 """
-@inline SlashedGaussianRing(σ, s) = RingTemplate(RadialGaussian(σ),
-                                                 AzimuthalCosine((s,), (zero(s),)))
+@inline SlashedGaussianRing(σ, s) = RingTemplate(
+    RadialGaussian(σ),
+    AzimuthalCosine((s,), (zero(s),))
+)
 
 """
     $(SIGNATURES)
@@ -357,8 +361,10 @@ modify(SlashedGaussianRing(σ/r0, s), Stretch(r0), Rotate(ξ), Shift(x0, y0))
 ```
 
 """
-SlashedGaussianRing(r0, σ, s, ξ, x0, y0) = modify(SlashedGaussianRing(σ / r0, s),
-                                                  Stretch(r0), Rotate(ξ), Shift(x0, y0))
+SlashedGaussianRing(r0, σ, s, ξ, x0, y0) = modify(
+    SlashedGaussianRing(σ / r0, s),
+    Stretch(r0), Rotate(ξ), Shift(x0, y0)
+)
 
 """
     $(SIGNATURES)
@@ -384,10 +390,12 @@ semi-minor axis `a` and semi-major axis `b`.
 
 """
 function EllipticalGaussianRing(r0, σ, τ, ξτ, x0, y0)
-    return modify(GaussianRing(σ / r0),
-                  Stretch(r0 * sqrt(1 - τ), r0 / sqrt(1 - τ)),
-                  Rotate(ξτ),
-                  Shift(x0, y0))
+    return modify(
+        GaussianRing(σ / r0),
+        Stretch(r0 * sqrt(1 - τ), r0 / sqrt(1 - τ)),
+        Rotate(ξτ),
+        Shift(x0, y0)
+    )
 end
 
 """
@@ -431,9 +439,11 @@ The brightness asymmetry uses a cosine to implement the slash.
 
 """
 function EllipticalSlashedGaussianRing(r0, σ, τ, ξτ, s, ξs, x0, y0)
-    return modify(SlashedGaussianRing(σ / r0, s),
-                  Rotate(ξs - ξτ),
-                  Stretch(r0 * sqrt(1 - τ), r0 / sqrt(1 - τ)),
-                  Rotate(ξτ),
-                  Shift(x0, y0))
+    return modify(
+        SlashedGaussianRing(σ / r0, s),
+        Rotate(ξs - ξτ),
+        Stretch(r0 * sqrt(1 - τ), r0 / sqrt(1 - τ)),
+        Rotate(ξτ),
+        Shift(x0, y0)
+    )
 end

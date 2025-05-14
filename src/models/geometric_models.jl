@@ -1,15 +1,15 @@
 export Gaussian,
-       TBlob,
-       Disk,
-       MRing,
-       Crescent,
-       ConcordanceCrescent,
-       ExtendedRing,
-       Ring,
-       ParabolicSegment,
-       Wisp,
-       Butterworth,
-       SlashedDisk
+    TBlob,
+    Disk,
+    MRing,
+    Crescent,
+    ConcordanceCrescent,
+    ExtendedRing,
+    Ring,
+    ParabolicSegment,
+    Wisp,
+    Butterworth,
+    SlashedDisk
 
 # helper functions for below
 @inline _getuv(p) = (p.U, p.V)
@@ -192,7 +192,7 @@ radialextent(::Ring{T}) where {T} = convert(paramtype(T), 3 / 2)
     x, y = _getxy(p)
     T = paramtype(D)
     r = hypot(x, y)
-    dr = T(1e-2)
+    dr = T(1.0e-2)
     if (abs(r - 1) < dr / 2)
         acc = one(T)
         return acc / (2 * T(π) * dr)
@@ -209,7 +209,7 @@ end
     return vis
 end
 
-struct Butterworth{N,T} <: GeometricModel{T} end
+struct Butterworth{N, T} <: GeometricModel{T} end
 
 """
     Butterworth{N}()
@@ -218,15 +218,15 @@ struct Butterworth{N,T} <: GeometricModel{T} end
 Construct a model that corresponds to the Butterworth filter of order `N`.
 The type of the output is given by `T` and if not given defaults to `Float64`
 """
-Butterworth{N}() where {N} = Butterworth{N,Float64}()
+Butterworth{N}() where {N} = Butterworth{N, Float64}()
 
-radialextent(::Butterworth{N,T}) where {N,T} = convert(T, 5)
-flux(::Butterworth{N,T}) where {N,T} = one(T)
+radialextent(::Butterworth{N, T}) where {N, T} = convert(T, 5)
+flux(::Butterworth{N, T}) where {N, T} = one(T)
 
 visanalytic(::Type{<:Butterworth}) = IsAnalytic()
 imanalytic(::Type{<:Butterworth}) = NotAnalytic()
 
-function visibility_point(::Butterworth{N,T}, p) where {N,T}
+function visibility_point(::Butterworth{N, T}, p) where {N, T}
     u, v = _getuv(p)
     b = hypot(u, v) + eps(T)
     return complex(inv(sqrt(1 + b^(2 * N))))
@@ -246,7 +246,7 @@ The `N` in the type defines the order of the Fourier expansion.
 # Fields
 $(FIELDS)
 """
-struct MRing{T,V<:Union{AbstractVector{T},NTuple}} <: GeometricModel{T}
+struct MRing{T, V <: Union{AbstractVector{T}, NTuple}} <: GeometricModel{T}
     """
     Real Fourier mode coefficients
     """
@@ -255,9 +255,9 @@ struct MRing{T,V<:Union{AbstractVector{T},NTuple}} <: GeometricModel{T}
     Imaginary Fourier mode coefficients
     """
     β::V
-    function MRing(α::V, β::V) where {V<:Union{AbstractVector,NTuple}}
+    function MRing(α::V, β::V) where {V <: Union{AbstractVector, NTuple}}
         @argcheck length(α) == length(β) "Lengths of real/imag components must be equal in MRing"
-        return new{eltype(α),V}(α, β)
+        return new{eltype(α), V}(α, β)
     end
 end
 
@@ -269,7 +269,7 @@ that correspond to the real and imaginary (or cos and sin) coefficients
 of the Fourier expansion. The `N` in the type defines the order of
 the Fourier expansion.
 """
-function MRing(c::Union{AbstractVector{<:Complex},NTuple{N,<:Complex}}) where {N}
+function MRing(c::Union{AbstractVector{<:Complex}, NTuple{N, <:Complex}}) where {N}
     α = real.(c)
     β = imag.(c)
     return MRing(α, β)
@@ -389,8 +389,10 @@ crescent model. This works by composing two disk models together.
 function Crescent(router::T, rinner::T, shift::T, floor::T) where {T}
     m = stretched(Disk{T}(), router, router) * (T(π) * router^2) +
         T(-1) *
-        shifted(stretched(Disk{T}(), rinner, rinner) * ((1 - floor) * T(π) * rinner^2),
-                shift, zero(typeof(shift)))
+        shifted(
+        stretched(Disk{T}(), rinner, rinner) * ((1 - floor) * T(π) * rinner^2),
+        shift, zero(typeof(shift))
+    )
     return m / flux(m)
 end
 
@@ -468,15 +470,19 @@ function visibility_point(m::ConcordanceCrescent{D}, p) where {D}
 
     v1 = (1 + slash) * router * b1outer
     v2 = ((1 + slash) + (1 - slash) * shift / router) *
-         phaseshift * rinner * b1inner
+        phaseshift * rinner * b1inner
     v3 = -2im * T(π) * u * (1 - slash) *
-         (router * b0outer -
-          router * b2outer -
-          2 * b1outer / k) / (2 * k)
+        (
+        router * b0outer -
+            router * b2outer -
+            2 * b1outer / k
+    ) / (2 * k)
     v4 = -2im * T(π) * u * (1 - slash) *
-         (rinner * b0inner -
-          rinner * b2inner -
-          2 * b1inner / k) / (2 * k) * (rinner / router) * phaseshift
+        (
+        rinner * b0inner -
+            rinner * b2inner -
+            2 * b1inner / k
+    ) / (2 * k) * (rinner / router) * phaseshift
     return norm * (v1 - v2 + v3 - v4)
 end
 

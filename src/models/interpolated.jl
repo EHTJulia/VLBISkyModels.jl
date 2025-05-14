@@ -1,6 +1,6 @@
 export InterpolatedModel
 
-struct InterpolatedModel{M<:AbstractModel,SI} <: AbstractModel
+struct InterpolatedModel{M <: AbstractModel, SI} <: AbstractModel
     model::M
     sitp::SI
 end
@@ -26,8 +26,10 @@ This is useful to construct models that aren't directly representable in the Fou
 This is mostly used for testing and debugging purposes. In general people should use the
 [`FourierDualDomain`](@ref) functionality to compute the Fourier transform of a model.
 """
-function InterpolatedModel(model::AbstractModel, grid::AbstractRectiGrid;
-                           algorithm::FFTAlg=FFTAlg())
+function InterpolatedModel(
+        model::AbstractModel, grid::AbstractRectiGrid;
+        algorithm::FFTAlg = FFTAlg()
+    )
     dual = FourierDualDomain(grid, algorithm)
     return InterpolatedModel(model, dual)
 end
@@ -35,7 +37,7 @@ end
 radialextent(m::InterpolatedModel) = radialextent(m.model)
 flux(m::InterpolatedModel) = flux(m.model)
 
-function build_intermodel(img::IntensityMap, plan, alg::FFTAlg, pulse=DeltaPulse())
+function build_intermodel(img::IntensityMap, plan, alg::FFTAlg, pulse = DeltaPulse())
     vis = applyft(plan, img)
     grid = axisdims(img)
     griduv = build_padded_uvgrid(grid, alg)
@@ -45,12 +47,16 @@ function build_intermodel(img::IntensityMap, plan, alg::FFTAlg, pulse=DeltaPulse
     return sitp
 end
 
-function InterpolatedModel(model::AbstractModel,
-                           d::FourierDualDomain{<:AbstractRectiGrid,<:AbstractSingleDomain,
-                                                <:FFTAlg})
+function InterpolatedModel(
+        model::AbstractModel,
+        d::FourierDualDomain{
+            <:AbstractRectiGrid, <:AbstractSingleDomain,
+            <:FFTAlg,
+        }
+    )
     img = intensitymap(model, imgdomain(d))
     sitp = build_intermodel(img, forward_plan(d), algorithm(d))
-    return InterpolatedModel{typeof(model),typeof(sitp)}(model, sitp)
+    return InterpolatedModel{typeof(model), typeof(sitp)}(model, sitp)
 end
 
 function intensitymap(m::InterpolatedModel, grid::AbstractRectiGrid)
@@ -66,7 +72,7 @@ using NamedTupleTools
 myselect(p, kg) = map(k -> p[k], kg)
 
 # internal function that creates the interpolator objector to evaluate the FT.
-function create_interpolator(g, vis::AbstractArray{<:Complex,N}, pulse) where {N}
+function create_interpolator(g, vis::AbstractArray{<:Complex, N}, pulse) where {N}
     # Construct the interpolator
     itp = RectangleGrid(map(ComradeBase.basedim, dims(g))...)
     kg = keys(g)
@@ -74,7 +80,7 @@ function create_interpolator(g, vis::AbstractArray{<:Complex,N}, pulse) where {N
     visim = imag(vis)
     # - sign is because we need to move into the frame of the vertical-horizontal image
     rm = ComradeBase.rotmat(g)'
-    f = let kg = kg, itp = itp, visre = visre, visim = visim, pulse = pulse
+    return f = let kg = kg, itp = itp, visre = visre, visim = visim, pulse = pulse
         p -> begin
             pl = visibility_point(pulse, p)
             # xx = select(p, kg)
@@ -108,19 +114,21 @@ function create_interpolator(g, vis::StructArray{<:StokesParams}, pulse)
 
     # - sign is because we need to move into the frame of the vertical-horizontal image
     rm = ComradeBase.rotmat(g)'
-    function (p)
+    return function (p)
         pl = visibility_point(pulse, p)
         U2 = _rotatex(p.U, p.V, rm)
         V2 = _rotatey(p.U, p.V, rm)
         p2 = update_spat(p, U2, V2)
         x = SVector(myselect(p2, kg))
-        return StokesParams(interpolate(itp, vIreal, x) * pl +
-                            1im * interpolate(itp, vIimag, x) * pl,
-                            interpolate(itp, vQreal, x) * pl +
-                            1im * interpolate(itp, vQimag, x) * pl,
-                            interpolate(itp, vUreal, x) * pl +
-                            1im * interpolate(itp, vUimag, x) * pl,
-                            interpolate(itp, vVreal, x) * pl +
-                            1im * interpolate(itp, vVimag, x) * pl)
+        return StokesParams(
+            interpolate(itp, vIreal, x) * pl +
+                1im * interpolate(itp, vIimag, x) * pl,
+            interpolate(itp, vQreal, x) * pl +
+                1im * interpolate(itp, vQimag, x) * pl,
+            interpolate(itp, vUreal, x) * pl +
+                1im * interpolate(itp, vUimag, x) * pl,
+            interpolate(itp, vVreal, x) * pl +
+                1im * interpolate(itp, vVimag, x) * pl
+        )
     end
 end

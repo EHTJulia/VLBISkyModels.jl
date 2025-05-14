@@ -27,9 +27,9 @@ In addition there are additional optional methods a person can define if needed:
 - visibilitymap_analytic! if visanalytic is `IsAnalytic` (optional)
 - visibilitymap_numeric!  if visanalytic is `Not Analytic` (optional)
 """
-abstract type CompositeModel{M1,M2} <: AbstractModel end
+abstract type CompositeModel{M1, M2} <: AbstractModel end
 
-function Base.show(io::IO, m::T) where {T<:CompositeModel}
+function Base.show(io::IO, m::T) where {T <: CompositeModel}
     si = split("$(T)", "{")[1]
     println(io, "$(si)(")
     println(io, "model1: ", m.m1)
@@ -39,12 +39,12 @@ end
 
 radialextent(m::CompositeModel) = max(radialextent(m.m1), radialextent(m.m2))
 
-@inline visanalytic(::Type{<:CompositeModel{M1,M2}}) where {M1,M2} = visanalytic(M1) *
-                                                                     visanalytic(M2)
-@inline imanalytic(::Type{<:CompositeModel{M1,M2}}) where {M1,M2} = imanalytic(M1) *
-                                                                    imanalytic(M2)
-@inline ispolarized(::Type{<:CompositeModel{M1,M2}}) where {M1,M2} = ispolarized(M1) *
-                                                                     ispolarized(M2)
+@inline visanalytic(::Type{<:CompositeModel{M1, M2}}) where {M1, M2} = visanalytic(M1) *
+    visanalytic(M2)
+@inline imanalytic(::Type{<:CompositeModel{M1, M2}}) where {M1, M2} = imanalytic(M1) *
+    imanalytic(M2)
+@inline ispolarized(::Type{<:CompositeModel{M1, M2}}) where {M1, M2} = ispolarized(M1) *
+    ispolarized(M2)
 
 """
     $(TYPEDEF)
@@ -60,7 +60,7 @@ julia> m1 = Disk() + Gaussian()
 julia> m2 = added(Disk(), Gaussian()) + Ring()
 ```
 """
-struct AddModel{T1,T2} <: CompositeModel{T1,T2}
+struct AddModel{T1, T2} <: CompositeModel{T1, T2}
     m1::T1
     m2::T2
 end
@@ -119,8 +119,8 @@ m = Gaussian() + Disk()
 ```
 """
 components(m::AbstractModel) = (m,)
-function components(m::CompositeModel{M1,M2}) where
-         {M1<:AbstractModel,M2<:AbstractModel}
+function components(m::CompositeModel{M1, M2}) where
+    {M1 <: AbstractModel, M2 <: AbstractModel}
     return (components(m.m1)..., components(m.m2)...)
 end
 
@@ -158,22 +158,28 @@ end
 
 # TODO the fast thing is to add the intensitymaps together and then FT
 # We currently don't handle this case
-@inline function visibilitymap_numeric(model::AddModel{M1,M2},
-                                       p::AbstractSingleDomain) where {M1,M2}
+@inline function visibilitymap_numeric(
+        model::AddModel{M1, M2},
+        p::AbstractSingleDomain
+    ) where {M1, M2}
     return _visibilitymap(visanalytic(M1), model.m1, p) .+
-           _visibilitymap(visanalytic(M2), model.m2, p)
+        _visibilitymap(visanalytic(M2), model.m2, p)
 end
 
-@inline function visibilitymap_numeric(model::AddModel{M1,M2},
-                                       p::AbstractRectiGrid) where {M1,M2}
+@inline function visibilitymap_numeric(
+        model::AddModel{M1, M2},
+        p::AbstractRectiGrid
+    ) where {M1, M2}
     return _visibilitymap(visanalytic(M1), model.m1, p) .+
-           _visibilitymap(visanalytic(M2), model.m2, p)
+        _visibilitymap(visanalytic(M2), model.m2, p)
 end
 
-@inline function visibilitymap_numeric(model::AddModel{M1,M2},
-                                       p::FourierDualDomain) where {M1,M2}
+@inline function visibilitymap_numeric(
+        model::AddModel{M1, M2},
+        p::FourierDualDomain
+    ) where {M1, M2}
     return _visibilitymap(visanalytic(M1), model.m1, p) .+
-           _visibilitymap(visanalytic(M2), model.m2, p)
+        _visibilitymap(visanalytic(M2), model.m2, p)
 end
 
 # @inline function _visibilitymap(::IsAnalytic, model::CompositeModel, u::AbstractArray, v::AbstractArray, args...)
@@ -193,7 +199,7 @@ end
 #     return visibilitymap(model.m1, u, v) + visibilitymap(model.m2, u, v)
 # end
 
-@inline function visibility_point(model::CompositeModel{M1,M2}, p) where {M1,M2}
+@inline function visibility_point(model::CompositeModel{M1, M2}, p) where {M1, M2}
     f = uv_combinator(model)
     v1 = visibility_point(model.m1, p)
     v2 = visibility_point(model.m2, p)
@@ -215,7 +221,7 @@ An end user should instead call [`convolved`](@ref convolved).
 Also see [`smoothed(m, σ)`](@ref smoothed) for a simplified function that convolves
 a model `m` with a Gaussian with standard deviation `σ`.
 """
-struct ConvolvedModel{M1,M2} <: CompositeModel{M1,M2}
+struct ConvolvedModel{M1, M2} <: CompositeModel{M1, M2}
     m1::M1
     m2::M2
 end
@@ -246,9 +252,13 @@ julia> convolved(m1, m2) == smoothed(m1, 1.0)
 m1 = Disk()
 ```
 """
-smoothed(m, σ::Union{Number,DomainParams}) = convolved(m,
-                                                       stretched(Gaussian(), σ,
-                                                                 σ))
+smoothed(m, σ::Union{Number, DomainParams}) = convolved(
+    m,
+    stretched(
+        Gaussian(), σ,
+        σ
+    )
+)
 
 @inline imanalytic(::Type{<:ConvolvedModel}) = NotAnalytic()
 
@@ -256,20 +266,26 @@ smoothed(m, σ::Union{Number,DomainParams}) = convolved(m,
 
 flux(m::ConvolvedModel) = flux(m.m1) * flux(m.m2)
 
-@inline function visibilitymap_numeric(model::ConvolvedModel{M1,M2},
-                                       p::AbstractRectiGrid) where {M1,M2}
+@inline function visibilitymap_numeric(
+        model::ConvolvedModel{M1, M2},
+        p::AbstractRectiGrid
+    ) where {M1, M2}
     return _visibilitymap(visanalytic(M1), model.m1, p) .*
-           _visibilitymap(visanalytic(M2), model.m2, p)
+        _visibilitymap(visanalytic(M2), model.m2, p)
 end
 
-@inline function visibilitymap_numeric(model::ConvolvedModel{M1,M2},
-                                       p::FourierDualDomain) where {M1,M2}
+@inline function visibilitymap_numeric(
+        model::ConvolvedModel{M1, M2},
+        p::FourierDualDomain
+    ) where {M1, M2}
     return _visibilitymap(visanalytic(M1), model.m1, p) .*
-           _visibilitymap(visanalytic(M2), model.m2, p)
+        _visibilitymap(visanalytic(M2), model.m2, p)
 end
 
-@inline function visibilitymap_numeric!(vis::IntensityMap,
-                                        m::ConvolvedModel{M1,M2}) where {M1,M2}
+@inline function visibilitymap_numeric!(
+        vis::IntensityMap,
+        m::ConvolvedModel{M1, M2}
+    ) where {M1, M2}
     cvis = similar(vis)
     visibilitymap!(cvis, m.m1)
     vis .= cvis

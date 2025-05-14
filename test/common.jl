@@ -1,4 +1,3 @@
-
 #Template parameters
 const r0 = 15.0
 const α = 1.0
@@ -21,7 +20,7 @@ const npix = 512
 const fovx = 120.0
 const fovy = 120.0
 
-const ϵ = 1e-4
+const ϵ = 1.0e-4
 
 const N = 2
 const M = 3

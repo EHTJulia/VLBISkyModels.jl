@@ -1,14 +1,14 @@
 import ComradeBase: AbstractModel, IsAnalytic, NotAnalytic,
-                    IsPolarized, NotPolarized,
-                    visanalytic, imanalytic, ispolarized,
-                    AbstractDomain
+    IsPolarized, NotPolarized,
+    visanalytic, imanalytic, ispolarized,
+    AbstractDomain
 import ComradeBase: visibility_point,
-                    intensitymap, intensitymap!, intensity_point,
-                    flux
+    intensitymap, intensitymap!, intensity_point,
+    flux
 
 export visibility, amplitude, closure_phase, logclosure_amplitude, bispectrum,
-       visibilitymap, amplitudemap, closure_phasemap, logclosure_amplitudemap, bispectummap,
-       flux, intensitymap, intensitymap!, PolarizedModel, convolve!
+    visibilitymap, amplitudemap, closure_phasemap, logclosure_amplitudemap, bispectummap,
+    flux, intensitymap, intensitymap!, PolarizedModel, convolve!
 
 export unpack
 

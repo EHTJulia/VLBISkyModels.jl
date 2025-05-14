@@ -1,6 +1,6 @@
 export PolarizedModel, coherencymatrix, PoincareSphere2Map, PolExp2Map, PolExp2Map2,
-       stokes_intensitymap,
-       SingleStokes
+    stokes_intensitymap,
+    SingleStokes
 
 import ComradeBase: AbstractPolarizedModel, m̆, evpa, CoherencyMatrix, StokesParams
 
@@ -14,8 +14,10 @@ end
 
 Constructs an `IntensityMap` from four maps for I, Q, U, V.
 """
-@inline function stokes_intensitymap(I::IntensityMap, Q::IntensityMap,
-                                     U::IntensityMap, V::IntensityMap)
+@inline function stokes_intensitymap(
+        I::IntensityMap, Q::IntensityMap,
+        U::IntensityMap, V::IntensityMap
+    )
     _check_grid(I, Q, U, V)
 
     pI = baseimage(I)
@@ -23,13 +25,15 @@ Constructs an `IntensityMap` from four maps for I, Q, U, V.
     pU = baseimage(U)
     pV = baseimage(V)
 
-    simg = StructArray{StokesParams{eltype(pI)}}((I=pI, Q=pQ, U=pU, V=pV))
+    simg = StructArray{StokesParams{eltype(pI)}}((I = pI, Q = pQ, U = pU, V = pV))
     return IntensityMap(simg, axisdims(I), refdims(I), name(I))
 end
 
-@inline function stokes_intensitymap(I::AbstractArray, Q::AbstractArray,
-                                     U::AbstractArray, V::AbstractArray,
-                                     grid::AbstractRectiGrid)
+@inline function stokes_intensitymap(
+        I::AbstractArray, Q::AbstractArray,
+        U::AbstractArray, V::AbstractArray,
+        grid::AbstractRectiGrid
+    )
     simg = StructArray{StokesParams{eltype(I)}}((; I, Q, U, V))
     return IntensityMap(simg, grid)
 end
@@ -42,7 +46,7 @@ Wrapped model for a polarized model. This uses the stokes representation of the 
 # Fields
 $(FIELDS)
 """
-struct PolarizedModel{TI,TQ,TU,TV} <: AbstractPolarizedModel
+struct PolarizedModel{TI, TQ, TU, TV} <: AbstractPolarizedModel
     """
     Stokes I model
     """
@@ -72,14 +76,14 @@ function Base.show(io::IO, model::PolarizedModel)
     return print(io, "\tV: $(model.V)")
 end
 
-Base.@assume_effects :foldable @inline visanalytic(::Type{PolarizedModel{I,Q,U,V}}) where {I,Q,U,V} = visanalytic(I) *
-                                                                                                      visanalytic(Q) *
-                                                                                                      visanalytic(U) *
-                                                                                                      visanalytic(V)
-Base.@assume_effects :foldable @inline imanalytic(::Type{PolarizedModel{I,Q,U,V}}) where {I,Q,U,V} = imanalytic(I) *
-                                                                                                     imanalytic(Q) *
-                                                                                                     imanalytic(U) *
-                                                                                                     imanalytic(V)
+Base.@assume_effects :foldable @inline visanalytic(::Type{PolarizedModel{I, Q, U, V}}) where {I, Q, U, V} = visanalytic(I) *
+    visanalytic(Q) *
+    visanalytic(U) *
+    visanalytic(V)
+Base.@assume_effects :foldable @inline imanalytic(::Type{PolarizedModel{I, Q, U, V}}) where {I, Q, U, V} = imanalytic(I) *
+    imanalytic(Q) *
+    imanalytic(U) *
+    imanalytic(V)
 
 @inline function intensity_point(pmodel::PolarizedModel, p)
     I = intensity_point(stokes(pmodel, :I), p)
@@ -125,8 +129,10 @@ function visibilitymap_numeric(pimg::PolarizedModel, p::FourierDualDomain)
     return StructArray{StokesParams{eltype(si)}}((si, sq, su, sv))
 end
 
-function intensitymap!(pimg::IntensityMap{<:StokesParams},
-                       pmodel::PolarizedModel)
+function intensitymap!(
+        pimg::IntensityMap{<:StokesParams},
+        pmodel::PolarizedModel
+    )
     intensitymap!(stokes(pimg, :I), pmodel.I)
     intensitymap!(stokes(pimg, :Q), pmodel.Q)
     intensitymap!(stokes(pimg, :U), pmodel.U)
@@ -139,8 +145,10 @@ function intensitymap(pmodel::PolarizedModel, dims::AbstractSingleDomain)
     imgQ = baseimage(intensitymap(stokes(pmodel, :Q), dims))
     imgU = baseimage(intensitymap(stokes(pmodel, :U), dims))
     imgV = baseimage(intensitymap(stokes(pmodel, :V), dims))
-    return create_imgmap(StructArray{StokesParams{eltype(imgI)}}((imgI, imgQ, imgU, imgV)),
-                         dims)
+    return create_imgmap(
+        StructArray{StokesParams{eltype(imgI)}}((imgI, imgQ, imgU, imgV)),
+        dims
+    )
 end
 
 @inline function convolved(m::PolarizedModel, p::AbstractModel)
@@ -152,18 +160,22 @@ end
 end
 
 @inline function _convolved(::NotPolarized, m::PolarizedModel, p)
-    return PolarizedModel(convolved(stokes(m, :I), p),
-                          convolved(stokes(m, :Q), p),
-                          convolved(stokes(m, :U), p),
-                          convolved(stokes(m, :V), p))
+    return PolarizedModel(
+        convolved(stokes(m, :I), p),
+        convolved(stokes(m, :Q), p),
+        convolved(stokes(m, :U), p),
+        convolved(stokes(m, :V), p)
+    )
 end
 
 @inline convolved(p::AbstractModel, m::PolarizedModel) = convolved(m, p)
 @inline function convolved(p::PolarizedModel, m::PolarizedModel)
-    return PolarizedModel(convolved(stokes(p, :I), stokes(m, :I)),
-                          convolved(stokes(p, :Q), stokes(m, :Q)),
-                          convolved(stokes(p, :U), stokes(m, :U)),
-                          convolved(stokes(p, :V), stokes(m, :V)))
+    return PolarizedModel(
+        convolved(stokes(p, :I), stokes(m, :I)),
+        convolved(stokes(p, :Q), stokes(m, :Q)),
+        convolved(stokes(p, :U), stokes(m, :U)),
+        convolved(stokes(p, :V), stokes(m, :V))
+    )
 end
 
 # @inline function added(m::PolarizedModel, p::AbstractModel)
@@ -176,10 +188,12 @@ end
 # end
 
 @inline function added(p::PolarizedModel, m::PolarizedModel)
-    return PolarizedModel(added(stokes(p, :I), stokes(m, :I)),
-                          added(stokes(p, :Q), stokes(m, :Q)),
-                          added(stokes(p, :U), stokes(m, :U)),
-                          added(stokes(p, :V), stokes(m, :V)))
+    return PolarizedModel(
+        added(stokes(p, :I), stokes(m, :I)),
+        added(stokes(p, :Q), stokes(m, :Q)),
+        added(stokes(p, :U), stokes(m, :U)),
+        added(stokes(p, :V), stokes(m, :V))
+    )
 end
 
 # for m in (:renormed, :rotated, :shifted, :stretched)
@@ -195,7 +209,7 @@ end
 #     end
 # end
 
-struct SingleStokes{M,S} <: ComradeBase.AbstractModel
+struct SingleStokes{M, S} <: ComradeBase.AbstractModel
     model::M
     """
        SingleStokes(m::AbstractModel, s::Symbol)
@@ -206,7 +220,7 @@ struct SingleStokes{M,S} <: ComradeBase.AbstractModel
     function SingleStokes(m, S::Symbol)
         !(S ∈ (:I, :Q, :U, :V)) && throw(ArgumentError("Invalid Stokes parameter $S"))
         M = typeof(m)
-        return new{M,S}(m)
+        return new{M, S}(m)
     end
 end
 
@@ -214,23 +228,23 @@ visanalytic(::Type{<:SingleStokes{M}}) where {M} = visanalytic((M))
 imanalytic(::Type{<:SingleStokes{M}}) where {M} = imanalytic((M))
 ispolarized(::Type{<:SingleStokes{M}}) where {M} = NotPolarized()
 
-function ComradeBase.intensity_point(m::SingleStokes{M,S}, p) where {M,S}
+function ComradeBase.intensity_point(m::SingleStokes{M, S}, p) where {M, S}
     return getproperty(intensity_point(m.model, p), S)
 end
 
-function ComradeBase.visibility_point(m::SingleStokes{M,S}, p) where {M,S}
+function ComradeBase.visibility_point(m::SingleStokes{M, S}, p) where {M, S}
     return getproperty(visibility_point(m.model, p), S)
 end
 
 radialextent(m::SingleStokes) = radialextent(m.model)
-flux(m::SingleStokes{M,S}) where {M,S} = getproperty(flux(m.model), S)
+flux(m::SingleStokes{M, S}) where {M, S} = getproperty(flux(m.model), S)
 
 # Need this since rotations can be funky to we should rotate in polarization
-function ModifiedModel(m::SingleStokes{M,:Q}, mods::NTuple{N,<:ModelModifier}) where {M,N}
+function ModifiedModel(m::SingleStokes{M, :Q}, mods::NTuple{N, <:ModelModifier}) where {M, N}
     return SingleStokes(ModifiedModel(m.model, mods), :Q)
 end
 
-function ModifiedModel(m::SingleStokes{M,:U}, mods::NTuple{N,<:ModelModifier}) where {M,N}
+function ModifiedModel(m::SingleStokes{M, :U}, mods::NTuple{N, <:ModelModifier}) where {M, N}
     return SingleStokes(ModifiedModel(m.model, mods), :U)
 end
 
@@ -302,11 +316,13 @@ Each Stokes parameter is parameterized as
 
 where `a,b,c,d` are real numbers with no conditions, and `p=√(a² + b² + c²)`.
 """
-@fastmath function PolExp2Map(a::AbstractArray,
-                              b::AbstractArray,
-                              c::AbstractArray,
-                              d::AbstractArray,
-                              grid::AbstractRectiGrid)
+@fastmath function PolExp2Map(
+        a::AbstractArray,
+        b::AbstractArray,
+        c::AbstractArray,
+        d::AbstractArray,
+        grid::AbstractRectiGrid
+    )
     pimgI = similar(a)
     pimgQ = similar(b)
     pimgU = similar(c)
@@ -326,11 +342,13 @@ where `a,b,c,d` are real numbers with no conditions, and `p=√(a² + b² + c²)
     return stokes_intensitymap(pimgI, pimgQ, pimgU, pimgV, grid)
 end
 
-@fastmath function PolExp2Map!(a::AbstractArray,
-                               b::AbstractArray,
-                               c::AbstractArray,
-                               d::AbstractArray,
-                               grid::AbstractRectiGrid)
+@fastmath function PolExp2Map!(
+        a::AbstractArray,
+        b::AbstractArray,
+        c::AbstractArray,
+        d::AbstractArray,
+        grid::AbstractRectiGrid
+    )
 
     # This is just faster because it is a 1 pass algorithm
     @inbounds for i in eachindex(a, b, c, d)

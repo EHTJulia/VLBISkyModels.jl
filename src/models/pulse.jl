@@ -55,8 +55,12 @@ for us.
 Currently only the 0,1,3 order kernels are implemented.
 """
 struct BSplinePulse{N} <: Pulse end
-@inline ω(::BSplinePulse{N}, u) where {N} = complex(Base.literal_pow(^, sinc(u),
-                                                                     Val((N + 1))))
+@inline ω(::BSplinePulse{N}, u) where {N} = complex(
+    Base.literal_pow(
+        ^, sinc(u),
+        Val((N + 1))
+    )
+)
 @inline κflux(::BSplinePulse) = 1.0
 
 @inline κ(::BSplinePulse{0}, x::T) where {T} = abs(x) < 0.5 ? one(T) : zero(T)
@@ -109,13 +113,13 @@ radialextent(::BicubicPulse{T}) where {T} = T(2)
 function ω(m::BicubicPulse{T}, u) where {T}
     b = m.b
     k = 2T(π) * u
-    abs(k) < T(1e-2) && return 1 - (2 * b + 1) * k^2 / 15 + (16 * b + 1) * k^4 / 560 + 0im
+    abs(k) < T(1.0e-2) && return 1 - (2 * b + 1) * k^2 / 15 + (16 * b + 1) * k^4 / 560 + 0im
     s, c = sincos(k)
     k3 = k^3
     k4 = k3 * k
     c2 = c^2 - s^2
     return -4 * s * (2 * b * c + 4 * b + 3) * inv(k3) +
-           12 * inv(k4) * (b * (1 - c2) + 2 * (1 - c)) + 0im
+        12 * inv(k4) * (b * (1 - c2) + 2 * (1 - c)) + 0im
 end
 
 """

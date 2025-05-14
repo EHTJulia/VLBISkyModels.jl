@@ -39,7 +39,7 @@ gim = imagepixels(10.0, 10.0, 256, 256)
 
 u = randn(1000) / 2
 v = randn(1000) / 2
-guv = UnstructuredDomain((U=u, V=v))
+guv = UnstructuredDomain((U = u, V = v))
 
 # We can now create a *dual domain* that contains both the image and the UV points and
 # the specific Fourier transform algorithm we want to use. The options for algorithms are:
@@ -59,8 +59,8 @@ imageviz(img)
 
 # and the visibility map using
 vis = visibilitymap(m, gfour)
-fig, ax = scatter(hypot.(vis.U, vis.V), real.(vis); label="Real")
-scatter!(ax, hypot.(vis.U, vis.V), imag.(vis); label="Imag")
+fig, ax = scatter(hypot.(vis.U, vis.V), real.(vis); label = "Real")
+scatter!(ax, hypot.(vis.U, vis.V), imag.(vis); label = "Imag")
 axislegend(ax)
 ax.xlabel = "uv-dist"
 ax.ylabel = "Flux"
@@ -73,10 +73,12 @@ mimg = intensitymap(mmod, gfour)
 mvis = visibilitymap(mmod, gfour)
 
 # Plotting everything gives
-fig = Figure(; size=(800, 400))
-ax1 = Axis(fig[1, 1]; xreversed=true, xlabel="RA (radians)", ylabel="Dec (radians)",
-           aspect=1)
-ax2 = Axis(fig[1, 2]; xlabel="uv-dist", ylabel="Amplitude")
-image!(ax1, mimg; colormap=:afmhot)
-scatter!(ax2, hypot.(mvis.U, mvis.V), abs.(mvis); label="Real")
+fig = Figure(; size = (800, 400))
+ax1 = Axis(
+    fig[1, 1]; xreversed = true, xlabel = "RA (radians)", ylabel = "Dec (radians)",
+    aspect = 1
+)
+ax2 = Axis(fig[1, 2]; xlabel = "uv-dist", ylabel = "Amplitude")
+image!(ax1, mimg; colormap = :afmhot)
+scatter!(ax2, hypot.(mvis.U, mvis.V), abs.(mvis); label = "Real")
 fig

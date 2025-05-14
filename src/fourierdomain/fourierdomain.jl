@@ -37,9 +37,11 @@ function create_plans(algorithm, imgdomain, visdomain)
     return plan_forward, plan_reverse
 end
 
-struct FourierDualDomain{ID<:AbstractSingleDomain,VD<:AbstractSingleDomain,
-                         A<:FourierTransform,PI<:AbstractPlan,
-                         PD<:AbstractPlan} <: AbstractFourierDualDomain
+struct FourierDualDomain{
+        ID <: AbstractSingleDomain, VD <: AbstractSingleDomain,
+        A <: FourierTransform, PI <: AbstractPlan,
+        PD <: AbstractPlan,
+    } <: AbstractFourierDualDomain
     imgdomain::ID
     visdomain::VD
     algorithm::A
@@ -48,18 +50,20 @@ struct FourierDualDomain{ID<:AbstractSingleDomain,VD<:AbstractSingleDomain,
 end
 
 function Base.show(io::IO, mime::MIME"text/plain", g::FourierDualDomain)
-    printstyled(io, "FourierDualDomain("; bold=true)
+    printstyled(io, "FourierDualDomain("; bold = true)
     println(io)
-    printstyled(io, "Algorithm: "; bold=true)
+    printstyled(io, "Algorithm: "; bold = true)
     show(io, mime, algorithm(g))
-    printstyled(io, "\nImage Domain: "; bold=true)
+    printstyled(io, "\nImage Domain: "; bold = true)
     show(io, mime, imgdomain(g))
-    printstyled(io, "\nVisibility Domain: "; bold=true)
+    printstyled(io, "\nVisibility Domain: "; bold = true)
     return show(io, mime, visdomain(g))
 end
 
-function Serialization.serialize(s::Serialization.AbstractSerializer,
-                                 cache::FourierDualDomain)
+function Serialization.serialize(
+        s::Serialization.AbstractSerializer,
+        cache::FourierDualDomain
+    )
     Serialization.writetag(s.io, Serialization.OBJECT_TAG)
     Serialization.serialize(s, typeof(cache))
     Serialization.serialize(s, cache.algorithm)
@@ -103,7 +107,7 @@ function uvgrid(grid::AbstractRectiGrid)
     uvg = uviterator(length(X), step(X), length(Y), step(Y))
     pft = dims(grid)[3:end]
     puv = (uvg..., pft...)
-    g = rebuild(grid; dims=puv)
+    g = rebuild(grid; dims = puv)
     return g
 end
 
@@ -136,8 +140,8 @@ For the inverse see [`uvgrid`](@ref)
 function xygrid(grid::AbstractRectiGrid)
     (; U, V) = grid
     x, y = xyiterator(length(U), step(U), length(V), step(V))
-    pxy = merge((X=X(x), Y=Y(y)), delete(named_dims(grid), (:U, :V)))
-    g = rebuild(grid; dims=pxy)
+    pxy = merge((X = X(x), Y = Y(y)), delete(named_dims(grid), (:U, :V)))
+    g = rebuild(grid; dims = pxy)
     return g
 end
 
@@ -153,8 +157,10 @@ is specified by the `algorithm` which is a subtype of `VLBISkyModels.FourierTran
   - `visdomain`: The visibility domain grid
   - `algorithm`: The Fourier transform algorithm to use see `subtypes(VLBISkyModels.FourierTransform)` for a list
 """
-function FourierDualDomain(imgdomain::AbstractSingleDomain, visdomain::AbstractSingleDomain,
-                           algorithm)
+function FourierDualDomain(
+        imgdomain::AbstractSingleDomain, visdomain::AbstractSingleDomain,
+        algorithm
+    )
     plan_forward, plan_reverse = create_plans(algorithm, imgdomain, visdomain)
     return FourierDualDomain(imgdomain, visdomain, algorithm, plan_forward, plan_reverse)
 end

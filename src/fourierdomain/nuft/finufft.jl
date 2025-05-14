@@ -8,7 +8,7 @@ Uses the Flatiron non-uniform FFT FINUFFT to compute the visibilitymap.
 $(FIELDS)
 
 """
-Base.@kwdef struct FINUFFTAlg{T,N,F} <: NUFT
+Base.@kwdef struct FINUFFTAlg{T, N, F} <: NUFT
     """
     Amount to pad the image
     """
@@ -16,7 +16,7 @@ Base.@kwdef struct FINUFFTAlg{T,N,F} <: NUFT
     """
     relative tolerance of the NFFT (FINUFFT eps)
     """
-    reltol::T = 1e-9
+    reltol::T = 1.0e-9
     """
     how many threads to use
     """
@@ -30,7 +30,7 @@ end
 
 # This is an internal struct that holds the plans for the forward and inverse plans.
 # We need this for the adjoint where we need to use the inverse plan
-mutable struct FINUFFTPlan{T,VS,IS,P1,P2,A}
+mutable struct FINUFFTPlan{T, VS, IS, P1, P2, A}
     const vsize::VS # The size of the visibilities
     const isize::IS # The size of the image
     """The forward img->vis plan."""
@@ -40,10 +40,12 @@ mutable struct FINUFFTPlan{T,VS,IS,P1,P2,A}
     const ccache::A # Complex image cache that should prevent allocations
 end
 
-function FINUFFTPlan(vsize::VS, isize::IS, forward::P1, adjoint::P2,
-                     compleximg::A) where {VS,IS,P1,P2,A}
+function FINUFFTPlan(
+        vsize::VS, isize::IS, forward::P1, adjoint::P2,
+        compleximg::A
+    ) where {VS, IS, P1, P2, A}
     T = typeof(compleximg[1].re)
-    return FINUFFTPlan{T,VS,IS,P1,P2,A}(vsize, isize, forward, adjoint, compleximg)
+    return FINUFFTPlan{T, VS, IS, P1, P2, A}(vsize, isize, forward, adjoint, compleximg)
 end
 
 Base.eltype(::FINUFFTPlan{T}) where {T} = Complex{T}

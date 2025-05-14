@@ -74,7 +74,7 @@ For a list of potential modifiers or transforms see `subtypes(ModelModifiers)`.
 # Fields
 $(FIELDS)
 """
-struct ModifiedModel{M,MT<:Tuple} <: AbstractModel
+struct ModifiedModel{M, MT <: Tuple} <: AbstractModel
     """base model"""
     model::M
     """model transforms"""
@@ -120,16 +120,16 @@ true
 ```
 """
 basemodel(model::ModifiedModel) = ModifiedModel(model.model, Base.front(model.transform))
-basemodel(model::ModifiedModel{M,Tuple{}}) where {M} = model
+basemodel(model::ModifiedModel{M, Tuple{}}) where {M} = model
 
 flux(m::ModifiedModel) = flux(m.model) * mapreduce(flux, Base.:*, m.transform)
 flux(::ModelModifier{T}) where {T} = one(T)
 
 radialextent(m::ModifiedModel) = radialextent_modified(radialextent(m.model), m.transform)
 
-@inline visanalytic(::Type{ModifiedModel{M,T}}) where {M,T} = visanalytic(M)
-@inline imanalytic(::Type{ModifiedModel{M,T}}) where {M,T} = imanalytic(M)
-@inline ispolarized(::Type{ModifiedModel{M,T}}) where {M,T} = ispolarized(M)
+@inline visanalytic(::Type{ModifiedModel{M, T}}) where {M, T} = visanalytic(M)
+@inline imanalytic(::Type{ModifiedModel{M, T}}) where {M, T} = imanalytic(M)
+@inline ispolarized(::Type{ModifiedModel{M, T}}) where {M, T} = ispolarized(M)
 
 @inline function ModifiedModel(m, t::ModelModifier)
     return ModifiedModel(m, (t,))
@@ -142,7 +142,7 @@ end
 end
 
 @inline doesnot_uv_modify(t::Tuple) = doesnot_uv_modify(Base.front(t)) *
-                                      doesnot_uv_modify(last(t))
+    doesnot_uv_modify(last(t))
 @inline doesnot_uv_modify(::Tuple{}) = true
 
 function modify_uv(model, t::Tuple, p, scale)
@@ -183,9 +183,13 @@ modify_image(model, ::Tuple{}, p, scale) = p, scale
 # end
 # @inline scale_image(::M, t::Tuple{}, x, y) where {M} = unitscale(eltype(x), M)
 
-@inline radialextent_modified(r::Real, t::Tuple) = radialextent_modified(radialextent_modified(r,
-                                                                                               last(t)),
-                                                                         Base.front(t))
+@inline radialextent_modified(r::Real, t::Tuple) = radialextent_modified(
+    radialextent_modified(
+        r,
+        last(t)
+    ),
+    Base.front(t)
+)
 @inline radialextent_modified(r::Real, ::Tuple{}) = r
 
 """
@@ -204,7 +208,7 @@ function modify(m::AbstractModel, transforms...)
     return ModifiedModel(m, transforms)
 end
 
-@inline function visibility_point(m::M, p) where {M<:ModifiedModel}
+@inline function visibility_point(m::M, p) where {M <: ModifiedModel}
     mbase = m.model
     transform = m.transform
     ispol = ispolarized(M)
@@ -212,7 +216,7 @@ end
     return scale * visibility_point(mbase, pt)
 end
 
-@inline function intensity_point(m::M, p) where {M<:ModifiedModel}
+@inline function intensity_point(m::M, p) where {M <: ModifiedModel}
     mbase = m.model
     transform = m.transform
     ispol = ispolarized(M)
@@ -264,7 +268,7 @@ julia> modify(Gaussian(), Shift(2.0, 1.0)) == shifted(Gaussian(), 2.0, 1.0)
 true
 ```
 """
-struct Shift{T,T1,T2} <: ModelModifier{T}
+struct Shift{T, T1, T2} <: ModelModifier{T}
     Δx::T1
     Δy::T2
 end
@@ -276,22 +280,22 @@ end
 
 function Shift(a::Number, b::Number)
     T = promote_type(typeof(a), typeof(b))
-    return Shift{T,typeof(a),typeof(b)}(a, b)
+    return Shift{T, typeof(a), typeof(b)}(a, b)
 end
 
 function Shift(a::DomainParams{P}, b) where {P}
     T = promote_type(P, typeof(b))
-    return Shift{T,typeof(a),typeof(b)}(a, b)
+    return Shift{T, typeof(a), typeof(b)}(a, b)
 end
 
 function Shift(a, b::DomainParams{P}) where {P}
     T = promote_type(P, typeof(a))
-    return Shift{T,typeof(a),typeof(b)}(a, b)
+    return Shift{T, typeof(a), typeof(b)}(a, b)
 end
 
-function Shift(a::DomainParams{P1}, b::DomainParams{P2}) where {P1,P2}
+function Shift(a::DomainParams{P1}, b::DomainParams{P2}) where {P1, P2}
     T = promote_type(P1, P2)
-    return Shift{T,typeof(a),typeof(b)}(a, b)
+    return Shift{T, typeof(a), typeof(b)}(a, b)
 end
 
 """
@@ -322,9 +326,11 @@ end
     @unpack_params Δx, Δy = transform(p)
     (; U, V) = p
     T = typeof(Δx)
-    return exp(2im * T(π) *
-               (U * Δx + V * Δy)) *
-           unitscale(T, m)
+    return exp(
+        2im * T(π) *
+            (U * Δx + V * Δy)
+    ) *
+        unitscale(T, m)
 end
 
 """
@@ -356,10 +362,10 @@ julia> renormed(m, f) == f*M
 true
 ```
 """
-renormed(model::M, f) where {M<:AbstractModel} = ModifiedModel(model, Renormalize(f))
+renormed(model::M, f) where {M <: AbstractModel} = ModifiedModel(model, Renormalize(f))
 @inline doesnot_uv_modify(::Renormalize) = true
 
-const ModNum = Union{Number,DomainParams}
+const ModNum = Union{Number, DomainParams}
 
 Base.:*(model::AbstractModel, f::ModNum) = renormed(model, f)
 Base.:*(f::ModNum, model::AbstractModel) = renormed(model, f)
@@ -408,29 +414,29 @@ julia> Stretch(2.0) == Stretch(2.0, 2.0)
 true
 ```
 """
-struct Stretch{T,T1,T2} <: ModelModifier{T}
+struct Stretch{T, T1, T2} <: ModelModifier{T}
     α::T1
     β::T2
 end
 
 function Stretch(a::Number, b::Number)
     T = promote_type(typeof(a), typeof(b))
-    return Stretch{T,typeof(a),typeof(b)}(a, b)
+    return Stretch{T, typeof(a), typeof(b)}(a, b)
 end
 
 function Stretch(a::DomainParams{P}, b) where {P}
     T = promote_type(P, typeof(b))
-    return Stretch{T,typeof(a),typeof(b)}(a, b)
+    return Stretch{T, typeof(a), typeof(b)}(a, b)
 end
 
 function Stretch(a, b::DomainParams{P}) where {P}
     T = promote_type(P, typeof(a))
-    return Stretch{T,typeof(a),typeof(b)}(a, b)
+    return Stretch{T, typeof(a), typeof(b)}(a, b)
 end
 
-function Stretch(a::DomainParams{P1}, b::DomainParams{P2}) where {P1,P2}
+function Stretch(a::DomainParams{P1}, b::DomainParams{P2}) where {P1, P2}
     T = promote_type(P1, P2)
-    return Stretch{T,typeof(a),typeof(b)}(a, b)
+    return Stretch{T, typeof(a), typeof(b)}(a, b)
 end
 
 Stretch(r) = Stretch(r, r)
@@ -486,7 +492,7 @@ true
 struct Rotate{T} <: ModelModifier{T}
     s::T
     c::T
-    function Rotate(ξ::F) where {F<:Real}
+    function Rotate(ξ::F) where {F <: Real}
         s, c = sincos(ξ)
         return new{F}(s, c)
     end
@@ -495,9 +501,11 @@ struct Rotate{T} <: ModelModifier{T}
     end
 end
 
-function getparam(m::Rotate{T},
-                  s::Symbol,
-                  p) where {T<:DomainParams}
+function getparam(
+        m::Rotate{T},
+        s::Symbol,
+        p
+    ) where {T <: DomainParams}
     m = getproperty(m, s)
     mr = Rotate(build_param(m, p))
     return getproperty(mr, s)
@@ -543,10 +551,12 @@ end
     z = zero(s)
     c2 = c^2 - s^2
     s2 = 2 * c * s
-    return SMatrix{4,4}(u, z, z, z,
-                        z, c2, s2, z,
-                        z, -s2, c2, z,
-                        z, z, z, u)
+    return SMatrix{4, 4}(
+        u, z, z, z,
+        z, c2, s2, z,
+        z, -s2, c2, z,
+        z, z, z, u
+    )
 end
 
 @inline function scale_image(::IsPolarized, model::Rotate, p)
