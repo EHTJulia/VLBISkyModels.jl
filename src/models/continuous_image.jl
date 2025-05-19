@@ -55,8 +55,8 @@ Base.size(m::ContinuousImage, i::Int) = length(dims(m.grid)[i])
 Base.firstindex(m::ContinuousImage) = firstindex(domainpoints(m.array))
 Base.lastindex(m::ContinuousImage) = lastindex(domainpoints(m.array))
 
-Base.eltype(::ContinuousImage{A, P}) where {A<:AbstractMatrix<:AbstractMatrix, P} = eltype(A)
-Base.eltype(::ContinuousImage{A,P}) where {T,A<:DomainParams{T},P} = T
+Base.eltype(::ContinuousImage{A, P}) where {A<:AbstractMatrix, P} = eltype(A)
+Base.eltype(::ContinuousImage{A, P}) where {T,A<:DomainParams{T},P} = T
 
 Base.getindex(img::ContinuousImage, args...) = getindex(parent(img), args...)
 Base.axes(m::ContinuousImage) = axes(parent(m))
