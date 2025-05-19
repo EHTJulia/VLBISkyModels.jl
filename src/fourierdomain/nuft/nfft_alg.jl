@@ -103,7 +103,7 @@ function EnzymeRules.forward(
     # Forward rule does not have to return any primal or shadow since the original function returned nothing
     isa(A, Const) ||
         throw(ArgumentError("A must be a constant in NFFT. We don't support dynamic plans"))
-func.val(out.val, A.val, b.val)
+    func.val(out.val, A.val, b.val)
     if EnzymeRules.width(config) == 1
         func.val(out.dval, A.val, b.dval)
     else

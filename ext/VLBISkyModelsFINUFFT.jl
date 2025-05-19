@@ -29,13 +29,6 @@ function VLBISkyModels.plan_nuft_spatial(
         fftw = fftw, dtype = T, upsampfac = 2.0
     )
     FINUFFT.finufft_setpts!(pfor, u, v)
-    # Now we construct the adjoint plan as well
-    padj = FINUFFT.finufft_makeplan(
-        1, collect(size(imgdomain)[1:2]), -1, 1, alg.reltol;
-        nthreads = alg.threads,
-        fftw = fftw, dtype = T, upsampfac = 2.0
-    )
-    FINUFFT.finufft_setpts!(padj, u, v)
     ccache = similar(U, Complex{T}, size(imgdomain)[1:2])
     p = FINUFFTPlan(size(u), size(imgdomain)[1:2], pfor, padj, ccache)
 
