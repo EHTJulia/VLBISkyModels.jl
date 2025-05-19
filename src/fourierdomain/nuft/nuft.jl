@@ -74,15 +74,18 @@ function plan_nuft(
     iminds, visinds = indices
 
     uv = UnstructuredDomain(points[visinds[1]], executor(visdomain), header(visdomain))
-    tplan = plan_nuft_spatial(alg, imagegrid, uv)
-    plans = Dict{typeof(iminds[1]), typeof(tplan)}()
-
-    for i in eachindex(iminds, visinds)
-        imind = iminds[i]
-        visind = visinds[i]
+    # tplan = plan_nuft_spatial(alg, imagegrid, uv)
+    # plans = Dict{typeof(iminds[1]), typeof(tplan)}()
+    plans = map(visinds) do visind
         uv = UnstructuredDomain(points[visind], executor(visdomain), header(visdomain))
-        plans[imind] = plan_nuft_spatial(alg, imagegrid, uv)
-    end
+        return plan_nuft_spatial(alg, imagegrid, uv)
+    end 
+    # for i in eachindex(iminds, visinds)
+    #     imind = iminds[i]
+    #     visind = visinds[i]
+    #     uv = UnstructuredDomain(points[visind], executor(visdomain), header(visdomain))
+    #     plans[imind] = plan_nuft_spatial(alg, imagegrid, uv)
+    # end
     return plans
 end
 
@@ -104,16 +107,19 @@ function inverse_plan(plan::NUFTPlan)
     return NUFTPlan(plan.alg, plan.plan', inv.(plan.phases), plan.indices, plan.totalvis)
 end
 
-function inverse_plan(plan::NUFTPlan{<:FourierTransform, <:AbstractDict})
+function inverse_plan(plan::NUFTPlan{<:FourierTransform,<:AbstractVector})
     iminds, visinds = plan.indices
 
-    inverse_plans_t = plan.plan[iminds[1]]'
-    inverse_plans = Dict{typeof(iminds[1]), typeof(inverse_plans_t)}()
-
-    for i in eachindex(iminds, visinds)
-        imind = iminds[i]
-        inverse_plans[imind] = plan.plan[imind]'
+    # inverse_plans_t = plan.plan[iminds[1]]'
+    # inverse_plans = Dict{typeof(iminds[1]),typeof(inverse_plans_t)}()
+    inverse_plans = map(plan.plan) do p
+        return p'
     end
+
+    # for i in eachindex(iminds, visinds)
+    #     imind = iminds[i]
+    #     inverse_plans[imind] = plan.plan[imind]'
+    # end
 
     return NUFTPlan(plan.alg, inverse_plans, inv.(plan.phases), plan.indices, plan.totalvis)
 end
@@ -156,11 +162,13 @@ end
     vis_list = similar(baseimage(img), Complex{eltype(img)}, p.totalvis)
     plans = getplan(p)
     iminds, visinds = getindices(p)
-    Threads.@threads for i in eachindex(iminds, visinds)
+    Threads.@threads for i in eachindex(iminds, visinds, plans)
         imind = @inbounds iminds[i]
         visind = @inbounds visinds[i]
+        pl = @inbounds plans[i]
         vis_view = @inbounds view(vis_list, visind)
-        _nuft!(vis_view, @inbounds(plans[imind]), @inbounds(view(img, :, :, imind)))
+        img_view = @inbounds view(img, :, :, imind)
+        _nuft!(vis_view, pl, img_view)
     end
     return vis_list
 end

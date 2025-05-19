@@ -59,5 +59,5 @@ vissize(p::AdjointFINPlan) = p.plan.isize
 Base.adjoint(p::FINUFFTPlan) = AdjointFINPlan(p)
 Base.adjoint(p::AdjointFINPlan) = p.plan
 
-EnzymeRules.inactive_type(::Type{<:AdjointFINPlan}) = true
-EnzymeRules.inactive_type(::Type{<:FINUFFTPlan}) = true
+# EnzymeRules.inactive_type(::Type{<:AdjointFINPlan}) = true
+# EnzymeRules.inactive_type(::Type{<:FINUFFTPlan}) = true
