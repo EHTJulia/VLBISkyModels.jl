@@ -162,11 +162,13 @@ end
     vis_list = similar(baseimage(img), Complex{eltype(img)}, p.totalvis)
     plans = getplan(p)
     iminds, visinds = getindices(p)
-    Threads.@threads for i in eachindex(iminds, visinds)
+    Threads.@threads for i in eachindex(iminds, visinds, plans)
         imind = @inbounds iminds[i]
         visind = @inbounds visinds[i]
+        pl = @inbounds plans[i]
         vis_view = @inbounds view(vis_list, visind)
-        _nuft!(vis_view, @inbounds(plans[imind]), @inbounds(view(img, :, :, imind)))
+        img_view = @inbounds view(img, :, :, imind)
+        _nuft!(vis_view, pl, img_view)
     end
     return vis_list
 end
