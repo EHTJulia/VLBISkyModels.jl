@@ -165,7 +165,7 @@ end
     dft = dims(gimg)[3:end]
     darr = DimArray(parent(domainpoints(RectiGrid(dft))), dft)
     ma = m.array
-    Threads.@threads for TF in DimIndices(darr)
+    for TF in DimIndices(darr)
         pfr = @inline @inbounds darr[TF]
         vmfimg = @inline @inbounds view(mfimg, TF)
         @inline build_param!(vmfimg, ma, pfr)
