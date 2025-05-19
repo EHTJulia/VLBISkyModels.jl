@@ -101,7 +101,9 @@ function EnzymeRules.forward(
         b::Annotation{<:AbstractArray{<:Real}}
     ) where {RT}
     # Forward rule does not have to return any primal or shadow since the original function returned nothing
-    func.val(out.val, A.val, b.val)
+    isa(A, Const) ||
+        throw(ArgumentError("A must be a constant in NFFT. We don't support dynamic plans"))
+func.val(out.val, A.val, b.val)
     if EnzymeRules.width(config) == 1
         func.val(out.dval, A.val, b.dval)
     else
@@ -115,11 +117,11 @@ end
 
 function EnzymeRules.augmented_primal(
         config::EnzymeRules.RevConfigWidth,
-        ::Const{typeof(_jlnuft!)}, ::Type{<:Const},
+        ::Const{typeof(_jlnuft!)}, ::Type{RT},
         out::Annotation,
         A::Annotation{<:NFFTPlan},
         b::Annotation{<:AbstractArray{<:Real}}
-    )
+    ) where {RT}
     isa(A, Const) ||
         throw(ArgumentError("A must be a constant in NFFT. We don't support dynamic plans"))
     primal = EnzymeRules.needs_primal(config) ? out.val : nothing
