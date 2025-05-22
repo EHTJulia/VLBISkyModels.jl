@@ -39,14 +39,14 @@ function VLBISkyModels.plan_nuft_spatial(
     ccache = similar(U, Complex{T}, size(imgdomain)[1:2])
     p = FINUFFTPlan(size(u), size(imgdomain)[1:2], pfor, padj, ccache)
 
-    finalizer(
-        p -> begin
-            # #println("Run FINUFFT finalizer")
-            FINUFFT.finufft_destroy!(p.forward)
-            FINUFFT.finufft_destroy!(p.adjoint)
-        end, p
-    )
+    # We need to destroy the plans when we are done
+    finalizer(findestroy, p)
     return p
+end
+
+function findestroy(p)
+    FINUFFT.finufft_destroy!(p.forward)
+    FINUFFT.finufft_destroy!(p.adjoint)
 end
 
 function VLBISkyModels.make_phases(
@@ -66,7 +66,7 @@ end
 end
 
 EnzymeRules.inactive(::typeof(getcache), args...) = nothing
-# EnzymeRules.inactive_type(::Type{<:FINUFFT.finufft_plan}) = true
+EnzymeRules.inactive_type(::Type{<:FINUFFT.finufft_plan}) = true
 
 function VLBISkyModels._jlnuft!(out, A::FINUFFTPlan, b::AbstractArray{<:Real})
     bc = getcache(A)
