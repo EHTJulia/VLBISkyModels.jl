@@ -22,12 +22,10 @@ import VLBISkyModels: polimage, polimage!, imageviz
 #     return (X), (Y), parent(img)
 # end
 
-function Makie.expand_dimensions(::NoConversion, img::SpatialIntensityMap)
-    # (; X, Y) = img
-    return (img,)
-end
-
-fun
+# function Makie.expand_dimensions(::NoConversion, img::SpatialIntensityMap)
+#     # (; X, Y) = img
+#     return (img,)
+# end
 
 # function Makie.expand_dimensions(::ImageLike, img::SpatialIntensityMap)
 #     (; X, Y) = img
@@ -41,13 +39,10 @@ end
 function Makie.convert_arguments(::VertexGrid, img::IntensityMap{<:StokesParams}; kwargs...)
     return (stokes(img, :I),)
 end
-function Makie.convert_arguments(P::Type{<:Image}, img::IntensityMap{<:StokesParams}; xdim=nothing, ydim=nothing)
+function Makie.convert_arguments(P::ImageLike, img::IntensityMap{<:StokesParams}; xdim=nothing, ydim=nothing)
     return Makie.convert_arguments(P, stokes(img, :I); xdim, ydim)
 end
 
-function Makie.convert_arguments(P::Type{<:Image}, img::IntensityMap{<:StokesParams}; xdim=nothing, ydim=nothing)
-    return Makie.convert_arguments(P, stokes(img, :I); xdim, ydim)
-end
 
 
 function DDM.axis_attributes(::Type{P}, dd::IntensityMap; xdim, ydim) where P <: Union{Heatmap, Image, Surface, Contour, Contourf, Contour3d, Spy}
