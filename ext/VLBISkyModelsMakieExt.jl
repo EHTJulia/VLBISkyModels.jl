@@ -27,21 +27,44 @@ function Makie.expand_dimensions(::NoConversion, img::SpatialIntensityMap)
     return (img,)
 end
 
+fun
+
 # function Makie.expand_dimensions(::ImageLike, img::SpatialIntensityMap)
 #     (; X, Y) = img
 #     rX, rY = ((X, Y))
 #     return first(rX) .. last(rX), first(rY) .. last(rY), parent(img)
 # end
 
-# function Makie.convert_arguments(::CellGrid, x, y, img::AbstractMatrix{<:StokesParams})
-#     return x, y, stokes(img, :I)
-# end
-# function Makie.convert_arguments(::VertexGrid, x, y, img::AbstractMatrix{<:StokesParams})
-#     return x, y, stokes(img, :I)
-# end
-# function Makie.convert_arguments(::ImageLike, x, y, img::AbstractMatrix{<:StokesParams})
-#     return x, y, stokes(img, :I)
-# end
+function Makie.convert_arguments(::CellGrid, img::IntensityMap{<:StokesParams}; kwargs...)
+    return (stokes(img, :I),)
+end
+function Makie.convert_arguments(::VertexGrid, img::IntensityMap{<:StokesParams}; kwargs...)
+    return (stokes(img, :I),)
+end
+function Makie.convert_arguments(P::Type{<:Image}, img::IntensityMap{<:StokesParams}; xdim=nothing, ydim=nothing)
+    return Makie.convert_arguments(P, stokes(img, :I); xdim, ydim)
+end
+
+function Makie.convert_arguments(P::Type{<:Image}, img::IntensityMap{<:StokesParams}; xdim=nothing, ydim=nothing)
+    return Makie.convert_arguments(P, stokes(img, :I); xdim, ydim)
+end
+
+
+function DDM.axis_attributes(::Type{P}, dd::IntensityMap; xdim, ydim) where P <: Union{Heatmap, Image, Surface, Contour, Contourf, Contour3d, Spy}
+    dims_axes = DDM.obs_f(i -> DDM.get_dimensions_of_makie_axis(i, (xdim, ydim)), dd)
+    lookup_attributes = DDM.get_axis_ticks(Makie.to_value(dims_axes))
+
+    merge(
+        lookup_attributes,
+        (;
+        xlabel = DDM.obs_f(i -> DD.label(i[1]), dims_axes),
+        ylabel = DDM.obs_f(i -> DD.label(i[2]), dims_axes),
+        title = DDM.obs_f(DD.refdims_title, dd),
+        xreversed=true
+        )
+    )
+end
+
 
 # function Makie.expand_dimensions(g::VertexGrid,
 #                                  img::SpatialIntensityMap{<:StokesParams})
@@ -55,62 +78,62 @@ end
 #     return Makie.expand_dimensions(g, imgI)
 # end
 
-function Makie.expand_dimensions(
-        g::ImageLike,
-        img::SpatialIntensityMap{<:StokesParams}
-    )
-    return img
-end
+# function Makie.expand_dimensions(
+#         g::ImageLike,
+#         img::SpatialIntensityMap{<:StokesParams}
+#     )
+#     return img
+# end
 
 const VectorDim = Union{AbstractVector, DD.Dimension}
 
-function Makie.expand_dimensions(
-        t::CellGrid, x::VectorDim, y::VectorDim,
-        m::VLBISkyModels.AbstractModel
-    )
-    img = intensitymap(m, RectiGrid((X(x), Y(y))))
-    return Makie.expand_dimensions(t, img)
-end
+# function Makie.expand_dimensions(
+#         t::CellGrid, x::VectorDim, y::VectorDim,
+#         m::VLBISkyModels.AbstractModel
+#     )
+#     img = intensitymap(m, RectiGrid((X(x), Y(y))))
+#     return Makie.expand_dimensions(t, img)
+# end
 
-function Makie.expand_dimensions(
-        t::VertexGrid, x::VectorDim, y::VectorDim,
-        m::VLBISkyModels.AbstractModel
-    )
-    img = intensitymap(m, RectiGrid((X(x), Y(y))))
-    return Makie.expand_dimensions(t, img)
-end
+# function Makie.expand_dimensions(
+#         t::VertexGrid, x::VectorDim, y::VectorDim,
+#         m::VLBISkyModels.AbstractModel
+#     )
+#     img = intensitymap(m, RectiGrid((X(x), Y(y))))
+#     return Makie.expand_dimensions(t, img)
+# end
 
-function Makie.expand_dimensions(
-        t::ImageLike, x::VectorDim, y::VectorDim,
-        m::VLBISkyModels.AbstractModel
-    )
-    img = intensitymap(m, RectiGrid((X(x), Y(y))))
-    return Makie.expand_dimensions(t, img)
-end
+# function Makie.expand_dimensions(
+#         t::ImageLike, x::VectorDim, y::VectorDim,
+#         m::VLBISkyModels.AbstractModel
+#     )
+#     img = intensitymap(m, RectiGrid((X(x), Y(y))))
+#     return Makie.expand_dimensions(t, img)
+# end
 
-function Makie.expand_dimensions(
-        t::CellGrid, g::VLBISkyModels.AbstractRectiGrid,
-        m::VLBISkyModels.AbstractModel
-    )
-    img = intensitymap(m, g)
-    return Makie.expand_dimensions(t, img)
-end
+# function Makie.expand_dimensions(
+#         t::CellGrid, g::VLBISkyModels.AbstractRectiGrid,
+#         m::VLBISkyModels.AbstractModel
+#     )
+#     img = intensitymap(m, g)
+#     return Makie.expand_dimensions(t, img)
+# end
 
-function Makie.expand_dimensions(
-        t::VertexGrid, g::VLBISkyModels.AbstractRectiGrid,
-        m::VLBISkyModels.AbstractModel
-    )
-    img = intensitymap(m, g)
-    return Makie.expand_dimensions(t, img)
-end
+# function Makie.expand_dimensions(
+#         t::VertexGrid, g::VLBISkyModels.AbstractRectiGrid,
+#         m::VLBISkyModels.AbstractModel
+#     )
+#     img = intensitymap(m, g)
+#     return Makie.expand_dimensions(t, img)
+# end
 
-function Makie.expand_dimensions(
-        t::ImageLike, g::VLBISkyModels.AbstractRectiGrid,
-        m::VLBISkyModels.AbstractModel
-    )
-    img = intensitymap(m, g)
-    return Makie.expand_dimensions(t, img)
-end
+# function Makie.expand_dimensions(
+#         t::ImageLike, g::VLBISkyModels.AbstractRectiGrid,
+#         m::VLBISkyModels.AbstractModel
+#     )
+#     img = intensitymap(m, g)
+#     return Makie.expand_dimensions(t, img)
+# end
 
 function polintensity(s::StokesParams)
     return sqrt(s.Q^2 + s.U^2 + s.V^2)
@@ -219,7 +242,7 @@ end
 # end
 
 function Makie.convert_arguments(::Type{<:PolImage}, img::IntensityMap)
-    return (IntensityMap(img),)
+    return (img,)
 end
 
 # function Makie.plottype(::SpatialIntensityMap{<:StokesParams})
@@ -527,42 +550,42 @@ end
 
 # Horrible hack until I can figure out how to prevent DD from taking over
 # my recipes
-function DDM._surface2(A::IntensityMap, plotfunc, attributes, replacements)
-    # Array/Dimension manipulation
-    A1 = DDM._prepare_for_makie(A, replacements)
-    lookup_attributes, newdims = DDM._split_attributes(A1)
-    A2 = DDM._restore_dim_names(set(A1, map(Pair, newdims, newdims)...), A, replacements)
-    P = Makie.Plot{plotfunc}
-    PTrait = Makie.conversion_trait(P, A2)
-    # We define conversions by trait for all of the explicitly overridden functions,
-    # so we can just use the trait here.
-    args = Makie.convert_arguments(PTrait, A2)
+# function DDM._surface2(A::IntensityMap, plotfunc, attributes, replacements)
+#     # Array/Dimension manipulation
+#     A1 = DDM._prepare_for_makie(A, replacements)
+#     lookup_attributes, newdims = DDM._split_attributes(A1)
+#     A2 = DDM._restore_dim_names(set(A1, map(Pair, newdims, newdims)...), A, replacements)
+#     P = Makie.Plot{plotfunc}
+#     PTrait = Makie.conversion_trait(P, A2)
+#     # We define conversions by trait for all of the explicitly overridden functions,
+#     # so we can just use the trait here.
+#     args = Makie.convert_arguments(PTrait, A2)
 
-    # if status === true
-    #     args = converted
-    # else
-    #     args = Makie.convert_arguments(P, converted...)
-    # end
+#     # if status === true
+#     #     args = converted
+#     # else
+#     #     args = Makie.convert_arguments(P, converted...)
+#     # end
 
-    # Plot attribute generation
-    dx, dy = DD.dims(A2)
-    user_attributes = Makie.Attributes(;
-        transformation = (;
-            rotation = -ComradeBase.posang(axisdims(A)),
-        ),
-        interpolate = false,
-        attributes...
-    )
-    plot_attributes = Makie.Attributes(;
-        axis = (;
-            xlabel = DD.label(dx),
-            ylabel = DD.label(dy),
-            title = DD.refdims_title(A),
-        ),
-    )
-    merged_attributes = merge(user_attributes, plot_attributes, lookup_attributes)
+#     # Plot attribute generation
+#     dx, dy = DD.dims(A2)
+#     user_attributes = Makie.Attributes(;
+#         transformation = (;
+#             rotation = -ComradeBase.posang(axisdims(A)),
+#         ),
+#         interpolate = false,
+#         attributes...
+#     )
+#     plot_attributes = Makie.Attributes(;
+#         axis = (;
+#             xlabel = DD.label(dx),
+#             ylabel = DD.label(dy),
+#             title = DD.refdims_title(A),
+#         ),
+#     )
+#     merged_attributes = merge(user_attributes, plot_attributes, lookup_attributes)
 
-    return A1, A2, args, merged_attributes
-end
+#     return A1, A2, args, merged_attributes
+# end
 
 end
