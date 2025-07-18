@@ -18,46 +18,53 @@ import VLBISkyModels: polimage, polimage!, imageviz
 #     return (img,)
 # end
 
-function Makie.convert_arguments(P::Type{Image}, img::IntensityMap{<:StokesParams}; 
-                                xdim=nothing, ydim=nothing) 
+function Makie.convert_arguments(
+        P::Type{Image}, img::IntensityMap{<:StokesParams};
+        xdim = nothing, ydim = nothing
+    )
     return Makie.convert_arguments(P, DimArray(stokes(img, :I)); xdim, ydim)
 end
 
-function Makie.convert_arguments(P::Type{Heatmap}, img::IntensityMap{<:StokesParams}; 
-                                xdim=nothing, ydim=nothing) 
+function Makie.convert_arguments(
+        P::Type{Heatmap}, img::IntensityMap{<:StokesParams};
+        xdim = nothing, ydim = nothing
+    )
     return Makie.convert_arguments(P, DimArray(stokes(img, :I)); xdim, ydim)
 end
 
-function Makie.convert_arguments(P::Type{Contour}, img::IntensityMap{<:StokesParams}; 
-                                xdim=nothing, ydim=nothing) 
+function Makie.convert_arguments(
+        P::Type{Contour}, img::IntensityMap{<:StokesParams};
+        xdim = nothing, ydim = nothing
+    )
     return Makie.convert_arguments(P, DimArray(stokes(img, :I)); xdim, ydim)
 end
 
-function Makie.convert_arguments(P::Type{Contourf}, img::IntensityMap{<:StokesParams}; 
-                                xdim=nothing, ydim=nothing) 
+function Makie.convert_arguments(
+        P::Type{Contourf}, img::IntensityMap{<:StokesParams};
+        xdim = nothing, ydim = nothing
+    )
     return Makie.convert_arguments(P, DimArray(stokes(img, :I)); xdim, ydim)
 end
 
-function Makie.convert_arguments(P::Type{Spy}, img::IntensityMap{<:StokesParams}; 
-                                xdim=nothing, ydim=nothing) 
+function Makie.convert_arguments(
+        P::Type{Spy}, img::IntensityMap{<:StokesParams};
+        xdim = nothing, ydim = nothing
+    )
     return Makie.convert_arguments(P, DimArray(stokes(img, :I)); xdim, ydim)
 end
 
 
-
-
-
-function DDM.axis_attributes(::Type{P}, dd::IntensityMap; xdim, ydim) where P <: Union{Heatmap, Image, Surface, Contour, Contourf, Contour3d, Spy}
+function DDM.axis_attributes(::Type{P}, dd::IntensityMap; xdim, ydim) where {P <: Union{Heatmap, Image, Surface, Contour, Contourf, Contour3d, Spy}}
     dims_axes = DDM.obs_f(i -> DDM.get_dimensions_of_makie_axis(i, (xdim, ydim)), dd)
     lookup_attributes = DDM.get_axis_ticks(Makie.to_value(dims_axes))
 
-    merge(
+    return merge(
         lookup_attributes,
         (;
-        xlabel = DDM.obs_f(i -> DD.label(i[1]), dims_axes),
-        ylabel = DDM.obs_f(i -> DD.label(i[2]), dims_axes),
-        title = DDM.obs_f(DD.refdims_title, dd),
-        xreversed=true
+            xlabel = DDM.obs_f(i -> DD.label(i[1]), dims_axes),
+            ylabel = DDM.obs_f(i -> DD.label(i[2]), dims_axes),
+            title = DDM.obs_f(DD.refdims_title, dd),
+            xreversed = true,
         )
     )
 end
@@ -84,7 +91,7 @@ function Makie.convert_arguments(
         t::Union{ImageLike, CellGrid}, X, Y,
         m::VLBISkyModels.AbstractModel
     )
-    g = RectiGrid((;X, Y))
+    g = RectiGrid((; X, Y))
     img = intensitymap(m, g)
     return convert_arguments(t, img)
 end
@@ -92,7 +99,7 @@ end
 function Makie.convert_arguments(
         t::Type{T}, g::VLBISkyModels.AbstractRectiGrid,
         m::VLBISkyModels.AbstractModel
-    ) where {T<:Union{Spy, Contour, Contourf}}
+    ) where {T <: Union{Spy, Contour, Contourf}}
     img = intensitymap(m, g)
     return convert_arguments(t, img)
 end
@@ -100,13 +107,11 @@ end
 function Makie.convert_arguments(
         t::Type{T}, X, Y,
         m::VLBISkyModels.AbstractModel
-    ) where {T<:Union{Spy, Contour, Contourf}}
-    g = RectiGrid((;X, Y))
+    ) where {T <: Union{Spy, Contour, Contourf}}
+    g = RectiGrid((; X, Y))
     img = intensitymap(m, g)
     return convert_arguments(t, img)
 end
-
-
 
 
 # function Makie.expand_dimensions(
@@ -251,11 +256,12 @@ function Makie.plot!(plot::PolImage{<:Tuple{<:IntensityMap{<:StokesParams}}})
     pa = @lift -ComradeBase.posang(axisdims($img))
 
 
+    map!(
+        plot.attributes,
+        [:img, :nvec, :min_frac, :min_pol_frac, :length_norm, :plot_total, :adjust_length],
+        [:p, :len, :col, :rot, :lenmul]
+    ) do img, nvec, Icut, pcut, length_norm, ptot, adjust_length
 
-    map!(plot.attributes, 
-         [:img, :nvec, :min_frac, :min_pol_frac, :length_norm, :plot_total, :adjust_length], 
-         [:p, :len, :col, :rot, :lenmul]) do img, nvec, Icut, pcut, length_norm, ptot, adjust_length
-        
         X = img.X
         Y = img.Y
         Xvec = range(X[begin + 1], X[end - 1]; length = nvec)
@@ -303,7 +309,7 @@ function Makie.plot!(plot::PolImage{<:Tuple{<:IntensityMap{<:StokesParams}}})
             end
         end
 
-        if (!adjust_length && length(len) > 0) 
+        if (!adjust_length && length(len) > 0)
             len2 = maximum(len)
         else
             len2 = len
@@ -353,11 +359,10 @@ function Makie.plot!(plot::PolImage{<:Tuple{<:IntensityMap{<:StokesParams}}})
     # end
 
     hm = heatmap!(
-        plot, plot.attributes, plot.imgI;
+        plot, plot.attributes, plot.imgI
     )
 
     rotate!(hm, pa[])
-
 
 
     scatter!(
@@ -451,10 +456,10 @@ function _imgviz!(
     Colorbar(fig[1, 2], hm; label = "Brightness (Jy/μas²)", tellheight = true)
     colgap!(fig.layout, 15)
 
-    x1, y1 = rotmat(axisdims(img))*VLBISkyModels.SVector(last(img.X), first(img.Y))
-    x2, y2 = rotmat(axisdims(img))*VLBISkyModels.SVector(first(img.X), last(img.Y))
-    x3, y3 = rotmat(axisdims(img))*VLBISkyModels.SVector(last(img.X), last(img.Y))
-    x4, y4 = rotmat(axisdims(img))*VLBISkyModels.SVector(first(img.X), first(img.Y))
+    x1, y1 = rotmat(axisdims(img)) * VLBISkyModels.SVector(last(img.X), first(img.Y))
+    x2, y2 = rotmat(axisdims(img)) * VLBISkyModels.SVector(first(img.X), last(img.Y))
+    x3, y3 = rotmat(axisdims(img)) * VLBISkyModels.SVector(last(img.X), last(img.Y))
+    x4, y4 = rotmat(axisdims(img)) * VLBISkyModels.SVector(first(img.X), first(img.Y))
 
     xl = min(x1, x2, x3, x4)
     xu = max(x1, x2, x3, x4)
@@ -505,10 +510,10 @@ function _imgviz!(
     rowgap!(fig.layout, 15)
     trim!(fig.layout)
 
-    x1, y1 = rotmat(axisdims(img))*VLBISkyModels.SVector(last(img.X), first(img.Y))
-    x2, y2 = rotmat(axisdims(img))*VLBISkyModels.SVector(first(img.X), last(img.Y))
-    x3, y3 = rotmat(axisdims(img))*VLBISkyModels.SVector(last(img.X), last(img.Y))
-    x4, y4 = rotmat(axisdims(img))*VLBISkyModels.SVector(first(img.X), first(img.Y))
+    x1, y1 = rotmat(axisdims(img)) * VLBISkyModels.SVector(last(img.X), first(img.Y))
+    x2, y2 = rotmat(axisdims(img)) * VLBISkyModels.SVector(first(img.X), last(img.Y))
+    x3, y3 = rotmat(axisdims(img)) * VLBISkyModels.SVector(last(img.X), last(img.Y))
+    x4, y4 = rotmat(axisdims(img)) * VLBISkyModels.SVector(first(img.X), first(img.Y))
 
     xl = min(x1, x2, x3, x4)
     xu = max(x1, x2, x3, x4)
