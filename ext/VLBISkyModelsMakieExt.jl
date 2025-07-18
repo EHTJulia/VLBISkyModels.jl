@@ -22,10 +22,10 @@ import VLBISkyModels: polimage, polimage!, imageviz
 #     return (X), (Y), parent(img)
 # end
 
-# function Makie.expand_dimensions(::NoConversion, img::SpatialIntensityMap)
-#     # (; X, Y) = img
-#     return (img,)
-# end
+function Makie.expand_dimensions(::NoConversion, img::SpatialIntensityMap)
+    # (; X, Y) = img
+    return (img,)
+end
 
 # function Makie.expand_dimensions(::ImageLike, img::SpatialIntensityMap)
 #     (; X, Y) = img
@@ -33,15 +33,33 @@ import VLBISkyModels: polimage, polimage!, imageviz
 #     return first(rX) .. last(rX), first(rY) .. last(rY), parent(img)
 # end
 
-function Makie.convert_arguments(::CellGrid, img::IntensityMap{<:StokesParams}; kwargs...)
-    return (stokes(img, :I),)
+# function Makie.convert_arguments(::CellGrid, img::IntensityMap{<:StokesParams}; kwargs...)
+#     return (stokes(img, :I),)
+# end
+# function Makie.convert_arguments(::VertexGrid, img::IntensityMap{<:StokesParams}; kwargs...)
+#     return (stokes(img, :I),)
+# end
+function Makie.convert_arguments(P::Type{Image}, img::IntensityMap{<:StokesParams}; 
+                                xdim=nothing, ydim=nothing) 
+    return Makie.convert_arguments(P, DimArray(stokes(img, :I)); xdim, ydim)
 end
-function Makie.convert_arguments(::VertexGrid, img::IntensityMap{<:StokesParams}; kwargs...)
-    return (stokes(img, :I),)
+
+function Makie.convert_arguments(P::Type{Heatmap}, img::IntensityMap{<:StokesParams}; 
+                                xdim=nothing, ydim=nothing) 
+    return Makie.convert_arguments(P, DimArray(stokes(img, :I)); xdim, ydim)
 end
-function Makie.convert_arguments(P::ImageLike, img::IntensityMap{<:StokesParams}; xdim=nothing, ydim=nothing)
-    return Makie.convert_arguments(P, stokes(img, :I); xdim, ydim)
+
+function Makie.convert_arguments(P::Type{Contour}, img::IntensityMap{<:StokesParams}; 
+                                xdim=nothing, ydim=nothing) 
+    return Makie.convert_arguments(P, DimArray(stokes(img, :I)); xdim, ydim)
 end
+
+function Makie.convert_arguments(P::Type{Contourf}, img::IntensityMap{<:StokesParams}; 
+                                xdim=nothing, ydim=nothing) 
+    return Makie.convert_arguments(P, DimArray(stokes(img, :I)); xdim, ydim)
+end
+
+
 
 
 
@@ -150,10 +168,6 @@ Plot a polarized intensity map using the image `img`.
 
 The plot follows the conventions from [EHTC M87 Paper VII](https://iopscience.iop.org/article/10.3847/2041-8213/abe71d).
 
-The stokes `I` image will be plotted with the attributes
-  - `colormap`
-  - `colorrange`
-  - `alpha`
   - `colorscale`
 
 The polarized image will consist of a set. The attribute `plot_total` changes what polarized
@@ -176,26 +190,6 @@ sign of Stokes `V`.
    i.e. `√(Q² + U²)` times the `length_norm`.
  - The color of the tick is given by the fractional linear polarization.
 
-## Attributes
-  - `colormap`: The colormap of the stokes `I` image. The default is `:bone`.
-  - `colorrange`: The color range of the stokes `I` image. The default is `(0, maximum(stokes(img, :I)))`
-  - `pcolorrange:` The color range for the polarized image
-  - `pcolormap`: The colormap used for fractional total/linear polarization markers.
-  - `nvec`: The number of polarization vectors to plot
-  - `min_frac`: Any markers with `I < min_frac*maximum(I))` will not be plotted
-  - `min_pol_frac`: Any markers with `P < min_frac*maximum(P))` where `P` is the total/linear polarization flux
-                will not be plotted.
-  - `length_norm`: Specifies the normalization used for the ticks. The default is that the pixel
-                    with the largest polarization intensity will have a tick length = 10x the
-                    pixel separation. For an image with a maximum polarized intensity of 10Jy/μas²
-                    and pixel spacing of 1μas the marker length will be equal to 10μas.
-  - `plot_total`: If true plot the total polarization. If false only plot the linear polarization.
-  - `adjust_length`: If true the tick lengths will be adjusted according to the total polarized flux.
-                     If false the tick length is fixed and the size can be adjusted with `length_norm`.
-
-## Generic Attributes
-$(Makie.ATTRIBUTES)
-
 
 !!! warning
     The polarized plotting is intrinsically defined using astronomer/EHT polarization conventions
@@ -203,24 +197,25 @@ $(Makie.ATTRIBUTES)
     you need to have `xreversed=true` when defining your axis.
 
 """
-Makie.@recipe(PolImage, img) do scene
-    return Makie.Attributes(;
-        colormap = :grayC,
-        colorrange = Makie.automatic,
-        pcolorrange = Makie.automatic,
-        pcolormap = Makie.automatic,
-        colorscale = identity,
-        alpha = 1.0,
-        nan_color = Makie.RGBAf(0, 0, 0, 0),
-        nvec = 30,
-        min_frac = 0.1,
-        min_pol_frac = 0.1,
-        length_norm = 1.0,
-        adjust_length = false,
-        lowclip = Makie.automatic,
-        highclip = Makie.automatic,
-        plot_total = true
-    )
+Makie.@recipe PolImage (img::IntensityMap{<:StokesParams},) begin
+    "Sets the color range of the polarization"
+    pcolorrange = Makie.automatic
+    "Polarized color map"
+    pcolormap = Makie.automatic
+    "Number of polarization vectors to plot"
+    nvec = 30
+    "Minimal flux fraction to show ticks"
+    min_frac = 0.1
+    "Minimal polarization fraction to show ticks"
+    min_pol_frac = 0.1
+    "Renormalize the tick length"
+    length_norm = 1.0
+    "Adjust the length of the ticks"
+    adjust_length = false
+    "If true plot the total polarization, if false only plot the linear polarization"
+    plot_total = true
+    Makie.mixin_generic_plot_attributes()...
+    Makie.mixin_colormap_attributes()...
 end
 
 # # We need this because DimensionalData tries to be too dang smart
@@ -272,38 +267,18 @@ function Makie.plot!(plot::PolImage{<:Tuple{<:IntensityMap{<:StokesParams}}})
 
     img = plot[1]
 
-    imgI = lift(img) do img
-        return parent(stokes(img, :I))
+    map!(plot.attributes, [:img], :imgI) do img
+        return stokes(img, :I)
     end
-
-    Xo = @lift $img.X
-    Yo = @lift $img.Y
 
     pa = @lift -ComradeBase.posang(axisdims($img))
 
-    # plot the stokes I image
-    # cr = lift(plot.colorrange, imgI) do crange, imgI
-    #     (crange == Makie.automatic) && return (0.0, maximum(imgI)*1.01)
-    #     return crange
-    # end
-    hm = heatmap!(
-        plot, Xo, Yo, imgI;
-        colormap = plot.colormap,
-        colorscale = plot.colorscale,
-        colorrange = plot.colorrange,
-        alpha = plot.alpha,
-        nan_color = plot.nan_color,
-        lowclip = plot.lowclip,
-    )
 
-    rotate!(hm, pa[])
 
-    points = lift(
-        img, plot.nvec,
-        plot.min_frac, plot.min_pol_frac,
-        plot.length_norm,
-        plot.plot_total
-    ) do img, nvec, Icut, pcut, length_norm, ptot
+    map!(plot.attributes, 
+         [:img, :nvec, :min_frac, :min_pol_frac, :length_norm, :plot_total, :adjust_length], 
+         [:p, :len, :col, :rot, :lenmul]) do img, nvec, Icut, pcut, length_norm, ptot, adjust_length
+        
         X = img.X
         Y = img.Y
         Xvec = range(X[begin + 1], X[end - 1]; length = nvec)
@@ -351,17 +326,26 @@ function Makie.plot!(plot::PolImage{<:Tuple{<:IntensityMap{<:StokesParams}}})
             end
         end
 
-        return p, len, col, rot, lenmul
+        if (!adjust_length && length(len) > 0) 
+            len2 = maximum(len)
+        else
+            len2 = len
+        end
+
+
+        return p, len2, col, rot, lenmul
     end
 
-    p = lift(x -> getindex(x, 1), points)
-    len = lift(x -> getindex(x, 2), points)
-    col = lift(x -> getindex(x, 3), points)
-    rot = lift(x -> -getindex(x, 4), points)
-    lenmul = lift(x -> getindex(x, 5), points)
+    # p = lift(x -> getindex(x, 1), points)
+    # len = lift(x -> getindex(x, 2), points)
+    # col = lift(x -> getindex(x, 3), points)
+    # rot = lift(x -> -getindex(x, 4), points)
+    # lenmul = lift(x -> getindex(x, 5), points)
 
-    pc = lift(plot.pcolorrange, plot.plot_total, img) do pc, pt, img
-        (pc != Makie.automatic) && return pc
+    map!(plot.attributes, [:pcolorrange, :plot_total, :img], :pc) do pcr, pt, img
+        if pcr != Makie.automatic
+            return pcr
+        end
         if pt
             maxp = min(maximum(x -> polintensity(x) / (x.I + eps()), img), 0.9090909)
             return (-1.01 * maxp, 1.01 * maxp)
@@ -370,13 +354,15 @@ function Makie.plot!(plot::PolImage{<:Tuple{<:IntensityMap{<:StokesParams}}})
             return (0.0, 1.01 * maxp)
         end
     end
-    m = lift(plot.plot_total) do pt
-        pt && return '∘'
-        return '⋅'
+
+    map!(plot.attributes, [:plot_total], :mrk) do pt
+        pt ? '∘' : '⋅'
     end
 
-    pcm = lift(plot.pcolormap, plot.plot_total) do pc, pt
-        (pc != Makie.automatic) && return pc
+    map!(plot.attributes, [:pcolormap, :plot_total], :pcm) do pcm, pt
+        if pcm != Makie.automatic
+            return pcm
+        end
         if pt
             return Makie.Reverse(:RdBu)
         else
@@ -384,20 +370,30 @@ function Makie.plot!(plot::PolImage{<:Tuple{<:IntensityMap{<:StokesParams}}})
         end
     end
 
-    len2 = lift(plot.adjust_length, len, plot.length_norm) do al, l, lm
-        (!al && length(l) > 0) && return maximum(l)
-        return l
-    end
-    scatter!(
-        plot, p;
-        marker = m,
-        markersize = len2,
-        markerspace = :data,
-        rotation = rot,
-        colorrange = pc,
-        color = col,
-        colormap = pcm,
+    # len2 = lift(plot.adjust_length, len, plot.length_norm) do al, l, lm
+    #     (!al && length(l) > 0) && return maximum(l)
+    #     return l
+    # end
+
+    hm = heatmap!(
+        plot, plot.attributes, plot.imgI;
     )
+
+    rotate!(hm, pa[])
+
+
+
+    scatter!(
+        plot, plot.attributes, plot.p;
+        marker = plot.mrk,
+        markersize = plot.len,
+        markerspace = :data,
+        rotation = plot.rot,
+        colorrange = plot.pc,
+        color = plot.col,
+        colormap = plot.pcm,
+    )
+
 
     return plot
 end
@@ -478,9 +474,19 @@ function _imgviz!(
     Colorbar(fig[1, 2], hm; label = "Brightness (Jy/μas²)", tellheight = true)
     colgap!(fig.layout, 15)
 
+    x1, y1 = rotmat(axisdims(img))*VLBISkyModels.SVector(last(img.X), first(img.Y))
+    x2, y2 = rotmat(axisdims(img))*VLBISkyModels.SVector(first(img.X), last(img.Y))
+    x3, y3 = rotmat(axisdims(img))*VLBISkyModels.SVector(last(img.X), last(img.Y))
+    x4, y4 = rotmat(axisdims(img))*VLBISkyModels.SVector(first(img.X), first(img.Y))
+
+    xl = min(x1, x2, x3, x4)
+    xu = max(x1, x2, x3, x4)
+    yl = min(y1, y2, y3, y4)
+    yu = max(y1, y2, y3, y4)
+
+    xlims!(ax, (xl, xu))
+    ylims!(ax, (yl, yu))
     trim!(fig.layout)
-    # xlims!(ax, (last(img.X)), (first(img.X)))
-    # ylims!(ax, (first(img.Y)), (last(img.Y)))
 
     return Makie.FigureAxisPlot(fig, ax, hm)
 end
@@ -521,8 +527,19 @@ function _imgviz!(
     colgap!(fig.layout, 15)
     rowgap!(fig.layout, 15)
     trim!(fig.layout)
-    # xlims!(ax, (last(img.X)), (first(img.X)))
-    # ylims!(ax, (first(img.Y)), (last(img.Y)))
+
+    x1, y1 = rotmat(axisdims(img))*VLBISkyModels.SVector(last(img.X), first(img.Y))
+    x2, y2 = rotmat(axisdims(img))*VLBISkyModels.SVector(first(img.X), last(img.Y))
+    x3, y3 = rotmat(axisdims(img))*VLBISkyModels.SVector(last(img.X), last(img.Y))
+    x4, y4 = rotmat(axisdims(img))*VLBISkyModels.SVector(first(img.X), first(img.Y))
+
+    xl = min(x1, x2, x3, x4)
+    xu = max(x1, x2, x3, x4)
+    yl = min(y1, y2, y3, y4)
+    yu = max(y1, y2, y3, y4)
+
+    xlims!(ax, (xl, xu))
+    ylims!(ax, (yl, yu))
     return Makie.FigureAxisPlot(fig, ax, hm)
 end
 
