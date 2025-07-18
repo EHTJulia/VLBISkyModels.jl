@@ -22,7 +22,7 @@ foreach(fn -> Literate.markdown(fn, OUTDIR; documenter = true), SOURCE_FILES)
 
 Pkg.activate(@__DIR__)
 makedocs(;
-    modules = [VLBISkyModels, ComradeBase, PolarizedTypes],
+    modules = [VLBISkyModels, ComradeBase, PolarizedTypes, Base.get_extension(VLBISkyModels, :VLBISkyModelsMakieExt)],
     authors = "Paul Tiede <ptiede91@gmail.com> and contributors",
     # repo="https://github.com/EHTJulia/VLBISkyModels.jl/blob/{commit}{path}#{line}",
     sitename = "VLBISkyModels.jl",
