@@ -181,25 +181,6 @@ Makie.@recipe PolImage (img::IntensityMap{<:StokesParams},) begin
     Makie.mixin_colormap_attributes()...
 end
 
-# # We need this because DimensionalData tries to be too dang smart
-# function Makie.convert_arguments(
-#         ::Type{<:PolImage}, img::IntensityMap{<:StokesParams, 2},
-#     )
-#     return (img,)
-# end
-
-# function Makie.MakieCore.conversion_trait(P::Type{<:PolImage})
-#     # @info "HERE"
-#     return P
-# end
-
-# function Makie.convert_arguments(::Type{<:PolImage}, img::IntensityMap)
-#     return (img,)
-# end
-
-# function Makie.plottype(::SpatialIntensityMap{<:StokesParams})
-#     return PolImage{<:Tuple{<:IntensityMap{<:StokesParams}}}
-# end
 
 function polparams(x, y, s, xmin, ptot)
     ptot && return ellipse_params(x, y, s, xmin)
@@ -522,44 +503,5 @@ function add_scalebar!(ax, img, scale_length, color)
     )
 end
 
-# Horrible hack until I can figure out how to prevent DD from taking over
-# my recipes
-# function DDM._surface2(A::IntensityMap, plotfunc, attributes, replacements)
-#     # Array/Dimension manipulation
-#     A1 = DDM._prepare_for_makie(A, replacements)
-#     lookup_attributes, newdims = DDM._split_attributes(A1)
-#     A2 = DDM._restore_dim_names(set(A1, map(Pair, newdims, newdims)...), A, replacements)
-#     P = Makie.Plot{plotfunc}
-#     PTrait = Makie.conversion_trait(P, A2)
-#     # We define conversions by trait for all of the explicitly overridden functions,
-#     # so we can just use the trait here.
-#     args = Makie.convert_arguments(PTrait, A2)
-
-#     # if status === true
-#     #     args = converted
-#     # else
-#     #     args = Makie.convert_arguments(P, converted...)
-#     # end
-
-#     # Plot attribute generation
-#     dx, dy = DD.dims(A2)
-#     user_attributes = Makie.Attributes(;
-#         transformation = (;
-#             rotation = -ComradeBase.posang(axisdims(A)),
-#         ),
-#         interpolate = false,
-#         attributes...
-#     )
-#     plot_attributes = Makie.Attributes(;
-#         axis = (;
-#             xlabel = DD.label(dx),
-#             ylabel = DD.label(dy),
-#             title = DD.refdims_title(A),
-#         ),
-#     )
-#     merged_attributes = merge(user_attributes, plot_attributes, lookup_attributes)
-
-#     return A1, A2, args, merged_attributes
-# end
 
 end
