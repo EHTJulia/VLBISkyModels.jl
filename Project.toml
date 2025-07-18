@@ -32,11 +32,13 @@ StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
 StructArrays = "09ab397b-f2b6-538f-b94a-2f83cf4a842a"
 
 [weakdeps]
+CUDA = "052768ef-5323-5732-b1bb-66c8b64840ba"
 FINUFFT = "d8beea63-0952-562e-9c6a-8e8ef7364055"
 Makie = "ee78f7c6-11fb-53f2-987a-cfe4a2b5a57a"
 
 [extensions]
 VLBISkyModelsFINUFFT = ["FINUFFT"]
+VLBISkyModelsCUFINUFFT = ["FINUFFT", "CUDA"]
 VLBISkyModelsMakieExt = ["Makie", "DimensionalData"]
 
 [compat]
@@ -45,6 +47,7 @@ Accessors = "0.1"
 ArgCheck = "2"
 ChainRulesCore = "1"
 ComradeBase = "^0.9.3"
+CUDA = "5"
 DelimitedFiles = "1"
 DimensionalData = "0.27, 0.28, 0.29.0 - 0.29.18"
 DocStringExtensions = "0.6,0.7,0.8,0.9"
@@ -71,9 +74,10 @@ StructArrays = "0.6, 0.7"
 julia = "1.9"
 
 [extras]
+CUDA = "052768ef-5323-5732-b1bb-66c8b64840ba"
 FINUFFT = "d8beea63-0952-562e-9c6a-8e8ef7364055"
 Makie = "ee78f7c6-11fb-53f2-987a-cfe4a2b5a57a"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
 [targets]
-test = ["Test", "FINUFFT", "Makie"]
+test = ["Test", "FINUFFT", "Makie", "CUDA"]
