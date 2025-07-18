@@ -14,10 +14,6 @@ import VLBISkyModels: polimage, polimage!, imageviz
 
 Makie.convert_single_argument(m::ComradeBase.UnstructuredMap) = parent(m)
 
-# function Makie.expand_dimensions(::NoConversion, img::SpatialIntensityMap)
-#     # (; X, Y) = img
-#     return (img,)
-# end
 
 function Makie.convert_arguments(
         P::Type{Image}, img::IntensityMap{<:StokesParams};
@@ -115,22 +111,6 @@ function Makie.convert_arguments(
 end
 
 
-# function Makie.expand_dimensions(
-#         t::VertexGrid, g::VLBISkyModels.AbstractRectiGrid,
-#         m::VLBISkyModels.AbstractModel
-#     )
-#     img = intensitymap(m, g)
-#     return Makie.expand_dimensions(t, img)
-# end
-
-# function Makie.expand_dimensions(
-#         t::ImageLike, g::VLBISkyModels.AbstractRectiGrid,
-#         m::VLBISkyModels.AbstractModel
-#     )
-#     img = intensitymap(m, g)
-#     return Makie.expand_dimensions(t, img)
-# end
-
 function polintensity(s::StokesParams)
     return sqrt(s.Q^2 + s.U^2 + s.V^2)
 end
@@ -202,21 +182,20 @@ Makie.@recipe PolImage (img::IntensityMap{<:StokesParams},) begin
 end
 
 # # We need this because DimensionalData tries to be too dang smart
-function Makie.convert_arguments(
-        ::Type{<:PolImage}, img::IntensityMap{<:StokesParams, 2},
-        args...
-    )
-    return (img,)
-end
+# function Makie.convert_arguments(
+#         ::Type{<:PolImage}, img::IntensityMap{<:StokesParams, 2},
+#     )
+#     return (img,)
+# end
 
 # function Makie.MakieCore.conversion_trait(P::Type{<:PolImage})
 #     # @info "HERE"
 #     return P
 # end
 
-function Makie.convert_arguments(::Type{<:PolImage}, img::IntensityMap)
-    return (img,)
-end
+# function Makie.convert_arguments(::Type{<:PolImage}, img::IntensityMap)
+#     return (img,)
+# end
 
 # function Makie.plottype(::SpatialIntensityMap{<:StokesParams})
 #     return PolImage{<:Tuple{<:IntensityMap{<:StokesParams}}}
