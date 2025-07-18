@@ -12,6 +12,7 @@ const DDM = Base.get_extension(DD, :DimensionalDataMakie)
 
 import VLBISkyModels: polimage, polimage!, imageviz
 
+Makie.convert_single_argument(m::ComradeBase.UnstructuredMap) = parent(m)
 
 # function Makie.expand_dimensions(::NoConversion, img::SpatialIntensityMap)
 #     # (; X, Y) = img
