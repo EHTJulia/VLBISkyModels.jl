@@ -139,7 +139,7 @@ For more docstrings on how to evaluate models see [Base API](@ref).
 VLBISkyModels.imageviz
 VLBISkyModels.polimage
 VLBISkyModels.polimage!
-VLBISkyModels.PolImage
+VLBISkyModelsMakieExt.PolImage
 ```
 
 ### Misc.
