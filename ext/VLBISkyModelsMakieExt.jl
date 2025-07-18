@@ -12,33 +12,12 @@ const DDM = Base.get_extension(DD, :DimensionalDataMakie)
 
 import VLBISkyModels: polimage, polimage!, imageviz
 
-# function Makie.convert_arguments(::GridBased, img::SpatialIntensityMap)
-#     (;X, Y) = img
-#     return (X), (Y), parent(img)
+
+# function Makie.expand_dimensions(::NoConversion, img::SpatialIntensityMap)
+#     # (; X, Y) = img
+#     return (img,)
 # end
 
-# function Makie.expand_dimensions(::CellGrid, img::SpatialIntensityMap)
-#     (; X, Y) = img
-#     return (X), (Y), parent(img)
-# end
-
-function Makie.expand_dimensions(::NoConversion, img::SpatialIntensityMap)
-    # (; X, Y) = img
-    return (img,)
-end
-
-# function Makie.expand_dimensions(::ImageLike, img::SpatialIntensityMap)
-#     (; X, Y) = img
-#     rX, rY = ((X, Y))
-#     return first(rX) .. last(rX), first(rY) .. last(rY), parent(img)
-# end
-
-# function Makie.convert_arguments(::CellGrid, img::IntensityMap{<:StokesParams}; kwargs...)
-#     return (stokes(img, :I),)
-# end
-# function Makie.convert_arguments(::VertexGrid, img::IntensityMap{<:StokesParams}; kwargs...)
-#     return (stokes(img, :I),)
-# end
 function Makie.convert_arguments(P::Type{Image}, img::IntensityMap{<:StokesParams}; 
                                 xdim=nothing, ydim=nothing) 
     return Makie.convert_arguments(P, DimArray(stokes(img, :I)); xdim, ydim)
@@ -55,6 +34,11 @@ function Makie.convert_arguments(P::Type{Contour}, img::IntensityMap{<:StokesPar
 end
 
 function Makie.convert_arguments(P::Type{Contourf}, img::IntensityMap{<:StokesParams}; 
+                                xdim=nothing, ydim=nothing) 
+    return Makie.convert_arguments(P, DimArray(stokes(img, :I)); xdim, ydim)
+end
+
+function Makie.convert_arguments(P::Type{Spy}, img::IntensityMap{<:StokesParams}; 
                                 xdim=nothing, ydim=nothing) 
     return Makie.convert_arguments(P, DimArray(stokes(img, :I)); xdim, ydim)
 end
@@ -78,59 +62,52 @@ function DDM.axis_attributes(::Type{P}, dd::IntensityMap; xdim, ydim) where P <:
     )
 end
 
-
-# function Makie.expand_dimensions(g::VertexGrid,
-#                                  img::SpatialIntensityMap{<:StokesParams})
-#     imgI = stokes(img, :I)
-#     return Makie.expand_dimensions(g, imgI)
-# end
-
-# function Makie.expand_dimensions(g::CellGrid,
-#                                  img::SpatialIntensityMap{<:StokesParams})
-#     imgI = stokes(img, :I)
-#     return Makie.expand_dimensions(g, imgI)
-# end
-
-# function Makie.expand_dimensions(
-#         g::ImageLike,
-#         img::SpatialIntensityMap{<:StokesParams}
-#     )
-#     return img
-# end
-
 const VectorDim = Union{AbstractVector, DD.Dimension}
 
-# function Makie.expand_dimensions(
-#         t::CellGrid, x::VectorDim, y::VectorDim,
-#         m::VLBISkyModels.AbstractModel
-#     )
-#     img = intensitymap(m, RectiGrid((X(x), Y(y))))
-#     return Makie.expand_dimensions(t, img)
-# end
+function Makie.convert_arguments(
+        t::ImageLike, g::VLBISkyModels.AbstractRectiGrid,
+        m::VLBISkyModels.AbstractModel
+    )
+    img = intensitymap(m, g)
+    return convert_arguments(t, img)
+end
 
-# function Makie.expand_dimensions(
-#         t::VertexGrid, x::VectorDim, y::VectorDim,
-#         m::VLBISkyModels.AbstractModel
-#     )
-#     img = intensitymap(m, RectiGrid((X(x), Y(y))))
-#     return Makie.expand_dimensions(t, img)
-# end
+function Makie.convert_arguments(
+        t::Union{ImageLike, CellGrid}, g::VLBISkyModels.AbstractRectiGrid,
+        m::VLBISkyModels.AbstractModel
+    )
+    img = intensitymap(m, g)
+    return convert_arguments(t, img)
+end
 
-# function Makie.expand_dimensions(
-#         t::ImageLike, x::VectorDim, y::VectorDim,
-#         m::VLBISkyModels.AbstractModel
-#     )
-#     img = intensitymap(m, RectiGrid((X(x), Y(y))))
-#     return Makie.expand_dimensions(t, img)
-# end
+function Makie.convert_arguments(
+        t::Union{ImageLike, CellGrid}, X, Y,
+        m::VLBISkyModels.AbstractModel
+    )
+    g = RectiGrid((;X, Y))
+    img = intensitymap(m, g)
+    return convert_arguments(t, img)
+end
 
-# function Makie.expand_dimensions(
-#         t::CellGrid, g::VLBISkyModels.AbstractRectiGrid,
-#         m::VLBISkyModels.AbstractModel
-#     )
-#     img = intensitymap(m, g)
-#     return Makie.expand_dimensions(t, img)
-# end
+function Makie.convert_arguments(
+        t::Type{T}, g::VLBISkyModels.AbstractRectiGrid,
+        m::VLBISkyModels.AbstractModel
+    ) where {T<:Union{Spy, Contour, Contourf}}
+    img = intensitymap(m, g)
+    return convert_arguments(t, img)
+end
+
+function Makie.convert_arguments(
+        t::Type{T}, X, Y,
+        m::VLBISkyModels.AbstractModel
+    ) where {T<:Union{Spy, Contour, Contourf}}
+    g = RectiGrid((;X, Y))
+    img = intensitymap(m, g)
+    return convert_arguments(t, img)
+end
+
+
+
 
 # function Makie.expand_dimensions(
 #         t::VertexGrid, g::VLBISkyModels.AbstractRectiGrid,
