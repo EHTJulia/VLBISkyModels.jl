@@ -3,11 +3,11 @@
     g = imagepixels(10.0, 10.0, 256, 256)
     img = intensitymap(m, g)
 
-    for f in (:(CM.heatmap), :(CM.image), :(CM.spy), :(CM.contour), :(CM.contourf))
-        @eval $(f)(g, m)
-        @eval $(f)(g.X, g.Y, m)
-        @eval $(f)(img)
-        @eval $(f)(stokes(img, :Q))
+    for f in ((CM.heatmap), (CM.image), (CM.spy), (CM.contour), (CM.contourf))
+        f(g, m)
+        f(g.X, g.Y, m)
+        f(img)
+        f(stokes(img, :Q))
     end
     
     display(imageviz(stokes(img, :I)))
