@@ -12,6 +12,8 @@ using Literate
 using Pkg
 using Glob
 
+const VLBISkyModelsMakieExt = Base.get_extension(VLBISkyModels, :VLBISkyModelsMakieExt)
+
 Pkg.develop(PackageSpec(; url = "https://github.com/ptiede/ComradeBase.jl"))
 
 GENERATED = joinpath(@__DIR__, "../", "examples")
@@ -22,7 +24,7 @@ foreach(fn -> Literate.markdown(fn, OUTDIR; documenter = true), SOURCE_FILES)
 
 Pkg.activate(@__DIR__)
 makedocs(;
-    modules = [VLBISkyModels, ComradeBase, PolarizedTypes],
+    modules = [VLBISkyModels, ComradeBase, PolarizedTypes, Base.get_extension(VLBISkyModels, :VLBISkyModelsMakieExt)],
     authors = "Paul Tiede <ptiede91@gmail.com> and contributors",
     # repo="https://github.com/EHTJulia/VLBISkyModels.jl/blob/{commit}{path}#{line}",
     sitename = "VLBISkyModels.jl",
@@ -40,6 +42,7 @@ makedocs(;
         "base_api.md",
         "Non-Analytic Modeling" => joinpath("examples", "nonanalytic.md"),
     ],
+    checkdocs_ignored_modules = [Base.get_extension(VLBISkyModels, :VLBISkyModelsMakieExt)]
 )
 
 deploydocs(;

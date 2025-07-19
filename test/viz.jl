@@ -3,12 +3,12 @@
     g = imagepixels(10.0, 10.0, 256, 256)
     img = intensitymap(m, g)
 
-    CM.heatmap(stokes(img, :I))
-    CM.image(stokes(img, :I))
-    CM.image(g, stokes(m, :I))
-    CM.image(g.X, g.Y, stokes(m, :I))
-    CM.heatmap(g, stokes(m, :Q))
-    CM.heatmap(g.X, g.Y, stokes(m, :Q))
+    for f in ((CM.heatmap), (CM.image), (CM.spy), (CM.contour), (CM.contourf))
+        f(g, m)
+        f(g.X, g.Y, m)
+        f(img)
+        f(stokes(img, :Q))
+    end
 
     display(imageviz(stokes(img, :I)))
     display(imageviz(img))
