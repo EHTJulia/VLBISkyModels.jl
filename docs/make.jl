@@ -40,6 +40,7 @@ makedocs(;
         "base_api.md",
         "Non-Analytic Modeling" => joinpath("examples", "nonanalytic.md"),
     ],
+    checkdocs_ignored_modules = [Base.get_extension(VLBISkyModels, :VLBISkyModelsMakieExt)]
 )
 
 deploydocs(;
