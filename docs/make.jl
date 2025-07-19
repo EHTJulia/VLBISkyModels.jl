@@ -12,6 +12,8 @@ using Literate
 using Pkg
 using Glob
 
+const VLBISkyModelsMakieExt = Base.get_extension(VLBISkyModels, :VLBISkyModelsMakieExt)
+
 Pkg.develop(PackageSpec(; url = "https://github.com/ptiede/ComradeBase.jl"))
 
 GENERATED = joinpath(@__DIR__, "../", "examples")
