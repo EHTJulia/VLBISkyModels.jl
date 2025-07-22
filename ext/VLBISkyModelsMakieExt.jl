@@ -265,7 +265,7 @@ function Makie.plot!(plot::PolImage{<:Tuple{<:IntensityMap{<:StokesParams}}})
                     push!(p, psi)
                     push!(len, lenmul .* leni)
                     push!(col, coli)
-                    push!(rot, roti)
+                    push!(rot, -roti)
                 end
             end
         end
@@ -327,7 +327,7 @@ function Makie.plot!(plot::PolImage{<:Tuple{<:IntensityMap{<:StokesParams}}})
 
 
     scatter!(
-        plot, plot.attributes, plot.p;
+        plot, plot.p;
         marker = plot.mrk,
         markersize = plot.len,
         markerspace = :data,
@@ -427,7 +427,8 @@ function _imgviz!(
     yl = min(y1, y2, y3, y4)
     yu = max(y1, y2, y3, y4)
 
-    xlims!(ax, (xl, xu))
+    # Flip x l and u for astronomer conventions
+    xlims!(ax, (xu, xl))
     ylims!(ax, (yl, yu))
     trim!(fig.layout)
 
@@ -481,7 +482,7 @@ function _imgviz!(
     yl = min(y1, y2, y3, y4)
     yu = max(y1, y2, y3, y4)
 
-    xlims!(ax, (xl, xu))
+    xlims!(ax, (xu, xl))
     ylims!(ax, (yl, yu))
     return Makie.FigureAxisPlot(fig, ax, hm)
 end
