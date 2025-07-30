@@ -15,6 +15,7 @@ struct MyDomainParam{T} <: DomainParams{T} end
 function build_param(param::MyDomainParam{Float64}, p)
     ...
 end
+```
 where `p` is the point where the model will be evaluated at. For an
 example see the [`TaylorSpectralModel`](@ref).
 
@@ -23,7 +24,6 @@ domain use `build_param(param, p)` or just `param(p)`.
 
 For a model parameterized with a `<:DomainParams` the a use should access 
 the parameters with [`getparam`](@ref) or the `@unpack_params` macro.
-```
 """
 abstract type DomainParams{T} end
 
