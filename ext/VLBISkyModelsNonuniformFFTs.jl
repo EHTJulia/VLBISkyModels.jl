@@ -6,8 +6,10 @@ using EnzymeCore: EnzymeRules
 using EnzymeCore
 using NonuniformFFTs
 
+const KA = NonuniformFFTs.KA
+
 function VLBISkyModels.plan_nuft_spatial(
-        alg::NonuniFFTAlg, imgdomain::AbstractRectiGrid,
+        alg::NonuniformFFTAlg, imgdomain::AbstractRectiGrid,
         visdomain::UnstructuredDomain
     )
     # check_image_uv(imagegrid, visdomain)
@@ -25,32 +27,61 @@ function VLBISkyModels.plan_nuft_spatial(
 
     (; backend, padfac, m, sigma, fftflags) = alg
     if isnothing(backend)
-        backend = CPU()
+        backend = get_nuft_backend(imgdomain, visdomain)
     end
 
+    if m < 0
+        m = _reltol_to_m(alg.reltol)
+    end
     plan = PlanNUFFT(Complex{T}, size(imgdomain)[1:2]; 
-                     backend, m, sigma, 
-                     fftw_flags=fftflags, sort_nodes=True() # always sort for now
+                     backend, m=HalfSupport(m), σ=2.0, 
+                    fftshift = true, # To match FINUFFT and NFFT conventions
+                     fftw_flags=fftflags, sort_points=True() # always sort for now
                     )
 
     set_points!(plan, (u, v))
     return plan
 end
 
+function get_nuft_backend(imgdomain, visdomain)
+    if executor(visdomain) isa KA.Backend
+        return executor(visdomain)
+    else
+        return CPU()
+    end
+end
+
+# TODO fix PlanNUFT to not require the adjoint since it isn't needed and we can always wrap it.
+# individually. Right now we commit minor type piracy.
+Base.adjoint(plan::PlanNUFFT) = plan #plan already has the adjoint method built in
+
+function _reltol_to_m(reltol)
+  w = ceil(Int, log(10,1/reltol)) + 1 
+  m = (w)÷2
+  return m
+end
+
 function VLBISkyModels.make_phases(
-        ::FINUFFTAlg, imgdomain::AbstractRectiGrid,
+        ::NonuniformFFTAlg, imgdomain::AbstractRectiGrid,
         visdomain::UnstructuredDomain
     )
     # These use the same phases to just use the same code since it doesn't depend on NFFTAlg at all.
     return VLBISkyModels.make_phases(NFFTAlg(), imgdomain, visdomain)
 end
 
-@inline function _jlnuft!(out, A::PlanNUFFT, b::AbstractArray{<:Complex})
+function VLBISkyModels._nuft(A::PlanNUFFT, b::AbstractArray{<:Real})
+    out = similar(b, eltype(A), length(A.points[1]))
+    _nuft!(out, A, b)
+    return out
+end
+
+
+@inline function VLBISkyModels._jlnuft!(out, A::PlanNUFFT, b::AbstractArray{<:Complex})
     exec_type2!(out, A, b)
     return nothing
 end
 
-@inline function _jlnuft!(out, A::PlanNUFFT, b::AbstractArray{<:Real})
+@inline function VLBISkyModels._jlnuft!(out, A::PlanNUFFT, b::AbstractArray{<:Real})
     exec_type2!(out, A, complex(b))
     return nothing
 end

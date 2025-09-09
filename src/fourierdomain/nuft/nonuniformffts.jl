@@ -1,17 +1,17 @@
-export NonuniFFTAlg
+export NonuniformFFTAlg
 
 """
     NonuniFFTAlg
 Uses the NonuniformFFTs NUFT to compute transforms to visibility space.
 
 ! warn 
-To use this you must have loaded NonuniformFFTs.jl in your environment
+  To use this you must have loaded NonuniformFFTs.jl in your session/REPL
 
 # Fields
 $(FIELDS)
 
 """
-Base.@kwdef struct NonuniFFTAlg{B, T, N, F} <: NUFT
+Base.@kwdef struct NonuniformFFTAlg{B, T, F} <: NUFT
     """
     Backend for the computation.
     """
@@ -21,9 +21,13 @@ Base.@kwdef struct NonuniFFTAlg{B, T, N, F} <: NUFT
     """
     padfac::Int = 1
     """
-    NUFFT kernel size parameter
+    NUFFT kernel size parameter. If negative will automatically decide based on reltol
     """
-    m::Int = 1
+    m::Int = -1
+    """
+    The relative tolerance of the NUFFT kernel. If m is -1 this will be used to decide m.
+    """
+    reltol::T = 1e-9
     """
     NUFFT oversampling factor
     """
