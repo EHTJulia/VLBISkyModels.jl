@@ -33,18 +33,3 @@ Base.@kwdef struct NonuniFFTAlg{B, T, N, F} <: NUFT
     """
     fftflags::F = FFTW.MEASURE
 end
-
-# This is an internal struct that holds the plans for the forward and inverse plans.
-# We need this for the adjoint where we need to use the inverse plan
-struct NonuniformPlan{T, P1, P2, A}
-    """The forward img->vis plan."""
-    forward::P1
-    """The inverse vis->img plan."""
-    adjoint::P1
-    ccache::A # Complex image cache that should prevent allocations
-end
-
-
-Base.eltype(::NonuniformPlan{T}) where {T} = Complex{T}
-Base.size(p::NonuniformPlan) = p.vsize
-EnzymeRules.inactive_type(::Type{<:NonuniformPlan}) = true

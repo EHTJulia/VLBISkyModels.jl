@@ -57,18 +57,6 @@ function VLBISkyModels.make_phases(
     return VLBISkyModels.make_phases(NFFTAlg(), imgdomain, visdomain)
 end
 
-@inline function VLBISkyModels._nuft!(out::StridedArray, A::FINUFFTPlan, b::StridedArray)
-    _jlnuft!(out, A, b)
-    return nothing
-end
-
-@inline function VLBISkyModels._nuft!(out::AbstractArray, A::FINUFFTPlan, b::AbstractArray)
-    tmp = similar(out)
-    _jlnuft!(tmp, A, b)
-    out .= tmp
-    return nothing
-end
-
 @noinline function getcache(A::FINUFFTPlan)
     return A.ccache
 end

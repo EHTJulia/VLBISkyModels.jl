@@ -75,12 +75,12 @@ end
 
 # We split on a strided array since NFFT.jl only works on those
 # and for StridedArrays we can potentially save an allocation
-@inline function _nuft!(out::StridedArray, A::NFFTPlan, b::StridedArray)
+@inline function _nuft!(out::StridedArray, A, b::StridedArray)
     _jlnuft!(out, A, b)
     return nothing
 end
 
-@inline function _nuft!(out::AbstractArray, A::NFFTPlan, b::AbstractArray)
+@inline function _nuft!(out::AbstractArray, A, b::AbstractArray)
     tmp = similar(out)
     _jlnuft!(tmp, A, b)
     out .= tmp
