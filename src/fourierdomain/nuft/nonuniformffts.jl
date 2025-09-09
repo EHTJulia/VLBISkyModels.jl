@@ -11,11 +11,7 @@ Uses the NonuniformFFTs NUFT to compute transforms to visibility space.
 $(FIELDS)
 
 """
-Base.@kwdef struct NonuniformFFTAlg{B, T, F} <: NUFT
-    """
-    Backend for the computation.
-    """
-    backend::B = nothing # default nothing will get replaced with CPU() from kernel abstractions
+Base.@kwdef struct NonuniformFFTAlg{T, F} <: NUFT
     """
     Amount to pad the image
     """
@@ -27,7 +23,7 @@ Base.@kwdef struct NonuniformFFTAlg{B, T, F} <: NUFT
     """
     The relative tolerance of the NUFFT kernel. If m is -1 this will be used to decide m.
     """
-    reltol::T = 1e-9
+    reltol::T = 1.0e-9
     """
     NUFFT oversampling factor
     """

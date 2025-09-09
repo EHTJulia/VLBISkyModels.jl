@@ -25,19 +25,18 @@ function VLBISkyModels.plan_nuft_spatial(
     v = convert(T, 2π) .* VLBISkyModels._rotatey.(U, V, Ref(rm)) .* dy
 
 
-    (; backend, padfac, m, sigma, fftflags) = alg
-    if isnothing(backend)
-        backend = get_nuft_backend(imgdomain, visdomain)
-    end
-
+    (; padfac, m, sigma, fftflags) = alg
+    backend = get_nuft_backend(imgdomain, visdomain)
     if m < 0
         m = _reltol_to_m(alg.reltol)
     end
-    plan = PlanNUFFT(Complex{T}, size(imgdomain)[1:2]; 
-                     backend, m=HalfSupport(m), σ=2.0, 
-                    fftshift = true, # To match FINUFFT and NFFT conventions
-                     fftw_flags=fftflags, sort_points=True() # always sort for now
-                    )
+
+    plan = PlanNUFFT(
+        Complex{T}, size(imgdomain)[1:2];
+        backend, m = HalfSupport(m), σ = sigma,
+        fftshift = true, # To match FINUFFT and NFFT conventions
+        fftw_flags = fftflags, sort_points = True() # always sort for now
+    )
 
     set_points!(plan, (u, v))
     return plan
@@ -56,9 +55,9 @@ end
 Base.adjoint(plan::PlanNUFFT) = plan #plan already has the adjoint method built in
 
 function _reltol_to_m(reltol)
-  w = ceil(Int, log(10,1/reltol)) + 1 
-  m = (w)÷2
-  return m
+    w = ceil(Int, log(10, 1 / reltol)) + 1
+    m = (w) ÷ 2
+    return m
 end
 
 function VLBISkyModels.make_phases(
@@ -176,8 +175,6 @@ function EnzymeRules.reverse(
     end
     return (nothing, nothing, nothing)
 end
-
-
 
 
 end
