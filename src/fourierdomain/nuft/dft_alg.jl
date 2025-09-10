@@ -42,3 +42,8 @@ end
 function _nuft!(out::AbstractArray{<:Complex}, p::AbstractArray{<:Complex}, b::AbstractArray{<:Number})
     return mul!(out, p, reshape(b, :))
 end
+
+# Need this to prevent ambiguity
+function _nuft!(out::StridedArray{<:Complex}, p::StridedArray{<:Complex}, b::StridedArray{<:Number})
+    return mul!(out, p, reshape(b, :))
+end

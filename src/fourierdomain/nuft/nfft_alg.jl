@@ -92,12 +92,21 @@ end
     return nothing
 end
 
+# Adding new NUFFT methods should overload this for Enzyme to work
+function _jlnuft_adjointadd!(dI, A::NFFTPlan, dv)
+    dI .+= real.(A' * dv)
+    return nothing
+end
+
+
+
+
 function EnzymeRules.forward(
         config::EnzymeRules.FwdConfig,
         func::Const{typeof(_jlnuft!)},
         ::Type{RT},
         out::Annotation{<:AbstractArray{<:Complex}},
-        A::Const{<:NFFTPlan},
+        A::Const,
         b::Annotation{<:AbstractArray{<:Real}}
     ) where {RT}
     # Forward rule does not have to return any primal or shadow since the original function returned nothing
@@ -117,7 +126,7 @@ function EnzymeRules.augmented_primal(
         config::EnzymeRules.RevConfigWidth,
         ::Const{typeof(_jlnuft!)}, ::Type{<:Const},
         out::Annotation,
-        A::Annotation{<:NFFTPlan},
+        A::Annotation,
         b::Annotation{<:AbstractArray{<:Real}}
     )
     isa(A, Const) ||
@@ -134,11 +143,12 @@ function EnzymeRules.augmented_primal(
     return EnzymeRules.AugmentedReturn(primal, shadow, tape)
 end
 
+
 function EnzymeRules.reverse(
         config::EnzymeRules.RevConfigWidth,
         ::Const{typeof(_jlnuft!)},
         ::Type{RT}, tape,
-        out::Annotation, A::Annotation{<:NFFTPlan},
+        out::Annotation, A::Annotation,
         b::Annotation{<:AbstractArray{<:Real}}
     ) where {RT}
 
@@ -174,7 +184,7 @@ function EnzymeRules.reverse(
     end
     for (db, dout) in zip(dbs, douts)
         # TODO open PR on NFFT so we can do this in place.
-        db .+= real.(A.val' * dout)
+        _jlnuft_adjointadd!(db, A.val, dout)
         dout .= 0
     end
     return (nothing, nothing, nothing)

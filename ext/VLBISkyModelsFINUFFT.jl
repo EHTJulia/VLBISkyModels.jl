@@ -82,100 +82,11 @@ function VLBISkyModels._jlnuft!(out, A::AdjointFINPlan, b::AbstractArray{<:Compl
     return nothing
 end
 
-function _jlnuftadd!(out, A::AdjointFINPlan, b::AbstractArray{<:Complex})
+function VLBISkyModels._jlnuft_adjointadd!(out, A::FINUFFTPlan, b::AbstractArray{<:Complex})
     bc = getcache(A)
-    FINUFFT.finufft_exec!(A.plan.adjoint, b, bc)
+    FINUFFT.finufft_exec!(A.adjoint, b, bc)
     out .+= real.(bc)
     return nothing
-end
-
-function EnzymeRules.forward(
-        config::EnzymeRules.FwdConfig,
-        func::Const{typeof(_jlnuft!)},
-        ::Type{RT},
-        out::Annotation{<:AbstractArray{<:Complex}},
-        A::Const{<:FINUFFTPlan},
-        b::Annotation{<:AbstractArray{<:Real}}
-    ) where {RT}
-    # Forward rule does not have to return any primal or shadow since the original function returned nothing
-    _jlnuft(out.val, A.val, b.val)
-
-    if EnzymeRules.width(config) == 1
-        _jlnuft(out.dval, A.val, b.dval)
-    else
-        ntuple(EnzymeRules.width(config)) do i
-            Base.@_inline_meta
-            return _jlnuft(out.dval[i], A.val, b.dval[i])
-        end
-    end
-    return nothing
-end
-
-function EnzymeRules.augmented_primal(
-        config::EnzymeRules.RevConfigWidth,
-        ::Const{typeof(_jlnuft!)}, ::Type{<:Const},
-        out::Annotation,
-        A::Annotation{<:FINUFFTPlan},
-        b::Annotation{<:AbstractArray{<:Real}}
-    )
-    isa(A, Const) ||
-        throw(ArgumentError("A must be a constant in NFFT. We don't support dynamic plans"))
-    primal = EnzymeRules.needs_primal(config) ? out.val : nothing
-    shadow = EnzymeRules.needs_shadow(config) ? out.dval : nothing
-    cache_out = EnzymeRules.overwritten(config)[2] ? out : nothing
-    cache_b = EnzymeRules.overwritten(config)[4] ? b : nothing
-    tape = (cache_out, cache_b)
-    _jlnuft!(out.val, A.val, b.val)
-    # I think we don't need to cache this since A just has in internal temporary buffer
-    # that is used to store the results of things like the FFT.
-    # cache_A = (EnzymeRules.overwritten(config)[3]) ? A.val : nothing
-    return EnzymeRules.AugmentedReturn(primal, shadow, tape)
-end
-
-function EnzymeRules.reverse(
-        config::EnzymeRules.RevConfigWidth,
-        ::Const{typeof(_jlnuft!)},
-        ::Type{RT}, tape,
-        out::Annotation, A::Annotation{<:FINUFFTPlan},
-        b::Annotation{<:AbstractArray{<:Real}}
-    ) where {RT}
-
-    # I think we don't need to cache this since A just has in internal temporary buffer
-    # that is used to store the results of things like the FFT.
-    # cache_A = (EnzymeRules.overwritten(config)[3]) ? A.val : nothing
-    # cache_A = tape
-    # if !(EnzymeRules.overwritten(config)[3])
-    #     cache_A = A.val
-    # end
-    isa(A, Const) ||
-        throw(ArgumentError("A must be a constant in NFFT. We don't support dynamic plans"))
-
-    # There is no gradient to propagate so short
-    if isa(out, Const)
-        return (nothing, nothing, nothing)
-    end
-
-    outfwd = EnzymeRules.overwritten(config)[2] ? tape[1] : out
-    bfwd = EnzymeRules.overwritten(config)[4] ? tape[2] : b
-
-    # This is so Enzyme batch mode works
-    dbs = if EnzymeRules.width(config) == 1
-        (bfwd.dval,)
-    else
-        bfwd.dval
-    end
-
-    douts = if EnzymeRules.width(config) == 1
-        (outfwd.dval,)
-    else
-        outfwd.dval
-    end
-    for (db, dout) in zip(dbs, douts)
-        # TODO open PR on NFFT so we can do this in place.
-        _jlnuftadd!(db, adjoint(A.val), dout)
-        dout .= 0
-    end
-    return (nothing, nothing, nothing)
 end
 
 end

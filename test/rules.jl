@@ -1,4 +1,5 @@
 using EnzymeTestUtils
+using NonuniformFFTs
 
 # Hack so that it doesn't try to compare nfft plans since they are const and have a FF pointer
 function EnzymeTestUtils.test_approx(
@@ -7,6 +8,14 @@ function EnzymeTestUtils.test_approx(
     )
     return true
 end
+
+function EnzymeTestUtils.test_approx(
+        ::PlanNUFFT,
+        ::PlanNUFFT, args...; kwargs...
+    )
+    return true
+end
+
 
 @testset "nfft Enzyme rules" begin
     out = zeros(ComplexF64, 10)
@@ -50,9 +59,9 @@ end
     U = randn(64)
     V = randn(64)
     guv = UnstructuredDomain((; U, V))
-    gnu = FourierDualDomain(g, guv, VLBISkyModels.NonuniformFFT())
+    gnu = FourierDualDomain(g, guv, VLBISkyModels.NonuniformFFTsAlg())
 
-    plan = VLBISkyModels.forward_plan(gfi).plan
+    plan = VLBISkyModels.forward_plan(gnu).plan
     b = zeros(size(g))
     out = zeros(ComplexF64, length(U))
     for Tret in (Duplicated, BatchDuplicated), Tb in (Duplicated, BatchDuplicated)

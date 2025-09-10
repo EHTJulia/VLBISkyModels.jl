@@ -140,9 +140,9 @@ function _nuft(A::NUFTPlan, b)
     return _nuft(getplan(A), b)
 end
 
-vissize(A) = size(A)[1]
+vissize(A) = first(size(A))
 
-function _nuft(A, b::AbstractArray)
+function _nuft(A, b)
     out = similar(b, eltype(A), vissize(A))
     _nuft!(out, A, b)
     return out

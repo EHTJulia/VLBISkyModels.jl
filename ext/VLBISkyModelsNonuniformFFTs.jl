@@ -51,6 +51,9 @@ function get_nuft_backend(imgdomain, visdomain)
     end
 end
 
+EnzymeRules.inactive_type(::Type{<:PlanNUFFT}) = true
+
+
 # TODO fix PlanNUFT to not require the adjoint since it isn't needed and we can always wrap it.
 # individually. Right now we commit minor type piracy.
 Base.adjoint(plan::PlanNUFFT) = plan #plan already has the adjoint method built in
@@ -70,106 +73,21 @@ function VLBISkyModels.make_phases(
     return VLBISkyModels.make_phases(NFFTAlg(), imgdomain, visdomain)
 end
 
-@inline function VLBISkyModels._jlnuft!(out, A::PlanNUFFT, b::AbstractArray{<:Complex})
-    exec_type2!(out, A, b)
-    return nothing
-end
+# @inline function VLBISkyModels._jlnuft!(out, A::PlanNUFFT, b::AbstractArray{<:Complex})
+#     exec_type2!(out, A, b)
+#     return nothing
+# end
 
 @inline function VLBISkyModels._jlnuft!(out, A::PlanNUFFT, b::AbstractArray{<:Real})
     exec_type2!(out, A, complex(b))
     return nothing
 end
 
-
-function EnzymeRules.forward(
-        config::EnzymeRules.FwdConfig,
-        func::Const{typeof(_jlnuft!)},
-        ::Type{RT},
-        out::Annotation{<:AbstractArray{<:Complex}},
-        A::Const{<:PlanNUFFT},
-        b::Annotation{<:AbstractArray{<:Real}}
-    ) where {RT}
-    # Forward rule does not have to return any primal or shadow since the original function returned nothing
-    func.val(out.val, A.val, b.val)
-    if EnzymeRules.width(config) == 1
-        func.val(out.dval, A.val, b.dval)
-    else
-        ntuple(EnzymeRules.width(config)) do i
-            Base.@_inline_meta
-            return func.val(out.dval[i], A.val, b.dval[i])
-        end
-    end
+function VLBISkyModels._jlnuft_adjointadd!(dI, A::PlanNUFFT, dv::AbstractArray{<:Complex})
+    tmp = similar(dI, eltype(dv))
+    exec_type1!(tmp, A, dv)
+    dI .+= real.(tmp)
     return nothing
 end
-
-function EnzymeRules.augmented_primal(
-        config::EnzymeRules.RevConfigWidth,
-        ::Const{typeof(_jlnuft!)}, ::Type{<:Const},
-        out::Annotation,
-        A::Annotation{<:PlanNUFFT},
-        b::Annotation{<:AbstractArray{<:Real}}
-    )
-    isa(A, Const) ||
-        throw(ArgumentError("A must be a constant in NFFT. We don't support dynamic plans"))
-    primal = EnzymeRules.needs_primal(config) ? out.val : nothing
-    shadow = EnzymeRules.needs_shadow(config) ? out.dval : nothing
-    cache_out = EnzymeRules.overwritten(config)[2] ? out : nothing
-    cache_b = EnzymeRules.overwritten(config)[4] ? b : nothing
-    tape = (cache_out, cache_b)
-    _jlnuft!(out.val, A.val, b.val)
-    # I think we don't need to cache this since A just has in internal temporary buffer
-    # that is used to store the results of things like the FFT.
-    # cache_A = (EnzymeRules.overwritten(config)[3]) ? A.val : nothing
-    return EnzymeRules.AugmentedReturn(primal, shadow, tape)
-end
-
-function EnzymeRules.reverse(
-        config::EnzymeRules.RevConfigWidth,
-        ::Const{typeof(_jlnuft!)},
-        ::Type{RT}, tape,
-        out::Annotation, A::Annotation{<:PlanNUFFT},
-        b::Annotation{<:AbstractArray{<:Real}}
-    ) where {RT}
-
-    # I think we don't need to cache this since A just has in internal temporary buffer
-    # that is used to store the results of things like the FFT.
-    # cache_A = (EnzymeRules.overwritten(config)[3]) ? A.val : nothing
-    # cache_A = tape
-    # if !(EnzymeRules.overwritten(config)[3])
-    #     cache_A = A.val
-    # end
-    isa(A, Const) ||
-        throw(ArgumentError("A must be a constant in NFFT. We don't support dynamic plans"))
-
-    # There is no gradient to propagate so short
-    if isa(out, Const)
-        return (nothing, nothing, nothing)
-    end
-
-    outfwd = EnzymeRules.overwritten(config)[2] ? tape[1] : out
-    bfwd = EnzymeRules.overwritten(config)[4] ? tape[2] : b
-
-    # This is so Enzyme batch mode works
-    dbs = if EnzymeRules.width(config) == 1
-        (bfwd.dval,)
-    else
-        bfwd.dval
-    end
-
-    douts = if EnzymeRules.width(config) == 1
-        (outfwd.dval,)
-    else
-        outfwd.dval
-    end
-    for (db, dout) in zip(dbs, douts)
-        # TODO open PR on NFFT so we can do this in place.
-        tmp = similar(dout, Complex{eltype(dout)})
-        exec_type1!(tmp, A.val, dout)
-        db .+= real.(tmp)
-        dout .= 0
-    end
-    return (nothing, nothing, nothing)
-end
-
 
 end
