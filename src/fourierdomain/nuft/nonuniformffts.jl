@@ -1,4 +1,4 @@
-export NonuniformFFTAlg
+export NonuniformFFTsAlg
 
 """
     NonuniFFTAlg
@@ -11,7 +11,7 @@ Uses the NonuniformFFTs NUFT to compute transforms to visibility space.
 $(FIELDS)
 
 """
-Base.@kwdef struct NonuniformFFTAlg{T, F} <: NUFT
+Base.@kwdef struct NonuniformFFTsAlg{T, F} <: NUFT
     """
     Amount to pad the image
     """
