@@ -119,6 +119,15 @@ end
         @test isapprox(dx, finite_dx, atol = 1.0e-2)
     end
 
+    @testset "NonuniformFFTs" begin
+        alg = NonuniformFFTsAlg()
+        pnf = create_domains(Nx, alg; Nt = Nt, Nf = Nf)
+        check4dautodiff(pnf, x, dx)
+        finite_dx = test4Dgrad(pnf, x)
+        @test isapprox(dx, finite_dx, atol = 1.0e-2)
+    end
+
+
     @testset "DFT" begin
         alg = DFTAlg()
         pnf = create_domains(Nx, alg; Nt = Nt, Nf = Nf)

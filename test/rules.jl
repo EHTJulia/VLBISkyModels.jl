@@ -44,3 +44,24 @@ end
     #     test_forward(VLBISkyModels._jlnuft!, Const, (out, Tret), (plan, Const), (b, Tb))
     # end
 end
+
+@testset "NonuniformFFTs Enzyme rules" begin
+    g = imagepixels(10.0, 10.0, 16, 16)
+    U = randn(64)
+    V = randn(64)
+    guv = UnstructuredDomain((; U, V))
+    gnu = FourierDualDomain(g, guv, VLBISkyModels.NonuniformFFT())
+
+    plan = VLBISkyModels.forward_plan(gfi).plan
+    b = zeros(size(g))
+    out = zeros(ComplexF64, length(U))
+    for Tret in (Duplicated, BatchDuplicated), Tb in (Duplicated, BatchDuplicated)
+        are_activities_compatible(Const, Tret, Tb) || continue
+        test_reverse(VLBISkyModels._jlnuft!, Const, (out, Tret), (plan, Const), (b, Tb))
+    end
+    # TODO Why is this not working?
+    # for Tret in (Duplicated, BatchDuplicated), Tb in (Duplicated, BatchDuplicated)
+    #     are_activities_compatible(Const, Tret, Tb) || continue
+    #     test_forward(VLBISkyModels._jlnuft!, Const, (out, Tret), (plan, Const), (b, Tb))
+    # end
+end
