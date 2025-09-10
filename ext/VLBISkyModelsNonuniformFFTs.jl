@@ -53,6 +53,7 @@ end
 # TODO fix PlanNUFT to not require the adjoint since it isn't needed and we can always wrap it.
 # individually. Right now we commit minor type piracy.
 Base.adjoint(plan::PlanNUFFT) = plan #plan already has the adjoint method built in
+VLBISkyModels.vissize(plan::PlanNUFFT) = length(first(plan.points))
 
 function _reltol_to_m(reltol)
     w = ceil(Int, log(10, 1 / reltol)) + 1
@@ -67,13 +68,6 @@ function VLBISkyModels.make_phases(
     # These use the same phases to just use the same code since it doesn't depend on NFFTAlg at all.
     return VLBISkyModels.make_phases(NFFTAlg(), imgdomain, visdomain)
 end
-
-function VLBISkyModels._nuft(A::PlanNUFFT, b::AbstractArray{<:Real})
-    out = similar(b, eltype(A), length(A.points[1]))
-    _nuft!(out, A, b)
-    return out
-end
-
 
 @inline function VLBISkyModels._jlnuft!(out, A::PlanNUFFT, b::AbstractArray{<:Complex})
     exec_type2!(out, A, b)

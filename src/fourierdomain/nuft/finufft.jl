@@ -49,12 +49,12 @@ function FINUFFTPlan(
 end
 
 Base.eltype(::FINUFFTPlan{T}) where {T} = Complex{T}
-Base.size(p::FINUFFTPlan) = p.vsize
+vissize(p::FINUFFTPlan) = p.vsize
 
 struct AdjointFINPlan{P}
     plan::P
 end
-Base.size(p::AdjointFINPlan) = p.plan.isize
+vissize(p::AdjointFINPlan) = p.plan.isize
 
 Base.adjoint(p::FINUFFTPlan) = AdjointFINPlan(p)
 Base.adjoint(p::AdjointFINPlan) = p.plan

@@ -19,6 +19,7 @@ end
 getindices(p::NUFTPlan) = getfield(p, :indices)
 EnzymeRules.inactive(::typeof(getindices), args...) = nothing
 
+
 # We do this for speed an readability since all seems to be very slow
 _compare(nv::NamedTuple{N}, val) where {N} = mapreduce(n -> (nv[n] == val[n]), *, N)
 
@@ -135,12 +136,14 @@ end
     return StructArray{StokesParams{eltype(I)}}((; I, Q, U, V))
 end
 
-function _nuft(A::NUFTPlan, b::AbstractArray{<:Real})
+function _nuft(A::NUFTPlan, b)
     return _nuft(getplan(A), b)
 end
 
-function _nuft(A, b::AbstractArray{<:Real})
-    out = similar(b, eltype(A), size(A)[1])
+vissize(A) = size(A)[1]
+
+function _nuft(A, b::AbstractArray)
+    out = similar(b, eltype(A), vissize(A))
     _nuft!(out, A, b)
     return out
 end
@@ -148,7 +151,7 @@ end
 # Special overload for multidomain nuft
 @inline function _nuft(
         p::NUFTPlan{<:FourierTransform, <:AbstractDict},
-        img::AbstractArray{<:Real}
+        img::AbstractArray{<:Number}
     )
     vis_list = similar(baseimage(img), Complex{eltype(img)}, p.totalvis)
     plans = getplan(p)
