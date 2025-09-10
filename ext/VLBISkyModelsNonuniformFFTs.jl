@@ -43,8 +43,9 @@ function VLBISkyModels.plan_nuft_spatial(
 end
 
 function get_nuft_backend(imgdomain, visdomain)
-    if executor(visdomain) isa KA.Backend
-        return executor(visdomain)
+    ex = executor(visdomain)
+    if ex isa KA.Backend
+        return ex
     else
         return CPU()
     end
