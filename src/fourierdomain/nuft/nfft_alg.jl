@@ -99,8 +99,6 @@ function _jlnuft_adjointadd!(dI, A::NFFTPlan, dv)
 end
 
 
-
-
 function EnzymeRules.forward(
         config::EnzymeRules.FwdConfig,
         func::Const{typeof(_jlnuft!)},

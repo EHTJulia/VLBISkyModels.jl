@@ -104,6 +104,7 @@ VLBISkyModels.DFTAlg
 VLBISkyModels.FFTAlg
 VLBISkyModels.NFFTAlg
 VLBISkyModels.FINUFFTAlg
+VLBISkyModels.NonuniformFFTsAlg
 VLBISkyModels.InterpolatedModel
 ```
 
