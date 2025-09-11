@@ -18,6 +18,7 @@ using Downloads
 using BenchmarkTools
 using EnzymeTestUtils
 using FINUFFT
+using NonuniformFFTs
 
 function FiniteDifferences.to_vec(k::IntensityMap)
     v, b = to_vec(DD.data(k))
@@ -117,6 +118,7 @@ function testft(m, npix = 256, atol = 1.0e-4)
     gff = FourierDualDomain(gim, guv, FFTAlg())
     gdf = FourierDualDomain(gim, guv, DFTAlg())
     gfi = FourierDualDomain(gim, guv, FINUFFTAlg())
+    gnu = FourierDualDomain(gim, guv, NonuniformFFTsAlg())
 
     va = visibilitymap(m, guv)
 
@@ -124,15 +126,18 @@ function testft(m, npix = 256, atol = 1.0e-4)
     vnf = visibilitymap(mn, gnf)
     vdf = visibilitymap(mn, gdf)
     vfi = visibilitymap(mn, gfi)
+    vnu = visibilitymap(mn, gnu)
 
     @test isapprox(maximum(abs, va - vff), 0, atol = atol * 15)
     @test isapprox(maximum(abs, va - vnf), 0, atol = atol)
     @test isapprox(maximum(abs, va - vdf), 0, atol = atol)
     @test isapprox(maximum(abs, va - vfi), 0, atol = atol)
+    @test isapprox(maximum(abs, va - vnu), 0, atol = atol)
     img = nothing
     gff = nothing
     gnf = nothing
     gdf = nothing
+    gnu = nothing
     GC.gc()
     return nothing
 end
@@ -151,19 +156,23 @@ function testft_nonan(mn, npix = 256, atol = 1.0e-4)
     gff = FourierDualDomain(gim, guv, FFTAlg())
     gdf = FourierDualDomain(gim, guv, DFTAlg())
     gfi = FourierDualDomain(gim, guv, FINUFFTAlg())
+    gnu = FourierDualDomain(gim, guv, NonuniformFFTsAlg())
 
     vff = visibilitymap(mn, gff)
     vnf = visibilitymap(mn, gnf)
     vdf = visibilitymap(mn, gdf)
     vfi = visibilitymap(mn, gfi)
+    vnu = visibilitymap(mn, gnu)
 
     @test isapprox(maximum(abs, vnf - vff), 0, atol = atol * 15)
     @test isapprox(maximum(abs, vnf - vdf), 0, atol = atol)
     @test isapprox(maximum(abs, vnf - vfi), 0, atol = atol)
+    @test isapprox(maximum(abs, vnf - vnu), 0, atol = atol)
     img = nothing
     gff = nothing
     gnf = nothing
     gdf = nothing
+    gnu = nothing
     GC.gc()
     return nothing
 end
@@ -178,18 +187,23 @@ function testft_cimg(m, atol = 1.0e-4)
     gff = FourierDualDomain(gim, guv, FFTAlg(; padfac = 20))
     gdf = FourierDualDomain(gim, guv, DFTAlg())
     gfi = FourierDualDomain(gim, guv, FINUFFTAlg())
+    gnu = FourierDualDomain(gim, guv, NonuniformFFTsAlg())
 
     vff = visibilitymap(m, gff)
     vnf = visibilitymap(m, gnf)
     vdf = visibilitymap(m, gdf)
     vfi = visibilitymap(m, gfi)
+    vnu = visibilitymap(m, gnu)
 
     @test isapprox(maximum(abs, vdf .- vnf), 0, atol = atol)
     @test isapprox(maximum(abs, vff .- vdf), 0, atol = atol * 10)
     @test isapprox(maximum(abs, vfi .- vnf), 0, atol = atol * 10)
+    @test isapprox(maximum(abs, vnu .- vnf), 0, atol = atol * 10)
+
     gff = nothing
     gnf = nothing
     gdf = nothing
+    gnu = nothing
     GC.gc()
     return nothing
 end

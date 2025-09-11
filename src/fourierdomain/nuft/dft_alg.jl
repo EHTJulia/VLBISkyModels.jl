@@ -39,6 +39,11 @@ function make_phases(::DFTAlg, imgdomain::AbstractRectiGrid, visdomain::Unstruct
     return one(Complex{eltype(visdomain.U)})
 end
 
-function _nuft!(out::AbstractArray, p::AbstractArray, b::AbstractArray{<:Real})
+function _nuft!(out::AbstractArray{<:Complex}, p::AbstractArray{<:Complex}, b::AbstractArray{<:Number})
+    return mul!(out, p, reshape(b, :))
+end
+
+# Need this to prevent ambiguity
+function _nuft!(out::StridedArray{<:Complex}, p::StridedArray{<:Complex}, b::StridedArray{<:Number})
     return mul!(out, p, reshape(b, :))
 end

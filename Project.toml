@@ -1,7 +1,7 @@
 name = "VLBISkyModels"
 uuid = "d6343c73-7174-4e0f-bb64-562643efbeca"
 authors = ["Paul Tiede <ptiede91@gmail.com> and contributors"]
-version = "0.6.16"
+version = "0.6.17"
 
 [deps]
 AbstractFFTs = "621f4979-c628-5d54-868e-fcf4e3e8185c"
@@ -21,6 +21,7 @@ GridInterpolations = "bb4c363b-b914-514b-8517-4eb369bc008a"
 LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
 NFFT = "efe261a4-0d2b-5849-be55-fc731d526b0d"
 NamedTupleTools = "d9ec5142-1e00-5aa0-9d6a-321866360f50"
+NonuniformFFTs = "cd96f58b-6017-4a02-bb9e-f4d81626177f"
 PaddedViews = "5432bcbf-9aad-5242-b902-cca2824c8663"
 PolarizedTypes = "d3c5d4cd-a8ee-40d6-aac7-e34df5a20044"
 Printf = "de0858da-6303-5e67-8744-51eddeeeb8d7"
@@ -34,10 +35,13 @@ StructArrays = "09ab397b-f2b6-538f-b94a-2f83cf4a842a"
 [weakdeps]
 FINUFFT = "d8beea63-0952-562e-9c6a-8e8ef7364055"
 Makie = "ee78f7c6-11fb-53f2-987a-cfe4a2b5a57a"
+NonuniformFFTs = "cd96f58b-6017-4a02-bb9e-f4d81626177f"
+
 
 [extensions]
 VLBISkyModelsFINUFFT = ["FINUFFT"]
 VLBISkyModelsMakieExt = ["Makie", "DimensionalData"]
+VLBISkyModelsNonuniformFFTs = ["NonuniformFFTs"]
 
 [compat]
 AbstractFFTs = "1"
@@ -59,6 +63,7 @@ LinearAlgebra = "1.8"
 Makie = "0.24"
 NFFT = "0.10, 0.11, 0.12, 0.13"
 NamedTupleTools = "0.13,0.14"
+NonuniformFFTs = "0.8"
 PaddedViews = "0.5"
 PolarizedTypes = "^0.1.1"
 Printf = "1.8"
@@ -73,7 +78,8 @@ julia = "1.9"
 [extras]
 FINUFFT = "d8beea63-0952-562e-9c6a-8e8ef7364055"
 Makie = "ee78f7c6-11fb-53f2-987a-cfe4a2b5a57a"
+NonuniformFFTs = "cd96f58b-6017-4a02-bb9e-f4d81626177f"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
 [targets]
-test = ["Test", "FINUFFT", "Makie"]
+test = ["Test", "FINUFFT", "Makie", "NonuniformFFTs"]
