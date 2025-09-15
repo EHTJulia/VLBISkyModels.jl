@@ -15,6 +15,8 @@ struct MyDomainParam{T} <: DomainParams{T} end
 function build_param(param::MyDomainParam{Float64}, p)
     ...
 end
+```
+
 where `p` is the point where the model will be evaluated at. For an
 example see the [`TaylorSpectralModel`](@ref).
 
