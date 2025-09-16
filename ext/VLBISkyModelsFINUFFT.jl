@@ -7,8 +7,9 @@ using EnzymeCore
 
 using FINUFFT
 
+
 function VLBISkyModels.plan_nuft_spatial(
-        alg::FINUFFTAlg, imgdomain::AbstractRectiGrid,
+        alg::FINUFFTAlg{false}, imgdomain::AbstractRectiGrid,
         visdomain::UnstructuredDomain
     )
     # check_image_uv(imagegrid, visdomain)
@@ -36,17 +37,18 @@ function VLBISkyModels.plan_nuft_spatial(
         fftw = fftw, dtype = T, upsampfac = 2.0
     )
     FINUFFT.finufft_setpts!(padj, u, v)
+
     ccache = similar(U, Complex{T}, size(imgdomain)[1:2])
     p = FINUFFTPlan(size(u), size(imgdomain)[1:2], pfor, padj, ccache)
 
-    finalizer(
-        p -> begin
-            # #println("Run FINUFFT finalizer")
-            FINUFFT.finufft_destroy!(p.forward)
-            FINUFFT.finufft_destroy!(p.adjoint)
-        end, p
+    function findestroy(p::FINUFFTPlan)
+        FINUFFT.finufft_destroy!(p.forward)
+        FINUFFT.finufft_destroy!(p.adjoint)
+    end
+
+    return finalizer(
+        findestroy, p
     )
-    return p
 end
 
 function VLBISkyModels.make_phases(
@@ -57,27 +59,18 @@ function VLBISkyModels.make_phases(
     return VLBISkyModels.make_phases(NFFTAlg(), imgdomain, visdomain)
 end
 
-@noinline function getcache(A::FINUFFTPlan)
-    return A.ccache
-end
+const CPUPlan = FINUFFTPlan{<:Any, <:Any, <:Any, <:FINUFFT.finufft_plan, <:FINUFFT.finufft_plan, <:Any}
 
-@noinline function getcache(A::AdjointFINPlan)
-    return A.plan.ccache
-end
-
-EnzymeRules.inactive(::typeof(getcache), args...) = nothing
-EnzymeRules.inactive_type(::Type{<:FINUFFT.finufft_plan}) = true
-
-function VLBISkyModels._jlnuft!(out, A::FINUFFTPlan, b::AbstractArray{<:Real})
-    bc = getcache(A)
+function VLBISkyModels._jlnuft!(out, A::CPUPlan, b::AbstractArray{<:Real})
+    bc = VLBISkyModels.getcache(A)
     bc .= b
     FINUFFT.finufft_exec!(A.forward, bc, out)
     return nothing
 end
 
-function VLBISkyModels._jlnuft!(out, A::AdjointFINPlan, b::AbstractArray{<:Complex})
-    bc = getcache(A)
-    FINUFFT.finufft_exec!(A.forward, b, bc)
+function VLBISkyModels._jlnuft!(out, A::AdjointFINPlan{P}, b::AbstractArray{<:Complex}) where {P <: CPUPlan}
+    bc = VLBISkyModels.getcache(A)
+    FINUFFT.finufft_exec!(A.plan.adjoint, b, bc)
     out .= real.(bc)
     return nothing
 end
