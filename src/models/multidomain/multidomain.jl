@@ -18,7 +18,7 @@ end
 ```
 
 where `p` is the point where the model will be evaluated at. For an
-example see the [`TaylorSpectralModel`](@ref).
+example see the [`TaylorSpectral`](@ref).
 
 To evaluate the parameter family at a point `p` in the frequency and time 
 domain use `build_param(param, p)` or just `param(p)`.
