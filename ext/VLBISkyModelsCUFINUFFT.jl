@@ -5,31 +5,20 @@ using ComradeBase: AbstractRectiGrid, UnstructuredDomain, domainpoints
 using VLBISkyModels: FINUFFTAlg, FINUFFTPlan, AdjointFINPlan, _nuft!, _jlnuft!, getcache
 using CUDA
 using FINUFFT
+const KA = CUDA.KernelAbstractions
 
 using EnzymeCore: EnzymeRules
 using EnzymeCore
 
 
-function VLBISkyModels.plan_nuft_spatial(
-        alg::FINUFFTAlg{true}, imgdomain::AbstractRectiGrid,
-        visdomain::UnstructuredDomain
-    )
-    # check_image_uv(imagegrid, visdomain)
-    # Check if Ti or Fr in visdomain are subset of imgdomain Ti or Fr if present
-    visp = domainpoints(visdomain)
-    U = visp.U
-    V = visp.V
-    T = eltype(U)
-    dx, dy = pixelsizes(imgdomain)
-    rm = ComradeBase.rotmat(imgdomain)'
-    # No sign flip because we will use the FINUFFT +1 sign convention
-    u = convert(T, 2π) .* VLBISkyModels._rotatex.(U, V, Ref(rm)) .* dx
-    v = convert(T, 2π) .* VLBISkyModels._rotatey.(U, V, Ref(rm)) .* dy
-
-    pfor = FINUFFT.cufinufft_makeplan(
+function VLBISkyModels.make_plan_finufft(bI::CUDABackend, bv::CUDABackend, Ng, u::CuArray, v::CuArray, alg::FINUFFTAlg)
+        pfor = FINUFFT.cufinufft_makeplan(
         2, collect(size(imgdomain)[1:2]), +1, 1, alg.reltol;
         dtype = T, upsampfac = 2.0
     )
+
+    check_inputs(bI, bv, u, v)
+
     FINUFFT.cufinufft_setpts!(pfor, u, v)
     # Now we construct the adjoint plan as well
     padj = FINUFFT.cufinufft_makeplan(
@@ -51,9 +40,32 @@ function VLBISkyModels.plan_nuft_spatial(
     )
 end
 
+function check_inputs(bI, bv, u, v)
+    return nothing
+end
+
+function check_inputs(::Any, ::CUDABackend, u, v)
+    (u <: CuArray || v <: CuArray) && 
+            throw(ArgumentError("U and V should not be on the GPU since the image will not be on the GPU."*
+                                "If you want to use the GPU entirely for CUFINUFFT, please use CUDABackend"* 
+                                "for both the image domain/grid and visibility domain." ))
+    return nothing
+end
+
+function check_inputs(::CUDABackend, ::Any, u, v)
+    throw(ArgumentError("Having an image on the GPU and visibilities on the CPU is not currently supported."*
+                        "If you want to use the GPU entirely for CUFINUFFT, please use CUDABackend"* 
+                        "for both the image domain/grid and visibility domain." ))
+end
+
+function check_inputs(::KA.GPU, ::KA.GPU, Ng, u, v)
+    throw(ArgumentError("Using KernelAbstractions GPU backend is not supported for FINUFFT. Please use CUDABackend instead."))
+end
+
+
 const cufinplan = Base.get_extension(FINUFFT, :CUFINUFFTExt).cufinufft_plan
 
-const GPUPlan = FINUFFTPlan{<:Any, <:Any, <:Any, <:cufinplan, <:cufinplan, <:Any}
+const GPUPlan = FINUFFTPlan{<:cufinplan}
 
 function VLBISkyModels._jlnuft!(out, A::GPUPlan, b::AbstractArray{<:Real})
     bc = VLBISkyModels.getcache(A)
@@ -63,17 +75,10 @@ function VLBISkyModels._jlnuft!(out, A::GPUPlan, b::AbstractArray{<:Real})
     return nothing
 end
 
-function VLBISkyModels._jlnuft!(out, A::AdjointFINPlan{P}, b::AbstractArray{<:Complex}) where {P <: GPUPlan}
-    # bc = getcache(A)
-    tmp = FINUFFT.cufinufft_exec(A.plan.adjoint, b, bc)
-    out .= real.(tmp)
-    return nothing
-end
-
-function VLBISkyModels._adjjlnuftadd!(out, A::FINUFFTPlan{P}, b::AbstractArray{<:Complex}) where {P <: GPUPlan}
-    # bc = getcache(A)
-    tmp = FINUFFT.cufinufft_exec(A.plan.adjoint, b)
-    out .+= real.(tmp)
+function VLBISkyModels._jlnuft_adjointadd!(out, A::GPUPlan, b::AbstractArray{<:Complex})
+    bc = getcache(A)
+    FINUFFT.cufinufft_exec!(A.adjoint, b, bc)
+    out .+= real.(bc)
     return nothing
 end
 

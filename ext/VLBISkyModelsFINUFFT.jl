@@ -9,7 +9,7 @@ using FINUFFT
 
 
 function VLBISkyModels.plan_nuft_spatial(
-        alg::FINUFFTAlg{false}, imgdomain::AbstractRectiGrid,
+        alg::FINUFFTAlg, imgdomain::AbstractRectiGrid,
         visdomain::UnstructuredDomain
     )
     # check_image_uv(imagegrid, visdomain)
@@ -23,23 +23,35 @@ function VLBISkyModels.plan_nuft_spatial(
     # No sign flip because we will use the FINUFFT +1 sign convention
     u = convert(T, 2π) .* VLBISkyModels._rotatex.(U, V, Ref(rm)) .* dx
     v = convert(T, 2π) .* VLBISkyModels._rotatey.(U, V, Ref(rm)) .* dy
+
+    exI = executor(imgdomain)
+    exV = executor(visdomain)
+
+    Ng = size(imgdomain)[1:2]
+    plan = VLBISkyModels.make_plan_finufft(exI, exV, Ng, u, v, alg)
+    return plan
+end
+
+
+function VLBISkyModels.make_plan_finufft(::Any, ::Any, Ng, u, v, alg::FINUFFTAlg)
+    T = eltype(u)
     fftw = Cint(alg.fftflags) # Convert our plans to correct numeric type
     pfor = FINUFFT.finufft_makeplan(
-        2, collect(size(imgdomain)[1:2]), +1, 1, alg.reltol;
+        2, collect(Ng), +1, 1, alg.reltol;
         nthreads = alg.threads,
         fftw = fftw, dtype = T, upsampfac = 2.0
     )
     FINUFFT.finufft_setpts!(pfor, u, v)
     # Now we construct the adjoint plan as well
     padj = FINUFFT.finufft_makeplan(
-        1, collect(size(imgdomain)[1:2]), -1, 1, alg.reltol;
+        1, collect(Ng), -1, 1, alg.reltol;
         nthreads = alg.threads,
         fftw = fftw, dtype = T, upsampfac = 2.0
     )
     FINUFFT.finufft_setpts!(padj, u, v)
 
-    ccache = similar(U, Complex{T}, size(imgdomain)[1:2])
-    p = FINUFFTPlan(size(u), size(imgdomain)[1:2], pfor, padj, ccache)
+    ccache = similar(U, Complex{T}, Ng)
+    p = FINUFFTPlan(size(u), Ng, pfor, padj, ccache)
 
     function findestroy(p::FINUFFTPlan)
         FINUFFT.finufft_destroy!(p.forward)
@@ -59,19 +71,12 @@ function VLBISkyModels.make_phases(
     return VLBISkyModels.make_phases(NFFTAlg(), imgdomain, visdomain)
 end
 
-const CPUPlan = FINUFFTPlan{<:Any, <:Any, <:Any, <:FINUFFT.finufft_plan, <:FINUFFT.finufft_plan, <:Any}
+const CPUPlan = FINUFFTPlan{<:FINUFFT.finufft_plan}
 
 function VLBISkyModels._jlnuft!(out, A::CPUPlan, b::AbstractArray{<:Real})
     bc = VLBISkyModels.getcache(A)
     bc .= b
     FINUFFT.finufft_exec!(A.forward, bc, out)
-    return nothing
-end
-
-function VLBISkyModels._jlnuft!(out, A::AdjointFINPlan{P}, b::AbstractArray{<:Complex}) where {P <: CPUPlan}
-    bc = VLBISkyModels.getcache(A)
-    FINUFFT.finufft_exec!(A.plan.adjoint, b, bc)
-    out .= real.(bc)
     return nothing
 end
 
