@@ -99,16 +99,6 @@ function intensity_point(m::ContinuousImage, p)
     return sum
 end
 
-function intensitymap_analytic!(img::IntensityMap, m::ContinuousImage{<:DomainParams})
-    dft = dims(img)[3:end]
-    darr = DimArray(parent(domainpoints(RectiGrid(dft))), dft)
-    for TF  in DimIndices(darr)
-        p0 = build_param(m.array, darr[TF])
-        mtf = ContinuousImage(p0,spatialdims(img), m.kernel)
-        intensitymap_analytic!(@view(img[TF]), mtf)
-    end
-    return nothing
-end
 
 function intensitymap_analytic!(img::IntensityMap, m::ModifiedModel{<:ContinuousImage{<:DomainParams}})
     dft = dims(img)[3:end]
@@ -121,7 +111,6 @@ function intensitymap_analytic!(img::IntensityMap, m::ModifiedModel{<:Continuous
     end
     return nothing
 end
-
 
 
 function intensitymap_analytic!(img::IntensityMap, m::ContinuousImage{<:DomainParams})
