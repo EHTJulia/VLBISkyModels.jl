@@ -154,20 +154,22 @@ function _nuft(A, b)
     return out
 end
 
+getplan(p, i) = p[i]
+
 # Special overload for multidomain nuft
 @inline function _nuft(
-        p::NUFTPlan{<:FourierTransform, <:AbstractDict},
+        p::NUFTPlan{<:FourierTransform, <:AbstractVector},
         img::AbstractArray{<:Number}
     )
     vis_list = similar(baseimage(img), Complex{eltype(img)}, p.totalvis)
     plans = getplan(p)
     iminds, visinds = getindices(p)
-    Threads.@threads for i in eachindex(iminds, visinds, plans)
-        imind = @inbounds iminds[i]
-        visind = @inbounds visinds[i]
-        pl = @inbounds plans[i]
-        vis_view = @inbounds view(vis_list, visind)
-        img_view = @inbounds view(img, :, :, imind)
+    ComradeBase.@threaded ThreadsEx(:dynamic) for i in eachindex(iminds, visinds, plans)
+        imind = iminds[i]
+        visind = visinds[i]
+        pl = getplan(plans, i)
+        vis_view = view(vis_list, visind)
+        img_view = view(img, :, :, imind)
         _nuft!(vis_view, pl, img_view)
     end
     return vis_list

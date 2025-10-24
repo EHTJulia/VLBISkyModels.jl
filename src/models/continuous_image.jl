@@ -155,9 +155,9 @@ end
     gimg = imgdomain(grid)
     mfimg = allocate_imgmap(m, gimg)
     dimp = DimArray(parent(domainpoints(gimg)), dims(gimg))
-    @inbounds for i in DimIndices(dimp)
+    for i in DimIndices(dimp)
         pfr = dimp[i]
-        mfimg[i] = @inline build_param(img[i[1:2]], pfr)
+        mfimg[i] = @inline build_param(view(img, i[1:2]), pfr)
     end
     vis = applyft(forward_plan(grid), mfimg)
     return applypulse!(vis, m.kernel, grid)
