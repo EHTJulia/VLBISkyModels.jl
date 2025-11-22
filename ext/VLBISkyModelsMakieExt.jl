@@ -8,7 +8,13 @@ using StaticArrays
 
 const DD = DimensionalData
 
-const DDM = Base.get_extension(DD, :DimensionalDataMakie)
+# Renamed in PR https://github.com/rafaqz/DimensionalData.jl/pull/1117
+@static if pkgversion(DD) < v"0.29.25"
+    const DDM = Base.get_extension(DD, :DimensionalDataMakie)
+else
+    const DDM = Base.get_extension(DD, :DimensionalDataMakieExt)
+end
+
 
 import VLBISkyModels: polimage, polimage!, imageviz
 
