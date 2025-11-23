@@ -1,7 +1,7 @@
 name = "VLBISkyModels"
 uuid = "d6343c73-7174-4e0f-bb64-562643efbeca"
-authors = ["Paul Tiede <ptiede91@gmail.com> and contributors"]
 version = "0.6.17"
+authors = ["Paul Tiede <ptiede91@gmail.com> and contributors"]
 
 [deps]
 AbstractFFTs = "621f4979-c628-5d54-868e-fcf4e3e8185c"
@@ -37,7 +37,6 @@ FINUFFT = "d8beea63-0952-562e-9c6a-8e8ef7364055"
 Makie = "ee78f7c6-11fb-53f2-987a-cfe4a2b5a57a"
 NonuniformFFTs = "cd96f58b-6017-4a02-bb9e-f4d81626177f"
 
-
 [extensions]
 VLBISkyModelsFINUFFT = ["FINUFFT"]
 VLBISkyModelsMakieExt = ["Makie", "DimensionalData"]
@@ -50,7 +49,7 @@ ArgCheck = "2"
 ChainRulesCore = "1"
 ComradeBase = "^0.9.3"
 DelimitedFiles = "1"
-DimensionalData = "0.29 - 0.29.24, ^0.29.26"
+DimensionalData = "0.29 - 0.29.24, ^0.29.26, 0.29"
 DocStringExtensions = "0.6,0.7,0.8,0.9"
 EnzymeCore = "0.8"
 FFTW = "^1"
