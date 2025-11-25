@@ -21,7 +21,7 @@ end
     out = zeros(ComplexF64, 10)
     n = 16
     k = rand(2, 10) .- 0.5
-    plan = VLBISkyModels.NFFT.plan_nfft(k, (n, n))
+    plan = VLBISkyModels.NFFT.plan_nfft(VLBISkyModels.NFFT.NFFTBackend(), k, (n, n))
     b = rand(n, n)
     for Tret in (Duplicated, BatchDuplicated), Tb in (Duplicated, BatchDuplicated)
         are_activities_compatible(Const, Tret, Tb) || continue

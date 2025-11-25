@@ -3,8 +3,8 @@ using ChainRulesTestUtils
 using ChainRulesCore
 using FiniteDifferences
 using FFTW
-using Plots
 using JET
+using Plots
 using Statistics
 using Test
 using Serialization
