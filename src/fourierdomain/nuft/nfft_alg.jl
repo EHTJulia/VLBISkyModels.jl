@@ -51,7 +51,7 @@ function plan_nuft_spatial(
     uv2[1, :] .= -_rotatex.(visp.U, visp.V, Ref(rm)) .* dx
     uv2[2, :] .= -_rotatey.(visp.U, visp.V, Ref(rm)) .* dy
     (; reltol, precompute, fftflags) = alg
-    plan = plan_nfft(uv2, size(imagegrid)[1:2]; reltol, precompute, fftflags)
+    plan = plan_nfft(NFFTBackend(), uv2, size(imagegrid)[1:2]; reltol, precompute, fftflags)
     return plan
 end
 
@@ -93,7 +93,7 @@ end
 end
 
 # Adding new NUFFT methods should overload this for Enzyme to work
-function _jlnuft_adjointadd!(dI, A::NFFTPlan, dv)
+function _jlnuft_adjointadd!(dI, A::NFFT.AbstractNFFTPlan, dv)
     dI .+= real.(A' * dv)
     return nothing
 end

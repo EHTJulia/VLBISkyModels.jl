@@ -4,7 +4,6 @@ using ChainRulesCore
 using FiniteDifferences
 using FFTW
 using Plots
-using JET
 using Statistics
 using Test
 using Serialization
