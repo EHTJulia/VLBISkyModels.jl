@@ -212,7 +212,7 @@ end
     mbase = m.model
     transform = m.transform
     ispol = ispolarized(M)
-    pt, scale = modify_uv(ispol, transform, p, unitscale(Complex{eltype(p.U)}, ispol))
+    pt, scale = modify_uv(ispol, transform, p, unitscale(complex(eltype(p.U)), ispol))
     return scale * visibility_point(mbase, pt)
 end
 
