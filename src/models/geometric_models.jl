@@ -332,8 +332,8 @@ end
 
 #     ∂u = -complex(j1*2π*u/ρ)
 #     ∂v = -complex(j1*2π*v/ρ)
-#     ∂α = zeros(Complex{T}, length(α))
-#     ∂β = zeros(Complex{T}, length(α))
+#     ∂α = zeros(complex(T), length(α))
+#     ∂β = zeros(complex(T), length(α))
 
 #     ∂ku = 2π*u/ρ
 #     ∂kv = 2π*v/ρ

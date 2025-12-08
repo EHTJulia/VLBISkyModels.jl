@@ -20,7 +20,7 @@ function plan_nuft_spatial(
     uv = domainpoints(visdomain)
     rmat = ComradeBase.rotmat(imagegrid)' # adjoint because we need to move into rotated frame
     dft = similar(
-        Array{Complex{eltype(imagegrid)}}, length(visdomain),
+        Array{complex(eltype(imagegrid))}, length(visdomain),
         size(imagegrid)[1:2]...
     )
     @fastmath for i in eachindex(Y), j in eachindex(X), k in eachindex(visp)
@@ -36,7 +36,7 @@ end
 
 # internal function to make the phases to phase center the image.
 function make_phases(::DFTAlg, imgdomain::AbstractRectiGrid, visdomain::UnstructuredDomain)
-    return one(Complex{eltype(visdomain.U)})
+    return one(complex(eltype(visdomain.U)))
 end
 
 function _nuft!(out::AbstractArray{<:Complex}, p::AbstractArray{<:Complex}, b::AbstractArray{<:Number})

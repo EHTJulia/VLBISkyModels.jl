@@ -19,7 +19,7 @@ visibility_point(::ZeroModel{T}, args...) where {T} = complex(zero(T))
 intensity_point(::ZeroModel{T}, args...) where {T} = zero(T)
 
 function visibilitymap_analytic(::ZeroModel{T}, p::AbstractSingleDomain) where {T}
-    return Fill(zero(Complex{T}), length(p.U))
+    return Fill(zero(complex(T)), length(p.U))
 end
 function intensitymap_analytic(::ZeroModel{T}, p::AbstractSingleDomain) where {T}
     return IntensityMap(Fill(zero(T), map(length, dims(p))), p)

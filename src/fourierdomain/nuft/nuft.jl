@@ -153,7 +153,7 @@ end
         p::NUFTPlan{<:FourierTransform, <:AbstractDict},
         img::AbstractArray{<:Number}
     )
-    vis_list = similar(baseimage(img), Complex{eltype(img)}, p.totalvis)
+    vis_list = similar(baseimage(img), complex(eltype(img)), p.totalvis)
     plans = getplan(p)
     iminds, visinds = getindices(p)
     for i in eachindex(iminds, visinds)
@@ -174,14 +174,14 @@ function _frule_nuft(A::NUFTPlan, b::AbstractArray{<:ForwardDiff.Dual{T, V, P}})
     p = getplan(A)
     buffer = ForwardDiff.value.(b)
     xtil = p * complex.(buffer)
-    out = similar(buffer, Complex{ForwardDiff.Dual{T, V, P}})
+    out = similar(buffer, complex(ForwardDiff.Dual{T, V, P}))
     # Now take the deriv of nuft
     ndxs = ForwardDiff.npartials(first(b))
     dxtils = ntuple(ndxs) do n
         buffer .= ForwardDiff.partials.(b, n)
         return p * complex.(buffer)
     end
-    out = similar(xtil, Complex{ForwardDiff.Dual{T, V, P}})
+    out = similar(xtil, complex(ForwardDiff.Dual{T, V, P}))
     for i in eachindex(out)
         dual = getindex.(dxtils, i)
         prim = xtil[i]

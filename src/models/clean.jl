@@ -45,7 +45,7 @@ function intensity_point(m::MultiComponentModel, p)
 end
 
 function visibility_point(m::MultiComponentModel, p)
-    s = zero(Complex{eltype(p.U)})
+    s = zero(complex(eltype(p.U)))
     @unpack_params x, y, flux = m(p)
     for i in eachindex(x, y, flux)
         s += ComradeBase.visibility_point(m[i], p)

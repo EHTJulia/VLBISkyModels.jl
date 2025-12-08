@@ -194,7 +194,7 @@ function Base.:*(
         cache .= ForwardDiff.partials.(x, n)
         return p * cache
     end
-    out = similar(cache, Complex{ForwardDiff.Dual{T, V, P}})
+    out = similar(cache, complex(ForwardDiff.Dual{T, V, P}))
     for i in eachindex(out)
         dual = getindex.(dxtils, i)
         prim = xtil[i]

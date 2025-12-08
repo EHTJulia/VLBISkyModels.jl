@@ -32,7 +32,7 @@ function VLBISkyModels.plan_nuft_spatial(
     end
 
     plan = PlanNUFFT(
-        Complex{T}, size(imgdomain)[1:2];
+        complex(T), size(imgdomain)[1:2];
         backend, m = HalfSupport(m), σ = sigma,
         fftshift = true, # To match FINUFFT and NFFT conventions
         fftw_flags = fftflags, sort_points = True() # always sort for now

@@ -36,7 +36,7 @@ function VLBISkyModels.plan_nuft_spatial(
         fftw = fftw, dtype = T, upsampfac = 2.0
     )
     FINUFFT.finufft_setpts!(padj, u, v)
-    ccache = similar(U, Complex{T}, size(imgdomain)[1:2])
+    ccache = similar(U, complex(T), size(imgdomain)[1:2])
     p = FINUFFTPlan(size(u), size(imgdomain)[1:2], pfor, padj, ccache)
 
     finalizer(

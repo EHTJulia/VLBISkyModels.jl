@@ -48,7 +48,7 @@ function FINUFFTPlan(
     return FINUFFTPlan{T, VS, IS, P1, P2, A}(vsize, isize, forward, adjoint, compleximg)
 end
 
-Base.eltype(::FINUFFTPlan{T}) where {T} = Complex{T}
+Base.eltype(::FINUFFTPlan{T}) where {T} = complex(T)
 vissize(p::FINUFFTPlan) = p.vsize
 
 struct AdjointFINPlan{P}

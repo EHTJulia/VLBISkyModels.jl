@@ -209,7 +209,7 @@ end
 @inline function _apply_scaling!(mbase, t::Tuple, vbase, p)
     # out = similar(vbase)
     pvbase = baseimage(vbase)
-    uc = unitscale(Complex{eltype(p.U)}, mbase)
+    uc = unitscale(complex(eltype(p.U)), mbase)
     dp = domainpoints(p)
     @inbounds for I in eachindex(pvbase, dp)
         pvbase[I] = last(@inline modify_uv(mbase, t, dp[I], uc)) * pvbase[I]
