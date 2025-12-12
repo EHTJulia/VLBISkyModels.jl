@@ -45,6 +45,7 @@ function plan_indices(imgdomain::AbstractRectiGrid, visdomain::UnstructuredDomai
         # Check if visinds are strided if so switch to a iterator
         visind = findall(p -> _compare(nv, p), visp)
         dfs = diff(visind)
+        length(visind) == 0 && return (i, 1:0)
         if all(==(dfs[1]), dfs)
             if dfs[1] == 1
                 # Extract information to let it know we have a contiguous array
@@ -60,6 +61,10 @@ function plan_indices(imgdomain::AbstractRectiGrid, visdomain::UnstructuredDomai
 
     iminds = vec(parent(first.(inds)))
     visinds = vec(parent(last.(inds)))
+
+    inds = findall(isempty, visinds)
+    deleteat!(iminds, inds)
+    deleteat!(visinds, inds)
 
     return iminds, visinds
 end
@@ -159,7 +164,9 @@ end
     for i in eachindex(iminds, visinds)
         imind = iminds[i]
         visind = visinds[i]
+        length(visind) == 0 && continue
         vis_view = @view(vis_list[visind])
+
         _nuft!(vis_view, plans[imind], @view(img[:, :, imind]))
     end
     return vis_list
