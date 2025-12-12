@@ -166,7 +166,7 @@ end
         visind = visinds[i]
         length(visind) == 0 && continue
         vis_view = @view(vis_list[visind])
-        
+
         _nuft!(vis_view, plans[imind], @view(img[:, :, imind]))
     end
     return vis_list
