@@ -432,10 +432,10 @@ end
 
     @testset "Modifiers Multidomain" begin
         gXY = imagepixels(40.0, 40.0, 256, 256)
-        g = RectiGrid((; X = gXY.X, Y = gXY.Y, Fr = [230.0e9, 345.0e9]))
+        g = RectiGrid((; X = gXY.X, Y = gXY.Y, Ti = [1.0, 2.0], Fr = [230.0e9, 345.0e9]))
         u = randn(50) .* 0.25
         v = randn(50) .* 0.25
-        ti = range(1.0, 3.0; length = 50)
+        ti = vcat(fill(1.0, 10), fill(2.0, 40))
         fr = vcat(fill(230.0e9, 25), fill(345.0e9, 25))
         guv = UnstructuredDomain((; U = u, V = v, Fr = fr, Ti = ti))
         gfr = FourierDualDomain(g, guv, NFFTAlg())
