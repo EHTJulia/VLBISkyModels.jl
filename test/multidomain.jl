@@ -603,8 +603,8 @@ end
             fr = vcat(fill(230.0e9, 10), fill(345.0e9, 40))
             guv = UnstructuredDomain((; U = u, V = v, Fr = fr, Ti = ti))
             vmf = visibilitymap(convolved(m1, m2), guv)
-            v230 = visibilitymap(mtr230, guv[Fr=230.0e9])
-            v345 = visibilitymap(mtr345, guv[Fr=345.0e9])
+            v230 = visibilitymap(mtr230, guv[Fr = 230.0e9])
+            v345 = visibilitymap(mtr345, guv[Fr = 345.0e9])
 
             @test vmf[1:10] ≈ v230 atol = 1.0e-8
             @test vmf[11:50] ≈ v345 atol = 1.0e-8
