@@ -113,6 +113,41 @@ convolved(cimg::AbstractModel, m::ContinuousImage) = convolved(m, cimg)
 #     return ModifiedModel{typeof(m), typeof(t)}(m, t)
 # end
 
+function ComradeBase.dualmap(m::ContinuousImage, grid::FourierDualDomain)
+    checkgrid(axisdims(m), imgdomain(grid)) && return parent(m), visibilitymap(m, grid)
+    return intensitymap(m, grid), visibilitymap(m, grid)
+end
+
+function ComradeBase.dualmap(m::CompositeModel{<:ContinuousImage, M2}, grid::FourierDualDomain) where {M2}
+    img = intensitymap(m.m1, grid)
+    img2 = intensitymap(m.m2, grid)
+    img .+= img2
+    return img, visibilitymap(m, grid)
+end
+
+ComradeBase.dualmap(m::CompositeModel{M1, <:ContinuousImage}, grid::FourierDualDomain) where {M1} =
+    dualmap(swap(m), grid)
+
+swap(m::CompositeModel{M1, M2}) where {M1, M2} = typeof(m)(m.m2, m.m1)
+
+
+function ComradeBase.intensitymap(m::ContinuousImage, g::FourierDualDomain)
+    checkgrid(axisdims(m), imgdomain(g)) && return parent(m)
+    img = intensitymap_analytic(m, g)
+    return img
+end
+
+function ComradeBase.centroid(m::VLBISkyModels.ContinuousImage, g)
+    checkgrid(axisdims(m), g) && return centroid(VLBISkyModels.make_map(m))
+    return centroid(intensitymap(m, g))
+end
+
+function ComradeBase.flux(m::VLBISkyModels.ContinuousImage, g) 
+    checkgrid(axisdims(m), g) && flux(VLBISkyModels.make_map(m))
+    return flux(intensitymap(m, g))
+end
+
+
 @inline function visibilitymap_numeric(m::ContinuousImage, grid::FourierDualDomain)
     # We need to make sure that the grid is the same size as the image
     checkgrid(axisdims(m), imgdomain(grid))
@@ -175,7 +210,8 @@ function visibilitymap_numeric(
 end
 
 function checkgrid(imgdims, grid)
-    return !(dims(imgdims) == dims(grid)) &&
+    truth = (dims(imgdims) == dims(grid))
+    truth ||
         throw(
         ArgumentError(
             "The image dimensions in `ContinuousImage`\n" *
@@ -183,6 +219,7 @@ function checkgrid(imgdims, grid)
                 "do not match. This is not currently supported."
         )
     )
+    return truth 
 end
 ChainRulesCore.@non_differentiable checkgrid(::Any, ::Any)
 EnzymeRules.inactive(::typeof(checkgrid), args...) = nothing
@@ -205,6 +242,8 @@ function visibilitymap_numeric(
     _apply_scaling!(ispol, m.transform, vbase, puv)
     return vbase
 end
+
+
 
 @inline function _apply_scaling!(mbase, t::Tuple, vbase, p)
     # out = similar(vbase)
