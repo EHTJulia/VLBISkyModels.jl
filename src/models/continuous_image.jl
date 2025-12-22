@@ -114,21 +114,19 @@ convolved(cimg::AbstractModel, m::ContinuousImage) = convolved(m, cimg)
 # end
 
 function ComradeBase.dualmap(m::ContinuousImage, grid::FourierDualDomain)
-    checkgrid(axisdims(m), imgdomain(grid)) && return parent(m), visibilitymap(m, grid)
-    return intensitymap(m, grid), visibilitymap(m, grid)
+    checkgrid(axisdims(m), imgdomain(grid)) && return DualMap(parent(m), visibilitymap(m, grid), grid)
+    return DualMap(intensitymap(m, grid), visibilitymap(m, grid), grid)
 end
 
 function ComradeBase.dualmap(m::CompositeModel{<:ContinuousImage, M2}, grid::FourierDualDomain) where {M2}
     img = intensitymap(m.m1, grid)
     img2 = intensitymap(m.m2, grid)
     img .+= img2
-    return img, visibilitymap(m, grid)
+    return DualMap(img, visibilitymap(m, grid), grid)
 end
 
 ComradeBase.dualmap(m::CompositeModel{M1, <:ContinuousImage}, grid::FourierDualDomain) where {M1} =
     dualmap(swap(m), grid)
-
-swap(m::CompositeModel{M1, M2}) where {M1, M2} = typeof(m)(m.m2, m.m1)
 
 
 function ComradeBase.intensitymap(m::ContinuousImage, g::FourierDualDomain)

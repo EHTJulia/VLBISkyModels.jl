@@ -29,6 +29,8 @@ In addition there are additional optional methods a person can define if needed:
 """
 abstract type CompositeModel{M1, M2} <: AbstractModel end
 
+
+
 function Base.show(io::IO, m::T) where {T <: CompositeModel}
     si = split("$(T)", "{")[1]
     println(io, "$(si)(")
@@ -36,6 +38,8 @@ function Base.show(io::IO, m::T) where {T <: CompositeModel}
     println(io, "model2: ", m.m2)
     return print(io, ")")
 end
+
+@inline swap(m::CompositeModel{M1, M2}) where {M1, M2} = typeof(m)(m.m2, m.m1)
 
 radialextent(m::CompositeModel) = max(radialextent(m.m1), radialextent(m.m2))
 
