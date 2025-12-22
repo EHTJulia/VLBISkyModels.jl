@@ -21,6 +21,7 @@ CurrentModule = ComradeBase
 ```@docs
 ComradeBase.flux
 ComradeBase.visibility
+ComradeBase.dualmap
 ComradeBase.visibilitymap
 ComradeBase.visibilitymap!
 ComradeBase.intensitymap
@@ -86,6 +87,7 @@ ComradeBase.ThreadsEx
 ComradeBase.header
 ComradeBase.NoHeader
 ComradeBase.MinimalHeader
+ComradeBase.DualMap
 ```
 
 ### Image Types

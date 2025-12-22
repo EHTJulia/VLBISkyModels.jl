@@ -38,7 +38,6 @@ function Base.show(io::IO, m::T) where {T <: CompositeModel}
     return print(io, ")")
 end
 
-@inline swap(m::CompositeModel{M1, M2}) where {M1, M2} = typeof(m)(m.m2, m.m1)
 
 radialextent(m::CompositeModel) = max(radialextent(m.m1), radialextent(m.m2))
 
@@ -67,6 +66,9 @@ struct AddModel{T1, T2} <: CompositeModel{T1, T2}
     m1::T1
     m2::T2
 end
+
+@inline swap(m::AddModel) = AddModel(m.m2, m.m1)
+
 
 """
     added(m1::AbstractModel, m2::AbstractModel)
@@ -228,6 +230,9 @@ struct ConvolvedModel{M1, M2} <: CompositeModel{M1, M2}
     m1::M1
     m2::M2
 end
+
+@inline swap(m::ConvolvedModel) = ConvolvedModel(m.m2, m.m1)
+
 
 """
     convolved(m1::AbstractModel, m2::AbstractModel)

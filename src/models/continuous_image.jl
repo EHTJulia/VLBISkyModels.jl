@@ -121,8 +121,8 @@ end
 function ComradeBase.dualmap(m::CompositeModel{<:ContinuousImage, M2}, grid::FourierDualDomain) where {M2}
     img = intensitymap(m.m1, grid)
     img2 = intensitymap(m.m2, grid)
-    img .+= img2
-    return DualMap(img, visibilitymap(m, grid), grid)
+    img2 .+= img #copy into this one because img will alias otherwise
+    return DualMap(img2, visibilitymap(m, grid), grid)
 end
 
 ComradeBase.dualmap(m::CompositeModel{M1, <:ContinuousImage}, grid::FourierDualDomain) where {M1} =

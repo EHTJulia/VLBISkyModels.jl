@@ -91,5 +91,20 @@ end
     @test convolved(img, Gaussian()) isa ContinuousImage
     @test convolved(Gaussian(), img) isa ContinuousImage
 
-    # test_rrule(ContinuousImage, IntensityMap(data, g), BSplinePulse{3}() ⊢ NoTangent())
+    guv = UnstructuredDomain((U = randn(32) / 40, V = randn(32) / 40))
+    gfour = FourierDualDomain(g, guv, NFFTAlg())
+
+    dm = dualmap(img, gfour)
+    @test parent(ComradeBase.imgmap(dm)) === data
+    @test ComradeBase.vismap(dm) ≈ visibilitymap(img, gfour)
+
+    imgg1 = img + Gaussian()
+    imgg2 = Gaussian() + img
+    dm1 = dualmap(imgg1, gfour)
+    dm2 = dualmap(imgg2, gfour)
+    @test ComradeBase.imgmap(dm1) ≈ ComradeBase.imgmap(dm2)
+    @test ComradeBase.vismap(dm1) ≈ ComradeBase.vismap(dm2)
+    
+    imgg = intensitymap(Gaussian(), gfour)
+    @test ComradeBase.imgmap(dm1) ≈ data .+ imgg
 end
