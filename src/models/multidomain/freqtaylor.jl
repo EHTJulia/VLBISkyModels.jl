@@ -31,7 +31,7 @@ function TaylorSpectral(param, index::Real, freq0, p0 = zero(param))
     return TaylorSpectral(param, (index,), freq0, p0)
 end
 
-@fastmath @inline function build_param(model::TaylorSpectral{N}, p) where {N}
+@fastmath @inline function ComradeBase.build_param(model::TaylorSpectral{N}, p) where {N}
     lf = log(p.Fr / model.freq0)
     arg = reduce(+, ntuple(n -> @inbounds(model.index[n]) * lf^n, Val(N)))
     param = model.param * exp(arg) + model.p0

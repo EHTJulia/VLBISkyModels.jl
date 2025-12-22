@@ -66,6 +66,11 @@ ComradeBase.intensitymap_analytic
 ComradeBase.intensitymap_analytic!
 ComradeBase.intensitymap_numeric
 ComradeBase.intensitymap_numeric!
+ComradeBase.DomainParams
+ComradeBase.getparam
+ComradeBase.@unpack_params
+ComradeBase.build_param
+ComradeBase.paramtype
 ```
 
 ### Image Domain
@@ -88,6 +93,7 @@ ComradeBase.header
 ComradeBase.NoHeader
 ComradeBase.MinimalHeader
 ComradeBase.DualMap
+ComradeBase.AbstractDualDomain
 ```
 
 ### Image Types
