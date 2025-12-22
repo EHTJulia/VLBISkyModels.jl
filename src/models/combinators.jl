@@ -30,7 +30,6 @@ In addition there are additional optional methods a person can define if needed:
 abstract type CompositeModel{M1, M2} <: AbstractModel end
 
 
-
 function Base.show(io::IO, m::T) where {T <: CompositeModel}
     si = split("$(T)", "{")[1]
     println(io, "$(si)(")

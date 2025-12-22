@@ -140,7 +140,7 @@ function ComradeBase.centroid(m::VLBISkyModels.ContinuousImage, g)
     return centroid(intensitymap(m, g))
 end
 
-function ComradeBase.flux(m::VLBISkyModels.ContinuousImage, g) 
+function ComradeBase.flux(m::VLBISkyModels.ContinuousImage, g)
     checkgrid(axisdims(m), g) && flux(VLBISkyModels.make_map(m))
     return flux(intensitymap(m, g))
 end
@@ -217,7 +217,7 @@ function checkgrid(imgdims, grid)
                 "do not match. This is not currently supported."
         )
     )
-    return truth 
+    return truth
 end
 ChainRulesCore.@non_differentiable checkgrid(::Any, ::Any)
 EnzymeRules.inactive(::typeof(checkgrid), args...) = nothing
@@ -240,7 +240,6 @@ function visibilitymap_numeric(
     _apply_scaling!(ispol, m.transform, vbase, puv)
     return vbase
 end
-
 
 
 @inline function _apply_scaling!(mbase, t::Tuple, vbase, p)
