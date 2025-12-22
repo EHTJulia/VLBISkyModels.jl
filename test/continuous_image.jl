@@ -104,7 +104,7 @@ end
     dm2 = dualmap(imgg2, gfour)
     @test ComradeBase.imgmap(dm1) ≈ ComradeBase.imgmap(dm2)
     @test ComradeBase.vismap(dm1) ≈ ComradeBase.vismap(dm2)
-    
+
     imgg = intensitymap(Gaussian(), gfour)
     @test ComradeBase.imgmap(dm1) ≈ data .+ imgg
 end
