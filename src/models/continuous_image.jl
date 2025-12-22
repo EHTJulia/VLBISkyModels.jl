@@ -25,6 +25,8 @@ struct ContinuousImage{A <: IntensityMap, P} <: AbstractModel
     kernel::P
 end
 
+make_map(cimg::ContinuousImage) = cimg.img
+
 function Base.show(io::IO, img::ContinuousImage{A, P}) where {A, P}
     sA = split("$A", ",")[1]
     sA = sA * "}"
@@ -37,25 +39,24 @@ end
 function ComradeBase.ispolarized(::Type{<:ContinuousImage{A}}) where {A <: IntensityMap{<:Real}}
     return NotPolarized()
 end
-ComradeBase.flux(m::ContinuousImage) = flux(parent(m)) * flux(m.kernel)
+ComradeBase.flux(m::ContinuousImage) = flux(make_map(m)) * flux(m.kernel)
 
 function ComradeBase.stokes(cimg::ContinuousImage, v)
-    return ContinuousImage(stokes(parent(cimg), v), cimg.kernel)
+    return ContinuousImage(stokes(make_map(cimg), v), cimg.kernel)
 end
-ComradeBase.centroid(m::ContinuousImage) = centroid(parent(m))
-Base.parent(m::ContinuousImage) = m.img
-Base.length(m::ContinuousImage) = length(parent(m))
-Base.size(m::ContinuousImage) = size(parent(m))
-Base.size(m::ContinuousImage, i::Int) = size(parent(m), i::Int)
-Base.firstindex(m::ContinuousImage) = firstindex(parent(m))
-Base.lastindex(m::ContinuousImage) = lastindex(parent(m))
-
+ComradeBase.centroid(m::ContinuousImage) = centroid(make_map(m))
+Base.parent(cimg::ContinuousImage) = make_map(cimg)
+Base.length(m::ContinuousImage) = length(make_map(m))
+Base.size(m::ContinuousImage) = size(make_map(m))
+Base.size(m::ContinuousImage, i::Int) = size(make_map(m), i::Int)
+Base.firstindex(m::ContinuousImage) = firstindex(make_map(m))
+Base.lastindex(m::ContinuousImage) = lastindex(make_map(m))
 Base.eltype(::ContinuousImage{A, P}) where {A, P} = eltype(A)
 
-Base.getindex(img::ContinuousImage, args...) = getindex(parent(img), args...)
-Base.axes(m::ContinuousImage) = axes(parent(m))
-ComradeBase.domainpoints(m::ContinuousImage) = domainpoints(parent(m))
-ComradeBase.axisdims(m::ContinuousImage) = axisdims(parent(m))
+Base.getindex(img::ContinuousImage, args...) = getindex(make_map(img), args...)
+Base.axes(m::ContinuousImage) = axes(make_map(m))
+ComradeBase.domainpoints(m::ContinuousImage) = domainpoints(make_map(m))
+ComradeBase.axisdims(m::ContinuousImage) = axisdims(make_map(m))
 
 function ContinuousImage(img::IntensityMap, pulse::Pulse)
     return ContinuousImage{typeof(img), typeof(pulse)}(img, pulse)
@@ -73,7 +74,7 @@ function InterpolatedModel(
             <:FFTAlg,
         }
     )
-    img = parent(model)
+    img = make_map(model) # intensity map
     sitp = build_intermodel(img, forward_plan(d), algorithm(d), model.kernel)
     return InterpolatedModel{typeof(model), typeof(sitp)}(model, sitp)
 end
@@ -114,7 +115,7 @@ convolved(cimg::AbstractModel, m::ContinuousImage) = convolved(m, cimg)
 # end
 
 function ComradeBase.dualmap(m::ContinuousImage, grid::FourierDualDomain)
-    checkgrid(axisdims(m), imgdomain(grid)) && return DualMap(parent(m), visibilitymap(m, grid), grid)
+    checkgrid(axisdims(m), imgdomain(grid)) && return DualMap(make_map(m), visibilitymap(m, grid), grid)
     return DualMap(intensitymap(m, grid), visibilitymap(m, grid), grid)
 end
 
@@ -130,7 +131,7 @@ ComradeBase.dualmap(m::CompositeModel{M1, <:ContinuousImage}, grid::FourierDualD
 
 
 function ComradeBase.intensitymap(m::ContinuousImage, g::FourierDualDomain)
-    checkgrid(axisdims(m), imgdomain(g)) && return parent(m)
+    checkgrid(axisdims(m), imgdomain(g)) && return make_map(m)
     img = intensitymap_analytic(m, g)
     return img
 end
@@ -149,7 +150,7 @@ end
 @inline function visibilitymap_numeric(m::ContinuousImage, grid::FourierDualDomain)
     # We need to make sure that the grid is the same size as the image
     checkgrid(axisdims(m), imgdomain(grid))
-    img = parent(m)
+    img = make_map(m)
     vis = applyft(forward_plan(grid), img)
     return applypulse!(vis, m.kernel, grid)
 end
