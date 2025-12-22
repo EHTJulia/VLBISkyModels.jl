@@ -1,3 +1,4 @@
+using Pkg
 Pkg.develop(PackageSpec(url = "https://github.com/ptiede/ComradeBase.jl"))
 
 using VLBISkyModels
@@ -21,7 +22,6 @@ using BenchmarkTools
 using EnzymeTestUtils
 using FINUFFT
 using NonuniformFFTs
-
 
 
 function FiniteDifferences.to_vec(k::IntensityMap)
