@@ -51,7 +51,7 @@ radialextent(::Gaussian{T}) where {T} = convert(paramtype(T), 5)
     if hypot(x, y) > 6
         return zero(T)
     end
-    return exp(-(x^2 + y^2) / 2) / T(2 * pi)
+    return exp(-(x^2 + y^2) / 2) / T(2 * π)
 end
 
 @inline function visibility_point(::Gaussian{D}, p) where {D}

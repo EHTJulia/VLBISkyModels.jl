@@ -1,6 +1,6 @@
 export TaylorSpectral
 
-struct TaylorSpectral{N, P, T <: NTuple{N}, F <: Real, P0} <: FrequencyParams{P}
+struct TaylorSpectral{N, P, T <: NTuple{N}, F <: Real, P0} <: ComradeBase.FrequencyParams{P}
     param::P
     index::T
     freq0::F
@@ -31,9 +31,36 @@ function TaylorSpectral(param, index::Real, freq0, p0 = zero(param))
     return TaylorSpectral(param, (index,), freq0, p0)
 end
 
-@fastmath @inline function ComradeBase.build_param(model::TaylorSpectral{N}, p) where {N}
-    lf = log(p.Fr / model.freq0)
-    arg = reduce(+, ntuple(n -> @inbounds(model.index[n]) * lf^n, Val(N)))
-    param = model.param * exp(arg) + model.p0
-    return param
+# This allows Julia to do LICM on the inner loop
+@fastmath mylog(x) = x > 0 ? log(x) : NaN
+
+@fastmath @inline function _taylorspec(param, index::NTuple{N}, lf, p0) where {N}
+    arg = reduce(+, ntuple(n -> @inbounds(index[n]) * lf^n, Val(N)))
+    return param * exp(arg) + p0
 end
+
+@fastmath @inline function ComradeBase.build_param(model::TaylorSpectral{N}, p) where {N}
+    # return model.param + model.p0
+    lf = mylog(p.Fr / model.freq0)
+    return _taylorspec(model.param, model.index, lf, model.p0)
+end
+
+@fastmath @inline function ComradeBase.build_param(model::TaylorSpectral{N, <:AbstractArray}, p) where {N}
+    out = similar(model.param)
+    return build_param!(out, model, p)
+end
+
+@fastmath @inline function build_param!(out, model::TaylorSpectral{N, <:AbstractArray}, p) where {N}
+    # return model.param + model.p0
+    lf = mylog(p.Fr / model.freq0)
+    mp = model.param
+    mp0 = model.p0
+    @inbounds for i in eachindex(out, model.param)
+        index = _getindices(model.index, i)
+        out[i] = @inline _taylorspec(mp[i], index, lf, zero(lf))
+    end
+    return out
+end
+
+@inline _getindices(index::NTuple{N, <:AbstractArray}, i) where {N} = ntuple(n -> index[n][i], Val(N))
+@inline _getindices(index::NTuple, i) = index

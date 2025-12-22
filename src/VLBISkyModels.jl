@@ -25,6 +25,8 @@ using LinearAlgebra
 using Printf
 using Serialization
 
+import ComradeBase: DomainParams, build_param, paramtype, getparam, @unpack_params
+
 @reexport using ComradeBase
 @reexport using PolarizedTypes
 @reexport using DimensionalData

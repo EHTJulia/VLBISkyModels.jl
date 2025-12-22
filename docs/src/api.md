@@ -17,11 +17,11 @@ Pages = ["api.md"]
 ### Model Parameter Unpackaing
 
 ```@docs
-VLBISkyModels.DomainParams
-VLBISkyModels.build_param
-VLBISkyModels.getparam
-VLBISkyModels.@unpack_params
-VLBISkyModels.paramtype
+ComradeBase.DomainParams
+ComradeBase.build_param
+ComradeBase.getparam
+ComradeBase.@unpack_params
+ComradeBase.paramtype
 ```
 
 ### Time Frequency Domain
