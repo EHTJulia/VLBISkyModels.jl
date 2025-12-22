@@ -14,16 +14,6 @@ Pages = ["api.md"]
 
 ## Model Definitions
 
-### Model Parameter Unpackaing
-
-```@docs
-ComradeBase.DomainParams
-ComradeBase.build_param
-ComradeBase.getparam
-ComradeBase.@unpack_params
-ComradeBase.paramtype
-```
-
 ### Time Frequency Domain
 
 ```@docs
