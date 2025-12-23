@@ -95,8 +95,13 @@ end
     gfour = FourierDualDomain(g, guv, NFFTAlg())
 
     dm = dualmap(img, gfour)
-    @test parent(ComradeBase.imgmap(dm)) === data
     @test ComradeBase.vismap(dm) ≈ visibilitymap(img, gfour)
+
+    # This is separate because only the DeltaPulse can use `data` directly
+    # The others are convolutions and do not preserve the image data. 
+    img0 = ContinuousImage(data, g, DeltaPulse())
+    dm0 = dualmap(img0, gfour)
+    @test parent(ComradeBase.imgmap(dm0)) ≈ data
 
     imgg1 = img + Gaussian()
     imgg2 = Gaussian() + img
@@ -106,5 +111,12 @@ end
     @test ComradeBase.vismap(dm1) ≈ ComradeBase.vismap(dm2)
 
     imgg = intensitymap(Gaussian(), gfour)
-    @test ComradeBase.imgmap(dm1) ≈ data .+ imgg
+    @test ComradeBase.imgmap(dm1) ≈ intensitymap(img, g) .+ imgg
+
+    @test intensitymap(img, g) ≈ intensitymap(img, gfour)
+    @test intensitymap(img, g) ≈ ComradeBase.imgmap(dualmap(img, gfour))
+
+    gbg = imagepixels(12.0, 12.0, 64, 64)
+    @test SVector(centroid(img)) ≈ SVector(centroid(img, gbg)) rtol = 1.0e-4
+    @test flux(img) ≈ flux(img, gbg) rtol = 1.0e-4
 end

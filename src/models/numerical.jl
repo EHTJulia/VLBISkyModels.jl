@@ -72,6 +72,7 @@ function intensitymap_numeric(m::AbstractModel, grid::AbstractSingleDomain)
     return img
 end
 
+
 # Special because I just want to do the straight FFT thing no matter what
 function visibilitymap_numeric!(vis::IntensityMap, m::AbstractModel)
     grid = axisdims(vis)

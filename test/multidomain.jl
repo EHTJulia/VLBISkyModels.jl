@@ -610,4 +610,14 @@ end
             @test vmf[11:50] ≈ v345 atol = 1.0e-8
         end
     end
+
+    @testset "TaylorSpectral Array" begin
+        g = imagepixels(10.0, 10.0, 64, 64)
+        base = rand(64, 64)
+        indices = (ones(64, 64), zeros(64, 64))
+        ps = TaylorSpectral(base, indices, 230.0e9)
+        @test ComradeBase.build_param(ps, (; Fr = 230.0e9)) ≈ base
+        @test ComradeBase.build_param(ps, (; Fr = 230.0e9 * 2)) ≈ base .* 2.0
+        @test ComradeBase.build_param(ps, (; Fr = 230.0e9 / 2)) ≈ base .* inv(2)
+    end
 end

@@ -12,6 +12,9 @@ and visibility location. The image model is
 
 where `Iᵢⱼ` are the flux densities of the image `img` and κ is the intensity function for the
 `kernel`.
+
+Note that if the image grid is the same as the grid passed to `intensitymap` then the discrete image 
+is used directly for efficiency.
 """
 struct ContinuousImage{A <: IntensityMap, P} <: AbstractModel
     """
@@ -19,8 +22,7 @@ struct ContinuousImage{A <: IntensityMap, P} <: AbstractModel
     """
     img::A
     """
-    Image Kernel that transforms from the discrete image to a continuous one. This is
-    sometimes called a pulse function in `eht-imaging`.
+    Image kernel or pulse that transforms from the discrete image to a continuous one.
     """
     kernel::P
 end
@@ -114,37 +116,6 @@ convolved(cimg::AbstractModel, m::ContinuousImage) = convolved(m, cimg)
 #     return ModifiedModel{typeof(m), typeof(t)}(m, t)
 # end
 
-function ComradeBase.dualmap(m::ContinuousImage, grid::FourierDualDomain)
-    checkgrid(axisdims(m), imgdomain(grid)) && return DualMap(make_map(m), visibilitymap(m, grid), grid)
-    return DualMap(intensitymap(m, grid), visibilitymap(m, grid), grid)
-end
-
-function ComradeBase.dualmap(m::CompositeModel{<:ContinuousImage, M2}, grid::FourierDualDomain) where {M2}
-    img = intensitymap(m.m1, grid)
-    img2 = intensitymap(m.m2, grid)
-    img2 .+= img #copy into this one because img will alias otherwise
-    return DualMap(img2, visibilitymap(m, grid), grid)
-end
-
-ComradeBase.dualmap(m::CompositeModel{M1, <:ContinuousImage}, grid::FourierDualDomain) where {M1} =
-    dualmap(swap(m), grid)
-
-
-function ComradeBase.intensitymap(m::ContinuousImage, g::FourierDualDomain)
-    checkgrid(axisdims(m), imgdomain(g)) && return make_map(m)
-    img = intensitymap_analytic(m, g)
-    return img
-end
-
-function ComradeBase.centroid(m::VLBISkyModels.ContinuousImage, g)
-    checkgrid(axisdims(m), g) && return centroid(VLBISkyModels.make_map(m))
-    return centroid(intensitymap(m, g))
-end
-
-function ComradeBase.flux(m::VLBISkyModels.ContinuousImage, g)
-    checkgrid(axisdims(m), g) && flux(VLBISkyModels.make_map(m))
-    return flux(intensitymap(m, g))
-end
 
 
 @inline function visibilitymap_numeric(m::ContinuousImage, grid::FourierDualDomain)
@@ -210,14 +181,6 @@ end
 
 function checkgrid(imgdims, grid)
     truth = (dims(imgdims) == dims(grid))
-    truth ||
-        throw(
-        ArgumentError(
-            "The image dimensions in `ContinuousImage`\n" *
-                "and the visibility grid passed to `visibilitymap`\n" *
-                "do not match. This is not currently supported."
-        )
-    )
     return truth
 end
 ChainRulesCore.@non_differentiable checkgrid(::Any, ::Any)
