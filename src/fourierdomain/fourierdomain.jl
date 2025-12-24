@@ -4,18 +4,22 @@ abstract type FourierTransform end
 
 export allocate_imgmap, allocate_vismap
 
+
+import ComradeBase: imgdomain, visdomain, AbstractDualDomain
+
+
 """
     $(TYPEDEF)
 
 This defines an abstract cache that can be used to
 hold or precompute some computations.
 """
-abstract type AbstractFourierDualDomain <: ComradeBase.AbstractDualDomain end
+abstract type AbstractFourierDualDomain <: AbstractDualDomain end
 
 forward_plan(g::AbstractFourierDualDomain) = getfield(g, :plan_forward)
 reverse_plan(g::AbstractFourierDualDomain) = getfield(g, :plan_reverse)
-imgdomain(g::AbstractFourierDualDomain) = getfield(g, :imgdomain)
-visdomain(g::AbstractFourierDualDomain) = getfield(g, :visdomain)
+ComradeBase.imgdomain(g::AbstractFourierDualDomain) = getfield(g, :imgdomain)
+ComradeBase.visdomain(g::AbstractFourierDualDomain) = getfield(g, :visdomain)
 algorithm(g::AbstractFourierDualDomain) = getfield(g, :algorithm)
 
 EnzymeRules.inactive(::typeof(forward_plan), args...) = nothing
