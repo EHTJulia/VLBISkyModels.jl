@@ -13,26 +13,26 @@ guv = UnstructuredDomain((U = u, V = v))</code></pre><pre class="documenter-exam
 executor: Serial()
 Dimensions: 
 1000-element StructArray(::Vector{Float64}, ::Vector{Float64}) with eltype @NamedTuple{U::Float64, V::Float64}:
- (U = -0.8403877105305513, V = 0.2061906745148814)
- (U = -0.7876995007797362, V = -0.48216269017480917)
- (U = 0.616780291192118, V = -0.1334118808956433)
- (U = 0.009696935667788495, V = -0.40681177828780274)
- (U = 0.2898758602297619, V = -0.1490390881004354)
- (U = -0.23336204623373247, V = -0.06954345044159643)
- (U = -0.2981863777938685, V = 0.2946036272799694)
- (U = 0.1733181342585063, V = 0.9377270502481648)
- (U = 0.6650135669883653, V = 0.1903618339184496)
- (U = -0.20136945335172482, V = 0.8026569457294027)
+ (U = 0.2543628909012627, V = -0.16724584880097743)
+ (U = -0.004932456559789848, V = -0.20685356783290568)
+ (U = -0.22867935393150315, V = -0.7759417549791399)
+ (U = -0.3809286877974726, V = 0.40226185978860096)
+ (U = 0.7680703412379866, V = 0.31925403167783817)
+ (U = 0.19522844321990465, V = -0.6970052187596848)
+ (U = -0.06485038500148514, V = 0.39112090536999805)
+ (U = 0.03337305436784204, V = 0.455143662193167)
+ (U = -0.18733256668616263, V = 0.5290484665309009)
+ (U = -0.054828120744978615, V = 0.6151265537810516)
  ⋮
- (U = 0.46357877085948757, V = -0.28420213121170174)
- (U = -0.1334906797096431, V = -0.27707809643749404)
- (U = -0.17065419194917342, V = -0.4023493112088469)
- (U = 0.33384382042949307, V = -0.05639679242950078)
- (U = 0.4034606101288428, V = -0.2934571682332899)
- (U = 0.15125658350802418, V = 0.07552105675807565)
- (U = -0.879658983304733, V = 0.6037811547869385)
- (U = -0.03846026092659024, V = 0.6674215438458828)
- (U = 0.4274124007965494, V = 0.5279352446127467)
+ (U = -0.12057687241820765, V = 0.4622111243913722)
+ (U = -0.4064668248234099, V = -1.2818285415096853)
+ (U = -0.34846285036834496, V = 0.5522889240956291)
+ (U = -0.3533835362935775, V = 0.023798982341571184)
+ (U = 0.9240996757282368, V = -0.07507111749093062)
+ (U = 0.26075934403719114, V = 0.09838022726542373)
+ (U = -0.29051920340441584, V = 0.40359159822730634)
+ (U = 0.005498147453279368, V = -0.48150901930992396)
+ (U = 0.5504997198333852, V = 0.07829601749182231)
 )</code></pre><p>We can now create a <em>dual domain</em> that contains both the image and the UV points and the specific Fourier transform algorithm we want to use. The options for algorithms are:</p><ol><li><a href="../../api/#VLBISkyModels.NFFTAlg"><code>NFFTAlg</code></a>: Uses the Non-Uniform Fast Fourier Transform. Fast and accurate, this is the recommended algorithm for most cases.</li><li><a href="../../api/#VLBISkyModels.DFTAlg"><code>DFTAlg</code></a>: Uses the Discrete Time Non-Uniform Fourier transform. Slow but exact, so only use for small image grids.</li><li><a href="../../api/#VLBISkyModels.FFTAlg"><code>FFTAlg</code></a>: Moderately fast and moderately accurate. Typically only used internally for testing.</li></ol><p>For this example we will use <code>NFFTAlg</code> since it is the recommended algorithm for most cases.</p><pre><code class="language-julia hljs">gfour = FourierDualDomain(gim, guv, NFFTAlg())</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi"><span class="sgr1">FourierDualDomain(</span>
 <span class="sgr1">Algorithm: </span>NFFTAlg{Float64, AbstractNFFTs.PrecomputeFlags, UInt32}(1, 1.0e-9, AbstractNFFTs.TENSOR, 0x00000000)
 <span class="sgr1">Image Domain: </span>RectiGrid(
@@ -45,26 +45,26 @@ Dimensions:
 executor: Serial()
 Dimensions: 
 1000-element StructArray(::Vector{Float64}, ::Vector{Float64}) with eltype @NamedTuple{U::Float64, V::Float64}:
- (U = -0.8403877105305513, V = 0.2061906745148814)
- (U = -0.7876995007797362, V = -0.48216269017480917)
- (U = 0.616780291192118, V = -0.1334118808956433)
- (U = 0.009696935667788495, V = -0.40681177828780274)
- (U = 0.2898758602297619, V = -0.1490390881004354)
- (U = -0.23336204623373247, V = -0.06954345044159643)
- (U = -0.2981863777938685, V = 0.2946036272799694)
- (U = 0.1733181342585063, V = 0.9377270502481648)
- (U = 0.6650135669883653, V = 0.1903618339184496)
- (U = -0.20136945335172482, V = 0.8026569457294027)
+ (U = 0.2543628909012627, V = -0.16724584880097743)
+ (U = -0.004932456559789848, V = -0.20685356783290568)
+ (U = -0.22867935393150315, V = -0.7759417549791399)
+ (U = -0.3809286877974726, V = 0.40226185978860096)
+ (U = 0.7680703412379866, V = 0.31925403167783817)
+ (U = 0.19522844321990465, V = -0.6970052187596848)
+ (U = -0.06485038500148514, V = 0.39112090536999805)
+ (U = 0.03337305436784204, V = 0.455143662193167)
+ (U = -0.18733256668616263, V = 0.5290484665309009)
+ (U = -0.054828120744978615, V = 0.6151265537810516)
  ⋮
- (U = 0.46357877085948757, V = -0.28420213121170174)
- (U = -0.1334906797096431, V = -0.27707809643749404)
- (U = -0.17065419194917342, V = -0.4023493112088469)
- (U = 0.33384382042949307, V = -0.05639679242950078)
- (U = 0.4034606101288428, V = -0.2934571682332899)
- (U = 0.15125658350802418, V = 0.07552105675807565)
- (U = -0.879658983304733, V = 0.6037811547869385)
- (U = -0.03846026092659024, V = 0.6674215438458828)
- (U = 0.4274124007965494, V = 0.5279352446127467)
+ (U = -0.12057687241820765, V = 0.4622111243913722)
+ (U = -0.4064668248234099, V = -1.2818285415096853)
+ (U = -0.34846285036834496, V = 0.5522889240956291)
+ (U = -0.3533835362935775, V = 0.023798982341571184)
+ (U = 0.9240996757282368, V = -0.07507111749093062)
+ (U = 0.26075934403719114, V = 0.09838022726542373)
+ (U = -0.29051920340441584, V = 0.40359159822730634)
+ (U = 0.005498147453279368, V = -0.48150901930992396)
+ (U = 0.5504997198333852, V = 0.07829601749182231)
 )</code></pre><p>Given this <code>FourierDualDomain</code> everything now works as before with analytic models. For example we can compute the intensitymap of the model as</p><pre><code class="language-julia hljs">img = intensitymap(m, gfour)
 imageviz(img)</code></pre><img src="5b9f5357.png" alt="Example block output"/><p>and the visibility map using</p><pre><code class="language-julia hljs">vis = visibilitymap(m, gfour)
 fig, ax = scatter(hypot.(vis.U, vis.V), real.(vis); label = &quot;Real&quot;)
@@ -72,29 +72,29 @@ scatter!(ax, hypot.(vis.U, vis.V), imag.(vis); label = &quot;Imag&quot;)
 axislegend(ax)
 ax.xlabel = &quot;uv-dist&quot;
 ax.ylabel = &quot;Flux&quot;
-fig</code></pre><img src="a65c8e7e.png" alt="Example block output"/><p>Additionally, you can also modify the models and add them in complete generality. For example</p><pre><code class="language-julia hljs">mmod = modify(m, Shift(2.0, 2.0)) + Gaussian()
+fig</code></pre><img src="eb301322.png" alt="Example block output"/><p>Additionally, you can also modify the models and add them in complete generality. For example</p><pre><code class="language-julia hljs">mmod = modify(m, Shift(2.0, 2.0)) + Gaussian()
 mimg = intensitymap(mmod, gfour)
 mvis = visibilitymap(mmod, gfour)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">1000-element UnstructuredMap{ComplexF64, Vector{ComplexF64}, UnstructuredDomain{StructArrays.StructVector{@NamedTuple{U::Float64, V::Float64}, @NamedTuple{U::Vector{Float64}, V::Vector{Float64}}, Int64}, Serial, DimensionalData.Dimensions.Lookups.NoMetadata}}:
-   0.001814059095676949 + 0.016960101744279966im
- -0.0026870580408112905 + 0.0006900756963986185im
-   -0.13739385768525872 + 0.02917432878426777im
-   0.007629466259788425 - 0.10385329018323257im
-    0.11517189905474011 + 0.03744166699159614im
-    0.08356947446613255 + 0.17876950443771322im
-     -0.091831348072166 + 0.0055465048022591im
-  0.0018305129113398732 + 0.01028914432877029im
-   0.025996692231457563 + 0.10378172248462048im
-   -0.00979253145203001 - 0.03160642378775627im
-                        ⋮
-    0.11106399082768166 - 0.13282861905171373im
-    0.19174620709048082 + 0.07709077235519286im
-  -0.061645013623219704 + 0.11115624155168857im
-    0.09589438880783066 - 0.0021599750910480473im
-  -0.024567335450625147 - 0.1677345373685833im
-    0.01763789675715799 + 0.16611667408623254im
-  -0.026145710129706002 + 0.008812377995729336im
-    0.00678139194584296 - 0.12027563334864075im
-   -0.09643737106317687 + 0.060700392757333466im</code></pre><p>Plotting everything gives</p><pre><code class="language-julia hljs">fig = Figure(; size = (800, 400))
+   0.20356543454568882 + 0.08420559929971676im
+   0.05133118429281741 - 0.19543249852184397im
+  -0.04186896721445177 + 0.002429784141135318im
+  -0.16114233303235936 - 0.04490699154165632im
+ -0.014247625304889827 - 0.02784565184867611im
+  -0.08812180487563201 + 0.002186784286915805im
+   0.09879709077921493 + 0.07810877150975472im
+   -0.1350728199708002 + 0.022102979331580758im
+   0.07044132682705022 + 0.15328812516104753im
+  -0.10668636383867108 - 0.10157765593943079im
+                       ⋮
+   0.07798355688385351 + 0.14979754790816946im
+ -0.013865013604361048 - 0.013591436044388215im
+   0.10793441045639426 - 0.07063889964819677im
+   0.09637136501726187 - 0.021095243766738575im
+ -0.000988122363889214 - 0.0031891298589802283im
+   0.18262216808757079 - 0.16677892596928806im
+  -0.01778668356166141 - 0.168523563428517im
+  -0.14742412685233236 - 0.04962909404543693im
+  0.009666002163487298 - 0.16922611627007977im</code></pre><p>Plotting everything gives</p><pre><code class="language-julia hljs">fig = Figure(; size = (800, 400))
 ax1 = Axis(
     fig[1, 1]; xreversed = true, xlabel = &quot;RA (radians)&quot;, ylabel = &quot;Dec (radians)&quot;,
     aspect = 1
@@ -102,4 +102,4 @@ ax1 = Axis(
 ax2 = Axis(fig[1, 2]; xlabel = &quot;uv-dist&quot;, ylabel = &quot;Amplitude&quot;)
 image!(ax1, mimg; colormap = :afmhot)
 scatter!(ax2, hypot.(mvis.U, mvis.V), abs.(mvis); label = &quot;Real&quot;)
-fig</code></pre><img src="4c068449.png" alt="Example block output"/><hr/><p><em>This page was generated using <a href="https://github.com/fredrikekre/Literate.jl">Literate.jl</a>.</em></p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../../base_api/">« Base API</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.16.1 on <span class="colophon-date" title="Wednesday 24 December 2025 04:02">Wednesday 24 December 2025</span>. Using Julia version 1.10.10.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
+fig</code></pre><img src="552601a7.png" alt="Example block output"/><hr/><p><em>This page was generated using <a href="https://github.com/fredrikekre/Literate.jl">Literate.jl</a>.</em></p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../../base_api/">« Base API</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.16.1 on <span class="colophon-date" title="Wednesday 24 December 2025 15:32">Wednesday 24 December 2025</span>. Using Julia version 1.10.10.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
