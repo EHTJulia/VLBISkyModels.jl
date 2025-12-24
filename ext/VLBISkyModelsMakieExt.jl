@@ -311,9 +311,9 @@ function Makie.plot!(plot::PolImage{<:Tuple{<:IntensityMap{<:StokesParams}}})
 
     map!(plot.attributes, [:plot_total, :marker_width], :mrk) do pt, marker_width
         pbig = Makie.GeometryBasics.decompose(Point2f, Circle(Point2f(0), 2.0))
-        psmall = Makie.GeometryBasics.decompose(Point2f, Circle(Point2f(0), (1-marker_width) * 2.0))
+        psmall = Makie.GeometryBasics.decompose(Point2f, Circle(Point2f(0), (1 - marker_width) * 2.0))
         # prect = Makie.Polygon(Makie.GeometryBasics.decompose(Point2f, Rect(Point2f(0), Point2f(0.0), 2.0, 2.0)))
-        if pt 
+        if pt
             return Makie.GeometryBasics.Polygon(pbig, [psmall])
         else
             return Makie.Polygon(Makie.GeometryBasics.decompose(Point2f, Rect(0.0, 0.0, 1.0, 1.0)))
