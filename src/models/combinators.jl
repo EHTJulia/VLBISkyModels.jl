@@ -29,6 +29,7 @@ In addition there are additional optional methods a person can define if needed:
 """
 abstract type CompositeModel{M1, M2} <: AbstractModel end
 
+
 function Base.show(io::IO, m::T) where {T <: CompositeModel}
     si = split("$(T)", "{")[1]
     println(io, "$(si)(")
@@ -36,6 +37,7 @@ function Base.show(io::IO, m::T) where {T <: CompositeModel}
     println(io, "model2: ", m.m2)
     return print(io, ")")
 end
+
 
 radialextent(m::CompositeModel) = max(radialextent(m.m1), radialextent(m.m2))
 
@@ -64,6 +66,9 @@ struct AddModel{T1, T2} <: CompositeModel{T1, T2}
     m1::T1
     m2::T2
 end
+
+@inline swap(m::AddModel) = AddModel(m.m2, m.m1)
+
 
 """
     added(m1::AbstractModel, m2::AbstractModel)
@@ -225,6 +230,9 @@ struct ConvolvedModel{M1, M2} <: CompositeModel{M1, M2}
     m1::M1
     m2::M2
 end
+
+@inline swap(m::ConvolvedModel) = ConvolvedModel(m.m2, m.m1)
+
 
 """
     convolved(m1::AbstractModel, m2::AbstractModel)

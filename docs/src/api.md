@@ -14,16 +14,6 @@ Pages = ["api.md"]
 
 ## Model Definitions
 
-### Model Parameter Unpackaing
-
-```@docs
-VLBISkyModels.DomainParams
-VLBISkyModels.build_param
-VLBISkyModels.getparam
-VLBISkyModels.@unpack_params
-VLBISkyModels.paramtype
-```
-
 ### Time Frequency Domain
 
 ```@docs

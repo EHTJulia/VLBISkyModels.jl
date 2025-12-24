@@ -10,7 +10,7 @@ export allocate_imgmap, allocate_vismap
 This defines an abstract cache that can be used to
 hold or precompute some computations.
 """
-abstract type AbstractFourierDualDomain <: AbstractDomain end
+abstract type AbstractFourierDualDomain <: ComradeBase.AbstractDualDomain end
 
 forward_plan(g::AbstractFourierDualDomain) = getfield(g, :plan_forward)
 reverse_plan(g::AbstractFourierDualDomain) = getfield(g, :plan_reverse)

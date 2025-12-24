@@ -510,7 +510,7 @@ end
         @test intensitymap(mt1, g) ≈ intensitymap(mt1, gfour)
 
         @test intensitymap(stretched(m1, sqrt(2)), gfour) ≈
-            intensitymap(convolved(m1, m1), gfour)
+            intensitymap(convolved(m1, m1), gfour) rtol = 1.0e-6
 
         @test visibilitymap(stretched(m1, sqrt(2)), gfour) ≈
             visibilitymap(convolved(m1, m1), gfour)

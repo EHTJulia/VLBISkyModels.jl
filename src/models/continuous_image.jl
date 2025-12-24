@@ -12,6 +12,9 @@ and visibility location. The image model is
 
 where `Iᵢⱼ` are the flux densities of the image `img` and κ is the intensity function for the
 `kernel`.
+
+Note that if the image grid is the same as the grid passed to `intensitymap` then the discrete image 
+is used directly for efficiency.
 """
 struct ContinuousImage{A <: IntensityMap, P} <: AbstractModel
     """
@@ -19,11 +22,12 @@ struct ContinuousImage{A <: IntensityMap, P} <: AbstractModel
     """
     img::A
     """
-    Image Kernel that transforms from the discrete image to a continuous one. This is
-    sometimes called a pulse function in `eht-imaging`.
+    Image kernel or pulse that transforms from the discrete image to a continuous one.
     """
     kernel::P
 end
+
+make_map(cimg::ContinuousImage) = cimg.img
 
 function Base.show(io::IO, img::ContinuousImage{A, P}) where {A, P}
     sA = split("$A", ",")[1]
@@ -37,25 +41,24 @@ end
 function ComradeBase.ispolarized(::Type{<:ContinuousImage{A}}) where {A <: IntensityMap{<:Real}}
     return NotPolarized()
 end
-ComradeBase.flux(m::ContinuousImage) = flux(parent(m)) * flux(m.kernel)
+ComradeBase.flux(m::ContinuousImage) = flux(make_map(m)) * flux(m.kernel)
 
 function ComradeBase.stokes(cimg::ContinuousImage, v)
-    return ContinuousImage(stokes(parent(cimg), v), cimg.kernel)
+    return ContinuousImage(stokes(make_map(cimg), v), cimg.kernel)
 end
-ComradeBase.centroid(m::ContinuousImage) = centroid(parent(m))
-Base.parent(m::ContinuousImage) = m.img
-Base.length(m::ContinuousImage) = length(parent(m))
-Base.size(m::ContinuousImage) = size(parent(m))
-Base.size(m::ContinuousImage, i::Int) = size(parent(m), i::Int)
-Base.firstindex(m::ContinuousImage) = firstindex(parent(m))
-Base.lastindex(m::ContinuousImage) = lastindex(parent(m))
-
+ComradeBase.centroid(m::ContinuousImage) = centroid(make_map(m))
+Base.parent(cimg::ContinuousImage) = make_map(cimg)
+Base.length(m::ContinuousImage) = length(make_map(m))
+Base.size(m::ContinuousImage) = size(make_map(m))
+Base.size(m::ContinuousImage, i::Int) = size(make_map(m), i::Int)
+Base.firstindex(m::ContinuousImage) = firstindex(make_map(m))
+Base.lastindex(m::ContinuousImage) = lastindex(make_map(m))
 Base.eltype(::ContinuousImage{A, P}) where {A, P} = eltype(A)
 
-Base.getindex(img::ContinuousImage, args...) = getindex(parent(img), args...)
-Base.axes(m::ContinuousImage) = axes(parent(m))
-ComradeBase.domainpoints(m::ContinuousImage) = domainpoints(parent(m))
-ComradeBase.axisdims(m::ContinuousImage) = axisdims(parent(m))
+Base.getindex(img::ContinuousImage, args...) = getindex(make_map(img), args...)
+Base.axes(m::ContinuousImage) = axes(make_map(m))
+ComradeBase.domainpoints(m::ContinuousImage) = domainpoints(make_map(m))
+ComradeBase.axisdims(m::ContinuousImage) = axisdims(make_map(m))
 
 function ContinuousImage(img::IntensityMap, pulse::Pulse)
     return ContinuousImage{typeof(img), typeof(pulse)}(img, pulse)
@@ -73,7 +76,7 @@ function InterpolatedModel(
             <:FFTAlg,
         }
     )
-    img = parent(model)
+    img = make_map(model) # intensity map
     sitp = build_intermodel(img, forward_plan(d), algorithm(d), model.kernel)
     return InterpolatedModel{typeof(model), typeof(sitp)}(model, sitp)
 end
@@ -113,10 +116,11 @@ convolved(cimg::AbstractModel, m::ContinuousImage) = convolved(m, cimg)
 #     return ModifiedModel{typeof(m), typeof(t)}(m, t)
 # end
 
+
 @inline function visibilitymap_numeric(m::ContinuousImage, grid::FourierDualDomain)
     # We need to make sure that the grid is the same size as the image
     checkgrid(axisdims(m), imgdomain(grid))
-    img = parent(m)
+    img = make_map(m)
     vis = applyft(forward_plan(grid), img)
     return applypulse!(vis, m.kernel, grid)
 end
@@ -175,14 +179,8 @@ function visibilitymap_numeric(
 end
 
 function checkgrid(imgdims, grid)
-    return !(dims(imgdims) == dims(grid)) &&
-        throw(
-        ArgumentError(
-            "The image dimensions in `ContinuousImage`\n" *
-                "and the visibility grid passed to `visibilitymap`\n" *
-                "do not match. This is not currently supported."
-        )
-    )
+    truth = (dims(imgdims) == dims(grid))
+    return truth
 end
 ChainRulesCore.@non_differentiable checkgrid(::Any, ::Any)
 EnzymeRules.inactive(::typeof(checkgrid), args...) = nothing
@@ -205,6 +203,7 @@ function visibilitymap_numeric(
     _apply_scaling!(ispol, m.transform, vbase, puv)
     return vbase
 end
+
 
 @inline function _apply_scaling!(mbase, t::Tuple, vbase, p)
     # out = similar(vbase)

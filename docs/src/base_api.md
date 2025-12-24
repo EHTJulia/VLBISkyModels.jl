@@ -21,6 +21,7 @@ CurrentModule = ComradeBase
 ```@docs
 ComradeBase.flux
 ComradeBase.visibility
+ComradeBase.dualmap
 ComradeBase.visibilitymap
 ComradeBase.visibilitymap!
 ComradeBase.intensitymap
@@ -65,6 +66,11 @@ ComradeBase.intensitymap_analytic
 ComradeBase.intensitymap_analytic!
 ComradeBase.intensitymap_numeric
 ComradeBase.intensitymap_numeric!
+ComradeBase.DomainParams
+ComradeBase.getparam
+ComradeBase.@unpack_params
+ComradeBase.build_param
+ComradeBase.paramtype
 ```
 
 ### Image Domain
@@ -86,6 +92,8 @@ ComradeBase.ThreadsEx
 ComradeBase.header
 ComradeBase.NoHeader
 ComradeBase.MinimalHeader
+ComradeBase.DualMap
+ComradeBase.AbstractDualDomain
 ```
 
 ### Image Types
