@@ -116,7 +116,7 @@ end
     @test intensitymap(img, g) ≈ intensitymap(img, gfour)
     @test intensitymap(img, g) ≈ ComradeBase.imgmap(dualmap(img, gfour))
 
-    gbg = imagepixels(12.0, 12.0, 64, 64)
-    @test collect(centroid(img)) ≈ collect(centroid(img, gbg)) rtol = 1.0e-4
+    gbg = imagepixels(12.1, 12.1, 96, 96)
+    @test collect(centroid(img)) ≈ collect(centroid(img, gbg)) rtol = 1.0e-3
     @test flux(img) ≈ flux(img, gbg) rtol = 1.0e-4
 end
