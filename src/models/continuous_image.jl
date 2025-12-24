@@ -117,7 +117,6 @@ convolved(cimg::AbstractModel, m::ContinuousImage) = convolved(m, cimg)
 # end
 
 
-
 @inline function visibilitymap_numeric(m::ContinuousImage, grid::FourierDualDomain)
     # We need to make sure that the grid is the same size as the image
     checkgrid(axisdims(m), imgdomain(grid))

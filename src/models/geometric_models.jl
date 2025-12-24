@@ -48,7 +48,7 @@ radialextent(::Gaussian{T}) where {T} = convert(paramtype(T), 5)
 @inline function intensity_point(::Gaussian{D}, p) where {D}
     x, y = _getxy(p)
     T = paramtype(D)
-    if hypot(x, y) > 6
+    if x^2 + y^2 > 36
         return zero(T)
     end
     return exp(-(x^2 + y^2) / 2) / T(2 * π)
