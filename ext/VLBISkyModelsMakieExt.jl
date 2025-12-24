@@ -123,7 +123,7 @@ end
 
 """
     polimage(img::IntensityMap{<:StokesParams};
-                colormap = :grayC,
+                colormap = :sepia,
                 colorrange = Makie.automatic,
                 pcolorrange=Makie.automatic,
                 pcolormap=Makie.Reverse(:RdBu),
@@ -183,6 +183,10 @@ Makie.@recipe PolImage (img::IntensityMap{<:StokesParams},) begin
     adjust_length = false
     "If true plot the total polarization, if false only plot the linear polarization"
     plot_total = true
+    """
+    marker_width of the polarization markers
+    """
+    marker_width = 0.5
     Makie.mixin_generic_plot_attributes()...
     Makie.mixin_colormap_attributes()...
 end
@@ -250,7 +254,7 @@ function Makie.plot!(plot::PolImage{<:Tuple{<:IntensityMap{<:StokesParams}}})
         col = eltype(stokes(img, :I))[]
         rot = eltype(stokes(img, :I))[]
 
-        lenmul = 10 * dx / nvec / maxL .* length_norm
+        lenmul = dx / nvec / maxL .* length_norm
         dimg = img
         rm = rotmat(axisdims(img))
         for y0 in Yvec
@@ -305,8 +309,15 @@ function Makie.plot!(plot::PolImage{<:Tuple{<:IntensityMap{<:StokesParams}}})
         end
     end
 
-    map!(plot.attributes, [:plot_total], :mrk) do pt
-        pt ? '∘' : '⋅'
+    map!(plot.attributes, [:plot_total, :marker_width], :mrk) do pt, marker_width
+        pbig = Makie.GeometryBasics.decompose(Point2f, Circle(Point2f(0), 2.0))
+        psmall = Makie.GeometryBasics.decompose(Point2f, Circle(Point2f(0), (1-marker_width) * 2.0))
+        # prect = Makie.Polygon(Makie.GeometryBasics.decompose(Point2f, Rect(Point2f(0), Point2f(0.0), 2.0, 2.0)))
+        if pt 
+            return Makie.GeometryBasics.Polygon(pbig, [psmall])
+        else
+            return Makie.Polygon(Makie.GeometryBasics.decompose(Point2f, Rect(0.0, 0.0, 1.0, 1.0)))
+        end
     end
 
     map!(plot.attributes, [:pcolormap, :plot_total], :pcm) do pcm, pt
@@ -314,9 +325,9 @@ function Makie.plot!(plot::PolImage{<:Tuple{<:IntensityMap{<:StokesParams}}})
             return pcm
         end
         if pt
-            return Makie.Reverse(:RdBu)
+            return :cmr_guppy
         else
-            return :rainbow1
+            return :cmr_neon
         end
     end
 
@@ -376,10 +387,10 @@ function imageviz(
     dkwargs = Dict(kwargs)
     if eltype(img) <: Real
         res = get(dkwargs, :size, (625, 500))
-        cmap = get(dkwargs, :colormap, :inferno)
+        cmap = get(dkwargs, :colormap, :cmr_sepia)
     else
         res = get(dkwargs, :size, (640, 600))
-        cmap = get(dkwargs, :colormap, :grayC)
+        cmap = get(dkwargs, :colormap, :cmr_neutral)
     end
 
     bkgcolor = isnothing(backgroundcolor) ? Makie.to_colormap(cmap)[begin] : backgroundcolor
@@ -411,7 +422,7 @@ function _imgviz!(
     dkwargs = Dict(kwargs)
     crange = get(dkwargs, :colorrange, colorrange_default)
     delete!(dkwargs, :colorrange)
-    cmap = get(dkwargs, :colormap, :inferno)
+    cmap = get(dkwargs, :colormap, :cmr_sepia)
     delete!(dkwargs, :colormap)
 
     hm = heatmap!(ax, img; colorrange = crange, colormap = cmap, dkwargs...)
@@ -449,7 +460,7 @@ function _imgviz!(
     dkwargs = Dict(kwargs)
     crange = get(dkwargs, :colorrange, colorrange_default)
     delete!(dkwargs, :colorrange)
-    cmap = get(dkwargs, :colormap, :grayC)
+    cmap = get(dkwargs, :colormap, :cmr_neutral)
     delete!(dkwargs, :colormap)
     delete!(dkwargs, :size)
 
