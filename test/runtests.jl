@@ -36,7 +36,7 @@ function FiniteDifferences.to_vec(k::UnstructuredMap)
     return v, back
 end
 
-function testgrad(f, x; atol = 1.0e-8, rtol = 1.0e-5)
+function testgrad(f, x; atol = 1.0e-8, rtol = 1.0e-7)
     dx = Enzyme.make_zero(x)
     autodiff(set_runtime_activity(Enzyme.Reverse), Const(f), Active, Duplicated(x, dx))
     fdm = central_fdm(5, 1)

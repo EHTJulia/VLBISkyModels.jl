@@ -144,9 +144,9 @@ end
 function intensitymap_numeric!(sim::IntensityMap, m::AddModel)
     csim = copy(sim)
     intensitymap!(csim, m.m1)
-    sim .= csim
+    copyto!(sim, csim)
     intensitymap!(csim, m.m2)
-    sim .= sim .+ csim
+    sim .+= csim
     return nothing
 end
 
@@ -296,7 +296,7 @@ end
     ) where {M1, M2}
     cvis = similar(vis)
     visibilitymap!(cvis, m.m1)
-    vis .= cvis
+    copyto!(vis, cvis)
     visibilitymap!(cvis, m.m2)
     vis .*= cvis
     return nothing

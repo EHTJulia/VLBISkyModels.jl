@@ -80,7 +80,7 @@ function visibilitymap_numeric!(vis::IntensityMap, m::AbstractModel)
     img = allocate_imgmap(m, gridxy)
     intensitymap!(img, m)
     tildeI = _fft(parent(img))
-    baseimage(vis) .= fftshift(tildeI, 1:2)
+    copyto!(baseimage(vis), fftshift(tildeI, 1:2))
     phasecenter!(vis, gridxy, grid)
     return nothing
 end

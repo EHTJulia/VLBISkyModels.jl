@@ -83,7 +83,7 @@ end
 @inline function _nuft!(out::AbstractArray, A, b::AbstractArray)
     tmp = similar(out)
     _jlnuft!(tmp, A, b)
-    out .= tmp
+    copyto!(out, tmp)
     return nothing
 end
 
@@ -183,7 +183,7 @@ function EnzymeRules.reverse(
     for (db, dout) in zip(dbs, douts)
         # TODO open PR on NFFT so we can do this in place.
         _jlnuft_adjointadd!(db, A.val, dout)
-        dout .= 0
+        fill!(dout, 0)
     end
     return (nothing, nothing, nothing)
 end

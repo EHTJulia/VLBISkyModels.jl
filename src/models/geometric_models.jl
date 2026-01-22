@@ -59,6 +59,7 @@ end
     T = paramtype(D)
     return exp(-2 * T(π)^2 * (u^2 + v^2)) + zero(T)im
 end
+
 """
     $(TYPEDEF)
 
