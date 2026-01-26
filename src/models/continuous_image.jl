@@ -145,9 +145,10 @@ function applypulse!(vis, pulse, gfour::AbstractFourierDualDomain)
     # through the broadcast
     pvis = parent(vis)
     dp = domainpoints(guv)
-    for i in eachindex(pvis, dp)
-        pvis[i] *= visibility_point(mp, dp[i])
-    end
+    pvis .*= visibility_point.(Ref(mp), dp)
+    # for i in eachindex(pvis, dp)
+    #     pvis[i] *= visibility_point(mp, dp[i])
+    # end
     # pvis .*= visibility_point.(Ref(mp), dp)
     return vis
 end
