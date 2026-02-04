@@ -87,18 +87,67 @@ imanalytic(::Type{<:ContinuousImage}) = IsAnalytic()
 
 radialextent(c::ContinuousImage) = maximum(values(fieldofview(c.img))) / 2
 
-function intensity_point(m::ContinuousImage, p)
+function support_ranges(img, p, rx, ry)
+    dx, dy = pixelsizes(img)
+    g = axisdims(img)
+    x0 = first(g.X)
+    y0 = first(g.Y)
+
+    cs = round(Int, (p.X - x0) / dx) + 1
+    rs = round(Int, (p.Y - y0) / dy) + 1
+
+    # Units in pixels
+    wx = ceil(Int, rx / dx)
+    wy = ceil(Int, ry / dy)
+
+    ix = max(firstindex(img, 1), cs - wx) : min(lastindex(img, 1), cs + wx)
+    iy = max(firstindex(img, 2), rs - wy) : min(lastindex(img, 2), rs + wy)
+    
+    return ix, iy
+end
+
+function ComradeBase.build_param(param::AbstractArray{<:Number}, p)
+    return param
+end
+
+
+@inline function intensity_point(m::ContinuousImage, p)
     @unpack_params img = m(p)
-    dx, dy = pixelsizes(m.img)
-    sum = zero(eltype(m.img))
+    dx, dy = pixelsizes(axisdims(img))
     ms = stretched(m.kernel, dx, dy)
-    @inbounds for (I, p0) in pairs(domainpoints(m.img))
-        dp = (X = (p.X - p0.X), Y = (p.Y - p0.Y))
-        k = intensity_point(ms, dp)
-        sum += m.img[I] * k
+
+    rx, ry = kernel_extent(m.kernel)
+    rx *= dx
+    ry *= dy
+
+    dp = domainpoints(img)
+    sum = zero(eltype(img))
+
+    ix, iy = support_ranges(img, p, rx, ry)
+
+    @inbounds for j in iy
+        for i in ix
+            dpi = (X = p.X - dp[i, j].X, Y = p.Y - dp[i, j].Y)
+            k = intensity_point(ms, dpi)
+            sum += img[i, j] * k
+        end
     end
     return sum
 end
+
+
+# function intensity_point(m::ContinuousImage, p)
+#     @unpack_params img = m(p)
+#     dx, dy = pixelsizes(m.img)
+#     sum = zero(eltype(m.img))
+#     ms = stretched(m.kernel, dx, dy)
+#     @inbounds for (I, p0) in pairs(domainpoints(m.img))
+#         dp = (X = (p.X - p0.X), Y = (p.Y - p0.Y))
+#         k = intensity_point(ms, dp)
+#         sum += m.img[I] * k
+#     end
+#     return sum
+# end
 
 function convolved(cimg::ContinuousImage, m::AbstractModel)
     return ContinuousImage(cimg.img, convolved(cimg.kernel, m))
