@@ -100,9 +100,9 @@ function support_ranges(img, p, rx, ry)
     wx = ceil(Int, rx / dx)
     wy = ceil(Int, ry / dy)
 
-    ix = max(firstindex(img, 1), cs - wx) : min(lastindex(img, 1), cs + wx)
-    iy = max(firstindex(img, 2), rs - wy) : min(lastindex(img, 2), rs + wy)
-    
+    ix = max(firstindex(img, 1), cs - wx):min(lastindex(img, 1), cs + wx)
+    iy = max(firstindex(img, 2), rs - wy):min(lastindex(img, 2), rs + wy)
+
     return ix, iy
 end
 
