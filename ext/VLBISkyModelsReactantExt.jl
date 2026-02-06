@@ -11,12 +11,12 @@ const AFTR = Base.get_extension(Reactant, :ReactantAbstractFFTsExt)
 
 
 function VLBISkyModels.plan_nuft_spatial(
-    ::ReactantAlg,
-    imgdomain::ComradeBase.AbstractRectiGrid,
-    visdomain::ComradeBase.UnstructuredDomain,
-)
+        ::ReactantAlg,
+        imgdomain::ComradeBase.AbstractRectiGrid,
+        visdomain::ComradeBase.UnstructuredDomain,
+    )
     visp = domainpoints(visdomain)
-    uv2 = similar(visp.U, (2, length(visdomain)))
+    uv2 = Reactant.to_rarray(similar(visp.U, (2, length(visdomain))))
     dpx = pixelsizes(imgdomain)
     dx = dpx.X
     dy = dpx.Y
@@ -28,11 +28,11 @@ function VLBISkyModels.plan_nuft_spatial(
 end
 
 function VLBISkyModels.make_phases(
-    ::ReactantAlg,
-    imgdomain::ComradeBase.AbstractRectiGrid,
-    visdomain::ComradeBase.UnstructuredDomain,
-)
-    return VLBISkyModels.make_phases(NFFTAlg(), imgdomain, visdomain)
+        ::ReactantAlg,
+        imgdomain::ComradeBase.AbstractRectiGrid,
+        visdomain::ComradeBase.UnstructuredDomain,
+    )
+    return Reactant.to_rarray(VLBISkyModels.make_phases(NFFTAlg(), imgdomain, visdomain))
 end
 
 function VLBISkyModels._jlnuft!(out, A::ReactantNFFTPlan, inp::Reactant.AnyTracedRArray)
@@ -40,13 +40,13 @@ function VLBISkyModels._jlnuft!(out, A::ReactantNFFTPlan, inp::Reactant.AnyTrace
     return nothing
 end
 
-struct ReactantNFFTPlan{T,D,K<:AbstractArray,arrTc,vecI,vecII,FP,BP,INV,SM} <:
-       AbstractNFFTPlan{T,D,1}
-    N::NTuple{D,Int}
-    NOut::NTuple{1,Int}
+struct ReactantNFFTPlan{T, D, K <: AbstractArray, arrTc, vecI, vecII, FP, BP, INV, SM} <:
+    AbstractNFFTPlan{T, D, 1}
+    N::NTuple{D, Int}
+    NOut::NTuple{1, Int}
     J::Int
     k::K
-    Ñ::NTuple{D,Int}
+    Ñ::NTuple{D, Int}
     dims::UnitRange{Int}
     forwardFFT::FP
     backwardFFT::BP
@@ -62,26 +62,24 @@ Base.adjoint(p::ReactantNFFTPlan) = p
 
 
 function AbstractNFFTs.plan_nfft(
-    arr::Type{<:Reactant.AnyTracedRArray},
-    k::AbstractMatrix,
-    N::NTuple{D,Int},
-    rest...;
-    kargs...,
-) where {D}
+        arr::Type{<:Reactant.AnyTracedRArray},
+        k::AbstractMatrix,
+        N::NTuple{D, Int},
+        rest...;
+        kargs...,
+    ) where {D}
     p = ReactantNFFTPlan(arr, k, N; kargs...)
     return p
 end
 
 function ReactantNFFTPlan(
-    k::AbstractArray{T}, N::NTuple{D,Int}; fftflags=nothing, kwargs...
-) where {T,D}
+        k::AbstractArray{T}, N::NTuple{D, Int}; fftflags = nothing, kwargs...
+    ) where {T, D}
 
 
     dims = 1:D
     CT = complex(T)
     params, N, NOut, J, Ñ, dims_ = NFFT.initParams(k, N, dims; kwargs...)
-    FP = plan_fft!(zeros(CT, N))
-    BP = plan_bfft!(zeros(CT, N))
 
     FP = AFTR.reactant_fftplan(AFTR.reactant_fftplan_type(typeof(FP)), FP)
     BP = AFTR.reactant_fftplan(AFTR.reactant_fftplan_type(typeof(BP)), BP)
@@ -95,11 +93,11 @@ function ReactantNFFTPlan(
 
     U = params.storeDeconvolutionIdx ? N : ntuple(d -> 0, Val(D))
 
-    tmpVec = ConcreteRArray(zeros(CT, Ñ))
-    tmpVecHat = ConcreteRArray(zeros(CT, U))
-    deconvIdx = ConcreteRArray(Int.(deconvolveIdx))
-    winHatInvLUT = ConcreteRArray(complex(windowHatInvLUT[1]))
-    B_ = (ConcreteRArray(complex.(Array(B))))
+    tmpVec = Reactant.to_rarray(zeros(CT, Ñ))
+    tmpVecHat = Reactant.to_rarray(zeros(CT, U))
+    deconvIdx = Reactant.to_rarray(Int.(deconvolveIdx))
+    winHatInvLUT = Reactant.to_rarray(complex(windowHatInvLUT[1]))
+    B_ = (Reactant.to_rarray(complex.(Array(B))))
 
     return ReactantNFFTPlan{
         T,
@@ -134,42 +132,41 @@ AbstractNFFTs.size_in(p::ReactantNFFTPlan) = p.N
 AbstractNFFTs.size_out(p::ReactantNFFTPlan) = p.NOut
 
 function AbstractNFFTs.convolve!(
-    p::ReactantNFFTPlan{T,D}, g::Reactant.AnyTracedRArray, fHat::Reactant.AnyTracedRArray
-) where {D,T}
+        p::ReactantNFFTPlan{T, D}, g::Reactant.AnyTracedRArray, fHat::Reactant.AnyTracedRArray
+    ) where {D, T}
     mul!(fHat, transpose(p.B), vec(g))
     return nothing
 end
 
 function AbstractNFFTs.convolve_transpose!(
-    p::ReactantNFFTPlan{T,D}, fHat::Reactant.AnyTracedRArray, g::Reactant.AnyTracedRArray
-) where {D,T}
+        p::ReactantNFFTPlan{T, D}, fHat::Reactant.AnyTracedRArray, g::Reactant.AnyTracedRArray
+    ) where {D, T}
     mul!(vec(g), p.B, fHat)
     return nothing
 end
 
 function Base.:*(p::ReactantNFFTPlan{T}, f::Reactant.AnyTracedRArray; kargs...) where {T}
-    fHat = similar(f, Complex{T}, size_out(p))
+    fHat = similar(f, complex(T), size_out(p))
     mul!(fHat, p, f; kargs...)
     return fHat
 end
 
 function AbstractNFFTs.deconvolve!(
-    p::ReactantNFFTPlan{T,D}, f::AbstractArray, g::AbstractArray
-) where {D,T}
+        p::ReactantNFFTPlan{T, D}, f::AbstractArray, g::AbstractArray
+    ) where {D, T}
     tmp = f .* reshape(p.windowHatInvLUT, size(f))
-    @allowscalar @inbounds gv = @view(g[p.deconvolveIdx])
     @allowscalar g[p.deconvolveIdx] = reshape(tmp, :)
     return nothing
 end
 
 """  in-place NFFT on the GPU"""
 function LinearAlgebra.mul!(
-    fHat::Reactant.AnyTracedRArray,
-    p::ReactantNFFTPlan{T,D},
-    f::Reactant.AnyTracedRArray;
-    verbose=false,
-    timing::Union{Nothing,TimingStats}=nothing,
-) where {T,D}
+        fHat::Reactant.AnyTracedRArray,
+        p::ReactantNFFTPlan{T, D},
+        f::Reactant.AnyTracedRArray;
+        verbose = false,
+        timing::Union{Nothing, TimingStats} = nothing,
+    ) where {T, D}
     NFFT.consistencyCheck(p, f, fHat)
 
     fill!(p.tmpVec, zero(Complex{T}))
@@ -185,15 +182,15 @@ function NFFT.nfft(k::AbstractMatrix, f::Reactant.AnyTracedRArray, args...; kwar
 end
 
 function NFFT.initParams(
-    k::AbstractMatrix{T},
-    N::NTuple{D,Int},
-    dims::Union{Integer,UnitRange{Int64}}=1:D;
-    kargs...,
-) where {D,T}
+        k::AbstractMatrix{T},
+        N::NTuple{D, Int},
+        dims::Union{Integer, UnitRange{Int64}} = 1:D;
+        kargs...,
+    ) where {D, T}
     # convert dims to a unit range
     dims_ = (typeof(dims) <: Integer) ? (dims:dims) : dims
 
-    params = NFFTParams{T,D}(; kargs...)
+    params = NFFTParams{T, D}(; kargs...)
     m, σ, reltol = accuracyParams(; kargs...)
     params.m = m
     params.σ = σ
@@ -205,14 +202,16 @@ function NFFT.initParams(
     params.LUTSize = 2^(K) * (m) # ensure that LUTSize is dividable by (m)
 
     if length(dims_) != size(k, 1)
-        throw(ArgumentError("Nodes x have dimension $(size(k,1)) != $(length(dims_))"))
+        throw(ArgumentError("Nodes x have dimension $(size(k, 1)) != $(length(dims_))"))
     end
 
     doTrafo = ntuple(d -> d ∈ dims_, Val(D))
 
-    Ñ = ntuple(d ->
+    Ñ = ntuple(
+        d ->
         doTrafo[d] ? (ceil(Int, params.σ * N[d]) ÷ 2) * 2 : # ensure that n is an even integer
-        N[d], Val(D))
+            N[d], Val(D)
+    )
 
     params.σ = Ñ[dims_[1]] / N[dims_[1]]
 
@@ -246,12 +245,12 @@ function NFFT.initParams(
     end
     # Sort nodes in lexicographic way
     if params.sortNodes
-        k .= sortslices(k; dims=2)
+        k .= sortslices(k; dims = 2)
     end
     return params, N, Tuple(NOut), J, Ñ, dims_
 end
 
-function NFFT.precomputation(k::AbstractVecOrMat, N::NTuple{D,Int}, Ñ, params) where {D}
+function NFFT.precomputation(k::AbstractVecOrMat, N::NTuple{D, Int}, Ñ, params) where {D}
     m = params.m
     σ = params.σ
     window = params.window
@@ -271,7 +270,7 @@ function NFFT.precomputation(k::AbstractVecOrMat, N::NTuple{D,Int}, Ñ, params)
         )
     else
         windowHatInvLUT = windowHatInvLUT_
-        deconvolveIdx = Array{Int64,1}(undef, 0)
+        deconvolveIdx = Array{Int64, 1}(undef, 0)
     end
 
     if precompute == LINEAR
@@ -301,8 +300,6 @@ function NFFT.precomputation(k::AbstractVecOrMat, N::NTuple{D,Int}, Ñ, params)
 
     return (windowLinInterp, windowPolyInterp, windowHatInvLUT, deconvolveIdx, B)
 end
-
-
 
 
 end

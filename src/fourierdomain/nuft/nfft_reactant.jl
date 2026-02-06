@@ -1,3 +1,1 @@
-struct ReactantAlg <: VLBISkyModels.NUFT end
-
-
+struct ReactantAlg <: NUFT end
