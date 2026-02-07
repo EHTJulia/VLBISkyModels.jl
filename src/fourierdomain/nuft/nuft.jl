@@ -206,3 +206,5 @@ include(joinpath(@__DIR__, "dft_alg.jl"))
 include(joinpath(@__DIR__, "finufft.jl"))
 
 include(joinpath(@__DIR__, "nonuniformffts.jl"))
+
+include(joinpath(@__DIR__, "nfft_reactant.jl"))
