@@ -234,4 +234,5 @@ end
     include("stokesintensitymap.jl")
     include("rules.jl")
     include("rotgrid.jl")
+    include("reactant.jl")
 end
