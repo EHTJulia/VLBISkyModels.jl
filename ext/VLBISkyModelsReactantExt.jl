@@ -38,7 +38,7 @@ function VLBISkyModels.plan_nuft_spatial(
         visdomain::ComradeBase.UnstructuredDomain,
     )
     visp = domainpoints(visdomain)
-    uv2 = Reactant.to_rarray(similar(visp.U, (2, length(visdomain))))
+    uv2 = similar(visp.U, (2, length(visdomain)))
     dpx = pixelsizes(imgdomain)
     dx = dpx.X
     dy = dpx.Y
