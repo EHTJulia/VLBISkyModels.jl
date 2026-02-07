@@ -86,8 +86,10 @@ function ReactantNFFTPlan(
     CT = complex(T)
     params, N, NOut, J, Ñ, dims_ = NFFT.initParams(k, N, dims; kwargs...)
 
-    FP = AFTR.reactant_fftplan(AFTR.reactant_fftplan_type(typeof(FP)), FP)
-    BP = AFTR.reactant_fftplan(AFTR.reactant_fftplan_type(typeof(BP)), BP)
+    FP0 = plan_fft!(zeros(ComplexF64, 2,2))
+    BP0 = plan_bfft!(zeros(ComplexF64, 2,2))
+    FP = AFTR.reactant_fftplan(AFTR.reactant_fftplan_type(typeof(FP0)), FP0)
+    BP = AFTR.reactant_fftplan(AFTR.reactant_fftplan_type(typeof(BP0)), BP0)
 
     params.storeDeconvolutionIdx = true # GPU_NFFT only works this way
     params.precompute = NFFT.FULL # GPU_NFFT only works this way
