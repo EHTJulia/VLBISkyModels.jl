@@ -20,6 +20,8 @@ isprimitive(::Type{<:Pulse}) = IsPrimitive()
 @inline visibility_point(p::Pulse, ps) = ω(p::Pulse, ps.U) * ω(p::Pulse, ps.V)
 
 flux(p::Pulse) = κflux(p)^2
+@inline radialextent(::Pulse) = 1
+@inline kernel_extent(p::Pulse) = radialextent(p), radialextent(p)
 
 """
     $(TYPEDEF)
@@ -32,7 +34,7 @@ DeltaPulse() = DeltaPulse{Float64}()
 κflux(::DeltaPulse{T}) where {T} = one(T)
 @inline κ(::DeltaPulse{T}, x) where {T} = abs(x) < 0.5 ? one(T) : zero(T)
 @inline ω(::DeltaPulse{T}, u) where {T} = complex(one(T))
-@inline radialextent(::Pulse) = 1.0
+@inline kernel_extent(::DeltaPulse{T}) where {T} = (one(T), one(T))
 
 @doc raw"""
     $(TYPEDEF)
@@ -54,7 +56,8 @@ for us.
 
 Currently only the 0,1,3 order kernels are implemented.
 """
-struct BSplinePulse{N} <: Pulse end
+struct BSplinePulse{N, T} <: Pulse end
+BSplinePulse{N}() where {N} = BSplinePulse{N, Float64}()
 @inline ω(::BSplinePulse{N}, u) where {N} = complex(
     Base.literal_pow(
         ^, sinc(u),
@@ -80,8 +83,7 @@ end
         return zero(T)
     end
 end
-
-@inline radialextent(::BSplinePulse{N}) where {N} = max(N, 1)
+@inline radialextent(::BSplinePulse{N, T}) where {N, T} = convert(paramtype(T), max(N, 1))
 
 """
     $(TYPEDEF)
@@ -108,7 +110,7 @@ function κ(k::BicubicPulse, x::T) where {T}
         return zero(T)
     end
 end
-radialextent(::BicubicPulse{T}) where {T} = T(2)
+radialextent(::BicubicPulse{T}) where {T} = convert(paramtype(T), 2)
 
 function ω(m::BicubicPulse{T}, u) where {T}
     b = m.b
