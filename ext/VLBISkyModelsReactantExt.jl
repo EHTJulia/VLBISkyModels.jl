@@ -11,6 +11,24 @@ using VLBISkyModels: ReactantAlg
 # Need a better way to get this
 const AFTR = Base.get_extension(Reactant, :ReactantAbstractFFTsExt)
 
+struct ReactantNFFTPlan{T, D, K <: AbstractArray, arrTc, vecI, vecII, FP, BP, INV, SM} <:
+    AbstractNFFTPlan{T, D, 1}
+    N::NTuple{D, Int}
+    NOut::NTuple{1, Int}
+    J::Int
+    k::K
+    Ñ::NTuple{D, Int}
+    dims::UnitRange{Int}
+    forwardFFT::FP
+    backwardFFT::BP
+    tmpVec::arrTc
+    tmpVecHat::arrTc
+    deconvolveIdx::vecI
+    windowLinInterp::vecII
+    windowHatInvLUT::INV
+    B::SM
+end
+
 
 function VLBISkyModels.plan_nuft_spatial(
         ::ReactantAlg,
@@ -42,23 +60,6 @@ function VLBISkyModels._jlnuft!(out, A::ReactantNFFTPlan, inp::Reactant.AnyTrace
     return nothing
 end
 
-struct ReactantNFFTPlan{T, D, K <: AbstractArray, arrTc, vecI, vecII, FP, BP, INV, SM} <:
-    AbstractNFFTPlan{T, D, 1}
-    N::NTuple{D, Int}
-    NOut::NTuple{1, Int}
-    J::Int
-    k::K
-    Ñ::NTuple{D, Int}
-    dims::UnitRange{Int}
-    forwardFFT::FP
-    backwardFFT::BP
-    tmpVec::arrTc
-    tmpVecHat::arrTc
-    deconvolveIdx::vecI
-    windowLinInterp::vecII
-    windowHatInvLUT::INV
-    B::SM
-end
 
 Base.adjoint(p::ReactantNFFTPlan) = p
 
