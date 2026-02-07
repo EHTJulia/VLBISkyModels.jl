@@ -1,6 +1,7 @@
 module VLBISkyModelsReactantExt
 
 using VLBISkyModels
+using AbstractFFTs
 using Reactant
 using NFFT
 using NFFT: AbstractNFFTs
