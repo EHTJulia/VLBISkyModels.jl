@@ -5,6 +5,8 @@ using Reactant
 using NFFT
 using NFFT: AbstractNFFTs
 using AbstractFFTs
+using VLBISkyModels: ReactantAlg
+
 
 # Need a better way to get this
 const AFTR = Base.get_extension(Reactant, :ReactantAbstractFFTsExt)
