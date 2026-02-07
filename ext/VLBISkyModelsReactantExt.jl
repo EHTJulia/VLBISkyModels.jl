@@ -6,6 +6,8 @@ using NFFT
 using NFFT: AbstractNFFTs
 using AbstractFFTs
 using VLBISkyModels: ReactantAlg
+using LinearAlgebra
+
 
 
 # Need a better way to get this
