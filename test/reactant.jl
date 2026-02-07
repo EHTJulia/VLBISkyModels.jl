@@ -1,5 +1,4 @@
 using Reactant
-using NFFT
 
 @testset "Reactant" begin
     
