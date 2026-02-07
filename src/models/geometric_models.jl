@@ -44,6 +44,7 @@ By default if T isn't given, `Gaussian` defaults to `Float64`
 struct Gaussian{T} <: GeometricModel{T} end
 Gaussian() = Gaussian{Float64}()
 radialextent(::Gaussian{T}) where {T} = convert(paramtype(T), 5)
+kernel_extent(m::Gaussian{T}) where {T} = radialextent(m)
 
 @inline function intensity_point(::Gaussian{D}, p) where {D}
     x, y = _getxy(p)
