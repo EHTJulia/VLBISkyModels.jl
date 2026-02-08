@@ -70,7 +70,7 @@ EnzymeRules.inactive_type(::Type{<:FINUFFT.finufft_plan}) = true
 
 function VLBISkyModels._jlnuft!(out, A::FINUFFTPlan, b::AbstractArray{<:Real})
     bc = getcache(A)
-    bc .= b
+    copyto!(bc, b)
     FINUFFT.finufft_exec!(A.forward, bc, out)
     return nothing
 end

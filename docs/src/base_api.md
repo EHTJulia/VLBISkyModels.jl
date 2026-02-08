@@ -89,6 +89,7 @@ ComradeBase.phasecenter
 ComradeBase.executor
 ComradeBase.Serial
 ComradeBase.ThreadsEx
+ComradeBase.ReactantEx
 ComradeBase.header
 ComradeBase.NoHeader
 ComradeBase.MinimalHeader
