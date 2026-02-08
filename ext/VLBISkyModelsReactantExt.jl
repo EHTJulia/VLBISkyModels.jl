@@ -83,8 +83,8 @@ function ReactantNFFTPlan(
     params, N, NOut, J, Ñ, dims_ = NFFT.initParams(k, N, dims; kwargs...)
 
     # Get the correct type
-    FP = @jit plan_fft!(zeros(ComplexF64, 2,2))
-    BP = @jit plan_bfft!(zeros(ComplexF64, 2,2))
+    FP = @jit plan_fft!(zeros(ComplexF64, 2, 2))
+    BP = @jit plan_bfft!(zeros(ComplexF64, 2, 2))
 
     params.storeDeconvolutionIdx = true # GPU_NFFT only works this way
     params.precompute = NFFT.FULL # GPU_NFFT only works this way

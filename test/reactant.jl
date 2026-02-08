@@ -1,7 +1,7 @@
 using Reactant
 
 @testset "Reactant" begin
-    
+
     gim = imagepixels(10.0, 10.0, 128, 128)
     gimr = @jit(identity(gim))
 
@@ -11,8 +11,8 @@ using Reactant
     mr = ContinuousImage(rastr, gimr, BSplinePulse{3}())
     m = ContinuousImage(rast, gim, BSplinePulse{3}())
 
-    u = randn(64)/5.0
-    v = randn(64)/5.0
+    u = randn(64) / 5.0
+    v = randn(64) / 5.0
     guv = UnstructuredDomain((U = u, V = v))
 
     gfn = FourierDualDomain(gim, guv, NFFTAlg())
