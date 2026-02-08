@@ -5,14 +5,9 @@ using AbstractFFTs
 using Reactant
 using NFFT
 using NFFT: AbstractNFFTs
-using AbstractFFTs
 using VLBISkyModels: ReactantAlg
 using LinearAlgebra
 
-
-
-# Need a better way to get this
-const AFTR = Base.get_extension(Reactant, :ReactantAbstractFFTsExt)
 
 struct ReactantNFFTPlan{T, D, K <: AbstractArray, arrTc, vecI, vecII, FP, BP, INV, SM} <:
     AbstractNFFTPlan{T, D, 1}
@@ -87,10 +82,9 @@ function ReactantNFFTPlan(
     CT = complex(T)
     params, N, NOut, J, Ñ, dims_ = NFFT.initParams(k, N, dims; kwargs...)
 
-    FP0 = plan_fft!(zeros(ComplexF64, 2,2))
-    BP0 = plan_bfft!(zeros(ComplexF64, 2,2))
-    FP = AFTR.reactant_fftplan(AFTR.reactant_fftplan_type(typeof(FP0)), FP0)
-    BP = AFTR.reactant_fftplan(AFTR.reactant_fftplan_type(typeof(BP0)), BP0)
+    # Get the correct type
+    FP = @jit plan_fft!(zeros(ComplexF64, 2,2))
+    BP = @jit plan_bfft!(zeros(ComplexF64, 2,2))
 
     params.storeDeconvolutionIdx = true # GPU_NFFT only works this way
     params.precompute = NFFT.FULL # GPU_NFFT only works this way
