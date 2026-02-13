@@ -125,11 +125,11 @@ end
 
     ix, iy = support_ranges(img, p, rx, ry)
 
-    @inbounds for j in iy
-        for i in ix
+    @trace for j in iy
+        @trace for i in ix
             dpi = (X = p.X - dp[i, j].X, Y = p.Y - dp[i, j].Y)
             k = intensity_point(ms, dpi)
-            sum += img[i, j] * k
+            sum += rgetindex(img, i, j) * k
         end
     end
     return sum
@@ -171,7 +171,7 @@ convolved(cimg::AbstractModel, m::ContinuousImage) = convolved(m, cimg)
     checkgrid(axisdims(m), imgdomain(grid))
     img = make_map(m)
     vis = applyft(forward_plan(grid), img)
-    return applypulse!(vis, m.kernel, grid)
+    return vis#applypulse!(vis, m.kernel, grid)
 end
 
 @inline function visibilitymap_numeric(
