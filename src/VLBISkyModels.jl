@@ -24,8 +24,9 @@ using StructArrays
 using LinearAlgebra
 using Printf
 using Serialization
+using ReactantCore: @trace
 
-import ComradeBase: DomainParams, build_param, paramtype, getparam, @unpack_params
+import ComradeBase: DomainParams, build_param, paramtype, getparam, @unpack_params, rgetindex, rsetindex!
 
 @reexport using ComradeBase
 @reexport using PolarizedTypes
