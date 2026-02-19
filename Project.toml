@@ -38,7 +38,6 @@ Makie = "ee78f7c6-11fb-53f2-987a-cfe4a2b5a57a"
 NonuniformFFTs = "cd96f58b-6017-4a02-bb9e-f4d81626177f"
 Reactant = "3c362404-f566-11ee-1572-e11a4b42c853"
 
-
 [extensions]
 VLBISkyModelsFINUFFT = ["FINUFFT"]
 VLBISkyModelsMakieExt = ["Makie", "DimensionalData"]
@@ -52,7 +51,7 @@ ArgCheck = "2"
 ChainRulesCore = "1"
 ComradeBase = "^0.9.8"
 DelimitedFiles = "1"
-DimensionalData = "0.29 - 0.29.24, ^0.29.26"
+DimensionalData = "0.29 - 0.29.24, ^0.29.26, 0.30"
 DocStringExtensions = "0.6,0.7,0.8,0.9"
 EnzymeCore = "0.8"
 FFTW = "^1"
