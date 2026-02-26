@@ -280,7 +280,7 @@ function MRing(c::Union{AbstractVector{<:Complex}, NTuple{N, <:Complex}}) where 
     return MRing(α, β)
 end
 
-function MRing(a::Real, b::Real)
+function MRing(a::Number, b::Number)
     aT, bT = promote(a, b)
     return MRing((aT,), (bT,))
 end

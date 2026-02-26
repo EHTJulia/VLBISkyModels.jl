@@ -183,14 +183,14 @@ modify_image(model, ::Tuple{}, p, scale) = p, scale
 # end
 # @inline scale_image(::M, t::Tuple{}, x, y) where {M} = unitscale(eltype(x), M)
 
-@inline radialextent_modified(r::Real, t::Tuple) = radialextent_modified(
+@inline radialextent_modified(r::Number, t::Tuple) = radialextent_modified(
     radialextent_modified(
         r,
         last(t)
     ),
     Base.front(t)
 )
-@inline radialextent_modified(r::Real, ::Tuple{}) = r
+@inline radialextent_modified(r::Number, ::Tuple{}) = r
 
 """
     modify(m::AbstractModel, transforms...)
@@ -309,7 +309,7 @@ shifted(model, Δx, Δy) = ModifiedModel(model, Shift(Δx, Δy))
 doesnot_uv_modify(::Shift) = true
 
 # This is a simple overload to simplify the type system
-@inline radialextent_modified(r::Real, t::Shift) = r + max(abs(t.Δx), abs(t.Δy))
+@inline radialextent_modified(r::Number, t::Shift) = r + max(abs(t.Δx), abs(t.Δy))
 
 @inline function transform_image(model, transform::Shift, p)
     @unpack_params Δx, Δy = transform(p)
@@ -391,7 +391,7 @@ end
     return scale * unitscale(typeof(scale), m)
 end
 
-@inline radialextent_modified(r::Real, ::Renormalize) = r
+@inline radialextent_modified(r::Number, ::Renormalize) = r
 
 """
     Stretch(α, β)
@@ -475,7 +475,7 @@ end
 
 @inline scale_uv(m, tr::Stretch, p) = unitscale(typeof(getparam(tr, :α, p)), m)
 
-@inline radialextent_modified(r::Real, t::Stretch) = r * max(t.α, t.β)
+@inline radialextent_modified(r::Number, t::Stretch) = r * max(t.α, t.β)
 
 """
     Rotate(ξ)
@@ -492,7 +492,7 @@ true
 struct Rotate{T} <: ModelModifier{T}
     s::T
     c::T
-    function Rotate(ξ::F) where {F <: Real}
+    function Rotate(ξ::F) where {F <: Number}
         s, c = sincos(ξ)
         return new{F}(s, c)
     end
@@ -570,4 +570,4 @@ end
     @unpack_params s, c = model(p)
     return spinor2_rotate(c, s)
 end
-@inline radialextent_modified(r::Real, ::Rotate) = r
+@inline radialextent_modified(r::Number, ::Rotate) = r

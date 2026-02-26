@@ -38,7 +38,7 @@ end
 function ComradeBase.ispolarized(::Type{<:ContinuousImage{A}}) where {A <: IntensityMap{<:StokesParams}}
     return IsPolarized()
 end
-function ComradeBase.ispolarized(::Type{<:ContinuousImage{A}}) where {A <: IntensityMap{<:Real}}
+function ComradeBase.ispolarized(::Type{<:ContinuousImage{A}}) where {A <: IntensityMap{<:Number}}
     return NotPolarized()
 end
 ComradeBase.flux(m::ContinuousImage) = flux(make_map(m)) * flux(m.kernel)

@@ -1,4 +1,4 @@
-function _fft(img::AbstractArray{<:StokesParams{<:Real}})
+function _fft(img::AbstractArray{<:StokesParams{<:Number}})
     vI = complex(stokes(img, :I))
     vQ = complex(stokes(img, :Q))
     vU = complex(stokes(img, :U))
@@ -11,7 +11,7 @@ function _fft(img::AbstractArray{<:StokesParams{<:Real}})
     return StructArray{StokesParams{eltype(I)}}((vI, vQ, vU, vV))
 end
 
-function _fft(img::AbstractArray{<:Real})
+function _fft(img::AbstractArray{<:Number})
     vI = complex(img)
     fft!(vI, 1:2)
     return vI
