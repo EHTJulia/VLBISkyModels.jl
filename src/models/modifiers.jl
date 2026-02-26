@@ -327,7 +327,7 @@ end
     (; U, V) = p
     T = typeof(Δx)
     return exp(
-        2im * T(π) *
+        T(2)im * T(π) *
             (U * Δx + V * Δy)
     ) *
         unitscale(T, m)
