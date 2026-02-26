@@ -255,10 +255,10 @@ struct AzimuthalCosine{N, T1, T2} <: AbstractAzimuthal
     ξs::NTuple{N, T2}
 end
 
-AzimuthalCosine(s::Real, ξs::Real) = AzimuthalCosine((s,), (ξs,))
+AzimuthalCosine(s::Number, ξs::Number) = AzimuthalCosine((s,), (ξs,))
 AzimuthalCosine(s::DomainParams, ξs::DomainParams) = AzimuthalCosine((s,), (ξs,))
-AzimuthalCosine(s::Real, ξs::DomainParams) = AzimuthalCosine((s,), (ξs,))
-AzimuthalCosine(s::DomainParams, ξs::Real) = AzimuthalCosine((s,), (ξs,))
+AzimuthalCosine(s::Number, ξs::DomainParams) = AzimuthalCosine((s,), (ξs,))
+AzimuthalCosine(s::DomainParams, ξs::Number) = AzimuthalCosine((s,), (ξs,))
 
 @inline @fastmath function azimuthal_profile(d::AzimuthalCosine{N}, p) where {N}
     @unpack_params s, ξs = d(p)
