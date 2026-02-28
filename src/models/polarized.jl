@@ -324,7 +324,7 @@ where `a,b,c,d` are real numbers with no conditions, and `p=√(a² + b² + c²)
         grid::AbstractRectiGrid
     )
 
-    p = sqrt.(b.^2 .+ c.^2 .+ d.^2)
+    p = sqrt.(b .^ 2 .+ c .^ 2 .+ d .^ 2)
     pimgI = exp.(a) .* cosh.(p)
     tmp = exp.(a) .* sinh.(p) ./ p
     pimgQ = tmp .* b
