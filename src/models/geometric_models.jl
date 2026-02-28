@@ -151,7 +151,8 @@ function intensity_point(m::SlashedDisk{D}, p) where {D}
     @unpack_params slash = m(p)
     s = 1 - slash
     norm = 2 / (π * (1 + s))
-    ifelse(r2 < 1,
+    return ifelse(
+        r2 < 1,
         norm / 2 * ((1 + y) + s * (1 - y)),
         zero(T)
     )
@@ -194,7 +195,8 @@ radialextent(::Ring{T}) where {T} = convert(paramtype(T), 3 / 2)
     T = paramtype(D)
     r = hypot(x, y)
     dr = T(1.0e-2)
-    return ifelse( (abs(r - 1) < dr / 2),
+    return ifelse(
+        (abs(r - 1) < dr / 2),
         one(T) / (2 * T(π) * dr),
         zero(T)
     )
@@ -449,7 +451,8 @@ function intensity_point(m::ConcordanceCrescent{D}, p) where {D}
     r2 = x^2 + y^2
     norm = _crescentnorm(m, p)
     @unpack_params router, rinner, shift, slash = m(p)
-    ifelse(r2 < router^2 & (x - shift)^2 + y^2 > rinner^2,
+    return ifelse(
+        r2 < router^2 & (x - shift)^2 + y^2 > rinner^2,
         norm / 2 * ((1 + x / router) + slash * (1 - x / router)),
         zero(T)
     )
@@ -552,7 +555,8 @@ function intensity_point(::ParabolicSegment{D}, p) where {D}
     x, y = _getxy(p)
     yw = (1 - x^2)
     T = paramtype(D)
-    return ifelse(abs(y - yw) < T(0.01 / 2) & abs(x) < 1,
+    return ifelse(
+        abs(y - yw) < T(0.01 / 2) & abs(x) < 1,
         1 / T(2 * 0.01),
         zero(T)
     )

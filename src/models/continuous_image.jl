@@ -171,7 +171,7 @@ convolved(cimg::AbstractModel, m::ContinuousImage) = convolved(m, cimg)
     checkgrid(axisdims(m), imgdomain(grid))
     img = make_map(m)
     vis = applyft(forward_plan(grid), img)
-    return vis#applypulse!(vis, m.kernel, grid)
+    return vis #applypulse!(vis, m.kernel, grid)
 end
 
 @inline function visibilitymap_numeric(
