@@ -115,7 +115,7 @@ function uvgrid(grid::AbstractRectiGrid)
     return g
 end
 
-function ifftfreq(n::Int, fs::Real)
+function ifftfreq(n::Int, fs::Number)
     if iseven(n)
         x = LinRange(-n ÷ 2, n ÷ 2 - 1, n) * fs / n
         return x .+ step(x) / 2

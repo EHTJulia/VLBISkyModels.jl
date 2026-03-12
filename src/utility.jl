@@ -35,7 +35,7 @@ end
 
 imanalytic(::Type{<:InterpolatedImage}) = IsAnalytic()
 visanalytic(::Type{<:InterpolatedImage}) = NotAnalytic()
-ispolarized(::Type{<:InterpolatedImage{<:IntensityMap{T}}}) where {T <: Real} = NotPolarized()
+ispolarized(::Type{<:InterpolatedImage{<:IntensityMap{T}}}) where {T <: Number} = NotPolarized()
 function ispolarized(::Type{<:InterpolatedImage{<:IntensityMap{T}}}) where {T <: StokesParams}
     return IsPolarized()
 end
