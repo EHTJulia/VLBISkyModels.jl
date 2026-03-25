@@ -260,9 +260,6 @@ end
     pvbase = baseimage(vbase)
     uc = unitscale(complex(eltype(p.U)), mbase)
     dp = domainpoints(p)
-    @inbounds for I in eachindex(pvbase, dp)
-        pvbase[I] = last(@inline modify_uv(mbase, t, dp[I], uc)) * pvbase[I]
-    end
-    # pvbase .= last.(modify_uv.(Ref(mbase), Ref(t), domainpoints(p), Ref(uc))) .* pvbase
+    pvbase .*= last.(modify_uv.(Ref(mbase), Ref(t), dp, Ref(uc)))
     return nothing
 end
