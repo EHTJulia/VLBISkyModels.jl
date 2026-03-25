@@ -65,6 +65,7 @@ function transform_uv end
 struct Iden end
 Base.:*(::Iden, x) = x
 Base.:*(x, ::Iden) = x
+Base.:*(::Iden, ::Iden) = Iden()
 
 unitscale(T, ::NotPolarized) = one(T)
 unitscale(T, ::IsPolarized) = Iden()
