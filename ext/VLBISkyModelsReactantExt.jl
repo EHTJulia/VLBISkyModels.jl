@@ -42,7 +42,7 @@ function VLBISkyModels.plan_nuft_spatial(
     # Here we flip the sign because the NFFT uses the -2pi convention
     uv2[1, :] .= -VLBISkyModels._rotatex.(visp.U, visp.V, Ref(rm)) .* dx
     uv2[2, :] .= -VLBISkyModels._rotatey.(visp.U, visp.V, Ref(rm)) .* dy
-    return ReactantNFFTPlan(uv2, size(imgdomain))
+    return plan_nfft(NFFTBackend(), Reactant.RArray, uv2, size(imgdomain)[1:2])
 end
 
 function VLBISkyModels.make_phases(

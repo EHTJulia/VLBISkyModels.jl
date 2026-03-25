@@ -1,7 +1,7 @@
 name = "VLBISkyModels"
 uuid = "d6343c73-7174-4e0f-bb64-562643efbeca"
-version = "0.6.21"
 authors = ["Paul Tiede <ptiede91@gmail.com> and contributors"]
+version = "0.6.21"
 
 [deps]
 AbstractFFTs = "621f4979-c628-5d54-868e-fcf4e3e8185c"
@@ -25,6 +25,7 @@ NonuniformFFTs = "cd96f58b-6017-4a02-bb9e-f4d81626177f"
 PaddedViews = "5432bcbf-9aad-5242-b902-cca2824c8663"
 PolarizedTypes = "d3c5d4cd-a8ee-40d6-aac7-e34df5a20044"
 Printf = "de0858da-6303-5e67-8744-51eddeeeb8d7"
+ReactantCore = "a3311ec8-5e00-46d5-b541-4f83e724a433"
 RecipesBase = "3cdcf5f2-1ef4-517c-9805-6587b60abb01"
 Reexport = "189a3867-3050-52da-a836-e630ba90ab69"
 Serialization = "9e88b42a-f829-5b0c-bbe9-9e923198166b"
@@ -37,7 +38,6 @@ FINUFFT = "d8beea63-0952-562e-9c6a-8e8ef7364055"
 Makie = "ee78f7c6-11fb-53f2-987a-cfe4a2b5a57a"
 NonuniformFFTs = "cd96f58b-6017-4a02-bb9e-f4d81626177f"
 Reactant = "3c362404-f566-11ee-1572-e11a4b42c853"
-
 
 [extensions]
 VLBISkyModelsFINUFFT = ["FINUFFT"]

@@ -62,8 +62,12 @@ Returns a transformed `u` and `v` according to the `model` modifier
 """
 function transform_uv end
 
+struct Iden end
+Base.:*(::Iden, x) = x
+Base.:*(x, ::Iden) = x
+
 unitscale(T, ::NotPolarized) = one(T)
-unitscale(T, ::IsPolarized) = I
+unitscale(T, ::IsPolarized) = Iden()
 
 """
     $(TYPEDEF)
@@ -327,7 +331,7 @@ end
     (; U, V) = p
     T = typeof(Δx)
     return exp(
-        2im * T(π) *
+        T(2)im * T(π) *
             (U * Δx + V * Δy)
     ) *
         unitscale(T, m)
