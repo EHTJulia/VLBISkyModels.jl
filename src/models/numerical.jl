@@ -54,7 +54,8 @@ function intensitymap_numeric!(img::IntensityMap, m::AbstractModel)
     visibilitymap!(vis, m)
     visk = ifftshift(parent(phasedecenter!(vis, grid, griduv)), 1:2)
     ifft!(visk, 1:2)
-    img .= real.(visk)
+    bimg = baseimage(img)
+    bimg .= real.(visk)
     return nothing
 end
 
