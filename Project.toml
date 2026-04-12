@@ -1,6 +1,6 @@
 name = "VLBISkyModels"
 uuid = "d6343c73-7174-4e0f-bb64-562643efbeca"
-version = "0.6.21"
+version = "0.6.22"
 authors = ["Paul Tiede <ptiede91@gmail.com> and contributors"]
 
 [deps]
@@ -67,7 +67,7 @@ NFFT = "0.14"
 NamedTupleTools = "0.13,0.14"
 NonuniformFFTs = "0.9"
 PaddedViews = "0.5"
-PolarizedTypes = "^0.1.1"
+PolarizedTypes = "0.1.1 - 0.1.2"
 Printf = "1.8"
 Reactant = "0.2"
 RecipesBase = "1"
