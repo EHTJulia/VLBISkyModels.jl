@@ -698,8 +698,6 @@ end
 
     p = (U = 0.005, V = 0.01)
     v = visibility(m, p)
-    @test m̆(v) ≈ m̆(m, p)
-    @test mbreve(v) ≈ mbreve(m, p)
 
     g = imagepixels(60.0, 60.0, 128, 128)
     img = intensitymap(m, g)

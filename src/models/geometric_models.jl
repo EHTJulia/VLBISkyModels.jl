@@ -292,6 +292,7 @@ radialextent(::MRing{T}) where {T} = convert(paramtype(T), 3 / 2)
     r = hypot(x, y)
     θ = atan(-x, y)
     dr = T(0.02)
+    Tπ = T(π)
     @unpack_params α, β = m(p)
     return @trace if (abs(r - 1) < dr / 2)
         acc = one(T)
@@ -299,7 +300,7 @@ radialextent(::MRing{T}) where {T} = convert(paramtype(T), 3 / 2)
             s, c = sincos(n * θ)
             acc += 2 * (α[n] * c - β[n] * s)
         end
-        acc / (2 * T(π) * dr)
+        acc / (2 * Tπ * dr)
     else
         zero(T)
     end
@@ -452,7 +453,7 @@ function intensity_point(m::ConcordanceCrescent{D}, p) where {D}
     norm = _crescentnorm(m, p)
     @unpack_params router, rinner, shift, slash = m(p)
     return ifelse(
-        r2 < router^2 & (x - shift)^2 + y^2 > rinner^2,
+        (r2 < router^2) & ((x - shift)^2 + y^2 > rinner^2),
         norm / 2 * ((1 + x / router) + slash * (1 - x / router)),
         zero(T)
     )
@@ -556,7 +557,7 @@ function intensity_point(::ParabolicSegment{D}, p) where {D}
     yw = (1 - x^2)
     T = paramtype(D)
     return ifelse(
-        abs(y - yw) < T(0.01 / 2) & abs(x) < 1,
+        (abs(y - yw) < T(0.01 / 2)) & (abs(x) < 1),
         1 / T(2 * 0.01),
         zero(T)
     )
