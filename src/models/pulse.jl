@@ -32,7 +32,7 @@ struct DeltaPulse{T} <: Pulse end
 DeltaPulse() = DeltaPulse{Float64}()
 # This should really be a delta function but whatever
 κflux(::DeltaPulse{T}) where {T} = one(T)
-@inline κ(::DeltaPulse{T}, x) where {T} = abs(x) < 0.5 ? one(T) : zero(T)
+@inline κ(::DeltaPulse{T}, x) where {T} = ifelse(abs(x) < 0.5, one(T), zero(T))
 @inline ω(::DeltaPulse{T}, u) where {T} = complex(one(T))
 @inline kernel_extent(::DeltaPulse{T}) where {T} = (one(T), one(T))
 
@@ -66,22 +66,27 @@ BSplinePulse{N}() where {N} = BSplinePulse{N, Float64}()
 )
 @inline κflux(::BSplinePulse) = 1.0
 
-@inline κ(::BSplinePulse{0}, x::T) where {T} = abs(x) < 0.5 ? one(T) : zero(T)
+@inline κ(::BSplinePulse{0}, x::T) where {T} = ifelse(abs(x) < 0.5, one(T), zero(T))
 
 @inline function κ(::BSplinePulse{1}, x::T) where {T}
     mag = abs(x)
-    return mag < 1 ? 1 - mag : zero(T)
+    Tl = T
+    return ifelse(mag < 1, 1 - mag, zero(Tl))
 end
 
 @inline function κ(::BSplinePulse{3}, x::T) where {T}
     mag = abs(x)
-    if mag < 1
-        return evalpoly(mag, (4, 0, -6, 3)) / 6
-    elseif 1 ≤ mag < 2
-        return evalpoly(mag, (8, -12, 6, -1)) / 6
+    Tl = T
+    cond1 = mag < 1
+    cond2 = 1 ≤ mag < 2
+    r = @trace if cond1
+        evalpoly(mag, (4, 0, -6, 3)) / 6
+    elseif cond2
+        evalpoly(mag, (8, -12, 6, -1)) / 6
     else
-        return zero(T)
+        zero(Tl)
     end
+    return r
 end
 @inline radialextent(::BSplinePulse{N, T}) where {N, T} = convert(paramtype(T), max(N, 1))
 
@@ -102,26 +107,31 @@ BicubicPulse() = BicubicPulse{Float64}(-0.5)
 function κ(k::BicubicPulse, x::T) where {T}
     mag = abs(x)
     b = k.b
-    if mag < 1
-        return evalpoly(mag, (one(T), zero(T), -(b + 3), b + 2))
-    elseif 1 ≤ mag < 2
-        return b * evalpoly(mag, (-T(4), T(8), -T(5), one(T)))
+    Tl = T
+    cond1 = mag < 1
+    cond2 = 1 ≤ mag < 2
+    r = @trace if cond1
+        evalpoly(mag, (one(Tl), zero(Tl), -(b + 3), b + 2))
+    elseif cond2
+        b * evalpoly(mag, (-Tl(4), Tl(8), -Tl(5), one(Tl)))
     else
-        return zero(T)
+        zero(Tl)
     end
+    return r
 end
 radialextent(::BicubicPulse{T}) where {T} = convert(paramtype(T), 2)
 
 function ω(m::BicubicPulse{T}, u) where {T}
     b = m.b
     k = 2T(π) * u
-    abs(k) < T(1.0e-2) && return 1 - (2 * b + 1) * k^2 / 15 + (16 * b + 1) * k^4 / 560 + 0im
+    r1 = 1 - (2 * b + 1) * k^2 / 15 + (16 * b + 1) * k^4 / 560 + 0im
     s, c = sincos(k)
     k3 = k^3
     k4 = k3 * k
     c2 = c^2 - s^2
-    return -4 * s * (2 * b * c + 4 * b + 3) * inv(k3) +
+    r2 = -4 * s * (2 * b * c + 4 * b + 3) * inv(k3) +
         12 * inv(k4) * (b * (1 - c2) + 2 * (1 - c)) + 0im
+    return ifelse(abs(k) < T(1.0e-2), r1, r2)
 end
 
 """
@@ -143,19 +153,29 @@ RaisedCosinePulse() = RaisedCosinePulse{Float64}(0.5)
 function κ(k::RaisedCosinePulse, x::T) where {T}
     mag = abs(x)
     β = k.rolloff
-    if 2 * mag < 1 - β
-        return one(T)
-    elseif 1 - β <= 2 * mag <= 1 + β
-        return 1 / 2 * (1 + cospi((mag - (1 - β) / 2) / β))
+    Tl = T
+    cond1 = 2 * mag < 1 - β
+    cond2 = 1 - β <= 2 * mag <= 1 + β
+    r = @trace if cond1
+        one(Tl)
+    elseif cond2
+        1 / 2 * (1 + cospi((mag - (1 - β) / 2) / β))
     else
-        return zero(T)
+        zero(Tl)
     end
+    return r
 end
 
 radialextent(κ::RaisedCosinePulse) = 1 + κ.rolloff
 
 function ω(k::RaisedCosinePulse, u::T) where {T}
     β = k.rolloff
-    abs(u) ≈ inv(2 * β) && return complex(T(π) / 4 * sinc(inv(2 * β)))
-    return complex(sinc(u) * cospi(β * u) * inv(1 - (2β * u)^2))
+    Tπ = T(π)
+    cond1 = abs(u) ≈ inv(2 * β)
+    r = @trace if cond1
+        complex(Tπ / 4 * sinc(inv(2 * β)))
+    else
+        complex(sinc(u) * cospi(β * u) * inv(1 - (2β * u)^2))
+    end
+    return r
 end

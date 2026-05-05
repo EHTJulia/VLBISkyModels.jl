@@ -313,7 +313,7 @@ end
     k = T(2π) * sqrt(u^2 + v^2) + eps(T)
     vis = besselj0(k) + zero(T) * im
     θ = atan(-u, v)
-    @inbounds for n in eachindex(α, β)
+    for n in eachindex(α, β)
         s, c = sincos(n * θ)
         vis += 2 * (α[n] * c - β[n] * s) * (one(T)im)^n * besselj(n, k)
     end
