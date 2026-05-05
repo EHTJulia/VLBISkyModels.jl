@@ -90,7 +90,7 @@ function create_interpolator(g, vis::AbstractArray{<:Complex, N}, pulse) where {
             x = SVector{N}(myselect(p2, kg))
             vreal = interpolate(itp, visre, x)
             vimag = interpolate(itp, visim, x)
-            return pl * (vreal + 1im * vimag)
+            return pl * complex(vreal, vimag)
         end
     end
 end
@@ -121,14 +121,22 @@ function create_interpolator(g, vis::StructArray{<:StokesParams}, pulse)
         p2 = update_spat(p, U2, V2)
         x = SVector(myselect(p2, kg))
         return StokesParams(
-            interpolate(itp, vIreal, x) * pl +
-                1im * interpolate(itp, vIimag, x) * pl,
-            interpolate(itp, vQreal, x) * pl +
-                1im * interpolate(itp, vQimag, x) * pl,
-            interpolate(itp, vUreal, x) * pl +
-                1im * interpolate(itp, vUimag, x) * pl,
-            interpolate(itp, vVreal, x) * pl +
-                1im * interpolate(itp, vVimag, x) * pl
+            complex(
+                interpolate(itp, vIreal, x),
+                interpolate(itp, vIimag, x)
+                ) * pl,
+            complex(
+                interpolate(itp, vQreal, x),
+                interpolate(itp, vQimag, x)
+                ) * pl,
+            complex(
+                interpolate(itp, vUreal, x),
+                interpolate(itp, vUimag, x)
+                ) * pl,
+            complex(
+                interpolate(itp, vVreal, x),
+                interpolate(itp, vVimag, x)
+                ) * pl
         )
     end
 end

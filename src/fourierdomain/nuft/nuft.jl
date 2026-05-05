@@ -125,9 +125,33 @@ end
 
 function applyft(p::AbstractNUFTPlan, img::AbstractArray)
     vis = nuft(p, img)
-    vis .*= getphases(p)
+    applyphases!(vis, p.phases)
     return vis
 end
+
+function applyphases!(vis, phases::AbstractArray)
+    @trace for i in eachindex(vis, phases)
+        vis[i] = vis[i] * phases[i]
+    end
+    return vis
+end
+
+function applyphases!(vis, phases::Number)
+    @trace for i in eachindex(vis)
+        vis[i] = vis[i] * phases
+    end
+    return vis
+end
+
+# function applyft(p::AbstractNUFTPlan, img::AbstractArray)
+#     vis = nuft(p, img)
+#     ph = getphases(p)
+#     @trace for i in eachindex(vis, ph)
+#         vis[i] = vis[i] * ph[i]
+#     end
+#     return vis
+# end
+
 
 @inline function nuft(A, b::IntensityMap)
     return _nuft(A, baseimage(b))

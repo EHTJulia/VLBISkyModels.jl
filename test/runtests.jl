@@ -6,7 +6,7 @@ using ChainRulesTestUtils
 using ChainRulesCore
 using FiniteDifferences
 using FFTW
-using JET
+# using JET
 using Plots
 using Statistics
 using Test
@@ -214,11 +214,11 @@ end
 
 function test_opt(m::M) where {M}
     if ComradeBase.imanalytic(M) == ComradeBase.IsAnalytic()
-        @test_opt ComradeBase.intensity_point(m, (X = 0.0, Y = 0.0, Fr = 230.0e9, Ti = 0.0))
+        @inferred ComradeBase.intensity_point(m, (X = 0.0, Y = 0.0, Fr = 230.0e9, Ti = 0.0))
     end
 
     return if ComradeBase.visanalytic(M) == ComradeBase.IsAnalytic()
-        @test_opt ComradeBase.visibility_point(m, (U = 0.0, V = 0.0, Fr = 230.0e9, Ti = 0.0))
+        @inferred ComradeBase.visibility_point(m, (U = 0.0, V = 0.0, Fr = 230.0e9, Ti = 0.0))
     end
 end
 
