@@ -124,19 +124,19 @@ function create_interpolator(g, vis::StructArray{<:StokesParams}, pulse)
             complex(
                 interpolate(itp, vIreal, x),
                 interpolate(itp, vIimag, x)
-                ) * pl,
+            ) * pl,
             complex(
                 interpolate(itp, vQreal, x),
                 interpolate(itp, vQimag, x)
-                ) * pl,
+            ) * pl,
             complex(
                 interpolate(itp, vUreal, x),
                 interpolate(itp, vUimag, x)
-                ) * pl,
+            ) * pl,
             complex(
                 interpolate(itp, vVreal, x),
                 interpolate(itp, vVimag, x)
-                ) * pl
+            ) * pl
         )
     end
 end
