@@ -4,7 +4,7 @@ using Random
 using VLBISkyModels
 using VLBISkyModels: NFFT
 
-function _setup_nfft_pair(::Type{T}, D::Int, N::NTuple{Ndim,Int}, J::Int; seed::Int = 42) where {T,Ndim}
+function _setup_nfft_pair(::Type{T}, D::Int, N::NTuple{Ndim, Int}, J::Int; seed::Int = 42) where {T, Ndim}
     D == Ndim || throw(ArgumentError("D=$D does not match length(N)=$Ndim"))
     rng = MersenneTwister(seed + 17D + J)
     k = rand(rng, T, D, J) .- T(0.5)
@@ -75,11 +75,11 @@ end
 
             y_ref = p_ref * complex.(x)
             y_react = @jit forward_react(xr)
-            @test parent(y_react) ≈ y_ref atol = 5e-7 rtol = 5e-6
+            @test parent(y_react) ≈ y_ref atol = 5.0e-7 rtol = 5.0e-6
 
             x_ref = p_ref' * y
             x_react = @jit adjoint_react(yr)
-            @test parent(x_react) ≈ x_ref atol = 5e-7 rtol = 5e-6
+            @test parent(x_react) ≈ x_ref atol = 5.0e-7 rtol = 5.0e-6
         end
     end
 
@@ -95,7 +95,7 @@ end
         forward_react(inp) = p_react * inp
 
         # Warmup compile
-        fr = @compile sync=true forward_react(xr)
+        fr = @compile sync = true forward_react(xr)
         fr(xr)
         t_react = @elapsed begin
             fr(xr)

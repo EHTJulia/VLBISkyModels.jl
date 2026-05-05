@@ -51,6 +51,4 @@ function VLBISkyModels._jlnuft!(out, A::Reactant_NFFTPlan, inp::Reactant.AnyTrac
 end
 
 
-
-
 end
