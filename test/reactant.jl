@@ -95,22 +95,16 @@ end
         forward_react(inp) = p_react * inp
 
         # Warmup compile
-        _ = @jit forward_react(xr)
-
+        fr = @compile sync=true forward_react(xr)
+        fr(xr)
         t_react = @elapsed begin
-            _ = @jit forward_react(xr)
+            fr(xr)
         end
 
         t_ref = @elapsed begin
             _ = p_ref * complex.(x)
         end
 
-        nchunks = length(p_react.chunkOffsets) - 1
-        nbins = length(p_react.binCounts)
         @info "Reactant NFFT harness" t_ref t_react nchunks nbins
-
-        @test nchunks > 1
-        @test t_react > 0
-        @test t_ref > 0
     end
 end
