@@ -42,7 +42,7 @@ PolarizedTypes.mpol(::ComradeBase.AbstractPolarizedModel, ::Any)
 PolarizedTypes.polellipse(::ComradeBase.AbstractPolarizedModel, ::Any)
 PolarizedTypes.polarization(::ComradeBase.AbstractPolarizedModel, ::Any)
 PolarizedTypes.fracpolarization(::ComradeBase.AbstractPolarizedModel, ::Any)
-PolarizedTypes.mbreve(::ComradeBase.AbstractPolarizedModel, ::Any)
+mbreve(::ComradeBase.AbstractPolarizedModel, ::Any)
 ```
 
 ### Model Interface
@@ -124,7 +124,6 @@ PolarizedTypes.CirBasis
 PolarizedTypes.LinBasis
 PolarizedTypes.CoherencyMatrix
 PolarizedTypes.evpa
-PolarizedTypes.m̆
 PolarizedTypes.linearpol
 PolarizedTypes.innerprod
 PolarizedTypes.basis_components
