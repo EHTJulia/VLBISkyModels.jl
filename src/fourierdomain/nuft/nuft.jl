@@ -131,14 +131,16 @@ end
 
 function applyphases!(vis, phases::AbstractArray)
     @trace for i in eachindex(vis, phases)
-        vis[i] = vis[i] * phases[i]
+        tmp = rgetindex(vis, i) * rgetindex(phases, i)
+        rsetindex!(vis, tmp, i)
     end
     return vis
 end
 
 function applyphases!(vis, phases::Number)
     @trace for i in eachindex(vis)
-        vis[i] = vis[i] * phases
+        tmp = rgetindex(vis, i) * phases
+        rsetindex!(vis, tmp, i)
     end
     return vis
 end
