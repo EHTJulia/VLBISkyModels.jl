@@ -434,7 +434,7 @@ Computes the fractional linear polarization in the visibility domain
 To create the symbol type `m\\breve` in the REPL or use the
 [`mbreve`](@ref) function.
 """
-@inline function PolarizedTypes.m̆(pimg::AbstractPolarizedModel, p)
+@inline function m̆(pimg::AbstractPolarizedModel, p)
     Q = visibility(stokes(pimg, :Q), p)
     U = visibility(stokes(pimg, :U), p)
     I = visibility(stokes(pimg, :I), p)
@@ -446,4 +446,4 @@ end
 
 Explicit m̆ function used for convenience.
 """
-PolarizedTypes.mbreve(pimg::AbstractPolarizedModel, p) = m̆(pimg, p)
+mbreve(pimg::AbstractPolarizedModel, p) = m̆(pimg, p)
