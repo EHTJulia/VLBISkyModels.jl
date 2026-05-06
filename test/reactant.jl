@@ -105,6 +105,6 @@ end
             _ = p_ref * complex.(x)
         end
 
-        @info "Reactant NFFT harness" t_ref t_react nchunks nbins
+        @info "Reactant NFFT harness" t_ref t_react
     end
 end
