@@ -1,8 +1,7 @@
 name = "VLBISkyModels"
 uuid = "d6343c73-7174-4e0f-bb64-562643efbeca"
-version = "0.6.22"
 authors = ["Paul Tiede <ptiede91@gmail.com> and contributors"]
-version = "0.6.21"
+version = "0.6.22"
 
 [deps]
 AbstractFFTs = "621f4979-c628-5d54-868e-fcf4e3e8185c"
