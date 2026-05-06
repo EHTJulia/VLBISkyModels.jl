@@ -698,7 +698,7 @@ end
 
     p = (U = 0.005, V = 0.01)
     v = visibility(m, p)
-    @test m̆(v) ≈ m̆(m, p)
+    @test mpol(v) ≈ m̆(m, p)
     @test mpol(v) ≈ mbreve(m, p)
 
     g = imagepixels(60.0, 60.0, 128, 128)
@@ -715,7 +715,7 @@ end
     @test p1.a ≈ p2.a / dxdy
     @test p1.b ≈ p2.b / dxdy
     @test p1.evpa ≈ p2.evpa
-    @test p1.snr ≈ p2.snr
+    @test p1.sn ≈ p2.sn
 
     g = imagepixels(100.0, 100.0, 1024, 1024)
     pI = IntensityMap(zeros(1024, 1024), g)
