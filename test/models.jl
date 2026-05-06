@@ -710,7 +710,7 @@ end
     @test polarization(mG, p0) ≈ polarization(img[64, 64]) / dxdy
     @test fracpolarization(mG, p0) ≈ fracpolarization(img[64, 64])
     @test evpa(mG, p0) ≈ evpa(img[64, 64])
-    p1 = pollellipse(mG, p0)
+    p1 = polellipse(mG, p0)
     p2 = polellipse(img[64, 64])
     @test p1.a ≈ p2.a / dxdy
     @test p1.b ≈ p2.b / dxdy
