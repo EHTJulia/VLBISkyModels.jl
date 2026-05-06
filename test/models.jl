@@ -705,18 +705,18 @@ end
     img = intensitymap(mG, g)
     dxdy = prod(values(pixelsizes(g)))
     p0 = (X = g.X[64], Y = g.Y[64])
-    @test linearpol(mG, p0) ≈ linearpol(img[64, 64])/dxdy
+    @test linearpol(mG, p0) ≈ linearpol(img[64, 64]) / dxdy
     @test mpol(mG, p0) ≈ mpol(img[64, 64])
-    @test polarization(mG, p0) ≈ polarization(img[64, 64])/dxdy
+    @test polarization(mG, p0) ≈ polarization(img[64, 64]) / dxdy
     @test fracpolarization(mG, p0) ≈ fracpolarization(img[64, 64])
     @test evpa(mG, p0) ≈ evpa(img[64, 64])
     p1 = pollellipse(mG, p0)
     p2 = polellipse(img[64, 64])
-    @test p1.a ≈ p2.a/dxdy
-    @test p1.b ≈ p2.b/dxdy
+    @test p1.a ≈ p2.a / dxdy
+    @test p1.b ≈ p2.b / dxdy
     @test p1.evpa ≈ p2.evpa
     @test p1.snr ≈ p2.snr
-    
+
     g = imagepixels(100.0, 100.0, 1024, 1024)
     pI = IntensityMap(zeros(1024, 1024), g)
     pQ = similar(pI)
