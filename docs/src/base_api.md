@@ -42,7 +42,6 @@ PolarizedTypes.mpol(::ComradeBase.AbstractPolarizedModel, ::Any)
 PolarizedTypes.polellipse(::ComradeBase.AbstractPolarizedModel, ::Any)
 PolarizedTypes.polarization(::ComradeBase.AbstractPolarizedModel, ::Any)
 PolarizedTypes.fracpolarization(::ComradeBase.AbstractPolarizedModel, ::Any)
-mbreve(::ComradeBase.AbstractPolarizedModel, ::Any)
 ```
 
 ### Model Interface
