@@ -414,3 +414,28 @@ Compute the polarization of the polarized model.
 @inline function PolarizedTypes.polellipse(pimg::AbstractPolarizedModel, p)
     return polellipse(intensity_point(pimg, p))
 end
+
+"""
+    m̆(pimg::AbstractPolarizedModel, p)
+    mbreve(pimg::AbstractPolarizedModel, p)
+
+Computes the fractional linear polarization in the visibility domain
+
+    m̆ = (Q̃ + iŨ)/Ĩ
+
+To create the symbol type `m\\breve` in the REPL or use the
+[`mbreve`](@ref) function.
+"""
+@inline function m̆(pimg::AbstractPolarizedModel, p)
+    Q = visibility(stokes(pimg, :Q), p)
+    U = visibility(stokes(pimg, :U), p)
+    I = visibility(stokes(pimg, :I), p)
+    return (Q + 1im * U) / I
+end
+
+"""
+    $(SIGNATURES)
+
+Explicit m̆ function used for convenience.
+"""
+mbreve(pimg::AbstractPolarizedModel, p) = m̆(pimg, p)

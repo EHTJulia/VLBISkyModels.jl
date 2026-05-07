@@ -145,6 +145,8 @@ VLBISkyModels.PolExp2Map
 VLBISkyModels.regrid
 VLBISkyModels.rad2μas
 VLBISkyModels.μas2rad
+VLBISkyModels.mbreve(::ComradeBase.AbstractPolarizedModel, ::Any)
+VLBISkyModels.m̆(::ComradeBase.AbstractPolarizedModel, ::Any)
 ```
 
 ### IO
