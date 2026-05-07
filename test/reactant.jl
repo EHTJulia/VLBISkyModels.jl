@@ -83,7 +83,7 @@ end
         end
     end
 
-    @testset "Chunked Harness" begin
+    @testset "Single-Shot Harness" begin
         D = 2
         N = (128, 128)
         J = 25_000
