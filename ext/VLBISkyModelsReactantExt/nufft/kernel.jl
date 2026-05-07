@@ -25,15 +25,15 @@ the principled choice — analytic FT of the ES kernel has no closed form.
 
 # ----------------- ES kernel (pure host) -----------------
 
-@inline function expsemicircle_phi(z::T, beta::T) where {T<:Real}
+@inline function expsemicircle_phi(z::T, beta::T) where {T <: Real}
     az = abs(z)
     az >= one(T) && return zero(T)
     return exp(beta * (sqrt(one(T) - az * az) - one(T)))
 end
 
 # FINUFFT's beta scaling for ES kernel.
-@inline function expsemicircle_beta(::Type{T}, w::Integer, sigma::Real) where {T<:Real}
-    gamma = T(2.30) * (T(2) / T(sigma))
+@inline function expsemicircle_beta(::Type{T}, w::Integer, sigma::Real) where {T <: Real}
+    gamma = T(2.3) * (T(2) / T(sigma))
     return gamma * T(w)
 end
 
@@ -47,7 +47,7 @@ end
 # (cosine spacing), then convert to monomial coefficients via Clenshaw-style
 # evaluation back at sampled t. This is robust and entirely host-side.
 
-function _chebyshev_nodes(::Type{T}, n::Integer) where {T<:Real}
+function _chebyshev_nodes(::Type{T}, n::Integer) where {T <: Real}
     return [cos(T(pi) * (T(2k - 1) / T(2n))) for k in 1:n]
 end
 
@@ -55,7 +55,7 @@ end
 # minimizes max-norm error on [-1, 1]; computed via Chebyshev coefs +
 # basis change. We keep this simple by sampling at (n) Chebyshev nodes,
 # building a Vandermonde-like system in the monomial basis, and solving.
-function _fit_monomial(::Type{T}, fvals::AbstractVector{T}, nodes::AbstractVector{T}) where {T<:Real}
+function _fit_monomial(::Type{T}, fvals::AbstractVector{T}, nodes::AbstractVector{T}) where {T <: Real}
     n = length(nodes)
     @assert length(fvals) == n
     # Vandermonde: V[i, j] = nodes[i]^(j-1)
@@ -77,7 +77,7 @@ end
 Return a `(w, deg+1)` matrix of monomial coefficients. Row `k` (1-based) gives
 the coefficients for stencil cell `k-1`'s polynomial in `t = 2*frac - 1`.
 """
-function horner_coefficients(::Type{T}, w::Integer, sigma::Real; deg::Integer=w + 2) where {T<:Real}
+function horner_coefficients(::Type{T}, w::Integer, sigma::Real; deg::Integer = w + 2) where {T <: Real}
     beta = expsemicircle_beta(T, w, sigma)
     n = deg + 1
     nodes = _chebyshev_nodes(T, n)               # (n,) in [-1, 1]
@@ -90,7 +90,7 @@ function horner_coefficients(::Type{T}, w::Integer, sigma::Real; deg::Integer=w 
         # frac(t) = (t + 1)/2
         f = T[
             expsemicircle_phi((shift - (nodes[i] + one(T)) / T(2)) / halfw, beta)
-            for i in 1:n
+                for i in 1:n
         ]
         coefs[k + 1, :] .= _fit_monomial(T, f, nodes)
     end
@@ -109,7 +109,7 @@ end
 const MAX_NQUAD = 100
 
 # Golub–Welsch via the Jacobi matrix. n nodes/weights on [-1, 1].
-function _gauss_legendre(::Type{T}, n::Integer) where {T<:Real}
+function _gauss_legendre(::Type{T}, n::Integer) where {T <: Real}
     if n <= 1
         return T[zero(T)], T[T(2)]
     end
@@ -134,8 +134,8 @@ indices m ∈ {-nmodes_d/2, ..., (nmodes_d-1)/2} to phi_hat values on the
 oversampled grid of size Nf.
 """
 function phi_hat_1d(
-    ::Type{T}, w::Integer, sigma::Real, Nf::Integer, nmodes_d::Integer
-) where {T<:Real}
+        ::Type{T}, w::Integer, sigma::Real, Nf::Integer, nmodes_d::Integer
+    ) where {T <: Real}
     beta = expsemicircle_beta(T, w, sigma)
     nquad = clamp(2 * w + 4, 8, MAX_NQUAD)
     nodes, weights = _gauss_legendre(T, nquad)   # on [-1, 1]

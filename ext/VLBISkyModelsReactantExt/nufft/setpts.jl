@@ -17,7 +17,7 @@ Padded entries (j > M) are zeroed via `mask`; the padded `base`/`frac`
 entries are valid sentinel values (base=1, frac=0) that scatter/gather
 nothing meaningful but keep all indices in range.
 """
-struct NUFFTSetPts{T<:Real,D,P,A,B,F,Mk}
+struct NUFFTSetPts{T <: Real, D, P, A, B, F, Mk}
     plan::P
     M::Int                 # original point count
     M_pad::Int             # = nchunks * chunk_size
@@ -30,7 +30,7 @@ struct NUFFTSetPts{T<:Real,D,P,A,B,F,Mk}
     mask::Mk               # ConcreteRArray{T,1}, length M_pad (1.0 for j≤M, 0.0 else)
 end
 
-ndims_(::NUFFTSetPts{<:Any,D}) where {D} = D
+ndims_(::NUFFTSetPts{<:Any, D}) where {D} = D
 Base.eltype(::NUFFTSetPts{T}) where {T} = T
 
 # --- Traced kernel ---------------------------------------------------------
@@ -41,13 +41,13 @@ Base.eltype(::NUFFTSetPts{T}) where {T} = T
 #
 # All arithmetic is plain Julia, traced through Reactant.
 function _setpts_traced(
-    points::NTuple{D,AbstractVector},
-    ngrid::NTuple{D,Int},
-    nspread::Int,
-    bin_dims::NTuple{D,Int},
-    nbins::NTuple{D,Int},
-    M_pad::Int,
-) where {D}
+        points::NTuple{D, AbstractVector},
+        ngrid::NTuple{D, Int},
+        nspread::Int,
+        bin_dims::NTuple{D, Int},
+        nbins::NTuple{D, Int},
+        M_pad::Int,
+    ) where {D}
     M = length(points[1])
     T = real(Reactant.unwrapped_eltype(eltype(points[1])))
     period = T(2 * pi)
@@ -75,22 +75,22 @@ function _setpts_traced(
 end
 
 function _pad_for_chunks(
-    perm, base_s::NTuple{D,Any}, frac_s::NTuple{D,Any},
-    M::Int, M_pad::Int, ::Type{T}, ::Val{D},
-) where {T,D}
+        perm, base_s::NTuple{D, Any}, frac_s::NTuple{D, Any},
+        M::Int, M_pad::Int, ::Type{T}, ::Val{D},
+    ) where {T, D}
     one_T = Reactant.promote_to(Reactant.TracedRNumber{T}, one(T))
     if M_pad == M
         return perm, base_s, frac_s, fill(one_T, M_pad)
     end
     npad = M_pad - M
-    one_I  = Reactant.promote_to(Reactant.TracedRNumber{Int}, Int(1))
-    zero_T = Reactant.promote_to(Reactant.TracedRNumber{T},     zero(T))
-    pad_perm = fill(one_I,  npad)
-    pad_int  = fill(one_I,  npad)
-    pad_T    = fill(zero_T, npad)
+    one_I = Reactant.promote_to(Reactant.TracedRNumber{Int}, Int(1))
+    zero_T = Reactant.promote_to(Reactant.TracedRNumber{T}, zero(T))
+    pad_perm = fill(one_I, npad)
+    pad_int = fill(one_I, npad)
+    pad_T = fill(zero_T, npad)
     perm_p = vcat(perm, pad_perm)
     base_p = ntuple(d -> vcat(base_s[d], pad_int), Val(D))
-    frac_p = ntuple(d -> vcat(frac_s[d], pad_T),   Val(D))
+    frac_p = ntuple(d -> vcat(frac_s[d], pad_T), Val(D))
     mask = vcat(fill(one_T, M), fill(zero_T, npad))
     return perm_p, base_p, frac_p, mask
 end
@@ -108,13 +108,13 @@ This is plain traceable Julia — call it inside `Reactant.@jit` /
 `Reactant.@compile` to get a compiled setpts step, or call it directly with
 `ConcreteRArray`s for one-off use.
 """
-function set_nufft_points(plan::NUFFTPlan{T,D}, points::Vararg{AbstractVector,D}) where {T,D}
+function set_nufft_points(plan::NUFFTPlan{T, D}, points::Vararg{AbstractVector, D}) where {T, D}
     return set_nufft_points(plan, points)
 end
 
 function set_nufft_points(
-    plan::NUFFTPlan{T,D}, points::NTuple{D,AbstractVector}
-) where {T,D}
+        plan::NUFFTPlan{T, D}, points::NTuple{D, AbstractVector}
+    ) where {T, D}
     M = length(points[1])
     @assert all(p -> length(p) == M, points) "All coordinate vectors must share length"
 
@@ -128,7 +128,7 @@ function set_nufft_points(
     )
 
     return NUFFTSetPts{
-        T,D,typeof(plan),typeof(perm),typeof(base_s),typeof(frac_s),typeof(mask),
+        T, D, typeof(plan), typeof(perm), typeof(base_s), typeof(frac_s), typeof(mask),
     }(
         plan, M, M_pad, nchunks, chunk_size, perm, invp, base_s, frac_s, mask,
     )

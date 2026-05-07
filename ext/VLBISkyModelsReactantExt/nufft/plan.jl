@@ -15,24 +15,24 @@ Static plan parameters. `T` is the real eltype, `D` is the dimensionality,
 
 Construct via [`plan_nufft`](@ref).
 """
-struct NUFFTPlan{T<:Real,D,K}
-    nmodes::NTuple{D,Int}
-    ngrid::NTuple{D,Int}
+struct NUFFTPlan{T <: Real, D, K}
+    nmodes::NTuple{D, Int}
+    ngrid::NTuple{D, Int}
     iflag::Int                        # +1 or -1
     eps::T
     sigma::T
     nspread::Int                      # = w
     beta::T
-    bin_dims::NTuple{D,Int}
-    nbins::NTuple{D,Int}
+    bin_dims::NTuple{D, Int}
+    nbins::NTuple{D, Int}
     chunk_size::Int
     horner_coefs::Matrix{T}           # (w, deg+1)
-    phi_hat::NTuple{D,Vector{T}}      # length nmodes[d] each
+    phi_hat::NTuple{D, Vector{T}}      # length nmodes[d] each
 end
 
-nufft_type(::NUFFTPlan{<:Any,<:Any,K}) where {K} = K
+nufft_type(::NUFFTPlan{<:Any, <:Any, K}) where {K} = K
 Base.eltype(::NUFFTPlan{T}) where {T} = T
-ndims_(::NUFFTPlan{<:Any,D}) where {D} = D
+ndims_(::NUFFTPlan{<:Any, D}) where {D} = D
 nspread(p::NUFFTPlan) = p.nspread
 
 # Smallest n >= n0 that is a product of {2, 3, 5, 7}. Standard FFT-friendly size.
@@ -49,6 +49,7 @@ function _next_smooth(n0::Integer)
         m == 1 && return n
         n += 1
     end
+    return
 end
 
 # Default `α` multiplier on `w` for the bin-sort permutation granularity.
@@ -68,17 +69,19 @@ end
 # `AUTO_BIN_ALPHA[]` per run.
 #
 # Layout: AUTO_BIN_ALPHA[][K][D] for K in 1:2 (type), D in 1:3 (dim).
-const AUTO_BIN_ALPHA = Ref((
-    (2.0, 2.0, 1.0),   # type-1
-    (2.0, 2.0, 1.0),   # type-2
-))
+const AUTO_BIN_ALPHA = Ref(
+    (
+        (2.0, 2.0, 1.0),   # type-1
+        (2.0, 2.0, 1.0),   # type-2
+    )
+)
 
 # Heuristic bin width per dim. `bin_dim = max(floor_d, w, ceil(α·w))`;
 # floor and α together reproduce the original cuFINUFFT-style heuristic
 # (`max(32, 2w)` for 1D, `max(16, 2w)` for 2D, `max(8, w+1)` for 3D).
 function _auto_bin_dims(
-    D::Integer, K::Integer, w::Integer; alpha::Real=AUTO_BIN_ALPHA[][K][D],
-)
+        D::Integer, K::Integer, w::Integer; alpha::Real = AUTO_BIN_ALPHA[][K][D],
+    )
     floor_d = D == 1 ? 32 : (D == 2 ? 16 : 8)
     b = max(floor_d, w, ceil(Int, alpha * w))
     return ntuple(_ -> b, D)
@@ -94,20 +97,20 @@ Construct a NUFFT plan for real eltype `T`, transform type 1 or 2, and a
 `>0` ⇒ `exp(+i k·x)` (backward FFT).
 """
 function plan_nufft(
-    ::Type{T}, K::Integer, nmodes::NTuple{D,Integer};
-    iflag::Integer=-1,
-    opts::VLBISkyModels.ReactantNUFFTAlg{T}=VLBISkyModels.ReactantNUFFTAlg(T),
-    kwargs...,
-) where {T<:Real,D}
+        ::Type{T}, K::Integer, nmodes::NTuple{D, Integer};
+        iflag::Integer = -1,
+        opts::VLBISkyModels.ReactantNUFFTAlg{T} = VLBISkyModels.ReactantNUFFTAlg(T),
+        kwargs...,
+    ) where {T <: Real, D}
     @assert K == 1 || K == 2 "Only NUFFT type 1 and 2 are supported"
     @assert D == length(nmodes) "Dimension mismatch"
     @assert all(>(0), nmodes) "Mode counts must be positive"
 
-    eps_  = T(get(kwargs, :eps,        opts.eps))
-    sigma = T(get(kwargs, :sigma,      opts.sigma))
-    nsp   = Int(get(kwargs, :nspread,  opts.nspread))
-    cz    = Int(get(kwargs, :chunk_size, opts.chunk_size))
-    bd_in =      get(kwargs, :bin_dims,  opts.bin_dims)
+    eps_ = T(get(kwargs, :eps, opts.eps))
+    sigma = T(get(kwargs, :sigma, opts.sigma))
+    nsp = Int(get(kwargs, :nspread, opts.nspread))
+    cz = Int(get(kwargs, :chunk_size, opts.chunk_size))
+    bd_in = get(kwargs, :bin_dims, opts.bin_dims)
 
     if nsp < 0
         nsp = _nspread_for_eps(T, eps_, sigma)
@@ -128,9 +131,9 @@ function plan_nufft(
 
     beta = expsemicircle_beta(T, nsp, sigma)
     coefs = horner_coefficients(T, nsp, sigma)
-    phih  = ntuple(d -> phi_hat_1d(T, nsp, sigma, ngrid_t[d], modes_t[d]), D)
+    phih = ntuple(d -> phi_hat_1d(T, nsp, sigma, ngrid_t[d], modes_t[d]), D)
 
-    return NUFFTPlan{T,D,Int(K)}(
+    return NUFFTPlan{T, D, Int(K)}(
         modes_t,
         ngrid_t,
         iflag >= 0 ? 1 : -1,
@@ -141,5 +144,5 @@ function plan_nufft(
 end
 
 # Single-mode shortcut (1D)
-plan_nufft(::Type{T}, K::Integer, n::Integer; kwargs...) where {T<:Real} =
+plan_nufft(::Type{T}, K::Integer, n::Integer; kwargs...) where {T <: Real} =
     plan_nufft(T, K, (Int(n),); kwargs...)

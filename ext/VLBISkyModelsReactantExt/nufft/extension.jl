@@ -11,8 +11,8 @@ function VLBISkyModels._jlnuft!(out, A::NUFFTSetPts, b::AnyTracedRArray{<:Comple
 end
 
 function VLBISkyModels.plan_nuft_spatial(
-    alg::VLBISkyModels.ReactantNUFFTAlg, imgdomain::AbstractRectiGrid, visdomain::UnstructuredDomain
-)
+        alg::VLBISkyModels.ReactantNUFFTAlg, imgdomain::AbstractRectiGrid, visdomain::UnstructuredDomain
+    )
     visp = domainpoints(visdomain)
     U = visp.U
     V = visp.V

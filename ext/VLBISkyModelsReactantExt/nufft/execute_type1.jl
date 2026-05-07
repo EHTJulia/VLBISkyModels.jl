@@ -22,14 +22,14 @@ end
 
 # Outer product of per-dim weight matrices (M, w_d) for d in 1..D.
 # Returns (M, prod(w_d)) — for our case w_d = w for all d, so (M, w^D).
-@inline function _outer_product_weights(wpd::NTuple{1,AbstractMatrix})
+@inline function _outer_product_weights(wpd::NTuple{1, AbstractMatrix})
     return wpd[1]                                              # (M, w)
 end
-@inline function _outer_product_weights(wpd::NTuple{2,AbstractMatrix})
+@inline function _outer_product_weights(wpd::NTuple{2, AbstractMatrix})
     M, w = size(wpd[1])
     return reshape(reshape(wpd[1], M, w, 1) .* reshape(wpd[2], M, 1, w), M, w * w)
 end
-@inline function _outer_product_weights(wpd::NTuple{3,AbstractMatrix})
+@inline function _outer_product_weights(wpd::NTuple{3, AbstractMatrix})
     M, w = size(wpd[1])
     a = reshape(wpd[1], M, w, 1, 1)
     b = reshape(wpd[2], M, 1, w, 1)
@@ -52,7 +52,7 @@ end
 # index_vector_dim=0 wants natively — using (N, D) forces XLA to insert a
 # 49 MB-per-chunk transpose that consumed ~3 ms/call (50% of T1 e2e at
 # the D=2 256² M=10⁶ target row).
-@inline function _stack_scatter_indices(idxs::NTuple{1,AbstractMatrix})
+@inline function _stack_scatter_indices(idxs::NTuple{1, AbstractMatrix})
     M, w = size(idxs[1])
     return reshape(idxs[1], 1, M * w)
 end
@@ -60,14 +60,14 @@ end
 # (which materializes a (M, w, w) intermediate that XLA layout-flips
 # 49 MB-per-chunk before the scatter — ~3 ms/call at the D=2 256² M=10⁶
 # target row).
-@inline function _stack_scatter_indices(idxs::NTuple{2,AbstractMatrix})
+@inline function _stack_scatter_indices(idxs::NTuple{2, AbstractMatrix})
     M, w = size(idxs[1])
     z = zero(eltype(idxs[1]))
     a = reshape(idxs[1], M, w, 1) .+ z .* reshape(idxs[2], M, 1, w)   # (M, w, w)
     b = reshape(idxs[2], M, 1, w) .+ z .* reshape(idxs[1], M, w, 1)   # (M, w, w)
     return vcat(reshape(a, 1, M * w * w), reshape(b, 1, M * w * w))
 end
-@inline function _stack_scatter_indices(idxs::NTuple{3,AbstractMatrix})
+@inline function _stack_scatter_indices(idxs::NTuple{3, AbstractMatrix})
     M, w = size(idxs[1])
     z = zero(eltype(idxs[1]))
     a = reshape(idxs[1], M, w, 1, 1) .+
@@ -96,20 +96,20 @@ end
 # strictly lex-sorted. Asserting the hint is a no-op on XLA-CPU and ~7×
 # SLOWER on XLA-GPU (it picks a sequential code path), so we don't pass it.
 function _scatter_add_real!(
-    fw, scatter_idx::AbstractMatrix, updates::AbstractMatrix, ::Val{D},
-) where {D}
+        fw, scatter_idx::AbstractMatrix, updates::AbstractMatrix, ::Val{D},
+    ) where {D}
     T = Reactant.unwrapped_eltype(eltype(fw))
     res = Reactant.Ops.@opcall scatter(
         +,
-        [Reactant.promote_to(Reactant.TracedRArray{T,D + 1}, fw)],
-        Reactant.promote_to(Reactant.TracedRArray{Int,2}, scatter_idx),
-        [Reactant.promote_to(Reactant.TracedRArray{T,2}, updates)];
-        update_window_dims=Int64[2],                       # ntrans axis of updates
-        inserted_window_dims=collect(Int64, 1:D),          # spatial dims of fw
-        input_batching_dims=Int64[],
-        scatter_indices_batching_dims=Int64[],
-        scatter_dims_to_operand_dims=collect(Int64, 1:D),  # idx rows → spatial dims
-        index_vector_dim=Int64(1),                          # (D, N) layout — see _stack_scatter_indices
+        [Reactant.promote_to(Reactant.TracedRArray{T, D + 1}, fw)],
+        Reactant.promote_to(Reactant.TracedRArray{Int, 2}, scatter_idx),
+        [Reactant.promote_to(Reactant.TracedRArray{T, 2}, updates)];
+        update_window_dims = Int64[2],                       # ntrans axis of updates
+        inserted_window_dims = collect(Int64, 1:D),          # spatial dims of fw
+        input_batching_dims = Int64[],
+        scatter_indices_batching_dims = Int64[],
+        scatter_dims_to_operand_dims = collect(Int64, 1:D),  # idx rows → spatial dims
+        index_vector_dim = Int64(1),                          # (D, N) layout — see _stack_scatter_indices
     )
     return only(res)
 end
@@ -123,7 +123,7 @@ end
 # each dim. Plain Julia slice + setindex; Reactant lowers each iteration to
 # `stablehlo.slice` + `stablehlo.dynamic_update_slice`.
 
-function _central_view(fw_hat, nmodes::NTuple{D,Int}, ngrid::NTuple{D,Int}) where {D}
+function _central_view(fw_hat, nmodes::NTuple{D, Int}, ngrid::NTuple{D, Int}) where {D}
     if all(nmodes .== ngrid)
         return fw_hat
     end
@@ -135,12 +135,16 @@ function _central_view(fw_hat, nmodes::NTuple{D,Int}, ngrid::NTuple{D,Int}) wher
     for sign_bits in 0:(1 << D - 1)
         is_neg = ntuple(d -> ((sign_bits >> (d - 1)) & 1) == 1, Val(D))
         any(d -> is_neg[d] && halves[d] == 0, 1:D) && continue
-        src = ntuple(d -> is_neg[d] ?
-            ((ngrid[d] - halves[d] + 1):ngrid[d]) :
-            (1:n_poss[d]),                Val(D))
-        dst = ntuple(d -> is_neg[d] ?
-            (1:halves[d]) :
-            ((halves[d] + 1):nmodes[d]),  Val(D))
+        src = ntuple(
+            d -> is_neg[d] ?
+                ((ngrid[d] - halves[d] + 1):ngrid[d]) :
+                (1:n_poss[d]), Val(D)
+        )
+        dst = ntuple(
+            d -> is_neg[d] ?
+                (1:halves[d]) :
+                ((halves[d] + 1):nmodes[d]), Val(D)
+        )
         out[dst..., :] = fw_hat[src..., :]
     end
     return out
@@ -152,7 +156,7 @@ end
 # Build a (nmodes_1, ..., nmodes_D, 1) tensor whose entries are the product
 # of the per-dim phi_hat values, ready to broadcast-divide fw_central. The
 # trailing dim is the (singleton) ntrans axis.
-function _phi_hat_tensor(plan::NUFFTPlan{T,D}) where {T,D}
+function _phi_hat_tensor(plan::NUFFTPlan{T, D}) where {T, D}
     factors = ntuple(D) do d
         shape = ntuple(i -> i == d ? plan.nmodes[d] : 1, Val(D + 1))
         return reshape(plan.phi_hat[d], shape...)
@@ -172,7 +176,7 @@ Type-1 NUFFT: nonuniform → uniform.
 
 Designed to be called inside `Reactant.@jit`.
 """
-function execute_type1(prep::NUFFTSetPts{T,D}, c::AbstractArray) where {T,D}
+function execute_type1(prep::NUFFTSetPts{T, D}, c::AbstractArray) where {T, D}
     plan = prep.plan
     @assert nufft_type(plan) == 1 "Plan was not built for type-1"
     @assert size(c, 1) == prep.M "Strength count mismatch with prepared points"
@@ -185,8 +189,8 @@ function execute_type1(prep::NUFFTSetPts{T,D}, c::AbstractArray) where {T,D}
 end
 
 function _execute_type1_impl(
-    prep::NUFFTSetPts{T,D}, cmat::AbstractMatrix, ntrans::Int, squeeze_out::Bool
-) where {T,D}
+        prep::NUFFTSetPts{T, D}, cmat::AbstractMatrix, ntrans::Int, squeeze_out::Bool
+    ) where {T, D}
     plan = prep.plan
     w = plan.nspread
     ngrid = plan.ngrid
@@ -199,7 +203,7 @@ function _execute_type1_impl(
     #    `c_sorted = cmat[perm, :] .* mask` — keeping the gather in the same
     #    op group as the contribution build lets XLA fuse them and avoids
     #    a (M_pad, ntrans) intermediate that costs ~25–35% of e2e at M=10⁶.
-    coefs = Reactant.promote_to(Reactant.TracedRArray{T,2}, plan.horner_coefs)
+    coefs = Reactant.promote_to(Reactant.TracedRArray{T, 2}, plan.horner_coefs)
     offsets_row = reshape(collect(0:(w - 1)), 1, w)         # static (1, w) Int row
     fw_re = similar(cmat, real(eltype(cmat)), ngrid..., ntrans)
     fw_im = similar(cmat, real(eltype(cmat)), ngrid..., ntrans)
@@ -212,8 +216,8 @@ function _execute_type1_impl(
 
     # 2. FFT (sign per iflag).
     fw_hat = plan.iflag < 0 ?
-             AbstractFFTs.fft(fw, 1:D) :
-             AbstractFFTs.bfft(fw, 1:D)
+        AbstractFFTs.fft(fw, 1:D) :
+        AbstractFFTs.bfft(fw, 1:D)
 
     # 3. Crop central modes (with periodic wrap).
     fw_central = _central_view(fw_hat, plan.nmodes, ngrid)
@@ -222,7 +226,7 @@ function _execute_type1_impl(
     phih = _phi_hat_tensor(plan)
     fk = fw_central ./ phih
 
-    return squeeze_out ? dropdims(fk; dims=D + 1) : fk
+    return squeeze_out ? dropdims(fk; dims = D + 1) : fk
 end
 
 # --- chunked spread ---------------------------------------------------------
@@ -236,10 +240,10 @@ end
 # bounded. Larger M (10⁷) would benefit from a `@trace for` loop, but
 # that path runs into loop-carried-state issues with the scatter pattern.
 function _spread_chunks(
-    fw_re, fw_im, cmat, perm, mask, base_full, frac_full, coefs,
-    ngrid::NTuple{ND,Int}, w::Int, ntrans::Int,
-    nchunks::Int, cs::Int, offsets_row::AbstractMatrix, dimval::Val{ND},
-) where {ND}
+        fw_re, fw_im, cmat, perm, mask, base_full, frac_full, coefs,
+        ngrid::NTuple{ND, Int}, w::Int, ntrans::Int,
+        nchunks::Int, cs::Int, offsets_row::AbstractMatrix, dimval::Val{ND},
+    ) where {ND}
     wD = w^ND
     for k in 1:nchunks
         j0 = (k - 1) * cs + 1
@@ -247,7 +251,7 @@ function _spread_chunks(
         fr = ntuple(d -> frac_full[d][j0:(j0 + cs - 1)], dimval)
         cc = _gather_chunk_strengths(cmat, perm, mask, j0, cs)
 
-        wpd   = ntuple(d -> _per_dim_weights(coefs, fr[d]), dimval)
+        wpd = ntuple(d -> _per_dim_weights(coefs, fr[d]), dimval)
         idxpd = ntuple(d -> _per_dim_indices(bs[d], ngrid[d], offsets_row), dimval)
         weights = _outer_product_weights(wpd)               # real (cs, wD)
         scatter_idx = _stack_scatter_indices(idxpd)         # (ND, cs*wD)
@@ -275,4 +279,3 @@ end
     cc_un = cmat[perm_slice, :]                 # (cs, ntrans) — gather original strengths
     return cc_un .* reshape(mask_slice, cs, 1)
 end
-

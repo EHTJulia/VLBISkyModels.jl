@@ -13,11 +13,11 @@ Public-facing dispatch and convenience wrappers.
 Brute-force `O(M * prod(nmodes))` reference for tests.
 """
 function direct_type1(
-    points::NTuple{D,AbstractVector},
-    c::AbstractVector,
-    nmodes::NTuple{D,Int};
-    iflag::Integer=-1,
-) where {D}
+        points::NTuple{D, AbstractVector},
+        c::AbstractVector,
+        nmodes::NTuple{D, Int};
+        iflag::Integer = -1,
+    ) where {D}
     M = length(c)
     realT = real(eltype(points[1]))
     period = realT(2 * pi)
@@ -33,7 +33,7 @@ function direct_type1(
     end
     kernel = cis.(realT(iflag) .* phase)
     cv = reshape(c, M, ones_tail...)
-    return dropdims(sum(cv .* kernel; dims=1); dims=1)
+    return dropdims(sum(cv .* kernel; dims = 1); dims = 1)
 end
 
 """
@@ -42,10 +42,10 @@ end
 Brute-force `O(M * prod(size(fk)))` reference for tests.
 """
 function direct_type2(
-    points::NTuple{D,AbstractVector},
-    fk::AbstractArray;
-    iflag::Integer=-1,
-) where {D}
+        points::NTuple{D, AbstractVector},
+        fk::AbstractArray;
+        iflag::Integer = -1,
+    ) where {D}
     nmodes = ntuple(d -> size(fk, d), D)
     M = length(points[1])
     realT = real(eltype(points[1]))
@@ -63,7 +63,7 @@ function direct_type2(
     kernel = cis.(realT(iflag) .* phase)
     fkv = reshape(fk, 1, size(fk)...)
     rdims = ntuple(i -> i + 1, Val(D))
-    return dropdims(sum(fkv .* kernel; dims=rdims); dims=rdims)
+    return dropdims(sum(fkv .* kernel; dims = rdims); dims = rdims)
 end
 
 # --------------------- execute dispatch -------------------------------------
@@ -104,7 +104,7 @@ function _to_points_tuple(::Val{D}, x::AbstractVector) where {D}
     @assert D == 1 "Single coordinate vector but plan dimensionality is $D"
     return (x,)
 end
-_to_points_tuple(::Val{D}, xs::NTuple{D,AbstractVector}) where {D} = xs
+_to_points_tuple(::Val{D}, xs::NTuple{D, AbstractVector}) where {D} = xs
 
 # Real eltype helper that handles both Concrete/TracedRArrays and plain arrays.
 @inline _real_eltype(x::AbstractArray) = real(Reactant.unwrapped_eltype(eltype(x)))
@@ -127,12 +127,12 @@ For repeated calls with the same point set, build the plan and
     fk2 = Reactant.@jit execute_nufft(prep, c2)
 """
 function nufft_type1(
-    points::NTuple{D,AbstractVector},
-    c::AbstractArray,
-    nmodes::NTuple{D,Integer};
-    iflag::Integer=-1,
-    kwargs...,
-) where {D}
+        points::NTuple{D, AbstractVector},
+        c::AbstractArray,
+        nmodes::NTuple{D, Integer};
+        iflag::Integer = -1,
+        kwargs...,
+    ) where {D}
     @assert size(c, 1) == length(points[1]) "Strength count must match number of points"
     T = _real_eltype(points[1])
     plan = plan_nufft(T, 1, nmodes; iflag, kwargs...)
@@ -150,11 +150,11 @@ One-shot Type-2 NUFFT. Same conventions as [`nufft_type1`](@ref): pure
 traceable Julia, wrap in `Reactant.@jit` to compile + execute.
 """
 function nufft_type2(
-    points::NTuple{D,AbstractVector},
-    fk::AbstractArray;
-    iflag::Integer=-1,
-    kwargs...,
-) where {D}
+        points::NTuple{D, AbstractVector},
+        fk::AbstractArray;
+        iflag::Integer = -1,
+        kwargs...,
+    ) where {D}
     nmodes = ntuple(d -> size(fk, d), D)
     T = _real_eltype(points[1])
     plan = plan_nufft(T, 2, nmodes; iflag, kwargs...)
@@ -163,4 +163,3 @@ function nufft_type2(
 end
 
 nufft_type2(x::AbstractVector, fk::AbstractVector; kwargs...) = nufft_type2((x,), fk)
-
