@@ -15,7 +15,6 @@ mutable struct Reactant_NFFTPlan{T <: Number, D, M, K, WT, WS, DI, WH, DO, PS, P
     J::Int64
     k::K
     Ñ::NTuple{D, Int64}
-    Ñ::NTuple{D, Int64}
     dims::UnitRange{Int64}
     numStencil::Int64
 
@@ -37,7 +36,6 @@ mutable struct Reactant_NFFTPlan{T <: Number, D, M, K, WT, WS, DI, WH, DO, PS, P
     tmpVecHat::TV
 end
 
-@inline window_width(::Reactant_NFFTPlan{T, D, M}) where {T, D, M} = M
 @inline window_width(::Reactant_NFFTPlan{T, D, M}) where {T, D, M} = M
 
 struct AdjointRPlan{P}
@@ -87,14 +85,6 @@ function AbstractNFFTs.plan_nfft(
         timing::Union{Nothing, AbstractNFFTs.TimingStats} = nothing,
         kargs...,
     ) where {T, D}
-        ::NFFT.NFFTBackend,
-        ::Type{<:Reactant.RArray},
-        k::AbstractMatrix{T},
-        N::NTuple{D, Int},
-        rest...;
-        timing::Union{Nothing, AbstractNFFTs.TimingStats} = nothing,
-        kargs...,
-    ) where {T, D}
     t = @elapsed begin
         p = Reactant_NFFTPlan(k, N, rest...; kargs...)
     end
@@ -111,12 +101,6 @@ function Reactant_NFFTPlan(
         fftflags = nothing,
         kwargs...,
     ) where {T, D}
-        k::AbstractMatrix{T},
-        N::NTuple{D, Int};
-        dims::Union{Integer, UnitRange{Int64}} = 1:D,
-        fftflags = nothing,
-        kwargs...,
-    ) where {T, D}
     D > 3 && throw(ArgumentError("Reactant NFFT only supports D ≤ 3, got D=$D"))
 
     NFFT.checkNodes(k)
@@ -125,9 +109,6 @@ function Reactant_NFFTPlan(
         k,
         N,
         dims;
-        precompute = TENSOR,
-        storeDeconvolutionIdx = true,
-        blocking = false,
         precompute = TENSOR,
         storeDeconvolutionIdx = true,
         blocking = false,
@@ -218,12 +199,6 @@ Base.@nospecializeinfer function Reactant.traced_type_inner(
 end
 
 Base.@nospecializeinfer function Reactant.make_tracer(
-        seen,
-        prev::Reactant_NFFTPlan{T, D, M},
-        @nospecialize(path),
-        mode;
-        kwargs...,
-    ) where {T, D, M}
         seen,
         prev::Reactant_NFFTPlan{T, D, M},
         @nospecialize(path),
@@ -325,7 +300,6 @@ function precompute_window_reactant(
     permSortedToOrig = Vector{NI}(undef, J)
     permOrigToSorted = Vector{NI}(undef, J)
     cursor = copy(binOffsets[1:(end - 1)])
-    cursor = copy(binOffsets[1:(end - 1)])
 
     @inbounds for j in 1:J
         b = nodeBinIds[j]
@@ -337,7 +311,6 @@ function precompute_window_reactant(
 
     # Per-node window stencils, parallelized across nodes
     stencilStarts = Matrix{GI}(undef, D, J)
-    windowTensorSorted = Array{T, 3}(undef, M, D, J)
     windowTensorSorted = Array{T, 3}(undef, M, D, J)
 
     Threads.@threads for j in 1:J
@@ -366,11 +339,6 @@ end
 Precompute deconvolution lookup table and indices.
 """
 function precompute_deconvolve_reactant(
-        N::NTuple{D, Int},
-        Ñ::NTuple{D, Int},
-        params,
-        ::Type{I},
-    ) where {D, I <: Integer}
         N::NTuple{D, Int},
         Ñ::NTuple{D, Int},
         params,
@@ -474,10 +442,6 @@ function AbstractNFFTs.convolve!(
         g::AbstractArray{<:Number, D},
         fHat::AbstractVector{<:Number},
     ) where {T, D}
-        p::Reactant_NFFTPlan{T, D},
-        g::AbstractArray{<:Number, D},
-        fHat::AbstractVector{<:Number},
-    ) where {T, D}
     gFlat = vec(g)
 
     li = _linear_indices_full(p)
@@ -492,10 +456,6 @@ end
 #############################
 
 function AbstractNFFTs.convolve_transpose!(
-        p::Reactant_NFFTPlan{T, D},
-        fHat::AbstractVector{<:Number},
-        g::AbstractArray{<:Number, D},
-    ) where {T, D}
         p::Reactant_NFFTPlan{T, D},
         fHat::AbstractVector{<:Number},
         g::AbstractArray{<:Number, D},
@@ -540,10 +500,6 @@ function AbstractNFFTs.deconvolve!(
         f::AbstractArray{<:Number, D},
         g::AbstractArray{<:Number, D},
     ) where {T, D}
-        p::Reactant_NFFTPlan{T, D},
-        f::AbstractArray{<:Number, D},
-        g::AbstractArray{<:Number, D},
-    ) where {T, D}
     tmp = p.tmpVecHat
 
     copyto!(tmp, vec(f)[p.deconvolveOutIdx])
@@ -557,10 +513,6 @@ end
 #############################
 
 function AbstractNFFTs.deconvolve_transpose!(
-        p::Reactant_NFFTPlan{T, D},
-        g::AbstractArray{<:Number, D},
-        f::AbstractArray{<:Number, D},
-    ) where {T, D}
         p::Reactant_NFFTPlan{T, D},
         g::AbstractArray{<:Number, D},
         f::AbstractArray{<:Number, D},
@@ -588,14 +540,6 @@ function AbstractNFFTs.deconvolve_transpose!(
         index_vector_dim = 1,
         unique_indices = true,
         indices_are_sorted = true,
-        update_window_dims = Int64[],
-        inserted_window_dims = Int64[1],
-        input_batching_dims = Int64[],
-        scatter_indices_batching_dims = Int64[],
-        scatter_dims_to_operand_dims = Int64[1],
-        index_vector_dim = 1,
-        unique_indices = true,
-        indices_are_sorted = true,
     )[1]
 
     copyto!(f, reshape(fFlat, size(f)))
@@ -607,12 +551,6 @@ end
 #############################
 
 function LinearAlgebra.mul!(
-        fHat::Reactant.AnyTracedRVector,
-        p::Reactant_NFFTPlan{T, D},
-        f::Reactant.AnyTracedRArray;
-        verbose = false,
-        timing::Union{Nothing, AbstractNFFTs.TimingStats} = nothing,
-    ) where {T, D}
         fHat::Reactant.AnyTracedRVector,
         p::Reactant_NFFTPlan{T, D},
         f::Reactant.AnyTracedRArray;
@@ -647,12 +585,6 @@ function LinearAlgebra.mul!(
         verbose = false,
         timing::Union{Nothing, AbstractNFFTs.TimingStats} = nothing,
     )
-        f::Reactant.AnyTracedRArray,
-        pl::AdjointRPlan,
-        fHat::Reactant.AnyTracedRVector;
-        verbose = false,
-        timing::Union{Nothing, AbstractNFFTs.TimingStats} = nothing,
-    )
     p = pl.plan
     NFFT.consistencyCheck(p, f, fHat)
 
@@ -680,7 +612,6 @@ end
 #############################
 
 function Base.:*(p::Reactant_NFFTPlan{T, D}, f::Reactant.AnyTracedRArray; kargs...) where {T, D}
-function Base.:*(p::Reactant_NFFTPlan{T, D}, f::Reactant.AnyTracedRArray; kargs...) where {T, D}
     fHat = similar(f, complex(eltype(f)), size_out(p))
     mul!(fHat, p, f; kargs...)
     return fHat
@@ -690,4 +621,35 @@ function Base.:*(pl::AdjointRPlan, fHat::Reactant.AnyTracedRVector; kargs...)
     f = similar(fHat, complex(eltype(fHat)), size_out(pl))
     mul!(f, pl, fHat; kargs...)
     return f
+end
+
+
+function VLBISkyModels.plan_nuft_spatial(
+        ::ReactantAlg,
+        imgdomain::ComradeBase.AbstractRectiGrid,
+        visdomain::ComradeBase.UnstructuredDomain,
+    )
+    visp = domainpoints(visdomain)
+    uv2 = similar(visp.U, (2, length(visdomain)))
+    dpx = pixelsizes(imgdomain)
+    dx = dpx.X
+    dy = dpx.Y
+    rm = ComradeBase.rotmat(imgdomain)'
+    # Here we flip the sign because the NFFT uses the -2pi convention
+    uv2[1, :] .= -VLBISkyModels._rotatex.(visp.U, visp.V, Ref(rm)) .* dx
+    uv2[2, :] .= -VLBISkyModels._rotatey.(visp.U, visp.V, Ref(rm)) .* dy
+    return plan_nfft(NFFTBackend(), Reactant.RArray, uv2, size(imgdomain)[1:2])
+end
+
+function VLBISkyModels.make_phases(
+        ::ReactantAlg,
+        imgdomain::ComradeBase.AbstractRectiGrid,
+        visdomain::ComradeBase.UnstructuredDomain,
+    )
+    return Reactant.to_rarray(VLBISkyModels.make_phases(NFFTAlg(), imgdomain, visdomain))
+end
+
+function VLBISkyModels._jlnuft!(out, A::Reactant_NFFTPlan, inp::Reactant.AnyTracedRArray)
+    LinearAlgebra.mul!(out, A, inp)
+    return nothing
 end
