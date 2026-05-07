@@ -625,7 +625,7 @@ end
 
 
 function VLBISkyModels.plan_nuft_spatial(
-        ::ReactantAlg,
+        ::ReactantNUFFTAlg,
         imgdomain::ComradeBase.AbstractRectiGrid,
         visdomain::ComradeBase.UnstructuredDomain,
     )
@@ -642,7 +642,7 @@ function VLBISkyModels.plan_nuft_spatial(
 end
 
 function VLBISkyModels.make_phases(
-        ::ReactantAlg,
+        ::ReactantNUFFTAlg,
         imgdomain::ComradeBase.AbstractRectiGrid,
         visdomain::ComradeBase.UnstructuredDomain,
     )

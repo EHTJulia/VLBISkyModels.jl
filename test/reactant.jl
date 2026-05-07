@@ -46,7 +46,7 @@ end
         guv = UnstructuredDomain((U = u, V = v))
 
         gfn = FourierDualDomain(gim, guv, NFFTAlg())
-        gfr = FourierDualDomain(gimr, guv, VLBISkyModels.ReactantAlg())
+        gfr = FourierDualDomain(gimr, guv, VLBISkyModels.ReactantNUFFTAlg())
 
         vnf = visibilitymap(m, gfn)
         vrf = @jit visibilitymap(mr, gfr)
