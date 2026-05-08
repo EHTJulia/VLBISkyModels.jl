@@ -263,7 +263,7 @@ AzimuthalCosine(s::DomainParams, ξs::Number) = AzimuthalCosine((s,), (ξs,))
 @inline @fastmath function azimuthal_profile(d::AzimuthalCosine{N}, p) where {N}
     @unpack_params s, ξs = d(p)
     ϕ = p.ϕ
-    tmp = ntuple(Val(N)) do n 
+    tmp = ntuple(Val(N)) do n
         Base.Base.@_inline_meta
         return -s[n] * cos(n * ϕ - ξs[n])
     end

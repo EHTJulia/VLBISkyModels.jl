@@ -42,7 +42,6 @@ function VLBISkyModels.PolExp2Map!(
 end
 
 
-
 # function VLBISkyModels.FourierDualDomain(
 #         imgdomain::ComradeBase.AbstractRectiGrid, visdomain::ComradeBase.UnstructuredDomain,
 #         algorithm::ReactantNUFFTAlg

@@ -14,10 +14,10 @@ function test_analytic(m, mr, gf, gfr)
         @test parent(vrf) ≈ vnf
     end
 
-    if ComradeBase.imanalytic(typeof(m)) isa ComradeBase.IsAnalytic
-         img = intensitymap(m, gf)
-         imgr = @jit intensitymap(mr, gfr)
-         @test parent(imgr) ≈ img
+    return if ComradeBase.imanalytic(typeof(m)) isa ComradeBase.IsAnalytic
+        img = intensitymap(m, gf)
+        imgr = @jit intensitymap(mr, gfr)
+        @test parent(imgr) ≈ img
     end
 end
 
@@ -88,7 +88,7 @@ end
         end
 
         @testset "Modifed Gaussian" begin
-            m = 5.0*modify(Gaussian(), Stretch(1.0, 2.0), Rotate(π / 4), Shift(0.5, -0.5))
+            m = 5.0 * modify(Gaussian(), Stretch(1.0, 2.0), Rotate(π / 4), Shift(0.5, -0.5))
             mr = Reactant.to_rarray(m; track_numbers = true)
             test_analytic(m, mr, gf, gfr)
         end
