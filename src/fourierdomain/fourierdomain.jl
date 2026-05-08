@@ -94,7 +94,7 @@ to ensure that the centroid is being properly computed.
 function uviterator(nx, dx, ny, dy)
     u = fftshift(fftfreq(nx, inv(dx)))
     v = fftshift(fftfreq(ny, inv(dy)))
-    return U(u), V(v)
+    return (; U = u, V = v)
 end
 
 """
@@ -108,9 +108,9 @@ For the inverse see [`xygrid`](@ref)
 """
 function uvgrid(grid::AbstractRectiGrid)
     (; X, Y) = grid
-    uvg = uviterator(length(X), step(X), length(Y), step(Y))
+    u, v = uviterator(length(X), step(X), length(Y), step(Y))
     pft = dims(grid)[3:end]
-    puv = (uvg..., pft...)
+    puv = (U(u), V(v), pft...)
     g = rebuild(grid; dims = puv)
     return g
 end
@@ -144,7 +144,8 @@ For the inverse see [`uvgrid`](@ref)
 function xygrid(grid::AbstractRectiGrid)
     (; U, V) = grid
     x, y = xyiterator(length(U), step(U), length(V), step(V))
-    pxy = merge((X = X(x), Y = Y(y)), delete(named_dims(grid), (:U, :V)))
+    pft = dims(grid)[3:end]
+    pxy = (X(x), Y(y), pft...)
     g = rebuild(grid; dims = pxy)
     return g
 end

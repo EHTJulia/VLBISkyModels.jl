@@ -67,9 +67,7 @@ function intensitymap!(img::IntensityMap, m::InterpolatedModel)
     return intensitymap!(img, m.model)
 end
 
-using NamedTupleTools
-
-myselect(p, kg) = map(k -> p[k], kg)
+myselect(p, kg) = map(Base.Fix1(getindex, p), kg)
 
 # internal function that creates the interpolator objector to evaluate the FT.
 function create_interpolator(g, vis::AbstractArray{<:Complex, N}, pulse) where {N}
@@ -83,7 +81,6 @@ function create_interpolator(g, vis::AbstractArray{<:Complex, N}, pulse) where {
     return f = let kg = kg, itp = itp, visre = visre, visim = visim, pulse = pulse
         p -> begin
             pl = visibility_point(pulse, p)
-            # xx = select(p, kg)
             U2 = _rotatex(p.U, p.V, rm)
             V2 = _rotatey(p.U, p.V, rm)
             p2 = update_spat(p, U2, V2)
