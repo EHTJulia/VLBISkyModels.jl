@@ -278,11 +278,11 @@ function PoincareSphere2Map(I, p, X, grid)
     t2 = X[2]
     t3 = X[3]
 
-    @inbounds @simd for i in eachindex(I, Q, U, V)
-        pI = I[i] * p[i]
-        Q[i] = pI * t1[i]
-        U[i] = pI * t2[i]
-        V[i] = pI * t3[i]
+    @trace for i in eachindex(I, Q, U, V)
+        pI = rgetindex(I, i) * p[i]
+        rsetindex!(Q, pI * rgetindex(t1, i), i)
+        rsetindex!(U, pI * rgetindex(t2, i), i)
+        rsetindex!(V, pI * rgetindex(t3, i), i)
     end
 
     return stokes_intensitymap(I, Q, U, V, grid)
@@ -323,23 +323,8 @@ where `a,b,c,d` are real numbers with no conditions, and `p=√(a² + b² + c²)
         d::AbstractArray,
         grid::AbstractRectiGrid
     )
-    pimgI = similar(a)
-    pimgQ = similar(b)
-    pimgU = similar(c)
-    pimgV = similar(d)
 
-    # This is just faster because it is a 1 pass algorithm
-    @inbounds for i in eachindex(pimgI, pimgQ, pimgU, pimgV)
-        p = sqrt(b[i]^2 + c[i]^2 + d[i]^2)
-        ea = exp(a[i])
-        tmp = ea * sinh(p) / p
-        pimgI[i] = ea * cosh(p)
-        pimgQ[i] = tmp * b[i]
-        pimgU[i] = tmp * c[i]
-        pimgV[i] = tmp * d[i]
-    end
-
-    return stokes_intensitymap(pimgI, pimgQ, pimgU, pimgV, grid)
+    return PolExp2Map!(copy(a), copy(b), copy(c), copy(d), grid)
 end
 
 @fastmath function PolExp2Map!(
@@ -351,19 +336,19 @@ end
     )
 
     # This is just faster because it is a 1 pass algorithm
-    @inbounds for i in eachindex(a, b, c, d)
-        p = sqrt(b[i]^2 + c[i]^2 + d[i]^2)
+    @inbounds @trace for i in eachindex(a, b, c, d)
+        p = sqrt(rgetindex(b, i)^2 + rgetindex(c, i)^2 + rgetindex(d, i)^2)
         ip = inv(p)
-        ea = exp(a[i])
+        ea = exp(rgetindex(a, i))
         ep = exp(p)
         iep = inv(ep)
         sh = (ep - iep) / 2
         ch = (ep + iep) / 2
         tmp = ea * sh * ip
-        a[i] = ea * ch
-        b[i] = tmp * b[i]
-        c[i] = tmp * c[i]
-        d[i] = tmp * d[i]
+        rsetindex!(a, ea * ch, i)
+        rsetindex!(b, tmp * rgetindex(b, i), i)
+        rsetindex!(c, tmp * rgetindex(c, i), i)
+        rsetindex!(d, tmp * rgetindex(d, i), i)
     end
 
     return stokes_intensitymap(a, b, c, d, grid)

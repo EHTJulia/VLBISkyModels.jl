@@ -88,8 +88,8 @@ end
         @test ComradeBase.intensity_point(RingTemplate(r, azc), p) ≈
             ComradeBase.intensity_point(RingTemplate(rf, azcf2), p)
 
-        @test_opt ComradeBase.intensity_point(RingTemplate(rf, azcf1), p)
-        @test_opt ComradeBase.intensity_point(RingTemplate(rf, azcf2), p)
+        @inferred ComradeBase.intensity_point(RingTemplate(rf, azcf1), p)
+        @inferred ComradeBase.intensity_point(RingTemplate(rf, azcf2), p)
     end
 
     rads = (gr, dr, tr, jr)

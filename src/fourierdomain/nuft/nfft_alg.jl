@@ -34,8 +34,8 @@ end
 # This a new function is overloaded to handle when NUFTPlan has plans
 # as dictionaries in the case of Ti or Fr case
 
-_rotatex(u, v, rm) = dot(rm[1, :], SVector(u, v))
-_rotatey(u, v, rm) = dot(rm[2, :], SVector(u, v))
+_rotatex(u, v, rm) = sum(rm[1, :] .* SVector(u, v))
+_rotatey(u, v, rm) = sum(rm[2, :] .* SVector(u, v))
 
 function plan_nuft_spatial(
         alg::NFFTAlg, imagegrid::AbstractRectiGrid,
@@ -64,10 +64,8 @@ function make_phases(::NFFTAlg, imgdomain::AbstractRectiGrid, visdomain::Unstruc
     rm = ComradeBase.rotmat(imgdomain)'
     # Correct for the nFFT phase center and the img phase center
     return cispi.(
-        (
-            _rotatex.(u, v, Ref(rm)) .* (dx - 2 * x0) .+
-                _rotatey.(u, v, Ref(rm)) .* (dy - 2 * y0)
-        )
+        _rotatex.(u, v, Ref(rm)) .* (dx - 2 * x0) .+
+            _rotatey.(u, v, Ref(rm)) .* (dy - 2 * y0)
     )
 end
 

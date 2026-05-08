@@ -38,7 +38,7 @@ end
 function ComradeBase.ispolarized(::Type{<:ContinuousImage{A}}) where {A <: IntensityMap{<:StokesParams}}
     return IsPolarized()
 end
-function ComradeBase.ispolarized(::Type{<:ContinuousImage{A}}) where {A <: IntensityMap{<:Real}}
+function ComradeBase.ispolarized(::Type{<:ContinuousImage{A}}) where {A <: IntensityMap{<:Number}}
     return NotPolarized()
 end
 ComradeBase.flux(m::ContinuousImage) = flux(make_map(m)) * flux(m.kernel)
@@ -125,11 +125,11 @@ end
 
     ix, iy = support_ranges(img, p, rx, ry)
 
-    @inbounds for j in iy
-        for i in ix
+    @trace for j in iy
+        @trace for i in ix
             dpi = (X = p.X - dp[i, j].X, Y = p.Y - dp[i, j].Y)
             k = intensity_point(ms, dpi)
-            sum += img[i, j] * k
+            sum += rgetindex(img, i, j) * k
         end
     end
     return sum
@@ -194,7 +194,8 @@ function applypulse!(vis, pulse, gfour::AbstractFourierDualDomain)
     # through the broadcast
     pvis = parent(vis)
     dp = domainpoints(guv)
-    pvis .*= visibility_point.(Ref(mp), dp)
+    vp = Base.Fix1(visibility_point, mp)
+    pvis .*= vp.(dp)
     # for i in eachindex(pvis, dp)
     #     pvis[i] *= visibility_point(mp, dp[i])
     # end
@@ -260,9 +261,6 @@ end
     pvbase = baseimage(vbase)
     uc = unitscale(complex(eltype(p.U)), mbase)
     dp = domainpoints(p)
-    @inbounds for I in eachindex(pvbase, dp)
-        pvbase[I] = last(@inline modify_uv(mbase, t, dp[I], uc)) * pvbase[I]
-    end
-    # pvbase .= last.(modify_uv.(Ref(mbase), Ref(t), domainpoints(p), Ref(uc))) .* pvbase
+    pvbase .*= last.(modify_uv.(Ref(mbase), Ref(t), dp, Ref(uc)))
     return nothing
 end

@@ -95,6 +95,7 @@ VLBISkyModels.FFTAlg
 VLBISkyModels.NFFTAlg
 VLBISkyModels.FINUFFTAlg
 VLBISkyModels.NonuniformFFTsAlg
+VLBISkyModels.ReactantNUFFTAlg
 VLBISkyModels.InterpolatedModel
 ```
 

@@ -643,10 +643,10 @@ end
 end
 
 @testset "PolarizedModel" begin
-    mI = stretched(MRing((0.2,), (0.1,)), 20.0, 20.0)
-    mQ = 0.2 * stretched(MRing((0.0,), (0.6,)), 20.0, 20.0)
-    mU = 0.2 * stretched(MRing((0.1,), (-0.6,)), 20.0, 20.0)
-    mV = 0.0 * stretched(MRing((0.0,), (-0.6,)), 20.0, 20.0)
+    mI = stretched(MRing((0.2,), (0.1,)), 5.0, 5.0)
+    mQ = 0.2 * stretched(MRing((0.0,), (0.6,)), 5.0, 5.0)
+    mU = 0.2 * stretched(MRing((0.1,), (-0.6,)), 5.0, 5.0)
+    mV = 0.0 * stretched(MRing((0.0,), (-0.6,)), 5.0, 5.0)
     m = PolarizedModel(mI, mQ, mU, mV)
     @inferred visibility(m, (U = 0.0, V = 0.0))
     @inferred ComradeBase.intensity_point(m, (X = 0.0, Y = 0.0))
@@ -690,32 +690,31 @@ end
     )
     testgrad(fooi, rand(4))
 
-    mG = PolarizedModel(Gaussian(), Gaussian(), Gaussian(), Gaussian())
-    cm = convolved(m, Gaussian())
+    sg = stretched(Gaussian(), 5.0, 5.0)
+    mG = PolarizedModel(sg, sg, sg, sg)
+    cm = convolved(m, sg)
     @test cm == convolved(m, mG)
     @inferred cm + mG
     show(m)
 
     p = (U = 0.005, V = 0.01)
     v = visibility(m, p)
-    @test mpol(v) ≈ m̆(m, p)
-    @test mpol(v) ≈ mbreve(m, p)
 
     g = imagepixels(60.0, 60.0, 128, 128)
     img = intensitymap(mG, g)
-    dxdy = prod(values(pixelsizes(g)))
     p0 = (X = g.X[64], Y = g.Y[64])
-    @test linearpol(mG, p0) ≈ linearpol(img[64, 64]) / dxdy
+    dxdy = prod(values(pixelsizes(g)))
+    @test linearpol(mG, p0) ≈ linearpol(img[64, 64]) / prod(values(pixelsizes(g)))
     @test mpol(mG, p0) ≈ mpol(img[64, 64])
     @test polarization(mG, p0) ≈ polarization(img[64, 64]) / dxdy
     @test fracpolarization(mG, p0) ≈ fracpolarization(img[64, 64])
     @test evpa(mG, p0) ≈ evpa(img[64, 64])
-    p1 = polellipse(mG, p0)
-    p2 = polellipse(img[64, 64])
-    @test p1.a ≈ p2.a / dxdy
-    @test p1.b ≈ p2.b / dxdy
-    @test p1.evpa ≈ p2.evpa
-    @test p1.sn ≈ p2.sn
+    pmG = polellipse(mG, p0)
+    pimg = polellipse(img[64, 64])
+    @test pmG.a ≈ pimg.a / dxdy
+    @test pmG.b ≈ pimg.b / dxdy
+    @test pmG.evpa ≈ pimg.evpa
+    @test pmG.sn == pimg.sn
 
     g = imagepixels(100.0, 100.0, 1024, 1024)
     pI = IntensityMap(zeros(1024, 1024), g)

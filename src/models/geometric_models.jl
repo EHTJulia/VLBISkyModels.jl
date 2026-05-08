@@ -49,9 +49,6 @@ kernel_extent(m::Gaussian{T}) where {T} = radialextent(m)
 @inline function intensity_point(::Gaussian{D}, p) where {D}
     x, y = _getxy(p)
     T = paramtype(D)
-    if x^2 + y^2 > 36
-        return zero(T)
-    end
     return exp(-(x^2 + y^2) / 2) / T(2 * π)
 end
 
@@ -154,11 +151,11 @@ function intensity_point(m::SlashedDisk{D}, p) where {D}
     @unpack_params slash = m(p)
     s = 1 - slash
     norm = 2 / (π * (1 + s))
-    if r2 < 1
-        return norm / 2 * ((1 + y) + s * (1 - y))
-    else
-        return zero(T)
-    end
+    return ifelse(
+        r2 < 1,
+        norm / 2 * ((1 + y) + s * (1 - y)),
+        zero(T)
+    )
 end
 
 function visibility_point(m::SlashedDisk{D}, p) where {D}
@@ -198,12 +195,11 @@ radialextent(::Ring{T}) where {T} = convert(paramtype(T), 3 / 2)
     T = paramtype(D)
     r = hypot(x, y)
     dr = T(1.0e-2)
-    if (abs(r - 1) < dr / 2)
-        acc = one(T)
-        return acc / (2 * T(π) * dr)
-    else
-        return zero(T)
-    end
+    return ifelse(
+        (abs(r - 1) < dr / 2),
+        one(T) / (2 * T(π) * dr),
+        zero(T)
+    )
 end
 
 @inline function visibility_point(::Ring{D}, p) where {D}
@@ -280,7 +276,7 @@ function MRing(c::Union{AbstractVector{<:Complex}, NTuple{N, <:Complex}}) where 
     return MRing(α, β)
 end
 
-function MRing(a::Real, b::Real)
+function MRing(a::Number, b::Number)
     aT, bT = promote(a, b)
     return MRing((aT,), (bT,))
 end
@@ -296,16 +292,17 @@ radialextent(::MRing{T}) where {T} = convert(paramtype(T), 3 / 2)
     r = hypot(x, y)
     θ = atan(-x, y)
     dr = T(0.02)
+    Tπ = T(π)
     @unpack_params α, β = m(p)
-    if (abs(r - 1) < dr / 2)
+    return @trace if (abs(r - 1) < dr / 2)
         acc = one(T)
         for n in eachindex(α, β)
             s, c = sincos(n * θ)
             acc += 2 * (α[n] * c - β[n] * s)
         end
-        return acc / (2 * T(π) * dr)
+        acc / (2 * Tπ * dr)
     else
-        return zero(T)
+        zero(T)
     end
 end
 
@@ -316,7 +313,7 @@ end
     k = T(2π) * sqrt(u^2 + v^2) + eps(T)
     vis = besselj0(k) + zero(T) * im
     θ = atan(-u, v)
-    @inbounds for n in eachindex(α, β)
+    for n in eachindex(α, β)
         s, c = sincos(n * θ)
         vis += 2 * (α[n] * c - β[n] * s) * (one(T)im)^n * besselj(n, k)
     end
@@ -455,11 +452,11 @@ function intensity_point(m::ConcordanceCrescent{D}, p) where {D}
     r2 = x^2 + y^2
     norm = _crescentnorm(m, p)
     @unpack_params router, rinner, shift, slash = m(p)
-    if (r2 < router^2 && (x - shift)^2 + y^2 > rinner^2)
-        return norm / 2 * ((1 + x / router) + slash * (1 - x / router))
-    else
-        return zero(T)
-    end
+    return ifelse(
+        (r2 < router^2) & ((x - shift)^2 + y^2 > rinner^2),
+        norm / 2 * ((1 + x / router) + slash * (1 - x / router)),
+        zero(T)
+    )
 end
 
 function visibility_point(m::ConcordanceCrescent{D}, p) where {D}
@@ -523,7 +520,7 @@ radialextent(::ExtendedRing{T}) where {T} = convert(paramtype(T), 6)
     x, y = _getxy(p)
     @unpack_params shape = m(p)
     T = typeof(shape)
-    r = hypot(x, y) + eps(T)
+    r = sqrt(x^2 + y^2) + eps(T)
     β = (shape + 1)
     α = shape
     return β^α * r^(-α - 2) * exp(-β / r) / gamma(α) / (2 * T(π))
@@ -559,11 +556,11 @@ function intensity_point(::ParabolicSegment{D}, p) where {D}
     x, y = _getxy(p)
     yw = (1 - x^2)
     T = paramtype(D)
-    if abs(y - yw) < T(0.01 / 2) && abs(x) < 1
-        return 1 / T(2 * 0.01)
-    else
-        return zero(T)
-    end
+    return ifelse(
+        (abs(y - yw) < T(0.01 / 2)) & (abs(x) < 1),
+        1 / T(2 * 0.01),
+        zero(T)
+    )
 end
 
 function visibility_point(::ParabolicSegment{D}, p) where {D}
@@ -571,7 +568,7 @@ function visibility_point(::ParabolicSegment{D}, p) where {D}
     T = paramtype(D)
     ϵ = sqrt(eps(T))
     vϵ = complex(v + ϵ)
-    phase = cispi(T(3) / 4 + 2 * vϵ + u^2 / (2 * vϵ))
+    phase = cispi(T(3) / 4 + 2 * real(vϵ) + u^2 / (2 * real(vϵ)))
     Δ1 = erf(√(T(π) / (2 * vϵ)) * cispi(T(1) / 4) * (u - 2 * vϵ))
     Δ2 = erf(√(T(π) / (2 * vϵ)) * cispi(T(1) / 4) * (u + 2 * vϵ))
     return phase / (√(2 * vϵ)) * (Δ1 - Δ2) / 4
