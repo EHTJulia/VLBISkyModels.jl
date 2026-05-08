@@ -5,21 +5,6 @@ using VLBISkyModels
 using VLBISkyModels: NFFT
 using Test
 
-function _setup_nfft_pair(::Type{T}, D::Int, N::NTuple{Ndim, Int}, J::Int; seed::Int = 42) where {T, Ndim}
-    D == Ndim || throw(ArgumentError("D=$D does not match length(N)=$Ndim"))
-    rng = MersenneTwister(seed + 17D + J)
-    k = rand(rng, T, D, J) .- T(0.5)
-    kr = Reactant.to_rarray(k)
-
-    g = imagepixels(1.0, 1.0, N...)
-    guv = UnstructuredDomain((U = k[1, :], V = k[2, :]))
-    p_ref = VLBISkyModels.plan_nuft_spatial(NFFTAlg(), g, guv)
-
-    guvr = @jit UnstructuredDomain((U = kr[1, :], V = kr[2, :]))
-    p_react = VLBISkyModels.plan_nuft_spatial(VLBISkyModels.ReactantNUFFTAlg(T), g, guvr)
-
-    return rng, p_ref, p_react
-end
 
 @testset "Reactant" begin
     @testset "VisibilityMap Parity" begin
@@ -43,5 +28,37 @@ end
         vrf = @jit visibilitymap(mr, gfr)
 
         @test parent(vrf) ≈ vnf
+
+        mrs = shifted(mr, ConcreteRNumber(1.0), ConcreteRNumber(1.0))
+        ms = shifted(m, 1.0, 1.0)
+
+        vnf_s = visibilitymap(ms, gfn)
+        vrf_s = @jit visibilitymap(mrs, gfr)
+
+        @test parent(vrf_s) ≈ vnf_s
     end
+
+    @testset "PolExp2Map" begin
+        
+
+        g = imagepixels(1.0, 1.0, 128, 128)
+        gr = @jit(identity(g))
+
+        a = randn(128, 128)
+        b = randn(128, 128)
+        c = randn(128, 128)
+        d = randn(128, 128)
+
+        am = Reactant.to_rarray(a)
+        bm = Reactant.to_rarray(b)
+        cm = Reactant.to_rarray(c)
+        dm = Reactant.to_rarray(d)
+
+        m = VLBISkyModels.PolExp2Map!(a, b, c, d, g)
+        mr = @jit VLBISkyModels.PolExp2Map!(am, bm, cm, dm, gr)
+
+
+    end
+
+
 end
