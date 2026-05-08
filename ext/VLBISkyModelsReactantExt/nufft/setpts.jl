@@ -31,7 +31,7 @@ struct NUFFTSetPts{T <: Real, D, P, A, B, F, Mk}
 end
 
 ndims_(::NUFFTSetPts{<:Any, D}) where {D} = D
-Base.eltype(::NUFFTSetPts{T}) where {T} = T
+Base.eltype(::NUFFTSetPts{T}) where {T} = complex(T)
 
 # --- Traced kernel ---------------------------------------------------------
 

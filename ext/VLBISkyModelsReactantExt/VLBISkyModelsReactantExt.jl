@@ -11,6 +11,12 @@ using LinearAlgebra
 
 include("nufft/ReactantNUFFT.jl")
 
+function VLBISkyModels.applyphases!(vis::Reactant.AnyTracedRArray, phases::AbstractArray)
+    vout = vis .* phases
+    return copyto!(vis, vout)
+end
+
+
 # function VLBISkyModels.FourierDualDomain(
 #         imgdomain::ComradeBase.AbstractRectiGrid, visdomain::ComradeBase.UnstructuredDomain,
 #         algorithm::ReactantNUFFTAlg
