@@ -31,9 +31,9 @@ function build_padded_uvgrid(grid::AbstractRectiGrid, alg::FFTAlg)
     ny, nx = size(grid)
     nnx = nextprod((2, 3, 5, 7), padfac * nx)
     nny = nextprod((2, 3, 5, 7), padfac * ny)
-    uvg = uviterator(nnx, step(X), nny, step(Y))
+    u, v = uviterator(nnx, step(X), nny, step(Y))
     pft = dims(grid)[3:end]
-    puv = (uvg..., pft...)
+    puv = (U(u), V(v), pft...)
     g = rebuild(grid; dims = puv)
     return g
 end

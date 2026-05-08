@@ -14,7 +14,6 @@ using FFTW
 using FillArrays
 using GridInterpolations
 using NFFT
-using NamedTupleTools
 using PaddedViews
 using Reexport
 using RecipesBase

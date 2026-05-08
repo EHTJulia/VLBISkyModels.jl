@@ -10,18 +10,6 @@ export visibility, amplitude, closure_phase, logclosure_amplitude, bispectrum,
     visibilitymap, amplitudemap, closure_phasemap, logclosure_amplitudemap, bispectummap,
     flux, intensitymap, intensitymap!, PolarizedModel, convolve!
 
-export unpack
-
-"""
-    unpack(m::AbstractModel)
-
-Unpacks all elements of a struct into a named tuple. Note that this may
-include elements that aren't direcltly model parameters.
-"""
-function unpack(m::ComradeBase.AbstractModel)
-    return ntfromstruct(m)
-end
-
 include(joinpath(@__DIR__, "multidomain", "multidomain.jl"))
 include(joinpath(@__DIR__, "pulse.jl"))
 include(joinpath(@__DIR__, "geometric_models.jl"))
