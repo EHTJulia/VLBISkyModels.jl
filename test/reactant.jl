@@ -29,8 +29,8 @@ end
         rast = rand(128, 128)
         rastr = Reactant.to_rarray(rast)
 
-        mr = ContinuousImage(rastr, gimr, DeltaPulse())
-        m = ContinuousImage(rast, gim, DeltaPulse())
+        mr = ContinuousImage(rastr, gimr, BSplinePulse{3}())
+        m = ContinuousImage(rast, gim, BSplinePulse{3}())
 
         u = randn(10^2) / 5.0
         v = randn(10^2) / 5.0
