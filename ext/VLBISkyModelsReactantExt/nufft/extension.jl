@@ -43,4 +43,3 @@ end
 
 Base.adjoint(plan::NUFFTSetPts) = plan # Not needed Reactant is too smart for this
 VLBISkyModels.vissize(plan::NUFFTSetPts) = plan.M
-
