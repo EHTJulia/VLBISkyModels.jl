@@ -520,7 +520,7 @@ radialextent(::ExtendedRing{T}) where {T} = convert(paramtype(T), 6)
     x, y = _getxy(p)
     @unpack_params shape = m(p)
     T = typeof(shape)
-    r = hypot(x, y) + eps(T)
+    r = sqrt(x^2 + y^2) + eps(T)
     β = (shape + 1)
     α = shape
     return β^α * r^(-α - 2) * exp(-β / r) / gamma(α) / (2 * T(π))
@@ -568,7 +568,7 @@ function visibility_point(::ParabolicSegment{D}, p) where {D}
     T = paramtype(D)
     ϵ = sqrt(eps(T))
     vϵ = complex(v + ϵ)
-    phase = cispi(T(3) / 4 + 2 * vϵ + u^2 / (2 * vϵ))
+    phase = cispi(T(3) / 4 + 2 * real(vϵ) + u^2 / (2 * real(vϵ)))
     Δ1 = erf(√(T(π) / (2 * vϵ)) * cispi(T(1) / 4) * (u - 2 * vϵ))
     Δ2 = erf(√(T(π) / (2 * vϵ)) * cispi(T(1) / 4) * (u + 2 * vϵ))
     return phase / (√(2 * vϵ)) * (Δ1 - Δ2) / 4

@@ -51,7 +51,7 @@ end
 @inline function intensity_point(d::RingTemplate, p)
     (; X, Y) = p
     @unpack_params radial, azimuthal = d(p)
-    r = hypot(X, Y)
+    r = sqrt(X^2 + Y^2)
     ϕ = ringphase(X, Y)
     pr = merge((; r), p)
     pϕ = merge((; ϕ), p)
@@ -263,9 +263,11 @@ AzimuthalCosine(s::DomainParams, ξs::Number) = AzimuthalCosine((s,), (ξs,))
 @inline @fastmath function azimuthal_profile(d::AzimuthalCosine{N}, p) where {N}
     @unpack_params s, ξs = d(p)
     ϕ = p.ϕ
-    mapreduce(+, 1:N; init = one(typeof(s[1]))) do n
+    tmp = ntuple(Val(N)) do n 
+        Base.Base.@_inline_meta
         return -s[n] * cos(n * ϕ - ξs[n])
     end
+    return 1 + reduce(+, tmp)
 end
 
 """
