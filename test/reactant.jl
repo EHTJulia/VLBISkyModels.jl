@@ -54,7 +54,7 @@ end
     end
 
     @testset "PolExp2Map" begin
-        g = imagepixels(1.0, 1.0, 128, 128)
+        g = imagepixels(10.0, 10.0, 128, 128)
         gr = @jit(identity(g))
 
         a = randn(128, 128)
@@ -69,6 +69,28 @@ end
 
         m = VLBISkyModels.PolExp2Map!(a, b, c, d, g)
         mr = @jit VLBISkyModels.PolExp2Map!(am, bm, cm, dm, gr)
+
+        u = randn(10^2) / 5.0
+        v = randn(10^2) / 5.0
+        guv = UnstructuredDomain((U = u, V = v))
+
+        gfn = FourierDualDomain(gim, guv, NFFTAlg())
+        gfr = FourierDualDomain(gimr, Reactant.to_rarray(guv), VLBISkyModels.ReactantNUFFTAlg(Float64; eps = 1.0e-9))
+
+        vnf = visibilitymap(m, gfn)
+        vrf = @jit visibilitymap(mr, gfr)
+
+        @test parent(vrf) ≈ vnf
+
+        mrs = shifted(mr, ConcreteRNumber(1.0), ConcreteRNumber(1.0))
+        ms = shifted(m, 1.0, 1.0)
+
+        vnf_s = visibilitymap(ms, gfn)
+        vrf_s = @jit visibilitymap(mrs, gfr)
+
+        @test parent(vrf_s) ≈ vnf_s
+
+
     end
 
     @testset "Analytic Models" begin
