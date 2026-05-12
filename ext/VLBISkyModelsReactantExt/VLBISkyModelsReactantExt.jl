@@ -11,7 +11,7 @@ using LinearAlgebra
 
 include("nufft/ReactantNUFFT.jl")
 
-function VLBISkyModels.applyphases!(vis::Reactant.AnyTracedRArray, phases::AbstractArray)
+function VLBISkyModels.applyphases!(vis::AbstractArray, phases::AnyTracedRArray)
     vout = vis .* phases
     return copyto!(vis, vout)
 end
