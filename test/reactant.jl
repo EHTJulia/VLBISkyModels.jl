@@ -52,7 +52,7 @@ end
 
         @test parent(vrf_s) ≈ vnf_s
 
-        
+
     end
 
     @testset "PolExp2Map" begin
@@ -77,7 +77,7 @@ end
         guv = UnstructuredDomain((U = u, V = v))
 
         gfn = FourierDualDomain(gim, guv, NFFTAlg())
-        gfr = FourierDualDomain(gimr, Reactant.to_rarray(guv), VLBISkyModels.ReactantNUFFTAlg(; eps=1e-9))
+        gfr = FourierDualDomain(gimr, Reactant.to_rarray(guv), VLBISkyModels.ReactantNUFFTAlg(; eps = 1.0e-9))
 
         pm = ContinuousImage(m, DeltaPulse())
         ppmr = ContinuousImage(Reactant.to_rarray(m), DeltaPulse())
