@@ -77,14 +77,17 @@ end
         guv = UnstructuredDomain((U = u, V = v))
 
         gfn = FourierDualDomain(gim, guv, NFFTAlg())
-        gfr = FourierDualDomain(gimr, Reactant.to_rarray(guv), VLBISkyModels.ReactantNUFFTAlg())
+        gfr = FourierDualDomain(gimr, Reactant.to_rarray(guv), VLBISkyModels.ReactantNUFFTAlg(; eps=1e-9))
 
         pm = ContinuousImage(m, DeltaPulse())
-        ppmr = ContinuousImage(mr, DeltaPulse())
+        ppmr = ContinuousImage(Reactant.to_rarray(m), DeltaPulse())
         vnf = visibilitymap(pm, gfn)
         vrf = @jit(visibilitymap(ppmr, gfr))
 
-        @test parent(vrf) ≈ vnf
+        @test parent(vrf).I ≈ parent(vnf).I
+        @test parent(vrf).Q ≈ parent(vnf).Q
+        @test parent(vrf).U ≈ parent(vnf).U
+        @test parent(vrf).V ≈ parent(vnf).V
     end
 
     @testset "Analytic Models" begin
