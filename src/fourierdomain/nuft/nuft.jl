@@ -130,17 +130,21 @@ function applyft(p::AbstractNUFTPlan, img::AbstractArray)
 end
 
 function applyphases!(vis::AbstractArray, phases::AbstractArray)
-    for i in eachindex(vis, phases)
-        tmp = rgetindex(vis, i) * rgetindex(phases, i)
-        rsetindex!(vis, tmp, i)
+    @inbounds begin
+        @trace for i in eachindex(vis, phases)
+            tmp = rgetindex(vis, i) * rgetindex(phases, i)
+            rsetindex!(vis, tmp, i)
+        end
     end
     return vis
 end
 
 function applyphases!(vis::AbstractArray, phases::Number)
-    for i in eachindex(vis)
-        tmp = rgetindex(vis, i) * phases
-        rsetindex!(vis, tmp, i)
+    @inbounds begin
+        @trace for i in eachindex(vis)
+            tmp = rgetindex(vis, i) * phases
+            rsetindex!(vis, tmp, i)
+        end
     end
     return vis
 end

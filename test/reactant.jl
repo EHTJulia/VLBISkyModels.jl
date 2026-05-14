@@ -51,11 +51,13 @@ end
         vrf_s = @jit visibilitymap(mrs, gfr)
 
         @test parent(vrf_s) ≈ vnf_s
+
+
     end
 
     @testset "PolExp2Map" begin
-        g = imagepixels(1.0, 1.0, 128, 128)
-        gr = @jit(identity(g))
+        gim = imagepixels(1.0, 1.0, 128, 128)
+        gimr = @jit(identity(gim))
 
         a = randn(128, 128)
         b = randn(128, 128)
@@ -67,8 +69,25 @@ end
         cm = Reactant.to_rarray(c)
         dm = Reactant.to_rarray(d)
 
-        m = VLBISkyModels.PolExp2Map!(a, b, c, d, g)
-        mr = @jit VLBISkyModels.PolExp2Map!(am, bm, cm, dm, gr)
+        m = VLBISkyModels.PolExp2Map(a, b, c, d, gim)
+        mr = @jit VLBISkyModels.PolExp2Map(am, bm, cm, dm, gimr)
+
+        u = randn(10^2) / 5.0
+        v = randn(10^2) / 5.0
+        guv = UnstructuredDomain((U = u, V = v))
+
+        gfn = FourierDualDomain(gim, guv, NFFTAlg())
+        gfr = FourierDualDomain(gimr, Reactant.to_rarray(guv), VLBISkyModels.ReactantNUFFTAlg(; eps = 1.0e-12))
+
+        pm = ContinuousImage(m, DeltaPulse())
+        ppmr = ContinuousImage(Reactant.to_rarray(m), DeltaPulse())
+        vnf = visibilitymap(pm, gfn)
+        vrf = @jit(visibilitymap(ppmr, gfr))
+
+        @test parent(vrf).I ≈ parent(vnf).I
+        @test parent(vrf).Q ≈ parent(vnf).Q
+        @test parent(vrf).U ≈ parent(vnf).U
+        @test parent(vrf).V ≈ parent(vnf).V
     end
 
     @testset "Analytic Models" begin
