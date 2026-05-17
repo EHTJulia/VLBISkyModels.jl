@@ -6,14 +6,14 @@ Math:
 with z = (cell-centered offset) / (w/2). Beta is set as in FINUFFT:
     beta = 2.30 * w * (2 / sigma).
 
-Per-cell Horner expansion. For a NU point with fractional position
-frac in [0, 1) inside its base cell (the leftmost of the w-cell stencil),
-the kernel value at stencil cell k = 0..w-1 is
+Per-cell Horner expansion. With the stencil placement in `setpts.jl`
+(`base = floor(s - w/2 + 1)`, `frac = s - base - (w/2 - 1) ∈ [0, 1)`), the
+kernel value at stencil cell k = 0..w-1 is
 
-    weight[k] = phi(2*(frac + (k - (w-1)/2)) / w),
+    weight[k] = phi((2k + 1 - w - t) / w),  t = 2*frac - 1 ∈ [-1, 1],
 
-i.e. a function of `frac` for each fixed `k`. We fit each as a degree-`deg`
-polynomial in `t = 2*frac - 1 ∈ [-1, 1]`, giving a coefficient matrix
+and the argument always lies in [-1, 1] for any w (even or odd). We fit
+each as a degree-`deg` polynomial in `t`, giving a coefficient matrix
 `horner_coefs :: (w, deg+1)` ordered as monomial coefficients
 `p_k(t) = sum_p coefs[k, p] * t^p`.
 
@@ -82,14 +82,14 @@ function horner_coefficients(::Type{T}, w::Integer, sigma::Real; deg::Integer = 
     n = deg + 1
     nodes = _chebyshev_nodes(T, n)               # (n,) in [-1, 1]
     coefs = Matrix{T}(undef, w, n)
-    halfw = T(w) / T(2)
-    half_w_offset = (w ÷ 2) - 1                  # matches setpts: base = floor(s) - half_w_offset
+    # weight[k] = phi(z_k(t)) with z_k(t) = (2k + 1 - w - t) / w, t ∈ [-1, 1].
+    # By construction this maps each cell's t-range into [-1, 1], so the
+    # polynomial fit never has to cross the kernel-support boundary z=±1
+    # (which is where phi has a square-root singularity in its derivative).
     for k in 0:(w - 1)
-        shift = T(k - half_w_offset)             # cell offset relative to floor(s)
-        # weight[k] = phi( (shift - frac(t)) / (w/2) )
-        # frac(t) = (t + 1)/2
+        shift = T(2 * k + 1 - w)
         f = T[
-            expsemicircle_phi((shift - (nodes[i] + one(T)) / T(2)) / halfw, beta)
+            expsemicircle_phi((shift - nodes[i]) / T(w), beta)
                 for i in 1:n
         ]
         coefs[k + 1, :] .= _fit_monomial(T, f, nodes)
