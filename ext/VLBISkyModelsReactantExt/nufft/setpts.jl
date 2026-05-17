@@ -51,11 +51,21 @@ function _setpts_traced(
     M = length(points[1])
     T = real(Reactant.unwrapped_eltype(eltype(points[1])))
     period = T(2 * pi)
-    half_w_offset = nspread ÷ 2 - 1     # base = floor(s) - half_w_offset
+    # Stencil placement: base = floor(s - w/2 + 1), frac = s - base - (w/2 - 1).
+    # Equivalent to FINUFFT's `i1 = ceil(s - w/2)` for non-integer s, and works
+    # uniformly for even and odd `nspread`. The (w/2 - 1) offset is the integer
+    # `w/2 - 1` when w is even and the half-integer `(w-1)/2 - 1/2` when w is odd;
+    # using it ensures every stencil cell's kernel-argument z stays in [-1, 1],
+    # which keeps the Horner polynomial fit (in `horner_coefficients`) inside the
+    # kernel's smooth support — the prior `floor(s) - (w÷2 - 1)` placement put
+    # the boundary cells partly outside [-1, 1] for odd w and lost ~3 digits of
+    # accuracy.
+    halfw_minus_one = T(nspread - 2) / T(2)
 
     s = ntuple(d -> mod.(points[d], period) .* (T(ngrid[d]) / period), Val(D))
-    base = ntuple(d -> floor.(Int, s[d]) .- half_w_offset, Val(D))
-    frac = ntuple(d -> s[d] .- floor.(s[d]), Val(D))
+    s_shift = ntuple(d -> s[d] .- halfw_minus_one, Val(D))
+    base = ntuple(d -> floor.(Int, s_shift[d]), Val(D))
+    frac = ntuple(d -> s_shift[d] .- base[d], Val(D))
 
     stride = 1
     bin_id = mod.(base[1], ngrid[1]) .÷ bin_dims[1]

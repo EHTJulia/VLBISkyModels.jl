@@ -29,7 +29,7 @@ but the fields are documented below for those who want to tune.
 """
 function ReactantNUFFTAlg(
         ::Type{T};
-        eps::Real = T isa Float64 ? 1.0e-9 : 1.0e-6,  # default tighter for Float64
+        eps::Real = T === Float64 ? 1.0e-9 : 1.0e-6,  # default tighter for Float64
         sigma::Real = 2,
         nspread::Integer = -1,
         chunk_size::Integer = 65536,
