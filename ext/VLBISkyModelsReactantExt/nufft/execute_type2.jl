@@ -247,21 +247,7 @@ function _gather_sum_traced(
     )                                                            # (M, w, w, ntrans)
 
     # Reduce by two-step sum-product over the w² stencil. Each step is one
-    # broadcast multiply + one `sum(...; dims=)` reduction (≈ 2 MLIR funcs
-    # total), instead of the previous trace-time-unrolled `w²` mul-add.
-    #
-    # The unrolled form (`s .+= (wk1 .* wk2) .* cell` inside `for k1, k2`)
-    # registered 3 fresh `*_broadcast_scalar` MLIR functions per (k1,k2) —
-    # 192 per NUFT-2 call at w=8. Inside a Reactant compile spanning many
-    # NUFT calls (e.g. GeoVI's draw / Newton-CG inner loops over the full
-    # forward model), this exceeded Reactant's per-name uniquing cap of
-    # 10000 (see `__lookup_unique_name_in_module` in
-    # `Reactant.TracedUtils`), which then printed the entire MLIR module
-    # into the error message.
-    #
-    # An earlier comment here warned that `sum(...; dims=)` once triggered
-    # an Enzyme `DotGeneralSimplify` segfault. If that resurfaces we'll
-    # file an Enzyme issue; otherwise this is the correct form.
+    # broadcast multiply + one `sum(...; dims=)` reduction
     #
     # Step 1: contract k2 — tmp[m, k1, t] = Σ_{k2} w2[m, k2] · vals[m, k1, k2, t]
     tmp = dropdims(
