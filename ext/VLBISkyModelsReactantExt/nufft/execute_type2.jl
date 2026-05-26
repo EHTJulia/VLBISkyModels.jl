@@ -246,18 +246,19 @@ function _gather_sum_traced(
         slice_sizes = Int64[w, w, ntrans],
     )                                                            # (M, w, w, ntrans)
 
-    # Reduce by explicit trace-time unrolled mul-add over the w² stencil
-    # cells. `sum(...; dims=)` would let XLA fold this into a dot_general
-    # that segfaults the enzyme DotGeneralSimplify pass for this shape.
-    s = fill(zero(eltype(fw)), (M_pad, ntrans))
-    for k1 in 1:w
-        wk1 = reshape(vec(w1[:, k1:k1]), M_pad, 1)                       # (M, 1)
-        for k2 in 1:w
-            wk2 = reshape(vec(w2[:, k2:k2]), M_pad, 1)                  # (M, 1)
-            cell = reshape(vals[:, k1, k2, :], M_pad, ntrans)            # (M, ntrans)
-            s = s .+ (wk1 .* wk2) .* cell
-        end
-    end
+    # Reduce by two-step sum-product over the w² stencil. Each step is one
+    # broadcast multiply + one `sum(...; dims=)` reduction
+    #
+    # Step 1: contract k2 — tmp[m, k1, t] = Σ_{k2} w2[m, k2] · vals[m, k1, k2, t]
+    tmp = dropdims(
+        sum(reshape(w2, M_pad, 1, w, 1) .* vals; dims = 3);
+        dims = 3,
+    )                                                            # (M, w, ntrans)
+    # Step 2: contract k1 — s[m, t] = Σ_{k1} w1[m, k1] · tmp[m, k1, t]
+    s = dropdims(
+        sum(reshape(w1, M_pad, w, 1) .* tmp; dims = 2);
+        dims = 2,
+    )                                                            # (M, ntrans)
     return s
 end
 
