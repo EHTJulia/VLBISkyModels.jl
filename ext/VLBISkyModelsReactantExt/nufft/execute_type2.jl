@@ -246,18 +246,33 @@ function _gather_sum_traced(
         slice_sizes = Int64[w, w, ntrans],
     )                                                            # (M, w, w, ntrans)
 
-    # Reduce by explicit trace-time unrolled mul-add over the w² stencil
-    # cells. `sum(...; dims=)` would let XLA fold this into a dot_general
-    # that segfaults the enzyme DotGeneralSimplify pass for this shape.
-    s = fill(zero(eltype(fw)), (M_pad, ntrans))
-    for k1 in 1:w
-        wk1 = reshape(vec(w1[:, k1:k1]), M_pad, 1)                       # (M, 1)
-        for k2 in 1:w
-            wk2 = reshape(vec(w2[:, k2:k2]), M_pad, 1)                  # (M, 1)
-            cell = reshape(vals[:, k1, k2, :], M_pad, ntrans)            # (M, ntrans)
-            s = s .+ (wk1 .* wk2) .* cell
-        end
-    end
+    # Reduce by two-step sum-product over the w² stencil. Each step is one
+    # broadcast multiply + one `sum(...; dims=)` reduction (≈ 2 MLIR funcs
+    # total), instead of the previous trace-time-unrolled `w²` mul-add.
+    #
+    # The unrolled form (`s .+= (wk1 .* wk2) .* cell` inside `for k1, k2`)
+    # registered 3 fresh `*_broadcast_scalar` MLIR functions per (k1,k2) —
+    # 192 per NUFT-2 call at w=8. Inside a Reactant compile spanning many
+    # NUFT calls (e.g. GeoVI's draw / Newton-CG inner loops over the full
+    # forward model), this exceeded Reactant's per-name uniquing cap of
+    # 10000 (see `__lookup_unique_name_in_module` in
+    # `Reactant.TracedUtils`), which then printed the entire MLIR module
+    # into the error message.
+    #
+    # An earlier comment here warned that `sum(...; dims=)` once triggered
+    # an Enzyme `DotGeneralSimplify` segfault. If that resurfaces we'll
+    # file an Enzyme issue; otherwise this is the correct form.
+    #
+    # Step 1: contract k2 — tmp[m, k1, t] = Σ_{k2} w2[m, k2] · vals[m, k1, k2, t]
+    tmp = dropdims(
+        sum(reshape(w2, M_pad, 1, w, 1) .* vals; dims = 3);
+        dims = 3,
+    )                                                            # (M, w, ntrans)
+    # Step 2: contract k1 — s[m, t] = Σ_{k1} w1[m, k1] · tmp[m, k1, t]
+    s = dropdims(
+        sum(reshape(w1, M_pad, w, 1) .* tmp; dims = 2);
+        dims = 2,
+    )                                                            # (M, ntrans)
     return s
 end
 
