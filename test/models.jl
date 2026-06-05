@@ -585,8 +585,10 @@ end
         # AddModel: all modifiers distribute fully over both summands. Use a
         # summand that is itself image-numeric so the AddModel is non-analytic.
         ma = m2 + convolved(ExtendedRing(6.0), stretched(Gaussian(), 1.0, 1.0))
-        for mod in (shifted(ma, 1.0, -2.0), 2.0 * ma, stretched(ma, 1.3, 0.9),
-                rotated(ma, 0.4))
+        for mod in (
+                shifted(ma, 1.0, -2.0), 2.0 * ma, stretched(ma, 1.3, 0.9),
+                rotated(ma, 0.4),
+            )
             # independent cross-check: FFT-grid path vs NUFT path
             @test intensitymap(mod, g) ≈ intensitymap(mod, gfour) rtol = 1.0e-6
         end

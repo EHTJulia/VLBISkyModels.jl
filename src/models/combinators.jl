@@ -302,7 +302,7 @@ end
     return nothing
 end
 
-# Modified models require some special handling for Convolved models because the 
+# Modified models require some special handling for Convolved models because the
 # modifiers need to be split between the two factors in some cases.
 @inline _uvmod_only(::Tuple{}) = ()
 @inline _uvmod_only(t::Tuple) = _uvmod_prepend(first(t), _uvmod_only(Base.tail(t)))
