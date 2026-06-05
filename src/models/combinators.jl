@@ -321,7 +321,7 @@ end
 
 # Addition is linear, so the full modifier applies to both summands.
 @inline function ModifiedModel(m::AddModel, ts::Tuple)
-    return AddModel(modify(m.m1, ts), modify(m.m2, ts))
+    return AddModel(_maybe_modify(m.m1, ts), _maybe_modify(m.m2, ts))
 end
 
 # function intensitymap_numeric(model::ConvolvedModel, dims::ComradeBase.AbstractDomain)
