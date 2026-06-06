@@ -552,6 +552,57 @@ end
         testgrad(foo, x)
     end
 
+    @testset "Modified composite" begin
+        # Modifying a numeric composite (e.g. a ConvolvedModel) used to recurse
+        # forever (StackOverflowError) because the special numeric dispatch was
+        # lost. Modifiers distribute over composites, so the results must match
+        # the equivalent inside-the-composite form, and the independent FFT-grid
+        # and NUFT code paths must agree.
+        g = imagepixels(20.0, 20.0, 256, 256)
+        guv = UnstructuredDomain((U = randn(64) ./ 20, V = randn(64) ./ 20))
+        gfour = FourierDualDomain(g, guv, NFFTAlg())
+        mc = convolved(m1, m2)  # m1 = Gaussian(), m2 = ExtendedRing(8.0) (numeric)
+
+        # ConvolvedModel: shift/renorm -> one factor, stretch/rotate -> both.
+        # Reference is the (independently constructed) modifier-inside form.
+        conv_cases = (
+            (shifted(mc, 2.0, -1.0), convolved(shifted(m1, 2.0, -1.0), m2)),
+            (3.0 * mc, convolved(3.0 * m1, m2)),
+            (
+                stretched(mc, 1.7, 0.8),
+                convolved(stretched(m1, 1.7, 0.8), stretched(m2, 1.7, 0.8)),
+            ),
+            (rotated(mc, 0.6), convolved(rotated(m1, 0.6), rotated(m2, 0.6))),
+        )
+        for (mod, ref) in conv_cases
+            # no longer stack overflows; matches the modifier-inside form ...
+            @test intensitymap(mod, g) ≈ intensitymap(ref, g)
+            @test visibilitymap(mod, gfour) ≈ visibilitymap(ref, gfour)
+            # ... and the FFT-grid and NUFT paths agree
+            @test intensitymap(mod, g) ≈ intensitymap(mod, gfour) rtol = 1.0e-6
+        end
+
+        # AddModel: all modifiers distribute fully over both summands. Use a
+        # summand that is itself image-numeric so the AddModel is non-analytic.
+        ma = m2 + convolved(ExtendedRing(6.0), stretched(Gaussian(), 1.0, 1.0))
+        for mod in (
+                shifted(ma, 1.0, -2.0), 2.0 * ma, stretched(ma, 1.3, 0.9),
+                rotated(ma, 0.4),
+            )
+            # independent cross-check: FFT-grid path vs NUFT path
+            @test intensitymap(mod, g) ≈ intensitymap(mod, gfour) rtol = 1.0e-6
+        end
+        # independent shift identity in the uv-plane: V[shift(ma)] = phase * V[ma]
+        vbase = visibilitymap(ma, gfour)
+        vshift = visibilitymap(shifted(ma, 1.0, -2.0), gfour)
+        phase = [
+            exp(2pi * im * (p.U * 1.0 + p.V * (-2.0))) for p in domainpoints(guv)
+        ]
+        # holds to NUFT interpolation precision (two independent NUFT evaluations)
+        @test vshift ≈ vbase .* phase rtol = 1.0e-3
+        @test flux(2.0 * ma) ≈ 2.0 * flux(ma)
+    end
+
     @testset "Convolved Non-analytic" begin
         m1 = Gaussian()
         m2 = VLBISkyModels.NonAnalyticTest(Gaussian())
