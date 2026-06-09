@@ -1,30 +1,224 @@
-### general to any spectral model ###
+export MultiDomain, DomainList
+import ComradeBase: imagepixels, NoHeader, build_param, FrequencyParams, DomainParams
+include("poly_spectral.jl")
 
-# spatially varying spectral parameters
-@fastmath @inline function ComradeBase.build_param(model::M, p) where {M<:ComradeBase.FrequencyParams{<:AbstractArray}}
-    out = similar(model.param)
-    return build_param!(out, model, p)
+### general multidomain stuffs ###
+
+"""
+    MultiDomain
+
+Represents an image model evaluated over multiple domains (frequency, time).
+Enables Multifrequency or Time Domain imaging.
+Domain order here doesn't matter - the evaluation order is defined by the grid.
+"""
+struct MultiDomain{I<:ContinuousImage, D1<:DomainParams, D2<:DomainParams} <: AbstractModel
+    imgmodel::I
+    domain1::D1
+    domain2::D2
+
+    function MultiDomain(imgmodel::I, domain1::D1, domain2::D2) where {I<:ContinuousImage, D1<:DomainParams, D2<:DomainParams}
+        return new{I, D1, D2}(imgmodel, domain1, domain2)
+    end
 end
 
-# single value version (constant spectral parameters across the image)
-# can skip build_param! and go directly to the spectral model
-@fastmath @inline function ComradeBase.build_param(model::M, p) where {M<:ComradeBase.FrequencyParams{<:Int}}
-    lf = build_reference_frequency(model, p)
-    return build_spectral(model.param, model.index, lf, model.p0, M)
+struct EmptyDomain <: DomainParams end
+
+function MultiDomain(imgmodel::I, domain::D) where {I<:ContinuousImage, D<:DomainParams}
+    return MultiDomain(imgmodel, domain, EmptyDomain())
 end
 
+# required model definitions
+visanalytic(::MultiDomain{I}) where {I} = NotAnalytic()
+imanalytic(::MultiDomain{I}) where {I} = imanalytic(I)
+radialextent(::MultiDomain{I}) where {I} = radialextent(I)
+flux(::MultiDomain{I}) where {I} = flux(I)
+ispolarized(::MultiDomain{I}) where {I} = ispolarized(I)
+
+function intensitymap_numeric(md::MultiDomain{<:ContinuousImage},imggrid::RectiGrid)
+    mdimg = allocate_multidomain_image(md, imggrid) # allocate result: multidomain image
+
+    # apply domain models to the multidomain image
+    mdimg = build_param(mdimg, md.domain1, imggrid) # apply first domain model
+    mdimg = build_param(mdimg, md.domain2, imggrid) # apply second domain model
+
+    return mdimg
+end
+
+# allocate 3D or 4D image cube to hold images at each frequency and/or time
+function allocate_multidomain_image(m::MultiDomain{<:ContinuousImage}, imggrid::RectiGrid)
+    baseimgdata = parent(m.imgmodel.img)
+    n = map(length, dims(imggrid))[3:end] # grabbing number of frequencies and times
+    multidomain_data = repeat(baseimgdata, 1, 1, n...) # repeat base image for each frequency and/or time combination
+    return IntensityMap(multidomain_data, imggrid)
+end
+
+function visibilitymap_numeric(md::MultiDomain{<:ContinuousImage},
+                               grid::AbstractFourierDualDomain)
+    checkspatialgrid(axisdims(md.imgmodel), grid.imgdomain) # compare image dimensions to spatial dimensions of data cube
+    mdimg = intensitymap_numeric(md, grid.imgdomain) # apply the spectral and/or time models to the image data
+    vis = applyft(forward_plan(grid), mdimg) # FT to visibilities
+    return applypulse!(vis, md.imgmodel.kernel, grid)
+end
+
+function checkspatialgrid(imgdims, grid)
+    return !(dims(imgdims) == dims(grid)[1:2]) &&
+           throw(ArgumentError("The image dimensions in `ContinuousImage`\n" *
+                               "and the spatial dimensions of the visibility grid passed to `visibilitymap`\n" *
+                               "do not match. This is not currently supported."))
+end
+
+# if 2nd domain doesn't exist, do nothing and return the input
+function build_param(mdimg, domain::EmptyDomain, imggrid::RectiGrid)
+    return mdimg
+end
+
+# extending image pizels to time AND frequency to build the multidomain RectiGrid
+@doc """
+    $(@doc ComradeBase.imagepixels)
+
+    ---
+
+    **VLBISkyModels extension:**
+
+        imagepixels(fovx, fovy, nx, ny, d1, d2, x0=0, y0=0; posang=0, executor=Serial(), header=NoHeader())
+
+    Extends `imagepixels` for multidomain (multifrequency/multitime) image cubes.
+    `d1` and `d2` are extra dimension lists appended to the spatial grid after X and Y.
+    Their order determines the index ordering of the output cube.
+
+    - A frequency list is created with `Fr([...])`
+    - A time list is created with `Ti([...])`
+
+    Both must be subtypes of `DimensionalData.Dimensions.Dimension`.
+
+    # Arguments
+    - `d1::D1`, `d2::D2`: extra dimensions (frequency or time lists)
+    - `x0`, `y0`: optional image center offsets (default `0`)
+
+    # Examples
+
+    ```julia
+    julia> frlist = Fr([5, 6, 7])
+    julia> tlist  = Ti([8, 9, 0])
+
+    julia> fr_ti_grid = imagepixels(1, 1, 10, 10, frlist, tlist)
+    # Fr index comes before Ti
+
+    julia> ti_fr_grid = imagepixels(1, 1, 10, 10, tlist, frlist)
+    # Ti index comes before Fr
+
+    julia> fr_ti_grid != ti_fr_grid
+    true
+    ```
+
+    imagepixels(fovx, fovy, nx, ny, d1, x0=0, y0=0; posang=0, executor=Serial(), header=NoHeader())
+
+    Extends `imagepixels` for multidomain (multifrequency/multitime) image cubes.
+    `d1` is an extra dimension (time or frequency) appended to the spatial grid after X and Y.
+
+    - A frequency list is created with `Fr([...])`
+    - A time list is created with `Ti([...])`
+
+    Must be a subtype of `DimensionalData.Dimensions.Dimension`.
+
+    # Arguments
+    - `d1::D1`: extra dimension (frequency or time list)
+    - `x0`, `y0`: optional image center offsets (default `0`)
+
+    # Examples
+
+    ```julia
+    julia> frlist = Fr([5, 6, 7])
+    julia> tlist  = Ti([8, 9, 0])
+
+    julia> fr_grid = imagepixels(1, 1, 10, 10, frlist)
+    # adding frequency dimension
+
+    julia> ti_grid = imagepixels(1, 1, 10, 10, tlist)
+    # adding time dimension
+    ```
+    """
+function imagepixels(fovx::Real, fovy::Real, nx::Integer, ny::Integer,
+        d1::D1, d2::D2,
+        x0::Number = zero(fovx), y0::Number = zero(fovy);
+        posang::Number = zero(fovx),
+        executor = Serial(), header = NoHeader()
+    ) where {D<:DimensionalData.Dimensions.Dimension, D1<:D, D2<:D}
+    @assert (nx > 0) && (ny > 0) "Number of pixels must be positive"
+
+    psizex = fovx / nx
+    psizey = fovy / ny
+
+    xitr = X(LinRange(-fovx / 2 + psizex / 2 - x0, fovx / 2 - psizex / 2 - x0, nx))
+    yitr = Y(LinRange(-fovy / 2 + psizey / 2 - y0, fovy / 2 - psizey / 2 - y0, ny))
+    d1itr = d1
+    d2itr = d2
+    grid = RectiGrid((xitr, yitr, d1itr, d2itr); executor, header, posang)
+    return grid
+end
+
+# extending imagepixels to time OR frequency to build multidomain RectiGrid
+function imagepixels(fovx::Real, fovy::Real, nx::Integer, ny::Integer,
+        d1::D1,
+        x0::Number = zero(fovx), y0::Number = zero(fovy);
+        posang::Number = zero(fovx),
+        executor = Serial(), header = NoHeader()
+    ) where {D1<:DimensionalData.Dimensions.Dimension}
+    @assert (nx > 0) && (ny > 0) "Number of pixels must be positive"
+
+    psizex = fovx / nx
+    psizey = fovy / ny
+
+    xitr = X(LinRange(-fovx / 2 + psizex / 2 - x0, fovx / 2 - psizex / 2 - x0, nx))
+    yitr = Y(LinRange(-fovy / 2 + psizey / 2 - y0, fovy / 2 - psizey / 2 - y0, ny))
+    d1itr = d1
+    grid = RectiGrid((xitr, yitr, d1itr); executor, header, posang)
+    return grid
+end
+
+
+
+### mfs specific ###
+
+
+# construct the reference frequency parameterization
+# dispatches to specific spectral model implementation
+#@fastmath @inline function build_param(model::M, grid::RectiGrid) where {M<:FrequencyParams{<:Int}}
+#    lf = build_reference_frequency(model, grid.Fr)
+#    return build_spectral(model.param, model.index, lf, model.p0, typeof(model))
+#end
+
+
+@fastmath @inline function build_param(mdimg::IntensityMap, model::M, imggrid::RectiGrid) where {M<:FrequencyParams{<:AbstractArray}}
+    return build_param!(mdimg, model, imggrid)
+end
 
 # applying the spectral expansion
-@fastmath @inline function build_param!(out, model::M, p) where {M<:ComradeBase.FrequencyParams}
-    mp = model.param # image parameters
-    mp0 = model.p0 # initial spectral parameters
-    ref_freq = build_reference_frequency(model, p) # model-specific reference frequency parameterization
-    # @trace track_numbers=false: reactant-ification
-    @trace track_numbers=false for i in eachindex(out, mp) # calculate one pixel at a time
-        index = _getindices(model.index, i) # for each pixel, grab the corresponding spectral parameters
-        out[i] = @inline build_spectral(mp[i], index, ref_freq, mp0, M) # dispatch to apply the spectral model
+@fastmath @inline function build_param!(mdimg::IntensityMap, specmodel::S, imggrid::RectiGrid) where {S<:FrequencyParams}
+    mp = specmodel.param # image parameters
+    mp0 = specmodel.p0 # initial spectral model parameters
+
+    # builds a N-length tuple holding the reference frequency parameterization for all frequencies
+    ref_freqs = build_reference_frequency(specmodel, imggrid)
+
+    frdim = findfirst(typeof.(dims(mdimg)) .<: Fr) # get which dimension corresponds to frequency
+
+    spatialinds = CartesianIndices((axes(mdimg, 1), axes(mdimg, 2))) # getting spatial indices of image
+
+    # loop over frequencies
+    for i in axes(mdimg, frdim)
+        # view the data associated with each frequency
+        mdimg_frslice = selectdim(mdimg, frdim, i) # axes are (X,Y,Ti) or (X,Y)
+        ref_freq = ref_freqs[i] # get reference frequency parameterization
+
+        for pixind in spatialinds
+            index = _getindices(specmodel.index, pixind) # for each pixel, grab the corresponding spectral parameters
+            mdimg_frslice[pixind,:] .= @inline build_spectral(mp[pixind], index, ref_freq, mp0, typeof(specmodel)) # dispatch to apply the spectral model
+        end
     end
-    return out
+
+    return mdimg
 end
 
-include("poly_spectral.jl")
+@inline _getindices(index::NTuple{N, <:AbstractArray}, i) where {N} = ntuple(n -> index[n][i], Val(N))
+@inline _getindices(index::NTuple, i) = index
