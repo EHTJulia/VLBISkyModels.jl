@@ -21,7 +21,7 @@ struct MultiDomain{I<:ContinuousImage, D1<:DomainParams, D2<:DomainParams} <: Ab
     end
 end
 
-struct EmptyDomain <: DomainParams end
+struct EmptyDomain <: ComradeBase.DomainParams{Nothing} end
 
 function MultiDomain(imgmodel::I, domain::D) where {I<:ContinuousImage, D<:DomainParams}
     return MultiDomain(imgmodel, domain, EmptyDomain())
@@ -199,7 +199,7 @@ end
     mp0 = specmodel.p0 # initial spectral model parameters
 
     # builds a N-length tuple holding the reference frequency parameterization for all frequencies
-    ref_freqs = build_reference_frequency(specmodel, imggrid)
+    ref_freqs = build_reference_frequency(specmodel, imggrid.Fr)
 
     frdim = findfirst(typeof.(dims(mdimg)) .<: Fr) # get which dimension corresponds to frequency
 

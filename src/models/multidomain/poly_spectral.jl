@@ -34,7 +34,7 @@ function PolySpectral(param, index::Number, freq0, p0 = zero(param))
 end
 
 # poly spectral reference frequency parameterization: one for each frequency
-function build_reference_frequency(model::PolySpectral{N}, freqlist::AbstractVector)
+function build_reference_frequency(model::PolySpectral{N}, freqlist::AbstractVector) where {N}
     return ntuple(i -> log(freqlist[i]/model.freq0), Val(N))
 end
 
