@@ -213,8 +213,8 @@ end
         # loop over spatial indices
         for pixind in spatialinds
             index = _getindices(specmodel.index, pixind) # for each pixel, grab the corresponding spectral parameters
-            pixfrslice = @view frslice[pixind, :] # grabbing the spatial dimension
-            # loop over time dimension (if it exists) to calculate spectral expansion on mdimg
+            pixfrslice = @view frslice[pixind, :] # grabbing the image values at that pixel & frequency
+            # loop over time dimension (if it exists) to calculate spectral expansion on the image
             map!(val ->  @inline build_spectral(val, index, ref_freq, mp0, typeof(specmodel)), pixfrslice) # dispatch to apply the spectral model
         end
     end
