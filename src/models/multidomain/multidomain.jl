@@ -195,7 +195,6 @@ end
 
 # applying the spectral expansion
 @fastmath @inline function build_param!(mdimg::IntensityMap, specmodel::S, imggrid::RectiGrid) where {S<:FrequencyParams}
-    mp = specmodel.param # image parameters
     mp0 = specmodel.p0 # initial spectral model parameters
 
     # builds a N-length tuple holding the reference frequency parameterization for all frequencies
@@ -208,12 +207,15 @@ end
     # loop over frequencies
     for i in axes(mdimg, frdim)
         # view the data associated with each frequency
-        mdimg_frslice = selectdim(mdimg, frdim, i) # axes are (X,Y,Ti) or (X,Y)
+        frslice = selectdim(mdimg, frdim, i) # axes are (X,Y,Ti) or (X,Y)
         ref_freq = ref_freqs[i] # get reference frequency parameterization
 
+        # loop over spatial indices
         for pixind in spatialinds
             index = _getindices(specmodel.index, pixind) # for each pixel, grab the corresponding spectral parameters
-            mdimg_frslice[pixind,:] .= @inline build_spectral(mp[pixind], index, ref_freq, mp0, typeof(specmodel)) # dispatch to apply the spectral model
+            pixfrslice = @view frslice[pixind, :] # grabbing the spatial dimension
+            # loop over time dimension (if it exists) to calculate spectral expansion on mdimg
+            map!(val ->  @inline build_spectral(val, index, ref_freq, mp0, typeof(specmodel)), pixfrslice) # dispatch to apply the spectral model
         end
     end
 
