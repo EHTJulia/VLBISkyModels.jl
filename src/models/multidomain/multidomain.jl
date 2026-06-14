@@ -1,35 +1,45 @@
-export MultiDomainImage, DomainList
+export MultiDomainImage, JointDomain
 import ComradeBase: imagepixels, NoHeader, FrequencyParams, DomainParams, allocate_imgmap
 include("poly_spectral.jl")
 
 ### general multidomain stuffs ###
 
-"""
-    MultiDomainImage
+@docs """
+    MultiDomainImage(imgmodel, domain)
+    MultiDomainImage(imgmodel, domainarr)
 
-Represents an image model evaluated over multiple domains (frequency, time).
-Enables Multifrequency or Time Domain imaging.
-Domain order here doesn't matter - the evaluation order is defined by the grid.
+Represent an image model evaluated over one or more additional domains, such as
+frequency or time.
+
+`MultiDomainImage` stores one domain object per image pixel. During construction,
+each domain object's parameter is set to the corresponding pixel value in
+`parent(imgmodel)`. Thus, `imgmodel` acts as the reference image for the domain
+model parameters.
+
+If an array of domain models is passed in, its parameter values are still
+replaced by the corresponding values from `parent(imgmodel)`.
+
+For multiple domains, use `JointDomain`. The order of domains in a `JointDomain`
+determines the evaluation order.
 """
-struct MultiDomainImage{I<:ContinuousImage, D1<:DomainParams, D2<:DomainParams} <: AbstractModel
+struct MultiDomainImage{I<:ContinuousImage, D<:AbstractArray{<:DomainParams}} <: AbstractModel
     imgmodel::I
-    domain1::D1
-    domain2::D2
+    domainarr::D
 
-    function MultiDomainImage(imgmodel::I, domain1::D1, domain2::D2) where {I<:ContinuousImage, D1<:DomainParams, D2<:DomainParams}
-        d1 = setdomainparam(domain1, imgmodel)
-        d2 = setdomainparam(domain2, imgmodel)
-        return new{I, typeof(d1), typeof(d2)}(imgmodel, d1, d2)
+    # passing in arrays of domains with imagesizes equal to the image
+    function MultiDomainImage(imgmodel::I, domainarr::D) where {I<:ContinuousImage, D<:AbstractArray{<:DomainParams}}
+        domainarr = setdomainparam(domainarr, parent(imgmodel))
+        return new{I, typeof(domainarr)}(imgmodel, domainarr)
     end
 end
 
-struct EmptyDomain <: ComradeBase.DomainParams{Nothing} end
-
-setdomainparam(d::EmptyDomain, param) = d
-
-
 function MultiDomainImage(imgmodel::I, domain::D) where {I<:ContinuousImage, D<:DomainParams}
-    return MultiDomainImage(imgmodel, domain, EmptyDomain())
+    # create an array of domain models:
+    # each element of the array is either a Domain or a JointDomain
+    # the parameter value of the Domain/JointDomain is set by the image value at that pixel
+    # the other parameters are set by user input
+    domainarr = setdomainparam(domain, parent(imgmodel))
+    return MultiDomainImage{I, typeof(domainarr)}(imgmodel, domainarr)
 end
 
 # required model definitions
@@ -39,14 +49,103 @@ radialextent(::MultiDomainImage{I}) where {I} = radialextent(I)
 flux(::MultiDomainImage{I}) where {I} = flux(I)
 ispolarized(::MultiDomainImage{I}) where {I} = ispolarized(I)
 
-function intensitymap_numeric(md::MultiDomainImage{<:ContinuousImage},imggrid::RectiGrid)
-    mdimg = allocate_imgmap(md.imgmodel, imggrid) # allocate result: multidomain image
 
-    # apply domain models to the multidomain image
-    apply_domain!(mdimg, md.domain1, imggrid) # apply first domain model
-    apply_domain!(mdimg, md.domain2, imggrid) # apply second domain model
+
+# combine multiple domains into a joint domain to pass into build_param
+struct JointDomain{D<:Tuple} <: DomainParams{Any}
+    domains::D
+
+    function JointDomain(domains...)
+        return new{typeof(domains)}(domains)
+    end
+end
+
+@doc """
+    JointDomain(domain1, domain2, ...)
+    JointDomain(domainarr1, domainarr2, ...)
+
+Combine multiple domain models into a single domain model evaluated sequentially.
+
+The order of the arguments determines the evaluation order. For example,
+
+    JointDomain(d1, d2)
+
+means that `d1` is evaluated first, and its result is used as the input
+parameter for `d2`.
+
+If the inputs are arrays of domain models with matching axes, `JointDomain`
+constructs an array of `JointDomains` by combining the domains at each spatial
+index. For example,
+
+    jd = JointDomain(d1arr, d2arr)
+
+returns an array such that
+
+    jd[I] == JointDomain(d1arr[I], d2arr[I])
+
+for each index `I`.
+
+All input domain arrays must have the same axes.
+"""
+JointDomain
+JointDomain(domainarrs::AbstractArray...) = JointDomain(domainarrs)
+
+function JointDomain(domainarrs::Tuple{Vararg{<:AbstractArray}})
+    axes0 = axes(first(domainarrs))
+
+    all(arr -> axes(arr) == axes0, domainarrs) ||
+        throw(DimensionMismatch("All domain arrays passed to JointDomain must have the same axes"))
+
+    return map(CartesianIndices(first(domainarrs))) do ind
+        JointDomain(getindex.(domainarrs, Ref(ind))...)
+    end
+end
+
+
+# when applied to a single JointDomain, broadcast p to the individual domains, then wrap the final result in a JointDomain again
+# then create array of JointDomains the size of the image - one JointDomain per pixel
+setdomainparam(jointdomain::JointDomain, p) = JointDomain(setdomainparam.(jointdomain.domains, Ref(p))...)
+function setdomainparam(domainarr::AbstractArray{<:DomainParams}, params::AbstractArray) # spatially varying spectral params
+    axes(domainarr) == axes(params) ||
+        throw(DimensionMismatch("domainarr and params must have the same axes"))
+
+    return map(CartesianIndices(params)) do ind
+        setdomainparam(domainarr[ind], params[ind])
+    end
+end
+
+
+function intensitymap_numeric(md::MultiDomainImage,imggrid::RectiGrid)
+    mdimg = allocate_imgmap(md.imgmodel, imggrid) # allocate result: multidomain image cube
+
+    # apply domain model(s) to the image
+    apply_domain!(mdimg, md.domainarr, imggrid)
 
     return mdimg
+end
+
+@inline function apply_domain!(mdimg::IntensityMap, domainarr::AbstractArray, grid::AbstractArray)
+    # loop over spatial indices in the image
+    @trace track_numbers=false for gridind in CartesianIndices(mdimg)
+        ind = Tuple(gridind)
+        spatialind = CartesianIndex(ind[1], ind[2])
+        mdimg[gridind] = build_param(domainarr[spatialind], grid[gridind])
+    end
+
+    return mdimg
+end
+
+function build_param(jointdomain::JointDomain, p)
+    domains = jointdomain.domains
+    isempty(domains) && throw(ArgumentError("JointDomain cannot be empty"))
+    
+    val = build_param(first(domains), p) # evaluate first domain
+
+    for domain in Base.tail(domains) # get all entries after the first
+        val = build_param(setdomainparam(domain, val), p) # evaluate other domains at updated param value
+    end
+
+    return val
 end
 
 function visibilitymap_numeric(md::MultiDomainImage{<:ContinuousImage},
@@ -62,11 +161,6 @@ function checkspatialgrid(imgdims, grid)
            throw(ArgumentError("The image dimensions in `ContinuousImage`\n" *
                                "and the spatial dimensions of the visibility grid passed to `visibilitymap`\n" *
                                "do not match. This is not currently supported."))
-end
-
-# if 2nd domain doesn't exist, do nothing and return the input
-function apply_domain!(mdimg, domain::EmptyDomain, imggrid::RectiGrid)
-    return mdimg
 end
 
 # extending image pizels to time AND frequency to build the multidomain RectiGrid
@@ -171,47 +265,6 @@ function imagepixels(fovx::Real, fovy::Real, nx::Integer, ny::Integer,
     d1itr = d1
     grid = RectiGrid((xitr, yitr, d1itr); executor, header, posang)
     return grid
-end
-
-
-
-### mfs specific ###
-
-
-# construct the reference frequency parameterization
-# dispatches to specific spectral model implementation
-#@fastmath @inline function build_param(model::M, grid::RectiGrid) where {M<:FrequencyParams{<:Int}}
-#    lf = build_reference_frequency(model, grid.Fr)
-#    return build_spectral(model.param, model.index, lf, model.p0, typeof(model))
-#end
-
-# applying the spectral expansion to ContinuousImage
-@fastmath @inline function apply_domain!(mdimg::IntensityMap, specmodel::S, imggrid::RectiGrid) where {S<:FrequencyParams}
-    mp0 = specmodel.p0 # initial spectral model parameters
-
-    # builds a N-length tuple holding the reference frequency parameterization for all frequencies
-    ref_freqs = build_reference_frequency(specmodel, imggrid.Fr)
-
-    frdim = findfirst(typeof.(dims(mdimg)) .<: Fr) # get which dimension corresponds to frequency
-
-    spatialinds = CartesianIndices((axes(mdimg, 1), axes(mdimg, 2))) # getting spatial indices of image
-
-    # loop over frequencies
-    @trace track_numbers=false for i in axes(mdimg, frdim)
-        # view the data associated with each frequency
-        frslice = selectdim(mdimg, frdim, i) # axes are (X,Y,Ti) or (X,Y)
-        ref_freq = ref_freqs[i] # get reference frequency parameterization
-
-        # loop over spatial indices
-        for pixind in spatialinds
-            index = _getindices(specmodel.index, pixind) # for each pixel, grab the corresponding spectral parameters
-            pixfrslice = @view frslice[pixind, :] # grabbing the image values at that pixel & frequency
-            # loop over time dimension (if it exists) to calculate spectral expansion on the image
-            map!(val ->  @inline build_spectral(val, index, ref_freq, mp0), pixfrslice, pixfrslice) # dispatch to apply the spectral model
-        end
-    end
-
-    return mdimg
 end
 
 @inline _getindices(index::NTuple{N, <:AbstractArray}, i) where {N} = ntuple(n -> index[n][i], Val(N))

@@ -20,37 +20,37 @@ struct PolySpectral{N, P, T <: NTuple{N}, F <: Number, P0} <: ComradeBase.Freque
     freq0::F
     p0::P0
 
-    # user includes model parameters in the definition of PolySpectral: intended for geometric model implementation
     function PolySpectral(param, index::NTuple{N}, freq0::Number, p0 = zero(param)) where {N}
         return new{N, typeof(param), typeof(index), typeof(freq0), typeof(p0)}(
             param, index, freq0, p0
         )
     end
 
-    # PolySpectral inherits parameters from MultiDomainImage: intended for ContinuousImage implementation
-    function PolySpectral(index::NTuple{N}, freq0::Number, p0 = nothing) where {N}
+    # PolySpectral inherits parameters from MultiDomainImage: ContinuousImage implementation
+    function PolySpectral(index::NTuple{N}, freq0::Number, p0 = 0) where {N}
         return new{N, typeof(nothing), typeof(index), typeof(freq0), typeof(p0)}(
             nothing, index, freq0, p0
         )
     end
 end
 
-# function for PolySpectral to inherit the image parameters from MultiDomainImage
-setdomainparam(d::PolySpectral, param) = PolySpectral(param, d.index, d.freq0, d.p0)
+# functionality for PolySpectral to inherit the image parameters from MultiDomainImage
+# create array of PolySpectral objects of size and parameters equal to the image
+setdomainparam(d::PolySpectral, p) = PolySpectral(p, d.index, d.freq0, d.p0)
+function setdomainparam(d::PolySpectral, params::AbstractArray) # spatially varying spectral params
+    return map(CartesianIndices(params)) do ind
+        PolySpectral(params[ind], _getindices(d.index, ind), d.freq0, d.p0)
+    end
+end
 
 # version of PolySpectral where index is a single number
 # turns index into a tuple so the rest of the code works
-function PolySpectral(param, index::Number, freq0, p0 = zero(param)) 
+function PolySpectral(param, index::Number, freq0::Number, p0 = zero(param)) 
     return PolySpectral(param, (index,), freq0, p0)
 end
 
-# version of PolySpectral which evaluates the expression at a given frequency
-function (spec::PolySpectral{N})(frtuple::@NamedTuple{Fr::Float64}) where {N}
-    ref_freq = build_reference_frequency(spec, frtuple.Fr)
-    val = build_spectral(spec.param, spec.index, ref_freq, spec.p0)
-    return val
-end
-
+# version of PolySpectral which is a function that evaluates the expression at a given frequency
+(spec::PolySpectral)(p) = build_param(spec, p)
 
 # poly spectral reference frequency parameterization: one for each frequency
 function build_reference_frequency(model::PolySpectral, freqlist::AbstractVector)
@@ -62,17 +62,10 @@ function build_reference_frequency(model::PolySpectral, freq::Number)
 end
 
 # spectral model expansion
-@fastmath function build_spectral(param, index::NTuple{N}, ref_freq, p0) where {N, M<:PolySpectral}
-    arg = reduce(+, ntuple(n -> @inbounds(index[n]) * ref_freq^n, Val(N)))
-    return param * exp(arg) + p0
-end
-
-
-
-# use build_param for geometric model implementation
-function build_param(spec::PolySpectral, p)
+function build_param(spec::PolySpectral{N}, p) where {N}
     ref_freq = build_reference_frequency(spec, p.Fr)
-    return map(val ->  @inline build_spectral(val, index, ref_freq, spec.p0), spec.param) # dispatch to apply the spectral model
+    arg = reduce(+, ntuple(n -> @inbounds(spec.index[n]) * ref_freq^n, Val(N)))
+    return spec.param * exp(arg) + spec.p0
 end
 
 const TaylorSpectral = PolySpectral
