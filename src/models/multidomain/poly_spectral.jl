@@ -27,7 +27,7 @@ struct PolySpectral{N, P, T <: NTuple{N}, F <: Number, P0} <: ComradeBase.Freque
     end
 
     # PolySpectral inherits parameters from MultiDomainImage: ContinuousImage implementation
-    function PolySpectral(index::NTuple{N}, freq0::Number, p0 = 0) where {N}
+    function PolySpectral(index::NTuple{N}, freq0::Number, p0 = 0.0) where {N}
         return new{N, typeof(nothing), typeof(index), typeof(freq0), typeof(p0)}(
             nothing, index, freq0, p0
         )
@@ -52,20 +52,11 @@ end
 # version of PolySpectral which is a function that evaluates the expression at a given frequency
 (spec::PolySpectral)(p) = build_param(spec, p)
 
-# poly spectral reference frequency parameterization: one for each frequency
-function build_reference_frequency(model::PolySpectral, freqlist::AbstractVector)
-    return map(freq -> log(freq/model.freq0), freqlist)
-end
-
-function build_reference_frequency(model::PolySpectral, freq::Number)
-    return log(freq/model.freq0)
-end
-
 # spectral model expansion
 function build_param(spec::PolySpectral{N}, p) where {N}
-    ref_freq = build_reference_frequency(spec, p.Fr)
-    arg = reduce(+, ntuple(n -> @inbounds(spec.index[n]) * ref_freq^n, Val(N)))
-    return spec.param * exp(arg) + spec.p0
+    x = log(p.Fr/ spec.freq0)
+    arg = reduce(+, ntuple(n -> @inbounds(spec.index[n]) * x^n, Val(N)))
+    return spec.param .* exp.(arg) .+ spec.p0
 end
 
 const TaylorSpectral = PolySpectral
