@@ -1,10 +1,10 @@
 export MultiDomainImage, JointDomain
-import ComradeBase: imagepixels, NoHeader, FrequencyParams, DomainParams, allocate_imgmap
+import ComradeBase: imagepixels, NoHeader, FrequencyParams, DomainParams, allocate_imgmap, build_param
 include("poly_spectral.jl")
 
 ### general multidomain stuffs ###
 
-@docs """
+@doc """
     MultiDomainImage(imgmodel, domain)
     MultiDomainImage(imgmodel, domainarr)
 
