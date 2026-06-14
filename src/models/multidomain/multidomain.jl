@@ -1,58 +1,55 @@
-export MultiDomain, DomainList
-import ComradeBase: imagepixels, NoHeader, build_param, FrequencyParams, DomainParams
+export MultiDomainImage, DomainList
+import ComradeBase: imagepixels, NoHeader, FrequencyParams, DomainParams, allocate_imgmap
 include("poly_spectral.jl")
 
 ### general multidomain stuffs ###
 
 """
-    MultiDomain
+    MultiDomainImage
 
 Represents an image model evaluated over multiple domains (frequency, time).
 Enables Multifrequency or Time Domain imaging.
 Domain order here doesn't matter - the evaluation order is defined by the grid.
 """
-struct MultiDomain{I<:ContinuousImage, D1<:DomainParams, D2<:DomainParams} <: AbstractModel
+struct MultiDomainImage{I<:ContinuousImage, D1<:DomainParams, D2<:DomainParams} <: AbstractModel
     imgmodel::I
     domain1::D1
     domain2::D2
 
-    function MultiDomain(imgmodel::I, domain1::D1, domain2::D2) where {I<:ContinuousImage, D1<:DomainParams, D2<:DomainParams}
-        return new{I, D1, D2}(imgmodel, domain1, domain2)
+    function MultiDomainImage(imgmodel::I, domain1::D1, domain2::D2) where {I<:ContinuousImage, D1<:DomainParams, D2<:DomainParams}
+        d1 = setdomainparam(domain1, imgmodel)
+        d2 = setdomainparam(domain2, imgmodel)
+        return new{I, typeof(d1), typeof(d2)}(imgmodel, d1, d2)
     end
 end
 
 struct EmptyDomain <: ComradeBase.DomainParams{Nothing} end
 
-function MultiDomain(imgmodel::I, domain::D) where {I<:ContinuousImage, D<:DomainParams}
-    return MultiDomain(imgmodel, domain, EmptyDomain())
+setdomainparam(d::EmptyDomain, param) = d
+
+
+function MultiDomainImage(imgmodel::I, domain::D) where {I<:ContinuousImage, D<:DomainParams}
+    return MultiDomainImage(imgmodel, domain, EmptyDomain())
 end
 
 # required model definitions
-visanalytic(::MultiDomain{I}) where {I} = NotAnalytic()
-imanalytic(::MultiDomain{I}) where {I} = imanalytic(I)
-radialextent(::MultiDomain{I}) where {I} = radialextent(I)
-flux(::MultiDomain{I}) where {I} = flux(I)
-ispolarized(::MultiDomain{I}) where {I} = ispolarized(I)
+visanalytic(::MultiDomainImage{I}) where {I} = NotAnalytic()
+imanalytic(::MultiDomainImage{I}) where {I} = imanalytic(I)
+radialextent(::MultiDomainImage{I}) where {I} = radialextent(I)
+flux(::MultiDomainImage{I}) where {I} = flux(I)
+ispolarized(::MultiDomainImage{I}) where {I} = ispolarized(I)
 
-function intensitymap_numeric(md::MultiDomain{<:ContinuousImage},imggrid::RectiGrid)
-    mdimg = allocate_multidomain_image(md, imggrid) # allocate result: multidomain image
+function intensitymap_numeric(md::MultiDomainImage{<:ContinuousImage},imggrid::RectiGrid)
+    mdimg = allocate_imgmap(md.imgmodel, imggrid) # allocate result: multidomain image
 
     # apply domain models to the multidomain image
-    mdimg = build_param(mdimg, md.domain1, imggrid) # apply first domain model
-    mdimg = build_param(mdimg, md.domain2, imggrid) # apply second domain model
+    apply_domain!(mdimg, md.domain1, imggrid) # apply first domain model
+    apply_domain!(mdimg, md.domain2, imggrid) # apply second domain model
 
     return mdimg
 end
 
-# allocate 3D or 4D image cube to hold images at each frequency and/or time
-function allocate_multidomain_image(m::MultiDomain{<:ContinuousImage}, imggrid::RectiGrid)
-    baseimgdata = parent(m.imgmodel.img)
-    n = map(length, dims(imggrid))[3:end] # grabbing number of frequencies and times
-    multidomain_data = repeat(baseimgdata, 1, 1, n...) # repeat base image for each frequency and/or time combination
-    return IntensityMap(multidomain_data, imggrid)
-end
-
-function visibilitymap_numeric(md::MultiDomain{<:ContinuousImage},
+function visibilitymap_numeric(md::MultiDomainImage{<:ContinuousImage},
                                grid::AbstractFourierDualDomain)
     checkspatialgrid(axisdims(md.imgmodel), grid.imgdomain) # compare image dimensions to spatial dimensions of data cube
     mdimg = intensitymap_numeric(md, grid.imgdomain) # apply the spectral and/or time models to the image data
@@ -68,7 +65,7 @@ function checkspatialgrid(imgdims, grid)
 end
 
 # if 2nd domain doesn't exist, do nothing and return the input
-function build_param(mdimg, domain::EmptyDomain, imggrid::RectiGrid)
+function apply_domain!(mdimg, domain::EmptyDomain, imggrid::RectiGrid)
     return mdimg
 end
 
@@ -188,13 +185,8 @@ end
 #    return build_spectral(model.param, model.index, lf, model.p0, typeof(model))
 #end
 
-
-@fastmath @inline function build_param(mdimg::IntensityMap, model::M, imggrid::RectiGrid) where {M<:FrequencyParams{<:AbstractArray}}
-    return build_param!(mdimg, model, imggrid)
-end
-
-# applying the spectral expansion
-@fastmath @inline function build_param!(mdimg::IntensityMap, specmodel::S, imggrid::RectiGrid) where {S<:FrequencyParams}
+# applying the spectral expansion to ContinuousImage
+@fastmath @inline function apply_domain!(mdimg::IntensityMap, specmodel::S, imggrid::RectiGrid) where {S<:FrequencyParams}
     mp0 = specmodel.p0 # initial spectral model parameters
 
     # builds a N-length tuple holding the reference frequency parameterization for all frequencies
@@ -205,7 +197,7 @@ end
     spatialinds = CartesianIndices((axes(mdimg, 1), axes(mdimg, 2))) # getting spatial indices of image
 
     # loop over frequencies
-    for i in axes(mdimg, frdim)
+    @trace track_numbers=false for i in axes(mdimg, frdim)
         # view the data associated with each frequency
         frslice = selectdim(mdimg, frdim, i) # axes are (X,Y,Ti) or (X,Y)
         ref_freq = ref_freqs[i] # get reference frequency parameterization
@@ -215,7 +207,7 @@ end
             index = _getindices(specmodel.index, pixind) # for each pixel, grab the corresponding spectral parameters
             pixfrslice = @view frslice[pixind, :] # grabbing the image values at that pixel & frequency
             # loop over time dimension (if it exists) to calculate spectral expansion on the image
-            map!(val ->  @inline build_spectral(val, index, ref_freq, mp0, typeof(specmodel)), pixfrslice) # dispatch to apply the spectral model
+            map!(val ->  @inline build_spectral(val, index, ref_freq, mp0), pixfrslice, pixfrslice) # dispatch to apply the spectral model
         end
     end
 
