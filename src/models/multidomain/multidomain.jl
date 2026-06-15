@@ -118,18 +118,17 @@ end
 function intensitymap_numeric(md::MultiDomainImage,imggrid::RectiGrid)
     mdimg = allocate_imgmap(md.imgmodel, imggrid) # allocate result: multidomain image cube
 
-    # apply domain model(s) to the image
-    apply_domain!(mdimg, md.domainarr, imggrid)
+    apply_domain!(mdimg, md.domainarr, imggrid) # apply domain model(s) to the image
 
     return mdimg
 end
 
 @inline function apply_domain!(mdimg::IntensityMap, domainarr::AbstractArray, grid::AbstractArray)
-    # loop over spatial indices in the image
+    # loop over all points in the multidomain grid
     @trace track_numbers=false for gridind in CartesianIndices(mdimg)
-        ind = Tuple(gridind)
-        spatialind = CartesianIndex(ind[1], ind[2])
-        mdimg[gridind] = build_param(domainarr[spatialind], grid[gridind])
+        ind = Tuple(gridind) # grabbing spatial index for each point in the grid
+        spatialind = CartesianIndex(ind[1], ind[2]) # for grabbing the right spectral parameters at that point
+        mdimg[gridind] = build_param(domainarr[spatialind], grid[gridind]) 
     end
 
     return mdimg
