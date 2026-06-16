@@ -611,7 +611,7 @@ end
         end
     end
 
-    @testset "PolySpectral Array" begin
+    @testset "PolySpectral Array" begin # test implementation of build_param and build_param!
         g = imagepixels(10.0, 10.0, 64, 64)
         base = rand(64, 64)
         indices = (ones(64, 64), zeros(64, 64))
@@ -619,5 +619,10 @@ end
         @test ComradeBase.build_param(ps, (; Fr = 230.0e9)) ≈ base
         @test ComradeBase.build_param(ps, (; Fr = 230.0e9 * 2)) ≈ base .* 2.0
         @test ComradeBase.build_param(ps, (; Fr = 230.0e9 / 2)) ≈ base .* inv(2)
+
+        bimg = IntensityMap(base,g)
+        @test VLBISkyModels.build_param!(bimg, ps, (; Fr = 230.0e9)) ≈ bimg
+        @test VLBISkyModels.build_param!(bimg, ps, (; Fr = 230.0e9 * 2)) ≈ bimg .* 2.0
+        @test VLBISkyModels.build_param!(bimg, ps, (; Fr = 230.0e9 / 2)) ≈ bimg .* inv(2)
     end
 end

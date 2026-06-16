@@ -1,4 +1,4 @@
-export PolySpectral, TaylorSpectral
+export PolySpectral, TaylorSpectral, build_param, build_param!
 import ComradeBase: build_param
 
 @doc """
@@ -14,49 +14,54 @@ import ComradeBase: build_param
     `N`=1 corresponds to spectral index, `N`=2 corresponds to spectral curvature, etc.
     If `index` is a `<:Number` then the expansion is of order 1.
     """
-struct PolySpectral{N, P, T <: NTuple{N}, F <: Number, P0} <: ComradeBase.FrequencyParams{P}
-    param::P
+struct PolySpectral{N, P, T <: NTuple{N}, F <: Number, P0} <: ComradeBase.FrequencyParams{Any}
+    params::P
     index::T
     freq0::F
     p0::P0
-
-    function PolySpectral(param, index::NTuple{N}, freq0::Number, p0 = zero(param)) where {N}
-        return new{N, typeof(param), typeof(index), typeof(freq0), typeof(p0)}(
-            param, index, freq0, p0
-        )
-    end
-
-    # PolySpectral inherits parameters from MultiDomainImage: ContinuousImage implementation
-    function PolySpectral(index::NTuple{N}, freq0::Number, p0 = 0.0) where {N}
-        return new{N, typeof(nothing), typeof(index), typeof(freq0), typeof(p0)}(
-            nothing, index, freq0, p0
-        )
-    end
 end
 
-# functionality for PolySpectral to inherit the image parameters from MultiDomainImage
-# create array of PolySpectral objects of size and parameters equal to the image
-setdomainparam(d::PolySpectral, p) = PolySpectral(p, d.index, d.freq0, d.p0)
-function setdomainparam(d::PolySpectral, params::AbstractArray) # spatially varying spectral params
-    return map(CartesianIndices(params)) do ind
-        PolySpectral(params[ind], _getindices(d.index, ind), d.freq0, d.p0)
-    end
+# feed in a single params: geometric modeling
+function PolySpectral(params::Number, index::NTuple{N}, freq0::Number, p0 = zero(params)) where {N}
+    return PolySpectral{N, typeof(params), typeof(index), typeof(freq0), typeof(p0)}(params, index, freq0, p0)
 end
 
-# version of PolySpectral where index is a single number
-# turns index into a tuple so the rest of the code works
-function PolySpectral(param, index::Number, freq0::Number, p0 = zero(param)) 
-    return PolySpectral(param, (index,), freq0, p0)
+# feed in an image for params: imaging
+function PolySpectral(params::AbstractArray, index::NTuple{N}, freq0::Number, p0 = zero(params)) where {N}
+    return MultiDomainModel(params, PolySpectral(index, freq0, p0))
 end
 
-# version of PolySpectral which is a function that evaluates the expression at a given frequency
-(spec::PolySpectral)(p) = build_param(spec, p)
+# don't feed in params: imaging
+function PolySpectral(index::NTuple{N}, freq0::Number, p0 = 0.) where {N}
+    return PolySpectral{N, Nothing, typeof(index), typeof(freq0), typeof(p0)}(nothing, index, freq0, p0)
+end
+
+# wrap index in tuples
+PolySpectral(params::AbstractArray, index::Number, freq0::Number, p0 = zero(params)) = PolySpectral(params, (index,), freq0, p0)
+PolySpectral(params::Number, index::Number, freq0::Number, p0 = zero(params)) = PolySpectral(params, (index,), freq0, p0)
+PolySpectral(index::Number, freq0::Number, p0 = 0.0) = PolySpectral((index,), freq0, p0)
 
 # spectral model expansion
-function build_param(spec::PolySpectral{N}, p) where {N}
-    x = log(p.Fr/ spec.freq0)
-    arg = reduce(+, ntuple(n -> @inbounds(spec.index[n]) * x^n, Val(N)))
-    return spec.param .* exp.(arg) .+ spec.p0
+function arg_expand(domain::PolySpectral{N}, p) where {N}
+    x = log(p.Fr / domain.freq0)
+    return reduce(+, ntuple(n -> @inbounds(domain.index[n]) * x^n, Val(N)))
+end
+
+# if param doesn't exist and build_param is called on PolySpectral
+function ComradeBase.build_param(domain::PolySpectral{N, Nothing}, p) where {N}
+    arg = arg_expand(domain, p)
+    return exp(arg) + domain.p0 
+end
+
+# if param does exist and build_param is called on PolySpectral
+function ComradeBase.build_param(domain::PolySpectral{N}, p) where {N}
+    return build_param!(domain.params, domain, p)
+end
+
+# if unrolled via MultiDomainModel for multidomain imaging
+function build_param!(param, domain::PolySpectral{N}, p) where {N}
+    arg = arg_expand(domain, p)
+    return param .* exp.(arg) .+ domain.p0
 end
 
 const TaylorSpectral = PolySpectral
