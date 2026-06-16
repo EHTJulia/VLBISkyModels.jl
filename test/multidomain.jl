@@ -621,8 +621,196 @@ end
         @test ComradeBase.build_param(ps, (; Fr = 230.0e9 / 2)) ≈ base .* inv(2)
 
         bimg = IntensityMap(base,g)
-        @test VLBISkyModels.build_param!(bimg, ps, (; Fr = 230.0e9)) ≈ bimg
-        @test VLBISkyModels.build_param!(bimg, ps, (; Fr = 230.0e9 * 2)) ≈ bimg .* 2.0
-        @test VLBISkyModels.build_param!(bimg, ps, (; Fr = 230.0e9 / 2)) ≈ bimg .* inv(2)
+        bimg_orig = copy(bimg)
+        @test VLBISkyModels.build_param!(copy(bimg_orig), ps, (; Fr = 230.0e9)) ≈ bimg_orig
+        @test VLBISkyModels.build_param!(copy(bimg_orig), ps, (; Fr = 230.0e9 * 2)) ≈ bimg_orig .* 2.0
+        @test VLBISkyModels.build_param!(copy(bimg_orig), ps, (; Fr = 230.0e9 / 2)) ≈ bimg_orig .* inv(2)
+    end
+end
+
+
+@testset "MultiDomainParams" begin
+    ref = 230.0e9
+
+    @testset "Polyspectral constructing MultiDomainParams" begin
+        base = reshape(collect(1.0:6.0), 2, 3)
+        base_orig = copy(base)
+
+        α = reshape(collect(range(-1.0, 2.0; length = 6)), 2, 3)
+        β = reshape(collect(range(-0.25, 0.25; length = 6)), 2, 3)
+        p0 = reshape(collect(range(0.1, 0.6; length = 6)), 2, 3)
+
+        ps = PolySpectral(base, (α, β), ref, p0)
+
+        @test ps isa MultiDomainParams
+        @test ps.params ≈ base
+        @test length(ps.models) == 1
+        @test isnothing(first(ps.models).params)
+
+        model = first(ps.models)
+        @test model isa PolySpectral
+        @test isnothing(model.params)
+        @test model.index == (α, β)
+        @test model.freq0 == ref
+
+        p = (; Fr = 2 * ref)
+
+        x = log(p.Fr / ref)
+        arg = α .* x .+ β .* x^2
+        expected_out = base .* exp.(arg) .+ p0
+
+        out = ComradeBase.build_param(ps, p)
+
+        @test out ≈ expected_out
+        @test out !== base
+        @test base ≈ base_orig
+
+        # Returned output should not alias the stored base image.
+        out[1, 1] = -999.0
+        @test base[1, 1] == base_orig[1, 1]
+    end
+
+    @testset "PolySpectral build_param" begin
+        base = reshape(collect(1.0:32 * 32), 32, 32)
+        base_orig = copy(base)
+
+        α = reshape(collect(range(-1.0, 2.0; length = 32 * 32)), 32, 32)
+        β = reshape(collect(range(-0.25, 0.25; length = 32 * 32)), 32, 32)
+        p0 = reshape(collect(range(0.1, 1.0; length = 32 * 32)), 32, 32)
+
+        # Test param-provided PolySpectral path.
+        ps_param = PolySpectral(base, (α, β), ref, p0)
+        ps_noparam = PolySpectral((α, β), ref, p0)
+
+        p = (; Fr = 2 * ref)
+
+        x = log(p.Fr / ref)
+        arg = α .* x .+ β .* x^2
+
+        expected_param = base .* exp.(arg) .+ p0
+        expected_noparam = exp.(arg) .+ p0
+
+        # Test 2 -> 3 argument build_param conversion.
+        @test ps_param(p) ≈ ComradeBase.build_param(ps_param, p)
+        @test ps_noparam(p) ≈ ComradeBase.build_param(ps_noparam, p)
+
+        @test ps_param(p) ≈ expected_param
+        @test ps_noparam(p) ≈ expected_noparam
+
+        # Direct 3-argument non-mutating paths.
+        @test ComradeBase.build_param(nothing, ps_noparam, p) ≈ expected_noparam
+        @test ComradeBase.build_param(base, ps_noparam, p) ≈ expected_param
+        @test base ≈ base_orig
+
+        # Direct 3-argument mutating path.
+        out = copy(base)
+        ret = VLBISkyModels.build_param!(out, ps_noparam, p)
+
+        @test ret === out
+        @test out ≈ expected_param
+        @test base ≈ base_orig
+
+        # Mutating path should transform the current first argument.
+        current = fill(42.0, size(base))
+        current_orig = copy(current)
+
+        ret_current = VLBISkyModels.build_param!(current, ps_noparam, p)
+
+        @test ret_current === current
+        @test current ≈ current_orig .* exp.(arg) .+ p0
+
+        # Test scalar param path.
+        ps_scalar = PolySpectral(1.0, 1.0, ref, 1.0)
+        scalar_expected = 1.0 * exp(1.0 * log(2.0)) + 1.0
+
+        @test ComradeBase.build_param(ps_scalar, p) ≈ scalar_expected
+        @test ComradeBase.build_param(1.0, ps_scalar, p) ≈ scalar_expected
+        @test VLBISkyModels.build_param!(1.0, ps_scalar, p) ≈ scalar_expected
+        @test ps_scalar(p) ≈ scalar_expected
+    end
+
+    @testset "MultiDomainParams recursion" begin
+        ref = 230.0e9
+        p = (; Fr = 2ref)
+
+        base = [1.0 2.0; 3.0 4.0]
+
+        # At Fr = 2ref:
+        # m1 applies x -> 2x + 1
+        # m2 applies x -> 3x + 10
+        m1 = PolySpectral((fill(1.0, size(base)),), ref, fill(1.0, size(base)))
+        m2 = PolySpectral((fill(log2(3.0), size(base)),), ref, fill(10.0, size(base)))
+
+        md = MultiDomainParams(base, m1, m2)
+
+        expected_forward = 3 .* (2 .* base .+ 1) .+ 10
+        expected_reverse = 2 .* (3 .* base .+ 10) .+ 1
+
+        # Non-mutating recursion should apply m1, then m2.
+        out = ComradeBase.build_param(md, p)
+
+        @test out ≈ expected_forward
+        @test !(out ≈ expected_reverse)
+
+        # Mutating recursion should transform the current value passed in.
+        buf = copy(base)
+        ret = VLBISkyModels.build_param!(buf, md, p)
+
+        @test ret === buf
+        @test buf ≈ expected_forward
+        @test !(buf ≈ expected_reverse)
+
+        # Prove build_param! is mutating the first argument.
+        buf2 = fill(42.0, size(base))
+        VLBISkyModels.build_param!(buf2, md, p)
+
+        expected_from_current = 3 .* (2 .* fill(42.0, size(base)) .+ 1) .+ 10
+        @test buf2 ≈ expected_from_current
+    end
+
+    @testset "MultiDomainImage and imagepixels constructors" begin
+        ref = 230.0e9
+
+        @testset "MultiDomainImage wraps model and domains" begin
+            dom = PolySpectral((1.0,), ref)
+            md = MultiDomainImage(Gaussian(), dom)
+
+            @test md isa MultiDomainParams
+            @test md.params isa Gaussian
+            @test md.models == (dom,)
+        end
+
+        @testset "imagepixels with one extra dimension" begin
+            fr = Fr([230.0e9, 345.0e9])
+            g = imagepixels(10.0, 20.0, 4, 5, fr)
+
+            @test length(g.X) == 4
+            @test length(g.Y) == 5
+            @test length(g.Fr) == 2
+            @test collect(g.Fr) == [230.0e9, 345.0e9]
+        end
+
+        @testset "imagepixels with two extra dimensions preserves order" begin
+            fr = Fr([230.0e9, 345.0e9])
+            ti = Ti([1.0, 2.0, 3.0])
+
+            g_fr_ti = imagepixels(10.0, 20.0, 4, 5, fr, ti)
+            g_ti_fr = imagepixels(10.0, 20.0, 4, 5, ti, fr)
+
+            @test length(g_fr_ti.Fr) == 2
+            @test length(g_fr_ti.Ti) == 3
+            @test length(g_ti_fr.Ti) == 3
+            @test length(g_ti_fr.Fr) == 2
+
+            @test dims(g_fr_ti)[3] != dims(g_ti_fr)[3]
+            @test dims(g_fr_ti)[4] != dims(g_ti_fr)[4]
+        end
+
+        @testset "imagepixels rejects nonpositive image sizes" begin
+            fr = Fr([230.0e9, 345.0e9])
+
+            @test_throws AssertionError imagepixels(10.0, 20.0, 0, 5, fr)
+            @test_throws AssertionError imagepixels(10.0, 20.0, 4, 0, fr)
+        end
     end
 end

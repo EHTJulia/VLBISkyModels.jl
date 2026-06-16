@@ -1,4 +1,4 @@
-export MultiDomainImage, MultiDomainModel, build_param, build_param!
+export MultiDomainImage, MultiDomainParams, build_param, build_param!
 import ComradeBase: imagepixels, NoHeader, DomainParams, allocate_imgmap, build_param
 export build_param, build_param!
 include("poly_spectral.jl")
@@ -13,58 +13,75 @@ imgmodel is a ContinuousImage. The domains are user-defined domain models.
 Represent an image model evaluated over one or more additional domains, such as
 frequency or time.
 
-Convenience function for multidomain images to get wrapped in MultiDomainModel.
+Convenience function for multidomain images to get wrapped in MultiDomainParams.
 """
 function MultiDomainImage(imgmodel, domains...) # convenience function, wrap trailing argument into a tuple
-    return MultiDomainModel{typeof(imgmodel), typeof(domains)}(imgmodel, domains)
+    return MultiDomainParams(imgmodel, domains)
 end
 
-struct MultiDomainModel{P, D<:Tuple{Vararg{<:DomainParams}}} <: AbstractModel
+struct MultiDomainParams{P, M<:Tuple{Vararg{<:DomainParams}}} <: DomainParams{Any}
    params::P # base model parameters shared by all domains
-   domains::D  # tuple of domains: contains the domain-specific parameters
+   models::M  # tuple of domains: contains the domain-specific parameters
 
-    function MultiDomainModel(params, domains...) # wrap trailing argument into a tuple
+    function MultiDomainParams(params, domains...) # wrap trailing argument into a tuple
         return new{typeof(params), typeof(domains)}(params, domains)
     end
 
-    function MultiDomainModel(params, domains::Tuple) # already pre-wrapped in a tuple
+    function MultiDomainParams(params, domains::Tuple) # already pre-wrapped in a tuple
         return new{typeof(params), typeof(domains)}(params, domains)
     end
 end
 
-(md::MultiDomainModel)(p) = build_param(md, p)
+(md::MultiDomainParams)(p) = build_param(md, p)
 
-function ComradeBase.build_param(model::MultiDomainModel, p)
-    params = model.params
-    return build_param!(params, model, p)
+# puts out 3 argument build_param which loops recursively through models
+function build_param!(params, md::MultiDomainParams, p)
+    build_param!(params, first(md.models), p)
+    return build_param!(params, MultiDomainParams(params, Base.tail(md.models)), p)
 end
 
-function build_param!(params, model::MultiDomainModel, p)
-    for domain in model.domains # e.g. PolySpectral
-        # recursively dispatch to the build_param! implementation for each domain
-        params = build_param!(params, domain, p)
-    end
+# end the recursive loop
+function build_param!(params, md::MultiDomainParams{P, Tuple{}}, p) where {P}
     return params
 end
 
-# required model definitions
-visanalytic(::MultiDomainModel{I}) where {I} = NotAnalytic()
-imanalytic(::MultiDomainModel{I}) where {I} = imanalytic(I)
-radialextent(::MultiDomainModel{I}) where {I} = radialextent(I)
-flux(::MultiDomainModel{I}) where {I} = flux(I)
-ispolarized(::MultiDomainModel{I}) where {I} = ispolarized(I)
+# build_param!(md::MultiDomainParams, p) = build_param!(mp.params, md, p)
+function ComradeBase.build_param(md::MultiDomainParams, p)
+    return ComradeBase.build_param(md.params, md, p)
+end
 
-function intensitymap_numeric(md::MultiDomainModel,imggrid::RectiGrid)
+function build_param(params, md::MultiDomainParams, p)
+    newparams = build_param(params, first(md.models), p)
+    return build_param(newparams, MultiDomainParams(newparams, Base.tail(md.models)), p)
+end
+
+function build_param(params, md::MultiDomainParams{P, Tuple{}}, p) where {P}
+    return params
+end
+
+# feed in an image for params: imaging
+function PolySpectral(params::AbstractArray, index::NTuple{N}, freq0::Number, p0 = zero(params)) where {N}
+    return MultiDomainParams(params, PolySpectral(index, freq0, p0))
+end
+
+# required model definitions
+visanalytic(::MultiDomainParams{I}) where {I} = NotAnalytic()
+imanalytic(::MultiDomainParams{I}) where {I} = imanalytic(I)
+radialextent(::MultiDomainParams{I}) where {I} = radialextent(I)
+flux(::MultiDomainParams{I}) where {I} = flux(I)
+ispolarized(::MultiDomainParams{I}) where {I} = ispolarized(I)
+
+function intensitymap_numeric(md::MultiDomainParams,imggrid::RectiGrid)
     mdimg = allocate_imgmap(md.params, imggrid) # allocate result: multidomain image cube
 
     # loop over all points in the multidomain grid
     @trace track_numbers=false for ind in CartesianIndices(mdimg)
-        mdimg[ind] = ComradeBase.build_param(md, imggrid[ind]) 
+        build_param!(Ref(mdimg, ind), md, imggrid[ind]) # ComradeBase.build_param!(@view mdimg[ind], md, imggrid[ind]) 
     end
     return mdimg
 end
 
-function visibilitymap_numeric(md::MultiDomainModel{<:ContinuousImage},
+function visibilitymap_numeric(md::MultiDomainParams{<:ContinuousImage},
                                grid::AbstractFourierDualDomain)
     checkspatialgrid(axisdims(md.imgmodel), grid.imgdomain) # compare image dimensions to spatial dimensions of data cube
     mdimg = intensitymap_numeric(md, grid.imgdomain) # apply the spectral and/or time models to the image data
@@ -85,7 +102,7 @@ end
 
     ---
 
-    **VLBISkyModels extension:**
+    **VLBISkyParamss extension:**
 
         imagepixels(fovx, fovy, nx, ny, d1, d2, x0=0, y0=0; posang=0, executor=Serial(), header=NoHeader())
 
