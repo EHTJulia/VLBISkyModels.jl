@@ -620,7 +620,7 @@ end
         @test ComradeBase.build_param(ps, (; Fr = 230.0e9 * 2)) ≈ base .* 2.0
         @test ComradeBase.build_param(ps, (; Fr = 230.0e9 / 2)) ≈ base .* inv(2)
 
-        bimg = IntensityMap(base,g)
+        bimg = IntensityMap(base, g)
         bimg_orig = copy(bimg)
         @test VLBISkyModels.build_param!(copy(bimg_orig), ps, (; Fr = 230.0e9)) ≈ bimg_orig
         @test VLBISkyModels.build_param!(copy(bimg_orig), ps, (; Fr = 230.0e9 * 2)) ≈ bimg_orig .* 2.0
@@ -669,7 +669,7 @@ end
     end
 
     @testset "PolySpectral build_param" begin
-        base = reshape(collect(1.0:32 * 32), 32, 32)
+        base = reshape(collect(1.0:(32 * 32)), 32, 32)
         base_orig = copy(base)
 
         α = reshape(collect(range(-1.0, 2.0; length = 32 * 32)), 32, 32)

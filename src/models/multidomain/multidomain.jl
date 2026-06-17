@@ -39,9 +39,9 @@ function MultiDomainImage(cimg::ContinuousImage, domains...)
     return ContinuousImage(mdp, spatialdims(cimg.grid), cimg.kernel)
 end
 
-struct MultiDomainParams{P, M<:Tuple{Vararg{<:DomainParams}}} <: DomainParams{P}
-   params::P # base model parameters shared by all domains
-   models::M  # tuple of domains: contains the domain-specific parameters
+struct MultiDomainParams{P, M <: Tuple{Vararg{<:DomainParams}}} <: DomainParams{P}
+    params::P # base model parameters shared by all domains
+    models::M  # tuple of domains: contains the domain-specific parameters
 
     function MultiDomainParams(params, domains...) # wrap trailing argument into a tuple
         return new{typeof(params), typeof(domains)}(params, domains)
@@ -104,76 +104,77 @@ end
 
 # extending image pizels to time AND frequency to build the multidomain RectiGrid
 @doc """
-    $(@doc ComradeBase.imagepixels)
+$(@doc ComradeBase.imagepixels)
 
-    ---
+---
 
-    **VLBISkyParamss extension:**
+**VLBISkyParamss extension:**
 
-        imagepixels(fovx, fovy, nx, ny, d1, d2, x0=0, y0=0; posang=0, executor=Serial(), header=NoHeader())
+    imagepixels(fovx, fovy, nx, ny, d1, d2, x0=0, y0=0; posang=0, executor=Serial(), header=NoHeader())
 
-    Extends `imagepixels` for multidomain (multifrequency/multitime) image cubes.
-    `d1` and `d2` are extra dimension lists appended to the spatial grid after X and Y.
-    Their order determines the index ordering of the output cube.
+Extends `imagepixels` for multidomain (multifrequency/multitime) image cubes.
+`d1` and `d2` are extra dimension lists appended to the spatial grid after X and Y.
+Their order determines the index ordering of the output cube.
 
-    - A frequency list is created with `Fr([...])`
-    - A time list is created with `Ti([...])`
+- A frequency list is created with `Fr([...])`
+- A time list is created with `Ti([...])`
 
-    Both must be subtypes of `DimensionalData.Dimensions.Dimension`.
+Both must be subtypes of `DimensionalData.Dimensions.Dimension`.
 
-    # Arguments
-    - `d1::D1`, `d2::D2`: extra dimensions (frequency or time lists)
-    - `x0`, `y0`: optional image center offsets (default `0`)
+# Arguments
+- `d1::D1`, `d2::D2`: extra dimensions (frequency or time lists)
+- `x0`, `y0`: optional image center offsets (default `0`)
 
-    # Examples
+# Examples
 
-    ```julia
-    julia> frlist = Fr([5, 6, 7])
-    julia> tlist  = Ti([8, 9, 0])
+```julia
+julia> frlist = Fr([5, 6, 7])
+julia> tlist  = Ti([8, 9, 0])
 
-    julia> fr_ti_grid = imagepixels(1, 1, 10, 10, frlist, tlist)
-    # Fr index comes before Ti
+julia> fr_ti_grid = imagepixels(1, 1, 10, 10, frlist, tlist)
+# Fr index comes before Ti
 
-    julia> ti_fr_grid = imagepixels(1, 1, 10, 10, tlist, frlist)
-    # Ti index comes before Fr
+julia> ti_fr_grid = imagepixels(1, 1, 10, 10, tlist, frlist)
+# Ti index comes before Fr
 
-    julia> fr_ti_grid != ti_fr_grid
-    true
-    ```
+julia> fr_ti_grid != ti_fr_grid
+true
+```
 
-    imagepixels(fovx, fovy, nx, ny, d1, x0=0, y0=0; posang=0, executor=Serial(), header=NoHeader())
+imagepixels(fovx, fovy, nx, ny, d1, x0=0, y0=0; posang=0, executor=Serial(), header=NoHeader())
 
-    Extends `imagepixels` for multidomain (multifrequency/multitime) image cubes.
-    `d1` is an extra dimension (time or frequency) appended to the spatial grid after X and Y.
+Extends `imagepixels` for multidomain (multifrequency/multitime) image cubes.
+`d1` is an extra dimension (time or frequency) appended to the spatial grid after X and Y.
 
-    - A frequency list is created with `Fr([...])`
-    - A time list is created with `Ti([...])`
+- A frequency list is created with `Fr([...])`
+- A time list is created with `Ti([...])`
 
-    Must be a subtype of `DimensionalData.Dimensions.Dimension`.
+Must be a subtype of `DimensionalData.Dimensions.Dimension`.
 
-    # Arguments
-    - `d1::D1`: extra dimension (frequency or time list)
-    - `x0`, `y0`: optional image center offsets (default `0`)
+# Arguments
+- `d1::D1`: extra dimension (frequency or time list)
+- `x0`, `y0`: optional image center offsets (default `0`)
 
-    # Examples
+# Examples
 
-    ```julia
-    julia> frlist = Fr([5, 6, 7])
-    julia> tlist  = Ti([8, 9, 0])
+```julia
+julia> frlist = Fr([5, 6, 7])
+julia> tlist  = Ti([8, 9, 0])
 
-    julia> fr_grid = imagepixels(1, 1, 10, 10, frlist)
-    # adding frequency dimension
+julia> fr_grid = imagepixels(1, 1, 10, 10, frlist)
+# adding frequency dimension
 
-    julia> ti_grid = imagepixels(1, 1, 10, 10, tlist)
-    # adding time dimension
-    ```
-    """
-function imagepixels(fovx::Real, fovy::Real, nx::Integer, ny::Integer,
+julia> ti_grid = imagepixels(1, 1, 10, 10, tlist)
+# adding time dimension
+```
+"""
+function imagepixels(
+        fovx::Real, fovy::Real, nx::Integer, ny::Integer,
         d1::D1, d2::D2,
         x0::Number = zero(fovx), y0::Number = zero(fovy);
         posang::Number = zero(fovx),
         executor = Serial(), header = NoHeader()
-    ) where {D<:DimensionalData.Dimensions.Dimension, D1<:D, D2<:D}
+    ) where {D <: DimensionalData.Dimensions.Dimension, D1 <: D, D2 <: D}
     @assert (nx > 0) && (ny > 0) "Number of pixels must be positive"
 
     psizex = fovx / nx
@@ -188,12 +189,13 @@ function imagepixels(fovx::Real, fovy::Real, nx::Integer, ny::Integer,
 end
 
 # extending imagepixels to time OR frequency to build multidomain RectiGrid
-function imagepixels(fovx::Real, fovy::Real, nx::Integer, ny::Integer,
+function imagepixels(
+        fovx::Real, fovy::Real, nx::Integer, ny::Integer,
         d1::D1,
         x0::Number = zero(fovx), y0::Number = zero(fovy);
         posang::Number = zero(fovx),
         executor = Serial(), header = NoHeader()
-    ) where {D1<:DimensionalData.Dimensions.Dimension}
+    ) where {D1 <: DimensionalData.Dimensions.Dimension}
     @assert (nx > 0) && (ny > 0) "Number of pixels must be positive"
 
     psizex = fovx / nx

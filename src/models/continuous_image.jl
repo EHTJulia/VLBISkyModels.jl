@@ -20,7 +20,7 @@ struct ContinuousImage{P, G, K} <: AbstractModel
     """
     Discrete representation of the image.
     """
-    params::P 
+    params::P
     """
     The image grid
     """
