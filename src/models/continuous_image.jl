@@ -210,17 +210,23 @@ end
 # The stored `grid` is the spatial (X, Y) grid; the full cube grid comes from the
 # image domain of the visibility grid passed to `visibilitymap`.
 
-# A "broadcasted" domain point: each extra (non-spatial) coordinate is reshaped into a
-# vector lying along its own cube axis, so that the `.`-broadcasts inside `build_param`
-# expand it into the full image cube in a single pass.
+# Shape with `len` on axis `i` and `1` elsewhere, e.g. `_axisshape(nfr, 3, Val(3)) = (1,1,nfr)`.
+@inline _axisshape(len::Int, i::Int, ::Val{Nd}) where {Nd} = ntuple(j -> j == i ? len : 1, Val(Nd))
+
+# Factor a grid's coordinates for broadcasting: a NamedTuple mapping each dimension name
+# to its coordinate vector reshaped onto that dimension's axis (e.g. `Fr -> (1, 1, nfr)`).
+# Passing this to `build_param` lets the spectral model broadcast the base image across the
+# extra `Fr`/`Ti` axes, materializing the whole cube in one pass. Written type-stably
+# (per-dimension `map`, `Val`-sized shapes, `basedim` for values) so it is allocation-light
+# and differentiable by Enzyme — the previous runtime-`getproperty`/`ntuple` form produced
+# a `Union` that broke Enzyme's type analysis.
 function _cubepoint(g::AbstractRectiGrid)
     ds = dims(g)
-    N = length(ds)
-    nms = ntuple(i -> name(ds[i + 2]), N - 2)
-    coords = ntuple(N - 2) do i
-        v = collect(getproperty(g, nms[i]))
-        shp = ntuple(j -> j == i + 2 ? length(v) : 1, N)
-        reshape(v, shp)
+    nd = Val(length(ds))
+    nms = map(name, ds)
+    coords = map(ds, ntuple(identity, nd)) do d, i
+        v = collect(ComradeBase.basedim(d))
+        reshape(v, _axisshape(length(v), i, nd))
     end
     return NamedTuple{nms}(coords)
 end
