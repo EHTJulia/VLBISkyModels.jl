@@ -1,4 +1,4 @@
-export ContinuousImage
+export ContinuousImage, spatialdims
 
 """
     ContinuousImage{A<:IntensityMap, P} <: AbstractModel
@@ -16,18 +16,22 @@ where `Iᵢⱼ` are the flux densities of the image `img` and κ is the intensit
 Note that if the image grid is the same as the grid passed to `intensitymap` then the discrete image 
 is used directly for efficiency.
 """
-struct ContinuousImage{A <: IntensityMap, P} <: AbstractModel
+struct ContinuousImage{P, G, K} <: AbstractModel
     """
     Discrete representation of the image.
     """
-    img::A
+    params::P 
+    """
+    The image grid
+    """
+    grid::G
     """
     Image kernel or pulse that transforms from the discrete image to a continuous one.
     """
-    kernel::P
+    kernel::K
 end
 
-make_map(cimg::ContinuousImage) = cimg.img
+make_map(cimg::ContinuousImage) = IntensityMap(cimg.params, cimg.grid)
 
 function Base.show(io::IO, img::ContinuousImage{A, P}) where {A, P}
     sA = split("$A", ",")[1]
@@ -41,6 +45,20 @@ end
 function ComradeBase.ispolarized(::Type{<:ContinuousImage{A}}) where {A <: IntensityMap{<:Number}}
     return NotPolarized()
 end
+# An image whose pixels are stored directly as an array
+function ComradeBase.ispolarized(::Type{<:ContinuousImage{A}}) where {A <: AbstractArray{<:StokesParams}}
+    return IsPolarized()
+end
+function ComradeBase.ispolarized(::Type{<:ContinuousImage{A}}) where {A <: AbstractArray{<:Number}}
+    return NotPolarized()
+end
+# A multidomain image whose pixels are described by a `DomainParams` (e.g. a frequency
+# or time model). The polarization is determined by the base parameter element type.
+function ComradeBase.ispolarized(::Type{<:ContinuousImage{A}}) where {A <: DomainParams}
+    return _ispol_paramtype(eltype(paramtype(A)))
+end
+@inline _ispol_paramtype(::Type{<:StokesParams}) = IsPolarized()
+@inline _ispol_paramtype(::Type{<:Number}) = NotPolarized()
 ComradeBase.flux(m::ContinuousImage) = flux(make_map(m)) * flux(m.kernel)
 
 function ComradeBase.stokes(cimg::ContinuousImage, v)
@@ -54,19 +72,21 @@ Base.size(m::ContinuousImage, i::Int) = size(make_map(m), i::Int)
 Base.firstindex(m::ContinuousImage) = firstindex(make_map(m))
 Base.lastindex(m::ContinuousImage) = lastindex(make_map(m))
 Base.eltype(::ContinuousImage{A, P}) where {A, P} = eltype(A)
+Base.eltype(::ContinuousImage{A}) where {A <: DomainParams} = eltype(paramtype(A))
 
 Base.getindex(img::ContinuousImage, args...) = getindex(make_map(img), args...)
 Base.axes(m::ContinuousImage) = axes(make_map(m))
-ComradeBase.domainpoints(m::ContinuousImage) = domainpoints(make_map(m))
-ComradeBase.axisdims(m::ContinuousImage) = axisdims(make_map(m))
+ComradeBase.domainpoints(m::ContinuousImage) = domainpoints(m.grid)
+ComradeBase.axisdims(m::ContinuousImage) = m.grid
 
 function ContinuousImage(img::IntensityMap, pulse::Pulse)
-    return ContinuousImage{typeof(img), typeof(pulse)}(img, pulse)
+    arr = baseimage(img)
+    g = axisdims(img)
+    return ContinuousImage{typeof(arr), typeof(g), typeof(pulse)}(arr, g, pulse)
 end
 
 function ContinuousImage(im::AbstractMatrix, g::AbstractRectiGrid, pulse)
-    img = IntensityMap(im, g)
-    return ContinuousImage(img, pulse)
+    return ContinuousImage{typeof(im), typeof(g), typeof(pulse)}(im, g, pulse)
 end
 
 function InterpolatedModel(
@@ -85,7 +105,17 @@ end
 visanalytic(::Type{<:ContinuousImage}) = NotAnalytic() # not analytic b/c we want to hook into FFT stuff
 imanalytic(::Type{<:ContinuousImage}) = IsAnalytic()
 
-radialextent(c::ContinuousImage) = maximum(values(fieldofview(c.img))) / 2
+radialextent(c::ContinuousImage) = maximum(values(fieldofview(spatialdims(c.grid)))) / 2
+
+"""
+    spatialdims(g::AbstractRectiGrid)
+    spatialdims(img::IntensityMap)
+
+Return the spatial (`X`, `Y`) sub-grid of a (possibly multidomain) grid or image,
+dropping any extra dimensions such as frequency (`Fr`) or time (`Ti`).
+"""
+spatialdims(g::AbstractRectiGrid) = rebuild(g; dims = dims(g)[1:2])
+spatialdims(img::IntensityMap) = spatialdims(axisdims(img))
 
 function support_ranges(img, p, rx, ry)
     dx, dy = pixelsizes(img)
@@ -112,7 +142,7 @@ end
 
 
 @inline function intensity_point(m::ContinuousImage, p)
-    @unpack_params img = m(p)
+    img = make_map(m)
     dx, dy = pixelsizes(axisdims(img))
     ms = stretched(m.kernel, dx, dy)
 
@@ -150,7 +180,7 @@ end
 # end
 
 function convolved(cimg::ContinuousImage, m::AbstractModel)
-    return ContinuousImage(cimg.img, convolved(cimg.kernel, m))
+    return ContinuousImage(cimg.params, cimg.grid, convolved(cimg.kernel, m))
 end
 convolved(cimg::AbstractModel, m::ContinuousImage) = convolved(m, cimg)
 
@@ -171,6 +201,69 @@ convolved(cimg::AbstractModel, m::ContinuousImage) = convolved(m, cimg)
     checkgrid(axisdims(m), imgdomain(grid))
     img = make_map(m)
     vis = applyft(forward_plan(grid), img)
+    return applypulse!(vis, m.kernel, grid)
+end
+
+# Multidomain (e.g. multifrequency/multitime) images. The `params` field is a
+# `DomainParams` (such as a `MultiDomainParams` or `PolySpectral`) that knows how to
+# materialize the spatial image at each point of the extra (`Fr`/`Ti`) dimensions.
+# The stored `grid` is the spatial (X, Y) grid; the full cube grid comes from the
+# image domain of the visibility grid passed to `visibilitymap`.
+
+# A "broadcasted" domain point: each extra (non-spatial) coordinate is reshaped into a
+# vector lying along its own cube axis, so that the `.`-broadcasts inside `build_param`
+# expand it into the full image cube in a single pass.
+function _cubepoint(g::AbstractRectiGrid)
+    ds = dims(g)
+    N = length(ds)
+    nms = ntuple(i -> name(ds[i + 2]), N - 2)
+    coords = ntuple(N - 2) do i
+        v = collect(getproperty(g, nms[i]))
+        shp = ntuple(j -> j == i + 2 ? length(v) : 1, N)
+        reshape(v, shp)
+    end
+    return NamedTuple{nms}(coords)
+end
+
+# Materialize the spatial image cube by evaluating the domain model `params` over the
+# whole cube grid `g` in a single broadcast (via `_cubepoint`). This is generic (any
+# `DomainParams` whose `build_param` is written with broadcasts works), allocation-light,
+# type stable, and traceable by Reactant — unlike a per-slice `mapslices`/scalar loop.
+function _paramcube(params::DomainParams, g::AbstractRectiGrid)
+    raw = build_param(params, _cubepoint(g))
+    sz = size(g)
+    size(raw) == sz && return raw
+    # A model need not depend on every extra dimension (e.g. a frequency-only model on a
+    # time+frequency grid); broadcast it up to the full cube shape.
+    cube = similar(raw, sz)
+    cube .= raw
+    return cube
+end
+
+function intensitymap_analytic(m::ContinuousImage{<:DomainParams}, dims::AbstractRectiGrid)
+    gspat = spatialdims(dims)
+    datacube = _paramcube(m.params, dims)
+    out = allocate_imgmap(m, dims)
+    # Per-frequency/time kernel convolution. This path is not part of the Reactant forward
+    # model (which uses `visibilitymap`), so a simple slice loop over preallocated `out`
+    # is fine and keeps it type stable.
+    @inbounds for k in CartesianIndices(axes(datacube)[3:end])
+        sl = ContinuousImage(view(datacube, :, :, k), gspat, m.kernel)
+        intensitymap_analytic!(IntensityMap(view(out, :, :, k), gspat), sl)
+    end
+    return out
+end
+
+function intensitymap_analytic!(img::IntensityMap, m::ContinuousImage{<:DomainParams})
+    copyto!(parent(img), intensitymap_analytic(m, axisdims(img)))
+    return nothing
+end
+
+function visibilitymap_numeric(m::ContinuousImage{<:DomainParams}, grid::FourierDualDomain)
+    gimg = imgdomain(grid)
+    checkgrid(axisdims(m), spatialdims(gimg))
+    mfimg = IntensityMap(_paramcube(m.params, gimg), gimg)
+    vis = applyft(forward_plan(grid), mfimg)
     return applypulse!(vis, m.kernel, grid)
 end
 

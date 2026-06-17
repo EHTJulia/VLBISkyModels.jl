@@ -6,20 +6,40 @@ include("poly_spectral.jl")
 ### general multidomain stuffs ###
 
 @doc """
-    MultiDomainImage(imgmodel, domain)
-    MultiDomainImage(imgmodel, domain1, domain2, ...)
+    MultiDomainImage(img::IntensityMap, kernel, domains...)
+    MultiDomainImage(cimg::ContinuousImage, domains...)
 
-imgmodel is a ContinuousImage. The domains are user-defined domain models.
-Represent an image model evaluated over one or more additional domains, such as
-frequency or time.
+Convenience constructor for a multidomain (e.g. multifrequency or multitime)
+[`ContinuousImage`](@ref).
 
-Convenience function for multidomain images to get wrapped in MultiDomainParams.
+The spatial image `img` (a 2D `IntensityMap`) provides the base parameters and the
+spatial `(X, Y)` grid, `kernel` is the image pulse, and `domains...` are one or more
+`DomainParams` models (such as [`PolySpectral`](@ref)) describing how the image varies
+across the extra domains.
+
+The result is a `ContinuousImage` whose `params` field is a [`MultiDomainParams`](@ref).
+When passed to `intensitymap` or `visibilitymap` over a grid with extra `Fr`/`Ti`
+dimensions the spatial image cube is materialized by evaluating the domain models at
+each frequency/time.
+
+# Example
+```julia
+base = IntensityMap(rand(64, 64), imagepixels(10.0, 10.0, 64, 64))
+dom  = PolySpectral((1.0,), 230.0e9)          # spectral index = 1
+cimg = MultiDomainImage(base, BSplinePulse{3}(), dom)
+```
 """
-function MultiDomainImage(imgmodel, domains...) # convenience function, wrap trailing argument into a tuple
-    return MultiDomainParams(imgmodel, domains)
+function MultiDomainImage(img::IntensityMap, kernel, domains...)
+    mdp = MultiDomainParams(parent(img), domains)
+    return ContinuousImage(mdp, spatialdims(img), kernel)
 end
 
-struct MultiDomainParams{P, M<:Tuple{Vararg{<:DomainParams}}} <: DomainParams{Any}
+function MultiDomainImage(cimg::ContinuousImage, domains...)
+    mdp = MultiDomainParams(cimg.params, domains)
+    return ContinuousImage(mdp, spatialdims(cimg.grid), cimg.kernel)
+end
+
+struct MultiDomainParams{P, M<:Tuple{Vararg{<:DomainParams}}} <: DomainParams{P}
    params::P # base model parameters shared by all domains
    models::M  # tuple of domains: contains the domain-specific parameters
 
@@ -34,16 +54,27 @@ end
 
 (md::MultiDomainParams)(p) = build_param(md, p)
 
-# puts out 3 argument build_param which loops recursively through models
-function build_param!(params, md::MultiDomainParams, p)
-    build_param!(params, first(md.models), p)
-    return build_param!(params, MultiDomainParams(params, Base.tail(md.models)), p)
+@doc """
+    build_param!(buffer, md::MultiDomainParams, p)
+
+In-place form of [`build_param`](@ref): transforms `buffer` through each model in
+`md.models` in turn and returns it.
+
+!!! warning "buffer is overwritten and is the seed"
+    The **first argument `buffer` is mutated in place** and is the *seed* of the
+    transformation. The stored base `md.params` is **not** read by this mutating path —
+    the caller is responsible for initializing `buffer` (e.g. with the base). In
+    particular, do **not** pass `md.params` itself as `buffer`, or the model's stored
+    base will be corrupted. Use the non-mutating `build_param(md, p)` (which seeds from
+    `md.params`) when you want a fresh result.
+"""
+function build_param!(buffer, md::MultiDomainParams, p)
+    build_param!(buffer, first(md.models), p)
+    return build_param!(buffer, MultiDomainParams(buffer, Base.tail(md.models)), p)
 end
 
 # end the recursive loop
-function build_param!(params, md::MultiDomainParams{P, Tuple{}}, p) where {P}
-    return params
-end
+build_param!(buffer, ::MultiDomainParams{P, Tuple{}}, p) where {P} = buffer
 
 # build_param!(md::MultiDomainParams, p) = build_param!(mp.params, md, p)
 function ComradeBase.build_param(md::MultiDomainParams, p)
@@ -55,45 +86,20 @@ function build_param(params, md::MultiDomainParams, p)
     return build_param(newparams, MultiDomainParams(newparams, Base.tail(md.models)), p)
 end
 
-function build_param(params, md::MultiDomainParams{P, Tuple{}}, p) where {P}
+function build_param(params, ::MultiDomainParams{P, Tuple{}}, p) where {P}
     return params
 end
 
-# feed in an image for params: imaging
-function PolySpectral(params::AbstractArray, index::NTuple{N}, freq0::Number, p0 = zero(params)) where {N}
-    return MultiDomainParams(params, PolySpectral(index, freq0, p0))
-end
-
-# required model definitions
-visanalytic(::Type{<:MultiDomainParams{I}}) where {I} = NotAnalytic()
-imanalytic(::Type{<:MultiDomainParams{I}}) where {I} = imanalytic(I)
-radialextent(::MultiDomainParams{I}) where {I} = radialextent(I)
-flux(::MultiDomainParams{I}) where {I} = flux(I)
-ispolarized(::Type{<:MultiDomainParams{I}}) where {I} = ispolarized(I)
-
-function intensitymap_numeric(md::MultiDomainParams,imggrid::RectiGrid)
-    mdimg = allocate_imgmap(md.params, imggrid) # allocate result: multidomain image cube
-
-    # loop over all points in the multidomain grid
-    @trace track_numbers=false for ind in CartesianIndices(mdimg)
-        build_param!(Ref(mdimg, ind), md, imggrid[ind]) # ComradeBase.build_param!(@view mdimg[ind], md, imggrid[ind]) 
-    end
-    return mdimg
-end
-
-function visibilitymap_numeric(md::MultiDomainParams{<:ContinuousImage},
-                               grid::AbstractFourierDualDomain)
-    checkspatialgrid(axisdims(md.imgmodel), grid.imgdomain) # compare image dimensions to spatial dimensions of data cube
-    mdimg = intensitymap_numeric(md, grid.imgdomain) # apply the spectral and/or time models to the image data
-    vis = applyft(forward_plan(grid), mdimg) # FT to visibilities
-    return applypulse!(vis, md.imgmodel.kernel, grid)
-end
-
-function checkspatialgrid(imgdims, grid)
-    return !(dims(imgdims) == dims(grid)[1:2]) &&
-           throw(ArgumentError("The image dimensions in `ContinuousImage`\n" *
-                               "and the spatial dimensions of the visibility grid passed to `visibilitymap`\n" *
-                               "do not match. This is not currently supported."))
+# Convenience: pair a base value with a spectral model. The base (an image array for
+# imaging, or a scalar for geometric modeling) is stored in the `MultiDomainParams`;
+# `PolySpectral` itself stays spectral-only.
+#
+# Note on dispatch: a 3-argument all-`Number` call `PolySpectral(a, b, c)` is the
+# spectral-only `(index, freq0, p0)` constructor (more specific, so it wins). A scalar
+# base therefore needs the 4-argument form `PolySpectral(base, index, freq0, p0)` (or a
+# tuple `index`); an array base is unambiguous in any arity.
+function PolySpectral(base::Union{Number, AbstractArray}, index, freq0::Number, p0 = zero(base))
+    return MultiDomainParams(base, PolySpectral(index, freq0, p0))
 end
 
 # extending image pizels to time AND frequency to build the multidomain RectiGrid
