@@ -32,6 +32,10 @@ struct ContinuousImage{P, G, K} <: AbstractModel
 end
 
 make_map(cimg::ContinuousImage) = IntensityMap(cimg.params, cimg.grid)
+# For a multidomain `ContinuousImage` the `params` field is a `MultiDomainParams` whose
+# base spatial image lives in its `.params` field, and `grid` is the spatial (X, Y) grid.
+# Build the spatial map from that base so `size`/`show`/`flux`/etc. work on these images.
+make_map(cimg::ContinuousImage{<:MultiDomainParams}) = IntensityMap(cimg.params.params, cimg.grid)
 
 function Base.show(io::IO, img::ContinuousImage{A, P}) where {A, P}
     sA = split("$A", ",")[1]
@@ -59,10 +63,24 @@ function ComradeBase.ispolarized(::Type{<:ContinuousImage{A}}) where {A <: Domai
 end
 @inline _ispol_paramtype(::Type{<:StokesParams}) = IsPolarized()
 @inline _ispol_paramtype(::Type{<:Number}) = NotPolarized()
+# For a multidomain image these reduce to the base (reference-domain) spatial image via
+# `make_map`, i.e. `flux`/`centroid` describe the reference-frequency/-time image, not the
+# whole cube. Evaluate `intensitymap` over an `Fr`/`Ti` grid for per-domain quantities.
 ComradeBase.flux(m::ContinuousImage) = flux(make_map(m)) * flux(m.kernel)
 
 function ComradeBase.stokes(cimg::ContinuousImage, v)
     return ContinuousImage(stokes(make_map(cimg), v), cimg.kernel)
+end
+# Project a multidomain image onto a Stokes component by projecting the base spatial
+# `params` array and keeping the domain models, so the multidomain structure (and the
+# spatial `grid`/`kernel`) is preserved. The generic `make_map`-based method would instead
+# collapse to a plain base image. This assumes the domain models act identically across
+# Stokes components (true for a scalar e.g. spectral-index model); like plain images,
+# `stokes` is polarized-only (the base must be a `StokesParams` array).
+function ComradeBase.stokes(cimg::ContinuousImage{<:MultiDomainParams}, v)
+    mdp = cimg.params
+    newmdp = MultiDomainParams(stokes(mdp.params, v), mdp.models)
+    return ContinuousImage(newmdp, cimg.grid, cimg.kernel)
 end
 ComradeBase.centroid(m::ContinuousImage) = centroid(make_map(m))
 Base.parent(cimg::ContinuousImage) = make_map(cimg)
@@ -116,6 +134,40 @@ dropping any extra dimensions such as frequency (`Fr`) or time (`Ti`).
 """
 spatialdims(g::AbstractRectiGrid) = rebuild(g; dims = dims(g)[1:2])
 spatialdims(img::IntensityMap) = spatialdims(axisdims(img))
+
+@doc """
+    MultiDomainImage(img::IntensityMap, kernel, domains...)
+    MultiDomainImage(cimg::ContinuousImage, domains...)
+
+Convenience constructor for a multidomain (e.g. multifrequency or multitime)
+[`ContinuousImage`](@ref).
+
+The spatial image `img` (a 2D `IntensityMap`) provides the base parameters and the
+spatial `(X, Y)` grid, `kernel` is the image pulse, and `domains...` are one or more
+`DomainParams` models (such as [`PolySpectral`](@ref)) describing how the image varies
+across the extra domains.
+
+The result is a `ContinuousImage` whose `params` field is a [`MultiDomainParams`](@ref).
+When passed to `intensitymap` or `visibilitymap` over a grid with extra `Fr`/`Ti`
+dimensions the spatial image cube is materialized by evaluating the domain models at
+each frequency/time.
+
+# Example
+```julia
+base = IntensityMap(rand(64, 64), imagepixels(10.0, 10.0, 64, 64))
+dom  = PolySpectral((1.0,), 230.0e9)          # spectral index = 1
+cimg = MultiDomainImage(base, BSplinePulse{3}(), dom)
+```
+"""
+function MultiDomainImage(img::IntensityMap, kernel, domains...)
+    mdp = MultiDomainParams(parent(img), domains)
+    return ContinuousImage(mdp, spatialdims(img), kernel)
+end
+
+function MultiDomainImage(cimg::ContinuousImage, domains...)
+    mdp = MultiDomainParams(cimg.params, domains)
+    return ContinuousImage(mdp, spatialdims(cimg.grid), cimg.kernel)
+end
 
 function support_ranges(img, p, rx, ry)
     dx, dy = pixelsizes(img)

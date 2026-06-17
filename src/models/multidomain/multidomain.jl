@@ -5,39 +5,10 @@ include("poly_spectral.jl")
 
 ### general multidomain stuffs ###
 
-@doc """
-    MultiDomainImage(img::IntensityMap, kernel, domains...)
-    MultiDomainImage(cimg::ContinuousImage, domains...)
-
-Convenience constructor for a multidomain (e.g. multifrequency or multitime)
-[`ContinuousImage`](@ref).
-
-The spatial image `img` (a 2D `IntensityMap`) provides the base parameters and the
-spatial `(X, Y)` grid, `kernel` is the image pulse, and `domains...` are one or more
-`DomainParams` models (such as [`PolySpectral`](@ref)) describing how the image varies
-across the extra domains.
-
-The result is a `ContinuousImage` whose `params` field is a [`MultiDomainParams`](@ref).
-When passed to `intensitymap` or `visibilitymap` over a grid with extra `Fr`/`Ti`
-dimensions the spatial image cube is materialized by evaluating the domain models at
-each frequency/time.
-
-# Example
-```julia
-base = IntensityMap(rand(64, 64), imagepixels(10.0, 10.0, 64, 64))
-dom  = PolySpectral((1.0,), 230.0e9)          # spectral index = 1
-cimg = MultiDomainImage(base, BSplinePulse{3}(), dom)
-```
-"""
-function MultiDomainImage(img::IntensityMap, kernel, domains...)
-    mdp = MultiDomainParams(parent(img), domains)
-    return ContinuousImage(mdp, spatialdims(img), kernel)
-end
-
-function MultiDomainImage(cimg::ContinuousImage, domains...)
-    mdp = MultiDomainParams(cimg.params, domains)
-    return ContinuousImage(mdp, spatialdims(cimg.grid), cimg.kernel)
-end
+# NOTE: the `MultiDomainImage` constructors and the `ContinuousImage{<:MultiDomainParams}`
+# methods live in continuous_image.jl. This file is included *before* continuous_image.jl,
+# so it must not reference `ContinuousImage` (in a body or a signature) — doing so would be
+# an `UndefVarError` at load. Keep this file free of `ContinuousImage`.
 
 struct MultiDomainParams{P, M <: Tuple{Vararg{<:DomainParams}}} <: DomainParams{P}
     params::P # base model parameters shared by all domains
