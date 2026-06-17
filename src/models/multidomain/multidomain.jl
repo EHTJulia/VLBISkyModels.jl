@@ -65,11 +65,11 @@ function PolySpectral(params::AbstractArray, index::NTuple{N}, freq0::Number, p0
 end
 
 # required model definitions
-visanalytic(::MultiDomainParams{I}) where {I} = NotAnalytic()
-imanalytic(::MultiDomainParams{I}) where {I} = imanalytic(I)
+visanalytic(::Type{<:MultiDomainParams{I}}) where {I} = NotAnalytic()
+imanalytic(::Type{<:MultiDomainParams{I}}) where {I} = imanalytic(I)
 radialextent(::MultiDomainParams{I}) where {I} = radialextent(I)
 flux(::MultiDomainParams{I}) where {I} = flux(I)
-ispolarized(::MultiDomainParams{I}) where {I} = ispolarized(I)
+ispolarized(::Type{<:MultiDomainParams{I}}) where {I} = ispolarized(I)
 
 function intensitymap_numeric(md::MultiDomainParams,imggrid::RectiGrid)
     mdimg = allocate_imgmap(md.params, imggrid) # allocate result: multidomain image cube
