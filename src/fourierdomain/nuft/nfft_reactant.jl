@@ -23,7 +23,11 @@ but the fields are documented below for those who want to tune.
 - `eps::T`                — target tolerance (default `1e-9` if `T` is `Float64`).
 - `sigma::T`              — oversampling factor (default 2.0; 1.25 supported).
 - `nspread::Int`          — kernel half-width `w`. If `< 0`, picked from `eps`.
-- `chunk_size::Int`       — points per spread chunk. Default 65536.
+- `chunk_size::Int`       — points per spread/interp chunk. Default 131072.
+  The type-2 interp processes the M nonuniform points in `ceil(M/chunk_size)`
+  chunks via a single traced loop; fewer chunks is faster (less loop overhead)
+  at the cost of a larger per-chunk gather buffer, so this trades speed against
+  GPU memory. The default keeps M up to ~1.3e5 in a single chunk.
 - `bin_dims::NTuple{D,Int}` or `NTuple{0,Int}` — bin width per dim used
   to define the sort order; `()` means "auto" (heuristic per dim).
 """
@@ -32,7 +36,7 @@ function ReactantNUFFTAlg(
         eps::Real = T === Float64 ? 1.0e-9 : 1.0e-6,  # default tighter for Float64
         sigma::Real = 2,
         nspread::Integer = -1,
-        chunk_size::Integer = 65536,
+        chunk_size::Integer = 131072,
         bin_dims::B = (),
     ) where {T <: Real, B <: Tuple}
     return ReactantNUFFTAlg{T, B}(

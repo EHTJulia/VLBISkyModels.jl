@@ -109,6 +109,32 @@ function _chunk_ranges(M::Int, chunk_size::Int)
     return [lo:min(lo + cs - 1, M) for lo in 1:cs:M]
 end
 
+# Plan the type-2 interp chunking: how many chunks, the (uniform) chunk length
+# `cs`, and the padded length `Mpad = cs * nchunks` that the `@trace for` loop
+# iterates over. Returns `(cs, nchunks, Mpad)`.
+#
+# `nchunks` is fixed by `chunk_size` (so peak memory is unchanged), but the
+# points are then spread *evenly* across those chunks via `cs = cld(M, nchunks)`
+# rather than packing `chunk_size` into each and padding the remainder. This
+# keeps the padding `Mpad - M < nchunks` (a handful of points) instead of up to
+# a near-full chunk — e.g. M=1e5, chunk_size=65536 gives 2×50000=1e5 (no
+# padding) instead of 2×65536=131072 (31072 wasted points).
+function _chunk_plan(M::Int, chunk_size::Int)
+    ce = max(1, min(chunk_size, M))
+    nchunks = cld(M, ce)
+    cs = cld(M, nchunks)
+    return cs, nchunks, cs * nchunks
+end
+
+# Pad a (traced) length-M vector up to length `Mpad` with `fillval`. Used to
+# make every chunk exactly `cs` long so the type-2 interp chunk loop can be a
+# `Reactant.@trace for` (uniform static shapes) instead of an unrolled loop.
+function _pad_to(v::AbstractVector, Mpad::Int, fillval)
+    length(v) == Mpad && return v
+    tail = fill!(similar(v, Mpad - length(v)), fillval)
+    return vcat(v, tail)
+end
+
 #==============================================================================
 Spread (type-1 kernel): scatter-add each point's weighted stencil into the
 oversampled grid.
@@ -163,42 +189,67 @@ end
 #==============================================================================
 Interpolate (type-2 kernel): gather each point's stencil from the (already
 FFT'd and deconvolved) oversampled grid and contract against the weights.
-The traced-integer-array getindex lowers to one `stablehlo.gather` per chunk.
+
+The chunk loop is a `Reactant.@trace for` (one `stablehlo.while`), so the
+StableHLO graph stays O(1) in M — a plain Julia `for` over the chunks instead
+unrolls one gather+contract subgraph per chunk (≈ M / chunk_size of them),
+making compile time grow linearly with M.
+
+Points are read in *original* order (no bin-sort indirection), so chunk
+results drop straight into their output rows with no final permutation
+gather. The per-chunk stencil gather reads from the FFT output (`fw_vec`)
+directly; the output buffer `out` is written via `setindex!`
+(dynamic_update_slice) but never gathered from again — gathering a
+concatenate- or dynamic_update_slice-built complex operand is miscompiled by
+the scatter/gather optimization passes (silent zeros / invalid
+`stablehlo.real`), so we must not re-gather `out`.
 ==============================================================================#
 
-# Interpolate all points for all transforms.
-# `fw :: (ngrid..., ntrans)` complex; returns `c :: (M, ntrans)` complex.
-#
-# Points are read in *original* order (no bin-sort indirection), so the
-# output is assembled by plain `hcat`/`vcat` of chunk results and needs no
-# final permutation gather. This is deliberate twice over for Reactant
-# 0.2.264:
-#   * traced-index gathers whose complex operand is a concatenate or a
-#     `setindex!`(dynamic_update_slice)-built array are miscompiled by the
-#     scatter/gather optimization passes (silent zeros, or an invalid
-#     `stablehlo.real` op) — so the output must not be gathered again;
-#   * the chunk/transform loops are explicit `for` loops because the same
-#     body written as `map(...) do` closures recurses infinitely between
-#     `Base.mapreduce` and Reactant's `Base.mapreducedim!` at trace time
-#     (StackOverflowError).
-# The remaining stencil gather reads from the FFT output directly, which is
-# unaffected by the gather miscompilation.
-function _interp(prep::NUFFTSetPts{T, D}, fw::AbstractArray, ntrans::Int) where {T, D}
+# One chunk's interpolation: gather column `i` of the (cs, nchunks)-reshaped
+# stencil data and contract → (cs, ntrans). Kept as its own function so its
+# static parameter `D` is local here, not in the `@trace for` body (the trace
+# macro forbids enclosing static parameters from appearing as loop locals).
+function _interp_chunk(
+        i, base_mat::NTuple{D}, frac_mat::NTuple{D}, coefs,
+        ngrid::NTuple{D, Int}, w::Int, nflat::Int, fw_vec, ntrans::Int,
+    ) where {D}
+    base_c = ntuple(d -> base_mat[d][:, i], Val(D))         # (cs,) each
+    frac_c = ntuple(d -> frac_mat[d][:, i], Val(D))         # (cs,) each
+    wpd = ntuple(d -> _horner_weights(coefs, frac_c[d]), Val(D))
+    offs = ntuple(d -> _grid_offsets(base_c[d], ngrid[d], w), Val(D))
+    lin = _linear_indices(offs, ngrid)                      # (cs, w^D)
+    cols = [_contract_weights(fw_vec[lin .+ (t - 1) * nflat], wpd) for t in 1:ntrans]
+    return ntrans == 1 ? reshape(cols[1], :, 1) : reduce(hcat, cols)  # (cs, ntrans)
+end
+
+function _interp(prep::NUFFTSetPts{T, ND}, fw::AbstractArray, ntrans::Int) where {T, ND}
     plan = prep.plan
-    nflat = prod(plan.ngrid)
+    CT = complex(T)
+    w = plan.nspread
+    ngrid = plan.ngrid
+    nflat = prod(ngrid)
     fw_vec = vec(fw)
     coefs = plan.horner_coefs
+    M = prep.M
 
-    chunk_rows = []
-    for r in _chunk_ranges(prep.M, plan.chunk_size)
-        wpd, lin = _chunk_stencil(prep, r, coefs)
-        cols = []
-        for t in 1:ntrans
-            vals = fw_vec[lin .+ (t - 1) * nflat]          # (cs, w, .., w)
-            push!(cols, _contract_weights(vals, wpd))      # (cs,)
-        end
-        row = ntrans == 1 ? reshape(cols[1], :, 1) : hcat(cols...)
-        push!(chunk_rows, row)
+    cs, nchunks, Mpad = _chunk_plan(M, plan.chunk_size)
+
+    # Pad per-dim base/frac to Mpad and view as (cs, nchunks) so chunk `i` is a
+    # static-shape column slice. Padded points (rows M+1:Mpad) use base=0,
+    # frac=0 — a valid in-bounds (wrapped) stencil — and are dropped at the end.
+    base_mat = ntuple(d -> reshape(_pad_to(prep.base[d], Mpad, 0), cs, nchunks), Val(ND))
+    frac_mat = ntuple(d -> reshape(_pad_to(prep.frac[d], Mpad, zero(T)), cs, nchunks), Val(ND))
+
+    out = similar(fw_vec, CT, (cs, nchunks, ntrans))
+    fill!(out, zero(CT))
+
+    # Single MLIR while loop (one subgraph total) instead of one unrolled
+    # subgraph per chunk: keeps the StableHLO graph O(1) in M. The loop body
+    # references only runtime values (no static type parameters).
+    Reactant.@trace track_numbers = false for i in 1:nchunks
+        out[:, i, :] = _interp_chunk(i, base_mat, frac_mat, coefs, ngrid, w, nflat, fw_vec, ntrans)
     end
-    return length(chunk_rows) == 1 ? chunk_rows[1] : vcat(chunk_rows...)
+
+    c = reshape(out, Mpad, ntrans)
+    return M == Mpad ? c : c[1:M, :]
 end
