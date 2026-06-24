@@ -1,6 +1,5 @@
 export MultiDomainImage, MultiDomainParams, build_param, build_param!
 import ComradeBase: imagepixels, NoHeader, DomainParams, allocate_imgmap, build_param
-export build_param, build_param!
 include("poly_spectral.jl")
 
 ### general multidomain stuffs ###
@@ -139,7 +138,7 @@ julia> ti_grid = imagepixels(1, 1, 10, 10, tlist)
 # adding time dimension
 ```
 """
-function imagepixels(
+function ComradeBase.imagepixels(
         fovx::Real, fovy::Real, nx::Integer, ny::Integer,
         d1::D1, d2::D2,
         x0::Number = zero(fovx), y0::Number = zero(fovy);
@@ -160,7 +159,7 @@ function imagepixels(
 end
 
 # extending imagepixels to time OR frequency to build multidomain RectiGrid
-function imagepixels(
+function ComradeBase.imagepixels(
         fovx::Real, fovy::Real, nx::Integer, ny::Integer,
         d1::D1,
         x0::Number = zero(fovx), y0::Number = zero(fovy);

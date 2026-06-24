@@ -54,6 +54,9 @@ end
 # (spectral-only) method strictly wins the all-`Number` 3-argument call over the
 # base-supplying convenience constructor `PolySpectral(base, index, freq0, p0)`.
 PolySpectral(index::Number, freq0::Number, p0::Number = 0.0) = PolySpectral((index,), freq0, p0)
+# adding the option to catch if an abstract array array is fed in without being wrapped in a tuple
+PolySpectral(index::AbstractArray, freq0::Number, p0::Number = 0.0) = PolySpectral((index,), freq0, p0)
+
 
 # spectral model expansion. `x` may be a scalar (single domain point) or an array of
 # log-frequencies reshaped along the cube's `Fr` axis (broadcasted cube construction),
