@@ -20,8 +20,13 @@ the bin-sort permutation chunk-wise (see `_chunk_stencil`).
 function _horner_weights(coefs::AbstractMatrix, frac::AbstractVector)
     t = 2 .* frac .- 1
     n = size(coefs, 2)
-    acc = t .* transpose(coefs[:, n]) .+ transpose(coefs[:, n - 1])
-    for p in (n - 2):-1:1
+    # Seed the Horner recurrence with the leading coefficient broadcast to
+    # (cs, w), then fold in the remaining columns. Seeding from the constant
+    # (rather than starting the recurrence at column n-1) keeps the degree-0
+    # case (`n == 1`, single coefficient column) valid — the loop is then
+    # empty and `acc` is the constant column.
+    acc = one.(t) .* transpose(coefs[:, n])
+    for p in (n - 1):-1:1
         acc = acc .* t .+ transpose(coefs[:, p])
     end
     return acc
@@ -117,8 +122,8 @@ end
 # points are then spread *evenly* across those chunks via `cs = cld(M, nchunks)`
 # rather than packing `chunk_size` into each and padding the remainder. This
 # keeps the padding `Mpad - M < nchunks` (a handful of points) instead of up to
-# a near-full chunk — e.g. M=1e5, chunk_size=65536 gives 2×50000=1e5 (no
-# padding) instead of 2×65536=131072 (31072 wasted points).
+# a near-full chunk — e.g. M=2e5, chunk_size=131072 gives 2×1e5=2e5 (no
+# padding) instead of 2×131072=262144 (62144 wasted points).
 function _chunk_plan(M::Int, chunk_size::Int)
     ce = max(1, min(chunk_size, M))
     nchunks = cld(M, ce)
