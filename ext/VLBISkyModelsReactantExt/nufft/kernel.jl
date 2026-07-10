@@ -172,26 +172,4 @@ function phi_hat_1d(
     return out
 end
 
-# ----------------- Traced Horner evaluator -----------------
-#
-# Evaluate w polynomials of degree `deg` simultaneously at M arguments t.
-# coefs :: (w, deg+1) — host (or traced); t :: (M,) traced.
-# Returns weights :: (M, w) traced.
-#
-# Uses Horner recurrence with batched broadcasts. The Julia loop over
-# coefficient columns is unrolled in tracing because `deg` is statically
-# known from the coef matrix shape.
-function horner_eval(coefs::AbstractMatrix, t::AbstractVector)
-    T = eltype(t)
-    w_count = size(coefs, 1)
-    n = size(coefs, 2)            # = deg + 1
-    M = length(t)
-    # Initialize accumulator with leading coefficient (degree `deg`).
-    last_col = reshape(coefs[:, n], 1, w_count)         # (1, w)
-    acc = ones(T, M, 1) .* last_col                      # (M, w)
-    @inbounds for p in (n - 1):-1:1
-        col = reshape(coefs[:, p], 1, w_count)          # (1, w)
-        acc = acc .* reshape(t, M, 1) .+ col
-    end
-    return acc
-end
+# The traced Horner evaluator lives in spread_interp.jl (`_horner_weights`).
