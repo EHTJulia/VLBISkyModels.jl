@@ -1,3 +1,14 @@
+# The Reactant tests check compilation correctness, not GPU execution. Probing a local
+# accelerator while initializing the XLA client aborts the whole process on some machines
+# (AMD/ROCm in particular), so hide every accelerator unless a GPU run is requested with
+# `VLBISKYMODELS_TEST_GPU=1`. This must run before Reactant is loaded: the XLA client
+# reads these variables when it initializes, which happens on first use.
+if get(ENV, "VLBISKYMODELS_TEST_GPU", "0") != "1"
+    ENV["ROCR_VISIBLE_DEVICES"] = ""
+    ENV["HIP_VISIBLE_DEVICES"] = ""
+    ENV["CUDA_VISIBLE_DEVICES"] = ""
+end
+
 using Pkg
 Pkg.develop(PackageSpec(url = "https://github.com/ptiede/ComradeBase.jl"))
 
@@ -234,5 +245,9 @@ end
     include("stokesintensitymap.jl")
     include("rules.jl")
     include("rotgrid.jl")
-    include("reactant.jl")
+    if get(ENV, "VLBISKYMODELS_SKIP_REACTANT", "0") == "1"
+        @info "Skipping Reactant tests (VLBISKYMODELS_SKIP_REACTANT=1)"
+    else
+        include("reactant.jl")
+    end
 end

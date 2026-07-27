@@ -102,13 +102,14 @@ Plots.scatter!(hypot.(u, v), abs.(veg); label="Elliptical Gaussian")
 
 To make the model frequency dependent we can use the existing [`VLBISkyModels.DomainParams`](@ref) interface.
 This defines how the model parameters behave as a function of frequency and time. For example,
-to make the size of the Gaussian frequency dependent we can use the [`TaylorSpectral`](@ref) type
+to make the size of the Gaussian frequency dependent we can pair the base size with a
+[`PolySpectral`](@ref) expansion using [`MultiDomainParams`](@ref)
 
 ```julia
 ν₀ = 230e9
 σ₀ = 1.0
 a = 1.0
-size = TaylorSpectral(σ₀, a, ν₀)
+size = MultiDomainParams(σ₀, PolySpectral(a, ν₀))
 gauss = MyGaussian(size)
 ellgauss = 2.0 * MyGaussian(size)
 ```

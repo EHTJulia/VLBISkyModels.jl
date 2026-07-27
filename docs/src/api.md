@@ -17,8 +17,9 @@ Pages = ["api.md"]
 ### Time Frequency Domain
 
 ```@docs
-VLBISkyModels.TaylorSpectral
 VLBISkyModels.PolySpectral
+VLBISkyModels.MultiDomainParams
+VLBISkyModels.TaylorSpectral
 ```
 
 ### Combinators

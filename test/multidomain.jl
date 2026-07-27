@@ -615,7 +615,7 @@ end
         g = imagepixels(10.0, 10.0, 64, 64)
         base = rand(64, 64)
         indices = (ones(64, 64), zeros(64, 64))
-        ps = PolySpectral(base, indices, 230.0e9)
+        ps = MultiDomainParams(base, PolySpectral(indices, 230.0e9))
         @test ComradeBase.build_param(ps, (; Fr = 230.0e9)) ≈ base
         @test ComradeBase.build_param(ps, (; Fr = 230.0e9 * 2)) ≈ base .* 2.0
         @test ComradeBase.build_param(ps, (; Fr = 230.0e9 / 2)) ≈ base .* inv(2)
@@ -625,6 +625,24 @@ end
         @test VLBISkyModels.build_param!(copy(bimg_orig), ps, (; Fr = 230.0e9)) ≈ bimg_orig
         @test VLBISkyModels.build_param!(copy(bimg_orig), ps, (; Fr = 230.0e9 * 2)) ≈ bimg_orig .* 2.0
         @test VLBISkyModels.build_param!(copy(bimg_orig), ps, (; Fr = 230.0e9 / 2)) ≈ bimg_orig .* inv(2)
+    end
+
+    @testset "constructor fail-fast" begin
+        # Array spectral coefficients must be tuple-wrapped; a bare array first
+        # argument is likelier a misplaced base value, so it must not construct.
+        @test_throws MethodError PolySpectral(rand(4, 4), 230.0e9)
+        # Bases pair with the spectral model via MultiDomainParams, never positionally.
+        @test_throws MethodError PolySpectral(rand(4, 4), 1.5, 230.0e9)
+        @test_throws MethodError PolySpectral(rand(4, 4), 1.5, 230.0e9, 0.0)
+    end
+
+    @testset "TaylorSpectral deprecation" begin
+        md = TaylorSpectral(2.0, 1.5, 230.0e9)
+        @test md isa MultiDomainParams
+        @test md.params == 2.0
+        @test first(md.models) === PolySpectral(1.5, 230.0e9)
+        @test ComradeBase.build_param(md, (; Fr = 230.0e9)) ≈ 2.0
+        @test ComradeBase.build_param(md, (; Fr = 460.0e9)) ≈ 2.0 * exp(1.5 * log(2.0))
     end
 end
 
@@ -640,7 +658,7 @@ end
         β = reshape(collect(range(-0.25, 0.25; length = 6)), 2, 3)
         p0 = reshape(collect(range(0.1, 0.6; length = 6)), 2, 3)
 
-        ps = PolySpectral(base, (α, β), ref, p0)
+        ps = MultiDomainParams(base, PolySpectral((α, β), ref, p0))
 
         @test ps isa MultiDomainParams
         @test ps.params ≈ base
@@ -677,7 +695,7 @@ end
         p0 = reshape(collect(range(0.1, 1.0; length = 32 * 32)), 32, 32)
 
         # Test param-provided PolySpectral path.
-        ps_param = PolySpectral(base, (α, β), ref, p0)
+        ps_param = MultiDomainParams(base, PolySpectral((α, β), ref, p0))
         ps_noparam = PolySpectral((α, β), ref, p0)
 
         p = (; Fr = 2 * ref)
@@ -766,7 +784,7 @@ end
         @test buf2 ≈ expected_from_current
     end
 
-    @testset "MultiDomainImage and imagepixels constructors" begin
+    @testset "MultiDomainImage constructors" begin
         ref = 230.0e9
 
         @testset "MultiDomainImage builds a ContinuousImage" begin
@@ -782,11 +800,30 @@ end
             @test md.grid == gXY
             @test md.kernel isa BSplinePulse
 
-            # The ContinuousImage form keeps the same wrapping.
+            # The ContinuousImage form nests the wrapping and stays evaluable: chained
+            # order-1 models multiply their spectral factors.
             md2 = MultiDomainImage(md, dom)
             @test md2 isa ContinuousImage
             @test md2.params isa MultiDomainParams
             @test md2.params.params isa MultiDomainParams
+            gcube = RectiGrid((; X = gXY.X, Y = gXY.Y, Fr = [ref, 2 * ref]))
+            img1 = intensitymap(md, gcube)
+            img2 = intensitymap(md2, gcube)
+            @test parent(img2)[:, :, 1] ≈ parent(img1)[:, :, 1]
+            @test parent(img2)[:, :, 2] ≈ 2 .* parent(img1)[:, :, 2]
+            @test flux(md2) ≈ flux(md)
+            @test eltype(md2) == Float64
+
+            # Nested MultiDomainParams evaluate the inner chain first.
+            mdp2 = MultiDomainParams(
+                MultiDomainParams(3.0, PolySpectral(1.0, ref)),
+                PolySpectral(0.5, ref)
+            )
+            @test ComradeBase.build_param(mdp2, (; Fr = 2 * ref)) ≈ 3.0 * 2.0 * 2.0^0.5
+            # eltype and the base image come from the root of the chain.
+            @test eltype(mdp2) == Float64
+            @test VLBISkyModels.baseparams(mdp2) === 3.0
+            @test VLBISkyModels.baseparams(md2.params) ≈ base
         end
 
         @testset "MultiDomainImage intensity/visibility correctness" begin
@@ -821,38 +858,201 @@ end
 
             @test visibilitymap(cimg, gfr) ≈ visibilitymap(cimg_ref, gfr) atol = 1.0e-8
         end
-
-        @testset "imagepixels with one extra dimension" begin
-            fr = Fr([230.0e9, 345.0e9])
-            g = imagepixels(10.0, 20.0, 4, 5, fr)
-
-            @test length(g.X) == 4
-            @test length(g.Y) == 5
-            @test length(g.Fr) == 2
-            @test collect(g.Fr) == [230.0e9, 345.0e9]
-        end
-
-        @testset "imagepixels with two extra dimensions preserves order" begin
-            fr = Fr([230.0e9, 345.0e9])
-            ti = Ti([1.0, 2.0, 3.0])
-
-            g_fr_ti = imagepixels(10.0, 20.0, 4, 5, fr, ti)
-            g_ti_fr = imagepixels(10.0, 20.0, 4, 5, ti, fr)
-
-            @test length(g_fr_ti.Fr) == 2
-            @test length(g_fr_ti.Ti) == 3
-            @test length(g_ti_fr.Ti) == 3
-            @test length(g_ti_fr.Fr) == 2
-
-            @test dims(g_fr_ti)[3] != dims(g_ti_fr)[3]
-            @test dims(g_fr_ti)[4] != dims(g_ti_fr)[4]
-        end
-
-        @testset "imagepixels rejects nonpositive image sizes" begin
-            fr = Fr([230.0e9, 345.0e9])
-
-            @test_throws AssertionError imagepixels(10.0, 20.0, 0, 5, fr)
-            @test_throws AssertionError imagepixels(10.0, 20.0, 4, 0, fr)
-        end
     end
+end
+
+@testset "intensity_point respects Fr for multidomain images" begin
+    g = imagepixels(10.0, 10.0, 24, 24)
+    base = rand(24, 24)
+    cimg = MultiDomainImage(IntensityMap(base, g), BSplinePulse{3}(), PolySpectral((1.5,), 230.0e9))
+
+    p230 = (; X = 0.1, Y = 0.05, Fr = 230.0e9)
+    p345 = (; X = 0.1, Y = 0.05, Fr = 345.0e9)
+    i230 = ComradeBase.intensity_point(cimg, p230)
+    i345 = ComradeBase.intensity_point(cimg, p345)
+    @test i230 != 0
+    @test i345 ≈ i230 * (345 / 230)^1.5
+
+    # At the reference frequency the multidomain image matches the plain image.
+    ci_plain = ContinuousImage(IntensityMap(base, g), BSplinePulse{3}())
+    @test i230 ≈ ComradeBase.intensity_point(ci_plain, p230)
+
+    # Composite models sum through intensity_point, so the frequency dependence must
+    # survive there too.
+    gcube = RectiGrid((; X = g.X, Y = g.Y, Fr = [230.0e9, 345.0e9]))
+    msum = intensitymap(cimg + Gaussian(), gcube)
+    gimg = intensitymap(Gaussian(), g)
+    pm = parent(msum)
+    diff230 = pm[:, :, 1] .- parent(gimg)
+    diff345 = pm[:, :, 2] .- parent(gimg)
+    @test diff345 ≈ diff230 .* (345 / 230)^1.5
+end
+
+@testset "build_param! threads immutable buffers" begin
+    ref = 230.0e9
+    p = (; Fr = 2 * ref)
+    m1 = PolySpectral(1.0, ref)
+    m2 = PolySpectral(0.5, ref, 1.0)
+
+    md1 = MultiDomainParams(5.0, m1)
+    @test VLBISkyModels.build_param!(5.0, md1, p) ≈ ComradeBase.build_param(md1, p)
+
+    md2 = MultiDomainParams(5.0, m1, m2)
+    @test VLBISkyModels.build_param!(5.0, md2, p) ≈ ComradeBase.build_param(md2, p)
+    @test VLBISkyModels.build_param!(5.0, md2, p) ≈ (5.0 * 2.0) * exp(0.5 * log(2.0)) + 1.0
+end
+
+@testset "FFTAlg rejects multidomain images" begin
+    g = imagepixels(10.0, 10.0, 16, 16)
+    cimg = MultiDomainImage(
+        IntensityMap(rand(16, 16), g), BSplinePulse{3}(),
+        PolySpectral((1.0,), 230.0e9)
+    )
+    gcube = RectiGrid((; X = g.X, Y = g.Y, Fr = [230.0e9, 345.0e9]))
+    guv = UnstructuredDomain((; U = randn(8), V = randn(8), Fr = fill(230.0e9, 8)))
+    gfour = FourierDualDomain(gcube, guv, FFTAlg())
+    @test_throws "FFTAlg does not support multidomain" visibilitymap(cimg, gfour)
+end
+
+@testset "single visibility per Fr bin" begin
+    g = imagepixels(10.0, 10.0, 16, 16)
+    gcube = RectiGrid((; X = g.X, Y = g.Y, Fr = [230.0e9, 345.0e9]))
+    U = [0.05, 0.1]
+    V = [0.05, -0.1]
+    Frs = [230.0e9, 345.0e9]
+    guv = UnstructuredDomain((; U, V, Fr = Frs))
+    cimg = MultiDomainImage(
+        IntensityMap(rand(16, 16), g), BSplinePulse{3}(),
+        PolySpectral((1.0,), 230.0e9)
+    )
+    gfour = FourierDualDomain(gcube, guv, NFFTAlg())
+    vis = visibilitymap(cimg, gfour)
+    @test length(vis) == 2
+    for k in 1:2
+        guv1 = UnstructuredDomain((; U = U[k:k], V = V[k:k], Fr = Frs[k:k]))
+        gf1 = FourierDualDomain(gcube, guv1, NFFTAlg())
+        vis1 = visibilitymap(cimg, gf1)
+        @test vis[k] ≈ vis1[1]
+    end
+end
+
+@testset "polarized multidomain images" begin
+    ref = 230.0e9
+    g = imagepixels(10.0, 10.0, 8, 8)
+    I = rand(8, 8)
+    Q = 0.1 .* rand(8, 8)
+    U = 0.1 .* rand(8, 8)
+    V = 0.05 .* rand(8, 8)
+    pimg = StructArray{StokesParams{Float64}}((; I, Q, U, V))
+    cimg = MultiDomainImage(IntensityMap(pimg, g), BSplinePulse{3}(), PolySpectral((1.0,), ref))
+    @test ComradeBase.ispolarized(typeof(cimg)) == ComradeBase.IsPolarized()
+
+    gcube = RectiGrid((; X = g.X, Y = g.Y, Fr = [ref, 2 * ref]))
+    img = intensitymap(cimg, gcube)
+    for s in (:I, :Q, :U, :V)
+        ps = parent(stokes(img, s))
+        @test ps[:, :, 2] ≈ 2 .* ps[:, :, 1]
+    end
+
+    # Stokes projection preserves the multidomain structure and matches the cube.
+    cI = stokes(cimg, :I)
+    @test cI.params isa MultiDomainParams
+    @test parent(intensitymap(cI, gcube)) ≈ parent(stokes(img, :I))
+
+    # A scalar nonzero p0 cannot offset a polarized base.
+    cbad = MultiDomainImage(
+        IntensityMap(pimg, g), BSplinePulse{3}(),
+        PolySpectral((1.0,), ref, 1.0)
+    )
+    @test_throws "cannot offset a polarized" intensitymap(cbad, gcube)
+
+    # A StokesParams p0 is a valid offset and breaks pure frequency scaling.
+    cok = MultiDomainImage(
+        IntensityMap(pimg, g), BSplinePulse{3}(),
+        PolySpectral((1.0,), ref, StokesParams(0.5, 0.0, 0.0, 0.0))
+    )
+    psI = parent(stokes(intensitymap(cok, gcube), :I))
+    @test !(psI[:, :, 2] ≈ 2 .* psI[:, :, 1])
+end
+
+@testset "bare PolySpectral as ContinuousImage params" begin
+    ref = 230.0e9
+    g = imagepixels(10.0, 10.0, 8, 8)
+
+    indmap = fill(1.0, 8, 8)
+    c = ContinuousImage(PolySpectral((indmap,), ref), g, BSplinePulse{3}())
+    @test eltype(c) == Float64
+    @test ComradeBase.ispolarized(typeof(c)) == ComradeBase.NotPolarized()
+    gcube = RectiGrid((; X = g.X, Y = g.Y, Fr = [ref, 2 * ref]))
+    img = intensitymap(c, gcube)
+    @test parent(img)[:, :, 2] ≈ 2 .* parent(img)[:, :, 1]
+
+    # A scalar-index bare model produces a sub-cube-shaped raw result and exercises
+    # the broadcast-up branch of _paramcube.
+    c2 = ContinuousImage(PolySpectral(1.0, ref), g, BSplinePulse{3}())
+    img2 = intensitymap(c2, gcube)
+    @test parent(img2)[:, :, 2] ≈ 2 .* parent(img2)[:, :, 1]
+
+    # A bare spectral image has no static spatial map.
+    @test_throws "no static spatial map" size(c)
+end
+
+@testset "ContinuousImage construction validation" begin
+    g = imagepixels(10.0, 10.0, 8, 8)
+
+    # Non-grid grid arguments and mismatched sizes fail at construction.
+    @test_throws MethodError ContinuousImage(rand(4, 4), "not a grid", BSplinePulse{3}())
+    @test_throws "does not match the grid size" ContinuousImage(
+        rand(4, 4), g, BSplinePulse{3}()
+    )
+
+    # stokes on a convolved polarized image rebuilds with the convolved kernel.
+    I = rand(8, 8)
+    pimg = StructArray{StokesParams{Float64}}((; I, Q = 0.1I, U = 0.1I, V = 0.05I))
+    pci = ContinuousImage(IntensityMap(pimg, g), BSplinePulse{3}())
+    cc = convolved(pci, Gaussian())
+    ccI = ComradeBase.stokes(cc, :I)
+    @test ccI isa ContinuousImage
+    @test ccI.kernel === cc.kernel
+
+    # MultiDomainImage takes a 2D spatial base: a cube has no matching method.
+    gcube = RectiGrid((; X = g.X, Y = g.Y, Fr = [230.0e9, 345.0e9]))
+    @test_throws MethodError MultiDomainImage(
+        IntensityMap(rand(8, 8, 2), gcube), BSplinePulse{3}(), PolySpectral((1.0,), 230.0e9)
+    )
+    @test_throws "2D spatial grid" MultiDomainImage(
+        ContinuousImage(IntensityMap(rand(8, 8, 2), gcube), BSplinePulse{3}()),
+        PolySpectral((1.0,), 230.0e9)
+    )
+end
+
+@testset "spatialdims" begin
+    x = range(-5.0, 5.0; length = 8)
+    gok = RectiGrid((; X = x, Y = x, Fr = [1.0e9, 2.0e9]))
+    @test map(DD.name, DD.dims(spatialdims(gok))) == (:X, :Y)
+    @test spatialdims(IntensityMap(rand(8, 8, 2), gok)) == spatialdims(gok)
+
+    g2 = imagepixels(10.0, 10.0, 8, 8)
+    @test spatialdims(g2) == g2
+end
+
+@testset "ContinuousImage show" begin
+    g = imagepixels(10.0, 10.0, 8, 8)
+    ci = ContinuousImage(IntensityMap(rand(8, 8), g), BSplinePulse{3}())
+    s = sprint(show, ci)
+    @test occursin("ContinuousImage", s)
+    @test occursin("BSplinePulse", s)
+    @test occursin("(8, 8)", s)
+    @test !occursin("RectiGrid", s)
+    @test length(s) < 120
+
+    md = MultiDomainImage(IntensityMap(rand(8, 8), g), BSplinePulse{3}(), PolySpectral((1.0,), 230.0e9))
+    smd = sprint(show, md)
+    @test occursin("MultiDomainParams", smd)
+    @test occursin("BSplinePulse", smd)
+    @test length(smd) < 120
+
+    # bare spectral params also print without a static map
+    sps = sprint(show, ContinuousImage(PolySpectral((fill(1.0, 8, 8),), 230.0e9), g, BSplinePulse{3}()))
+    @test occursin("PolySpectral", sps)
 end

@@ -22,7 +22,7 @@ end
     m = PolarizedModel(Gaussian(), 0.1 * Gaussian(), 0.1 * Gaussian(), 0.1 * Gaussian())
     g = imagepixels(10.0, 10.0, 512, 512)
     s = map(length, dims(g))
-    tsp = TaylorSpectral(0.1, 1.0, 230.0)
+    tsp = MultiDomainParams(0.1, PolySpectral(1.0, 230.0))
     mf = PolarizedModel(Gaussian(), tsp * Gaussian(), 0.1 * Gaussian(), 0.1 * Gaussian())
     @test ComradeBase.intensity_point(mf, (; X = 0.1, Y = 0.0, Fr = 230.0)) ≈
         ComradeBase.intensity_point(m, (; X = 0.1, Y = 0.0, Fr = 230.0))

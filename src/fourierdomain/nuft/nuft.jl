@@ -32,13 +32,13 @@ _compare(nv::NamedTuple{N}, val) where {N} = mapreduce(n -> (nv[n] == val[n]), *
 function plan_indices(imgdomain::AbstractRectiGrid, visdomain::UnstructuredDomain)
     # TODO: Change the ordering so that visdomain is accessed in a constant stride so
     # we can utilize in-place nuft and save a bunch of allocations
-    spatialdims = ComradeBase.dims(imgdomain)[3:end]
-    nms = map(name, spatialdims)
+    extradims = ComradeBase.dims(imgdomain)[3:end]
+    nms = map(name, extradims)
 
     # DimPoints stack overflows for an empty tuple
-    isempty(spatialdims) && return (0, 0)
+    isempty(extradims) && return (0, 0)
 
-    itr = DimPoints(spatialdims)
+    itr = DimPoints(extradims)
     visp = domainpoints(visdomain)
     # The grouping depends only on the trailing (Fr/Ti) coordinates. Materialize just
     # those columns on the host so this one-time structural computation also works when
@@ -48,8 +48,10 @@ function plan_indices(imgdomain::AbstractRectiGrid, visdomain::UnstructuredDomai
         nv = NamedTuple{nms}(vals)
         # Check if visinds are strided if so switch to a iterator
         visind = findall(p -> _compare(nv, p), cmp)
-        dfs = diff(visind)
         length(visind) == 0 && return (i, 1:0)
+        # A single-element group has an empty diff, so treat it as trivially contiguous.
+        length(visind) == 1 && return (i, visind[1]:visind[1])
+        dfs = diff(visind)
         if all(==(dfs[1]), dfs)
             if dfs[1] == 1
                 # Extract information to let it know we have a contiguous array
