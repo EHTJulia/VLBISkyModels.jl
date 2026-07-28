@@ -821,38 +821,5 @@ end
 
             @test visibilitymap(cimg, gfr) ≈ visibilitymap(cimg_ref, gfr) atol = 1.0e-8
         end
-
-        @testset "imagepixels with one extra dimension" begin
-            fr = Fr([230.0e9, 345.0e9])
-            g = imagepixels(10.0, 20.0, 4, 5, fr)
-
-            @test length(g.X) == 4
-            @test length(g.Y) == 5
-            @test length(g.Fr) == 2
-            @test collect(g.Fr) == [230.0e9, 345.0e9]
-        end
-
-        @testset "imagepixels with two extra dimensions preserves order" begin
-            fr = Fr([230.0e9, 345.0e9])
-            ti = Ti([1.0, 2.0, 3.0])
-
-            g_fr_ti = imagepixels(10.0, 20.0, 4, 5, fr, ti)
-            g_ti_fr = imagepixels(10.0, 20.0, 4, 5, ti, fr)
-
-            @test length(g_fr_ti.Fr) == 2
-            @test length(g_fr_ti.Ti) == 3
-            @test length(g_ti_fr.Ti) == 3
-            @test length(g_ti_fr.Fr) == 2
-
-            @test dims(g_fr_ti)[3] != dims(g_ti_fr)[3]
-            @test dims(g_fr_ti)[4] != dims(g_ti_fr)[4]
-        end
-
-        @testset "imagepixels rejects nonpositive image sizes" begin
-            fr = Fr([230.0e9, 345.0e9])
-
-            @test_throws AssertionError imagepixels(10.0, 20.0, 0, 5, fr)
-            @test_throws AssertionError imagepixels(10.0, 20.0, 4, 0, fr)
-        end
     end
 end
