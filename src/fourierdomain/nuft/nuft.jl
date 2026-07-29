@@ -40,10 +40,14 @@ function plan_indices(imgdomain::AbstractRectiGrid, visdomain::UnstructuredDomai
 
     itr = DimPoints(spatialdims)
     visp = domainpoints(visdomain)
+    # The grouping depends only on the trailing (Fr/Ti) coordinates. Materialize just
+    # those columns on the host so this one-time structural computation also works when
+    # the visibility coordinates are Reactant arrays (the plan is built outside `@jit`).
+    cmp = StructArray(NamedTuple{nms}(map(n -> collect(getproperty(visp, n)), nms)))
     inds = map(eachindex(itr), itr) do i, vals
         nv = NamedTuple{nms}(vals)
         # Check if visinds are strided if so switch to a iterator
-        visind = findall(p -> _compare(nv, p), visp)
+        visind = findall(p -> _compare(nv, p), cmp)
         dfs = diff(visind)
         length(visind) == 0 && return (i, 1:0)
         if all(==(dfs[1]), dfs)

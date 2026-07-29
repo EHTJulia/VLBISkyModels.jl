@@ -18,6 +18,7 @@ Pages = ["api.md"]
 
 ```@docs
 VLBISkyModels.TaylorSpectral
+VLBISkyModels.PolySpectral
 ```
 
 ### Combinators
@@ -70,6 +71,7 @@ VLBISkyModels.LogSpiral
 VLBISkyModels.Constant
 VLBISkyModels.GaussDisk
 VLBISkyModels.ContinuousImage
+VLBISkyModels.MultiDomainImage
 ```
 
 ### Image Pulses
@@ -148,6 +150,8 @@ VLBISkyModels.rad2μas
 VLBISkyModels.μas2rad
 VLBISkyModels.mbreve(::ComradeBase.AbstractPolarizedModel, ::Any)
 VLBISkyModels.m̆(::ComradeBase.AbstractPolarizedModel, ::Any)
+VLBISkyModels.build_param!
+VLBISkyModels.spatialdims
 ```
 
 ### IO

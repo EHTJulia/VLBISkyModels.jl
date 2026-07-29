@@ -5,6 +5,11 @@ using VLBISkyModels
 using VLBISkyModels: NFFT
 using Test
 
+# Force the CPU backend so Reactant does not try to initialize a GPU client.
+# On some machines (e.g. AMD/ROCm) probing the GPU during the first compilation
+# crashes the whole process. These tests only check correctness, not the GPU.
+Reactant.set_default_backend("cpu")
+
 
 function test_analytic(m, mr, gf, gfr)
 

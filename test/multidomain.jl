@@ -405,12 +405,12 @@ end
 end
 
 @testset "Multidomain models" begin
-    @testset "TaylorSpectral" begin
-        ts = TaylorSpectral(1.0, 1.0, 230.0, -1.0)
+    @testset "PolySpectral" begin
+        ts = PolySpectral(1.0, 230.0, -1.0)
         @test ts((; Fr = 230.0)) ≈ 0.0
         @test ts((; Fr = 345.0)) ≈ 0.5
 
-        ts2 = TaylorSpectral(1.0, (0.0, 1.0), 230.0)
+        ts2 = PolySpectral((0.0, 1.0), 230.0)
         @test ts2((; Fr = 230.0)) ≈ 1.0
         @test ts2((; Fr = 345.0)) ≈ 1.0 * exp(log(1.5)^2)
     end
@@ -441,7 +441,7 @@ end
         gfr = FourierDualDomain(g, guv, NFFTAlg())
 
         @testset "Stretch" begin
-            ts = TaylorSpectral(1.0, 1.0, 230.0e9)
+            ts = PolySpectral(1.0, 230.0e9)
             m1 = modify(Gaussian(), Stretch(ts, 1.0))
             mn = modify(ExtendedRing(8.0), Stretch(ts, 1.0))
             test_modifier(m1, Gaussian(), modify(Gaussian(), Stretch(1.5, 1.0)), gfr)
@@ -474,7 +474,7 @@ end
             RM = 1.0
             mb = modify(Gaussian(), Stretch(2.0, 1.0))
             mbn = modify(ExtendedRing(8.0), Stretch(2.0, 1.0))
-            tev = TaylorSpectral(RM, 2.0, 230.0e9, -RM) # zeropoint the RM at 230 GHz
+            tev = PolySpectral(2.0, 230.0e9, -RM) # zeropoint the RM at 230 GHz (base RM = 1)
             m1 = modify(mb, Rotate(tev))
             mn = modify(mbn, Rotate(tev))
             test_modifier(m1, mb, modify(mb, Rotate(RM * (345 / 230)^2 - RM)), gfr)
@@ -484,7 +484,7 @@ end
         @testset "Shift" begin
             mb = Gaussian()
             mbn = ExtendedRing(8.0)
-            ts = TaylorSpectral(1.0, 1.0, 230.0e9, -1.0)
+            ts = PolySpectral(1.0, 230.0e9, -1.0)
             m1 = modify(mb, Shift(ts, 0.0))
             mn = modify(mbn, Shift(ts, 0.0))
             test_modifier(m1, mb, modify(mb, Shift(0.5, 0.0)), gfr)
@@ -494,7 +494,7 @@ end
         @testset "Renormalize" begin
             mb = Gaussian()
             mbn = ExtendedRing(8.0)
-            ts = TaylorSpectral(1.0, 1.0, 230.0e9)
+            ts = PolySpectral(1.0, 230.0e9)
             m1 = ts * mb
             mn = ts * mbn
             test_modifier(m1, mb, 1.5 * mb, gfr)
@@ -504,9 +504,9 @@ end
         @testset "Multi modifiers" begin
             mb = Gaussian()
             mbn = ExtendedRing(8.0)
-            tss = TaylorSpectral(1.0, 1.0, 345.0e9)
-            tsx = TaylorSpectral(1.0, 1.0, 230.0e9, -1.0)
-            tsr = TaylorSpectral(1.0, 1.0, 345.0e9, -1.0)
+            tss = PolySpectral(1.0, 345.0e9)
+            tsx = PolySpectral(1.0, 230.0e9, -1.0)
+            tsr = PolySpectral(1.0, 345.0e9, -1.0)
 
             m1 = modify(Gaussian(), Stretch(tss, 1.0), Shift(tsx, 0.0), Rotate(tsr))
             test_modifier(
@@ -541,10 +541,10 @@ end
         guv = UnstructuredDomain((; U = u, V = v, Fr = fr, Ti = ti))
         gfr = FourierDualDomain(g, guv, NFFTAlg())
 
-        ts = TaylorSpectral(1.0, 1.0, 230.0e9)
+        ts = PolySpectral(1.0, 230.0e9)
         m1 = modify(Gaussian(), Stretch(ts))
         m2 = ExtendedRing(8.0)
-        ts3 = TaylorSpectral(8.0, 1.0, 230.0e9)
+        ts3 = MultiDomainParams(8.0, PolySpectral(1.0, 230.0e9)) # scalar base lives in MultiDomainParams
         m3 = TBlob(ts3)
 
         test_modifier(m1 + m2, Gaussian() + m2, modify(Gaussian(), Stretch(1.5)) + m2, gfr)
@@ -562,7 +562,7 @@ end
     @testset "Convolution Multdomain" begin
         @testset "Frequency only" begin
             m1 = modify(Gaussian(), Stretch(1.0))
-            m2 = modify(Gaussian(), Stretch(TaylorSpectral(1.0, 1.0, 230.0e9)))
+            m2 = modify(Gaussian(), Stretch(PolySpectral(1.0, 230.0e9)))
 
             mtr230 = modify(Gaussian(), Stretch(sqrt(2)))
             mtr345 = modify(Gaussian(), Stretch(sqrt(1 + (345 / 230)^2)))
@@ -586,7 +586,7 @@ end
 
         @testset "Frequency+Time" begin
             m1 = modify(Gaussian(), Stretch(1.0))
-            m2 = modify(Gaussian(), Stretch(TaylorSpectral(1.0, 1.0, 230.0e9)))
+            m2 = modify(Gaussian(), Stretch(PolySpectral(1.0, 230.0e9)))
 
             mtr230 = modify(Gaussian(), Stretch(sqrt(2)))
             mtr345 = modify(Gaussian(), Stretch(sqrt(1 + (345 / 230)^2)))
@@ -611,13 +611,215 @@ end
         end
     end
 
-    @testset "TaylorSpectral Array" begin
+    @testset "PolySpectral Array" begin # test implementation of build_param and build_param!
         g = imagepixels(10.0, 10.0, 64, 64)
         base = rand(64, 64)
         indices = (ones(64, 64), zeros(64, 64))
-        ps = TaylorSpectral(base, indices, 230.0e9)
+        ps = PolySpectral(base, indices, 230.0e9)
         @test ComradeBase.build_param(ps, (; Fr = 230.0e9)) ≈ base
         @test ComradeBase.build_param(ps, (; Fr = 230.0e9 * 2)) ≈ base .* 2.0
         @test ComradeBase.build_param(ps, (; Fr = 230.0e9 / 2)) ≈ base .* inv(2)
+
+        bimg = IntensityMap(base, g)
+        bimg_orig = copy(bimg)
+        @test VLBISkyModels.build_param!(copy(bimg_orig), ps, (; Fr = 230.0e9)) ≈ bimg_orig
+        @test VLBISkyModels.build_param!(copy(bimg_orig), ps, (; Fr = 230.0e9 * 2)) ≈ bimg_orig .* 2.0
+        @test VLBISkyModels.build_param!(copy(bimg_orig), ps, (; Fr = 230.0e9 / 2)) ≈ bimg_orig .* inv(2)
+    end
+end
+
+
+@testset "MultiDomainParams" begin
+    ref = 230.0e9
+
+    @testset "Polyspectral constructing MultiDomainParams" begin
+        base = reshape(collect(1.0:6.0), 2, 3)
+        base_orig = copy(base)
+
+        α = reshape(collect(range(-1.0, 2.0; length = 6)), 2, 3)
+        β = reshape(collect(range(-0.25, 0.25; length = 6)), 2, 3)
+        p0 = reshape(collect(range(0.1, 0.6; length = 6)), 2, 3)
+
+        ps = PolySpectral(base, (α, β), ref, p0)
+
+        @test ps isa MultiDomainParams
+        @test ps.params ≈ base
+        @test length(ps.models) == 1
+
+        model = first(ps.models)
+        @test model isa PolySpectral
+        @test model.index == (α, β)
+        @test model.freq0 == ref
+
+        p = (; Fr = 2 * ref)
+
+        x = log(p.Fr / ref)
+        arg = α .* x .+ β .* x^2
+        expected_out = base .* exp.(arg) .+ p0
+
+        out = ComradeBase.build_param(ps, p)
+
+        @test out ≈ expected_out
+        @test out !== base
+        @test base ≈ base_orig
+
+        # Returned output should not alias the stored base image.
+        out[1, 1] = -999.0
+        @test base[1, 1] == base_orig[1, 1]
+    end
+
+    @testset "PolySpectral build_param" begin
+        base = reshape(collect(1.0:(32 * 32)), 32, 32)
+        base_orig = copy(base)
+
+        α = reshape(collect(range(-1.0, 2.0; length = 32 * 32)), 32, 32)
+        β = reshape(collect(range(-0.25, 0.25; length = 32 * 32)), 32, 32)
+        p0 = reshape(collect(range(0.1, 1.0; length = 32 * 32)), 32, 32)
+
+        # Test param-provided PolySpectral path.
+        ps_param = PolySpectral(base, (α, β), ref, p0)
+        ps_noparam = PolySpectral((α, β), ref, p0)
+
+        p = (; Fr = 2 * ref)
+
+        x = log(p.Fr / ref)
+        arg = α .* x .+ β .* x^2
+
+        expected_param = base .* exp.(arg) .+ p0
+        expected_noparam = exp.(arg) .+ p0
+
+        # Test 2 -> 3 argument build_param conversion.
+        @test ps_param(p) ≈ ComradeBase.build_param(ps_param, p)
+        @test ps_noparam(p) ≈ ComradeBase.build_param(ps_noparam, p)
+
+        @test ps_param(p) ≈ expected_param
+        @test ps_noparam(p) ≈ expected_noparam
+
+        # Spectral-only evaluation (no base) and the base-supplied 3-argument path.
+        @test ComradeBase.build_param(ps_noparam, p) ≈ expected_noparam
+        @test ComradeBase.build_param(base, ps_noparam, p) ≈ expected_param
+        @test base ≈ base_orig
+
+        # Direct 3-argument mutating path.
+        out = copy(base)
+        ret = VLBISkyModels.build_param!(out, ps_noparam, p)
+
+        @test ret === out
+        @test out ≈ expected_param
+        @test base ≈ base_orig
+
+        # Mutating path should transform the current first argument.
+        current = fill(42.0, size(base))
+        current_orig = copy(current)
+
+        ret_current = VLBISkyModels.build_param!(current, ps_noparam, p)
+
+        @test ret_current === current
+        @test current ≈ current_orig .* exp.(arg) .+ p0
+
+        # Test scalar param path.
+        ps_scalar = PolySpectral(1.0, ref, 1.0)
+        scalar_expected = 1.0 * exp(1.0 * log(2.0)) + 1.0
+
+        @test ComradeBase.build_param(ps_scalar, p) ≈ scalar_expected
+        @test ComradeBase.build_param(1.0, ps_scalar, p) ≈ scalar_expected
+        @test VLBISkyModels.build_param!(1.0, ps_scalar, p) ≈ scalar_expected
+        @test ps_scalar(p) ≈ scalar_expected
+    end
+
+    @testset "MultiDomainParams recursion" begin
+        ref = 230.0e9
+        p = (; Fr = 2ref)
+
+        base = [1.0 2.0; 3.0 4.0]
+
+        # At Fr = 2ref:
+        # m1 applies x -> 2x + 1
+        # m2 applies x -> 3x + 10
+        m1 = PolySpectral((fill(1.0, size(base)),), ref, fill(1.0, size(base)))
+        m2 = PolySpectral((fill(log2(3.0), size(base)),), ref, fill(10.0, size(base)))
+
+        md = MultiDomainParams(base, m1, m2)
+
+        expected_forward = 3 .* (2 .* base .+ 1) .+ 10
+        expected_reverse = 2 .* (3 .* base .+ 10) .+ 1
+
+        # Non-mutating recursion should apply m1, then m2.
+        out = ComradeBase.build_param(md, p)
+
+        @test out ≈ expected_forward
+        @test !(out ≈ expected_reverse)
+
+        # Mutating recursion should transform the current value passed in.
+        buf = copy(base)
+        ret = VLBISkyModels.build_param!(buf, md, p)
+
+        @test ret === buf
+        @test buf ≈ expected_forward
+        @test !(buf ≈ expected_reverse)
+
+        # Prove build_param! is mutating the first argument.
+        buf2 = fill(42.0, size(base))
+        VLBISkyModels.build_param!(buf2, md, p)
+
+        expected_from_current = 3 .* (2 .* fill(42.0, size(base)) .+ 1) .+ 10
+        @test buf2 ≈ expected_from_current
+    end
+
+    @testset "MultiDomainImage and imagepixels constructors" begin
+        ref = 230.0e9
+
+        @testset "MultiDomainImage builds a ContinuousImage" begin
+            gXY = imagepixels(10.0, 10.0, 8, 8)
+            base = rand(8, 8)
+            dom = PolySpectral((1.0,), ref)
+            md = MultiDomainImage(IntensityMap(base, gXY), BSplinePulse{3}(), dom)
+
+            @test md isa ContinuousImage
+            @test md.params isa MultiDomainParams
+            @test md.params.params ≈ base
+            @test md.params.models == (dom,)
+            @test md.grid == gXY
+            @test md.kernel isa BSplinePulse
+
+            # The ContinuousImage form keeps the same wrapping.
+            md2 = MultiDomainImage(md, dom)
+            @test md2 isa ContinuousImage
+            @test md2.params isa MultiDomainParams
+            @test md2.params.params isa MultiDomainParams
+        end
+
+        @testset "MultiDomainImage intensity/visibility correctness" begin
+            α = 1.5
+            gXY = imagepixels(10.0, 10.0, 32, 32)
+            base = rand(32, 32)
+            dom = PolySpectral((α,), ref)
+            cimg = MultiDomainImage(IntensityMap(base, gXY), BSplinePulse{3}(), dom)
+
+            frs = [ref, 1.5 * ref]
+            gcube = RectiGrid((; X = gXY.X, Y = gXY.Y, Fr = frs))
+
+            # intensitymap: each frequency slice must equal the explicitly scaled image.
+            img_md = intensitymap(cimg, gcube)
+            for (i, fr) in enumerate(frs)
+                slice_ref = intensitymap(
+                    ContinuousImage(IntensityMap(base .* (fr / ref)^α, gXY), BSplinePulse{3}()),
+                    gXY
+                )
+                @test parent(img_md[Fr = i]) ≈ parent(slice_ref) atol = 1.0e-10
+            end
+
+            # visibilitymap: must match a plain cube of the materialized images.
+            cube = cat((base .* (fr / ref)^α for fr in frs)...; dims = 3)
+            cimg_ref = ContinuousImage(IntensityMap(cube, gcube), BSplinePulse{3}())
+
+            u = randn(40) .* 0.25
+            v = randn(40) .* 0.25
+            fr = vcat(fill(frs[1], 20), fill(frs[2], 20))
+            guv = UnstructuredDomain((; U = u, V = v, Fr = fr))
+            gfr = FourierDualDomain(gcube, guv, NFFTAlg())
+
+            @test visibilitymap(cimg, gfr) ≈ visibilitymap(cimg_ref, gfr) atol = 1.0e-8
+        end
     end
 end
