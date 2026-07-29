@@ -2,8 +2,8 @@
 Type-1 execute: spread → FFT → crop central modes → deconvolve.
 
 All steps are regular Julia (broadcasts, slicing, AbstractFFTs) traced by
-Reactant. The spread's scatter-add lives in spread_interp.jl and is currently
-the performance blocker — see the warning on `_scatter_add!`.
+Reactant, except the spread's scatter-add (spread_interp.jl), which is built
+directly as a parallel `stablehlo.scatter` — see `_scatter_add!`.
 ==============================================================================#
 
 # ---------- central-mode crop (with periodic wrap) --------------------------

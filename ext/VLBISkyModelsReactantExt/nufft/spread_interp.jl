@@ -144,22 +144,38 @@ end
 Spread (type-1 kernel): scatter-add each point's weighted stencil into the
 oversampled grid.
 
-!!! warning "Performance blocker — sequential scatter"
-    Reactant/StableHLO has no *parallel* scatter-add reachable through
-    regular Julia array semantics:
-      * `fw[lin] .+= upd` does not trace (scalar-indexing fallback), and
-        Base semantics would drop duplicate-index contributions anyway;
-      * the `@trace for` accumulation loop below traces correctly but
-        lowers to a sequential `stablehlo.while` (one dynamic_update_slice
-        per update) — the enzymexla loop-raising passes do not lift it to
-        `stablehlo.scatter`.
-    This makes standalone type-1 transforms O(M * w^D) *serial*. The type-2
-    path (what VLBISkyModels uses) does not go through this function, and
-    its Enzyme adjoint generates the parallel scatter internally.
+The traced path emits a single parallel `stablehlo.scatter` whose
+update_computation is `+`. StableHLO combines duplicate indices through the
+update computation, so overlapping stencils accumulate correctly with no
+serialization. Regular Julia array semantics cannot express this
+(`fw[lin] .+= upd` drops duplicate-index contributions), which is why the op
+is built via `Reactant.Ops.scatter` directly. On GPU the scatter lowers to
+atomics, so float sums are reordered run-to-run (same caveat as cuFINUFFT's
+atomic spread).
 ==============================================================================#
+function _scatter_add!(
+        fw_vec::Reactant.AnyTracedRArray{CT, 1}, lin::AbstractVector, upd::AbstractVector,
+    ) where {CT}
+    dest = Reactant.TracedUtils.materialize_traced_array(fw_vec)
+    idx = Reactant.promote_to(
+        Reactant.TracedRArray{Int64, 2}, reshape(lin, length(lin), 1)
+    )
+    ups = Reactant.promote_to(Reactant.TracedRArray{CT, 1}, upd)
+    return Reactant.Ops.scatter(
+        +, [dest], idx, [ups];
+        update_window_dims = Int64[],
+        inserted_window_dims = Int64[1],
+        input_batching_dims = Int64[],
+        scatter_indices_batching_dims = Int64[],
+        scatter_dims_to_operand_dims = Int64[1],
+        index_vector_dim = Int64(2),
+    )[1]
+end
+
+# Non-traced fallback (plain-array debugging use).
 function _scatter_add!(fw_vec::AbstractVector, lin::AbstractVector, upd::AbstractVector)
-    Reactant.@trace track_numbers = false for n in 1:length(lin)
-        @allowscalar fw_vec[lin[n]] += upd[n]
+    @allowscalar for n in 1:length(lin)
+        fw_vec[lin[n]] += upd[n]
     end
     return fw_vec
 end
@@ -167,13 +183,19 @@ end
 # Spread all points of all transforms into a fresh oversampled grid.
 # `cmat :: (M, ntrans)` complex strengths in original (unsorted) point order.
 # Returns `fw :: (ngrid..., ntrans)` complex.
+#
+# Real and imaginary parts are accumulated in separate real buffers: XLA has
+# no 128-bit atomic add, so a ComplexF64 scatter runs ~30-40x slower than two
+# Float64 scatters at large update counts (measured 24.2 ms vs 0.79 ms for
+# 2 x 4.9e6 f64 updates on an RTX 3090 Ti).
 function _spread(prep::NUFFTSetPts{T, D}, cmat::AbstractMatrix, ntrans::Int) where {T, D}
     plan = prep.plan
-    CT = complex(T)
     nflat = prod(plan.ngrid)
 
-    fw_vec = similar(cmat, CT, nflat * ntrans)
-    fill!(fw_vec, zero(CT))
+    fw_re = similar(cmat, T, nflat * ntrans)
+    fw_im = similar(cmat, T, nflat * ntrans)
+    fill!(fw_re, zero(T))
+    fill!(fw_im, zero(T))
 
     coefs = plan.horner_coefs
     for r in _chunk_ranges(prep.M, plan.chunk_size)
@@ -182,13 +204,15 @@ function _spread(prep::NUFFTSetPts{T, D}, cmat::AbstractMatrix, ntrans::Int) whe
         wprod = _weight_product(wpd)                       # (cs, w^D) real
         cc = cmat[perm_c, :]                               # (cs, ntrans) complex
         for t in 1:ntrans
-            upd = wprod .* cc[:, t]                        # (cs, w^D)
-            lin_t = lin .+ (t - 1) * nflat
-            fw_vec = _scatter_add!(fw_vec, vec(lin_t), vec(upd))
+            upd_re = wprod .* real.(cc[:, t])              # (cs, w^D)
+            upd_im = wprod .* imag.(cc[:, t])
+            lin_t = vec(lin .+ (t - 1) * nflat)
+            fw_re = _scatter_add!(fw_re, lin_t, vec(upd_re))
+            fw_im = _scatter_add!(fw_im, lin_t, vec(upd_im))
         end
     end
 
-    return reshape(fw_vec, (plan.ngrid..., ntrans))
+    return reshape(complex.(fw_re, fw_im), (plan.ngrid..., ntrans))
 end
 
 #==============================================================================
@@ -239,13 +263,18 @@ end
 # RESOURCE_EXHAUSTED at M = 1e6, w = 10, ComplexF64 on a busy 24 GB card;
 # 4.7 GB peak on an idle one).
 #
-# Above the threshold, reverse-mode work goes to `_interp_wide` instead: one
-# batched multi-dim gather over a circular-padded grid plus a separable
-# weight contraction, straight-line code whose adjoint scatter XLA fuses
-# with no caches. This is the pre-#139 interp kernel, which measured best at
+# Above the threshold, work goes to `_interp_wide` instead: one batched
+# multi-dim gather over a circular-padded grid plus a separable weight
+# contraction, straight-line code whose adjoint scatter XLA fuses with no
+# caches. This is the pre-#139 interp kernel, which measured best at
 # large M in both directions (M = 1e6, w = 10: forward 5.5 ms, reverse
 # 16.7 ms, 1.9 GB peak — vs 40+ ms / 4+ GB for every loop-based variant).
-const AD_TRACE_INTERP_WS_LIMIT = 128 * 2^20
+#
+# The same threshold routes the *primal* (2D only): at M = 1e6, N = 1024,
+# w = 7 on an RTX 3090 Ti the chunk-loop forward measured 16.1 ms while a
+# full wide-path VJP (forward + reverse) measured 11.1 ms; below the
+# threshold (M = 1e5) loop and wide tie at ~1.2 ms forward / 2.5 ms VJP.
+const INTERP_WIDE_WS_LIMIT = 128 * 2^20
 # D != 2 fallback only: cap on unrolled chunks so graph size stays bounded
 # (~0.35 s compile / ~25 MB host RAM per chunk measured).
 const AD_UNROLL_MAX_CHUNKS = 32
@@ -260,12 +289,16 @@ function _interp(prep::NUFFTSetPts{T, ND}, fw::AbstractArray, ntrans::Int) where
     coefs = plan.horner_coefs
     M = prep.M
 
+    # Above the workspace threshold the wide kernel wins in both directions
+    # (see the guard comment above), so route the 2D primal there too.
     # `EnzymeCore.within_autodiff()` is overlaid by Reactant to return `true`
     # while tracing under `Enzyme.autodiff`, and is a plain Bool at trace
-    # time, so the primal-only executable and the VJP executable each get the
-    # implementation that is right for them (see the guard comment above).
+    # time; under AD the fallback is mandatory for every D (the loop's
+    # store-all caches are what blow up), while the D != 2 primal keeps the
+    # chunk loop (no wide kernel implemented there, and the unrolled
+    # fallback's chunk cap does not bound primal memory any better).
     ws = M * w^ND * sizeof(CT) * ntrans
-    if EnzymeCore.within_autodiff() && ws > AD_TRACE_INTERP_WS_LIMIT
+    if ws > INTERP_WIDE_WS_LIMIT && (EnzymeCore.within_autodiff() || ND == 2)
         return _interp_ad_fallback(prep, fw, ntrans)
     end
 
@@ -312,7 +345,7 @@ end
 # stencil in one batched gather (slice_sizes = [w, w, ntrans]) from the
 # circular-padded grid, then contract against the separable per-dim weights.
 # Points are read in original order, so no output permutation is needed.
-# Used for reverse-mode work above AD_TRACE_INTERP_WS_LIMIT (see above).
+# Used for 2D work in both directions above INTERP_WIDE_WS_LIMIT (see above).
 function _interp_wide(prep::NUFFTSetPts{T, 2}, fw::AbstractArray, ntrans::Int) where {T}
     plan = prep.plan
     w = plan.nspread
