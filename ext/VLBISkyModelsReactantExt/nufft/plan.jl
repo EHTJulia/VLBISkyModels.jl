@@ -56,7 +56,7 @@ end
 # `bin_dim ≥ w` is required for binning to provide locality benefit (each
 # NU point's stencil spans `w` cells per dim).
 #
-# Sweep finding: GPU performance vs `bin_dim` is *very*
+# A1 sweep finding (see PROFILE.md): GPU performance vs `bin_dim` is *very*
 # non-monotonic with sharp cache cliffs (5–25× swings between adjacent bin
 # sizes). No single `α` is robust — every default lands in good pockets
 # for some workloads and bad pockets for others. We therefore keep the
