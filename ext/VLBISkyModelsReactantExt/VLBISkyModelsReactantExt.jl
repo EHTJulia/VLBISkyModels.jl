@@ -8,6 +8,7 @@ using NFFT
 using NFFT: AbstractNFFTs
 using VLBISkyModels: ReactantNUFFTAlg
 using LinearAlgebra
+import EnzymeCore
 
 include("nufft/ReactantNUFFT.jl")
 
