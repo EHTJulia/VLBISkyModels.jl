@@ -15,7 +15,7 @@ Static plan parameters. `T` is the real eltype, `D` is the dimensionality,
 
 Construct via [`plan_nufft`](@ref).
 """
-struct NUFFTPlan{T <: Real, D, K}
+struct NUFFTPlan{T <: Real, D, K, CoefsType<:AbstractMatrix, PhiHatType<:AbstractVector}
     nmodes::NTuple{D, Int}
     ngrid::NTuple{D, Int}
     iflag::Int                        # +1 or -1
@@ -26,9 +26,11 @@ struct NUFFTPlan{T <: Real, D, K}
     bin_dims::NTuple{D, Int}
     nbins::NTuple{D, Int}
     chunk_size::Int
-    horner_coefs::Matrix{T}           # (w, deg+1)
-    phi_hat::NTuple{D, Vector{T}}      # length nmodes[d] each
+    horner_coefs::CoefsType           # (w, deg+1)
+    phi_hat::NTuple{D, PhiHatType}      # length nmodes[d] each
 end
+
+NUFFTPlan{T,D,K}(args...) where {T,D,K} = NUFFTPlan{T,D,K,Matrix{T},Vector{T}}(args...)
 
 nufft_type(::NUFFTPlan{<:Any, <:Any, K}) where {K} = K
 Base.eltype(::NUFFTPlan{T}) where {T} = T
