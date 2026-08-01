@@ -19,7 +19,6 @@ Pages = ["api.md"]
 ```@docs
 VLBISkyModels.PolySpectral
 VLBISkyModels.MultiDomainParams
-VLBISkyModels.TaylorSpectral
 ```
 
 ### Combinators
@@ -151,8 +150,7 @@ VLBISkyModels.rad2μas
 VLBISkyModels.μas2rad
 VLBISkyModels.mbreve(::ComradeBase.AbstractPolarizedModel, ::Any)
 VLBISkyModels.m̆(::ComradeBase.AbstractPolarizedModel, ::Any)
-VLBISkyModels.build_param!
-VLBISkyModels.spatialdims
+VLBISkyModels.restrict_params
 ```
 
 ### IO

@@ -406,11 +406,11 @@ end
 
 @testset "Multidomain models" begin
     @testset "PolySpectral" begin
-        ts = PolySpectral(1.0, 230.0, -1.0)
+        ts = MultiDomainParams(1.0, PolySpectral(1.0, 230.0, -1.0))
         @test ts((; Fr = 230.0)) ≈ 0.0
         @test ts((; Fr = 345.0)) ≈ 0.5
 
-        ts2 = PolySpectral((0.0, 1.0), 230.0)
+        ts2 = MultiDomainParams(1.0, PolySpectral((0.0, 1.0), 230.0))
         @test ts2((; Fr = 230.0)) ≈ 1.0
         @test ts2((; Fr = 345.0)) ≈ 1.0 * exp(log(1.5)^2)
     end
@@ -441,7 +441,7 @@ end
         gfr = FourierDualDomain(g, guv, NFFTAlg())
 
         @testset "Stretch" begin
-            ts = PolySpectral(1.0, 230.0e9)
+            ts = MultiDomainParams(1.0, PolySpectral(1.0, 230.0e9))
             m1 = modify(Gaussian(), Stretch(ts, 1.0))
             mn = modify(ExtendedRing(8.0), Stretch(ts, 1.0))
             test_modifier(m1, Gaussian(), modify(Gaussian(), Stretch(1.5, 1.0)), gfr)
@@ -474,7 +474,8 @@ end
             RM = 1.0
             mb = modify(Gaussian(), Stretch(2.0, 1.0))
             mbn = modify(ExtendedRing(8.0), Stretch(2.0, 1.0))
-            tev = PolySpectral(2.0, 230.0e9, -RM) # zeropoint the RM at 230 GHz (base RM = 1)
+            # zeropoint the RM at 230 GHz, so the base RM of 1 is the value there
+            tev = MultiDomainParams(1.0, PolySpectral(2.0, 230.0e9, -RM))
             m1 = modify(mb, Rotate(tev))
             mn = modify(mbn, Rotate(tev))
             test_modifier(m1, mb, modify(mb, Rotate(RM * (345 / 230)^2 - RM)), gfr)
@@ -484,7 +485,7 @@ end
         @testset "Shift" begin
             mb = Gaussian()
             mbn = ExtendedRing(8.0)
-            ts = PolySpectral(1.0, 230.0e9, -1.0)
+            ts = MultiDomainParams(1.0, PolySpectral(1.0, 230.0e9, -1.0))
             m1 = modify(mb, Shift(ts, 0.0))
             mn = modify(mbn, Shift(ts, 0.0))
             test_modifier(m1, mb, modify(mb, Shift(0.5, 0.0)), gfr)
@@ -494,7 +495,7 @@ end
         @testset "Renormalize" begin
             mb = Gaussian()
             mbn = ExtendedRing(8.0)
-            ts = PolySpectral(1.0, 230.0e9)
+            ts = MultiDomainParams(1.0, PolySpectral(1.0, 230.0e9))
             m1 = ts * mb
             mn = ts * mbn
             test_modifier(m1, mb, 1.5 * mb, gfr)
@@ -504,9 +505,9 @@ end
         @testset "Multi modifiers" begin
             mb = Gaussian()
             mbn = ExtendedRing(8.0)
-            tss = PolySpectral(1.0, 345.0e9)
-            tsx = PolySpectral(1.0, 230.0e9, -1.0)
-            tsr = PolySpectral(1.0, 345.0e9, -1.0)
+            tss = MultiDomainParams(1.0, PolySpectral(1.0, 345.0e9))
+            tsx = MultiDomainParams(1.0, PolySpectral(1.0, 230.0e9, -1.0))
+            tsr = MultiDomainParams(1.0, PolySpectral(1.0, 345.0e9, -1.0))
 
             m1 = modify(Gaussian(), Stretch(tss, 1.0), Shift(tsx, 0.0), Rotate(tsr))
             test_modifier(
@@ -541,7 +542,7 @@ end
         guv = UnstructuredDomain((; U = u, V = v, Fr = fr, Ti = ti))
         gfr = FourierDualDomain(g, guv, NFFTAlg())
 
-        ts = PolySpectral(1.0, 230.0e9)
+        ts = MultiDomainParams(1.0, PolySpectral(1.0, 230.0e9))
         m1 = modify(Gaussian(), Stretch(ts))
         m2 = ExtendedRing(8.0)
         ts3 = MultiDomainParams(8.0, PolySpectral(1.0, 230.0e9)) # scalar base lives in MultiDomainParams
@@ -562,7 +563,7 @@ end
     @testset "Convolution Multdomain" begin
         @testset "Frequency only" begin
             m1 = modify(Gaussian(), Stretch(1.0))
-            m2 = modify(Gaussian(), Stretch(PolySpectral(1.0, 230.0e9)))
+            m2 = modify(Gaussian(), Stretch(MultiDomainParams(1.0, PolySpectral(1.0, 230.0e9))))
 
             mtr230 = modify(Gaussian(), Stretch(sqrt(2)))
             mtr345 = modify(Gaussian(), Stretch(sqrt(1 + (345 / 230)^2)))
@@ -586,7 +587,7 @@ end
 
         @testset "Frequency+Time" begin
             m1 = modify(Gaussian(), Stretch(1.0))
-            m2 = modify(Gaussian(), Stretch(PolySpectral(1.0, 230.0e9)))
+            m2 = modify(Gaussian(), Stretch(MultiDomainParams(1.0, PolySpectral(1.0, 230.0e9))))
 
             mtr230 = modify(Gaussian(), Stretch(sqrt(2)))
             mtr345 = modify(Gaussian(), Stretch(sqrt(1 + (345 / 230)^2)))
@@ -611,8 +612,7 @@ end
         end
     end
 
-    @testset "PolySpectral Array" begin # test implementation of build_param and build_param!
-        g = imagepixels(10.0, 10.0, 64, 64)
+    @testset "PolySpectral Array" begin # evaluating a chain, and the bare transform
         base = rand(64, 64)
         indices = (ones(64, 64), zeros(64, 64))
         ps = MultiDomainParams(base, PolySpectral(indices, 230.0e9))
@@ -620,30 +620,39 @@ end
         @test ComradeBase.build_param(ps, (; Fr = 230.0e9 * 2)) ≈ base .* 2.0
         @test ComradeBase.build_param(ps, (; Fr = 230.0e9 / 2)) ≈ base .* inv(2)
 
-        bimg = IntensityMap(base, g)
-        bimg_orig = copy(bimg)
-        @test VLBISkyModels.build_param!(copy(bimg_orig), ps, (; Fr = 230.0e9)) ≈ bimg_orig
-        @test VLBISkyModels.build_param!(copy(bimg_orig), ps, (; Fr = 230.0e9 * 2)) ≈ bimg_orig .* 2.0
-        @test VLBISkyModels.build_param!(copy(bimg_orig), ps, (; Fr = 230.0e9 / 2)) ≈ bimg_orig .* inv(2)
+        # The stored base is never written through.
+        base_orig = copy(base)
+        ComradeBase.build_param(ps, (; Fr = 230.0e9 * 2))
+        @test base ≈ base_orig
+
+        # A model transforms whichever base it is paired with, and must not alias it.
+        spec = PolySpectral(indices, 230.0e9)
+        supplied = fill(42.0, 64, 64)
+        out = MultiDomainParams(supplied, spec)((; Fr = 230.0e9 * 2))
+        @test out ≈ supplied .* 2.0
+        @test supplied == fill(42.0, 64, 64)
+    end
+
+    @testset "element type follows the parameters" begin
+        # The default offset must not widen a narrower model.
+        ps = PolySpectral((1.0f0,), 230.0f9)
+        @test ComradeBase.paramtype(typeof(ps)) === Float32
+        @test MultiDomainParams(1.0f0, ps)((; Fr = 345.0f9)) isa Float32
+        @test MultiDomainParams(fill(1.0f0, 4, 4), ps)((; Fr = 345.0f9)) isa
+            AbstractArray{Float32}
+
+        # An explicit offset still promotes.
+        @test ComradeBase.paramtype(typeof(PolySpectral((1.0f0,), 230.0f9, 1.0))) === Float64
     end
 
     @testset "constructor fail-fast" begin
-        # Array spectral coefficients must be tuple-wrapped; a bare array first
-        # argument is likelier a misplaced base value, so it must not construct.
+        # Array spectral coefficients must be tuple-wrapped, and a base is paired with the
+        # spectral model via MultiDomainParams rather than passed positionally.
         @test_throws MethodError PolySpectral(rand(4, 4), 230.0e9)
-        # Bases pair with the spectral model via MultiDomainParams, never positionally.
         @test_throws MethodError PolySpectral(rand(4, 4), 1.5, 230.0e9)
         @test_throws MethodError PolySpectral(rand(4, 4), 1.5, 230.0e9, 0.0)
     end
 
-    @testset "TaylorSpectral deprecation" begin
-        md = TaylorSpectral(2.0, 1.5, 230.0e9)
-        @test md isa MultiDomainParams
-        @test md.params == 2.0
-        @test first(md.models) === PolySpectral(1.5, 230.0e9)
-        @test ComradeBase.build_param(md, (; Fr = 230.0e9)) ≈ 2.0
-        @test ComradeBase.build_param(md, (; Fr = 460.0e9)) ≈ 2.0 * exp(1.5 * log(2.0))
-    end
 end
 
 
@@ -661,7 +670,7 @@ end
         ps = MultiDomainParams(base, PolySpectral((α, β), ref, p0))
 
         @test ps isa MultiDomainParams
-        @test ps.params ≈ base
+        @test ps.base ≈ base
         @test length(ps.models) == 1
 
         model = first(ps.models)
@@ -694,9 +703,9 @@ end
         β = reshape(collect(range(-0.25, 0.25; length = 32 * 32)), 32, 32)
         p0 = reshape(collect(range(0.1, 1.0; length = 32 * 32)), 32, 32)
 
-        # Test param-provided PolySpectral path.
-        ps_param = MultiDomainParams(base, PolySpectral((α, β), ref, p0))
-        ps_noparam = PolySpectral((α, β), ref, p0)
+        spec = PolySpectral((α, β), ref, p0)
+        ps_param = MultiDomainParams(base, spec)
+        ps_unit = MultiDomainParams(1.0, spec)
 
         p = (; Fr = 2 * ref)
 
@@ -704,45 +713,27 @@ end
         arg = α .* x .+ β .* x^2
 
         expected_param = base .* exp.(arg) .+ p0
-        expected_noparam = exp.(arg) .+ p0
+        expected_unit = exp.(arg) .+ p0
 
-        # Test 2 -> 3 argument build_param conversion.
         @test ps_param(p) ≈ ComradeBase.build_param(ps_param, p)
-        @test ps_noparam(p) ≈ ComradeBase.build_param(ps_noparam, p)
-
         @test ps_param(p) ≈ expected_param
-        @test ps_noparam(p) ≈ expected_noparam
-
-        # Spectral-only evaluation (no base) and the base-supplied 3-argument path.
-        @test ComradeBase.build_param(ps_noparam, p) ≈ expected_noparam
-        @test ComradeBase.build_param(base, ps_noparam, p) ≈ expected_param
+        @test ps_unit(p) ≈ expected_unit
         @test base ≈ base_orig
 
-        # Direct 3-argument mutating path.
-        out = copy(base)
-        ret = VLBISkyModels.build_param!(out, ps_noparam, p)
-
-        @test ret === out
-        @test out ≈ expected_param
-        @test base ≈ base_orig
-
-        # Mutating path should transform the current first argument.
+        # A model transforms whichever base it is paired with, leaving it intact.
         current = fill(42.0, size(base))
         current_orig = copy(current)
 
-        ret_current = VLBISkyModels.build_param!(current, ps_noparam, p)
+        out = MultiDomainParams(current, spec)(p)
 
-        @test ret_current === current
-        @test current ≈ current_orig .* exp.(arg) .+ p0
+        @test out ≈ current_orig .* exp.(arg) .+ p0
+        @test current ≈ current_orig
 
         # Test scalar param path.
         ps_scalar = PolySpectral(1.0, ref, 1.0)
         scalar_expected = 1.0 * exp(1.0 * log(2.0)) + 1.0
 
-        @test ComradeBase.build_param(ps_scalar, p) ≈ scalar_expected
-        @test ComradeBase.build_param(1.0, ps_scalar, p) ≈ scalar_expected
-        @test VLBISkyModels.build_param!(1.0, ps_scalar, p) ≈ scalar_expected
-        @test ps_scalar(p) ≈ scalar_expected
+        @test MultiDomainParams(1.0, ps_scalar)(p) ≈ scalar_expected
     end
 
     @testset "MultiDomainParams recursion" begin
@@ -762,26 +753,16 @@ end
         expected_forward = 3 .* (2 .* base .+ 1) .+ 10
         expected_reverse = 2 .* (3 .* base .+ 10) .+ 1
 
-        # Non-mutating recursion should apply m1, then m2.
+        # The chain applies m1, then m2.
         out = ComradeBase.build_param(md, p)
 
         @test out ≈ expected_forward
         @test !(out ≈ expected_reverse)
 
-        # Mutating recursion should transform the current value passed in.
-        buf = copy(base)
-        ret = VLBISkyModels.build_param!(buf, md, p)
-
-        @test ret === buf
-        @test buf ≈ expected_forward
-        @test !(buf ≈ expected_reverse)
-
-        # Prove build_param! is mutating the first argument.
-        buf2 = fill(42.0, size(base))
-        VLBISkyModels.build_param!(buf2, md, p)
-
-        expected_from_current = 3 .* (2 .* fill(42.0, size(base)) .+ 1) .+ 10
-        @test buf2 ≈ expected_from_current
+        # The stored base is read, never written.
+        base_orig = copy(base)
+        ComradeBase.build_param(md, p)
+        @test base ≈ base_orig
     end
 
     @testset "MultiDomainImage constructors" begin
@@ -794,18 +775,20 @@ end
             md = MultiDomainImage(IntensityMap(base, gXY), BSplinePulse{3}(), dom)
 
             @test md isa ContinuousImage
+            @test md isa MultiDomainImage
             @test md.params isa MultiDomainParams
-            @test md.params.params ≈ base
+            @test md.params.base ≈ base
             @test md.params.models == (dom,)
             @test md.grid == gXY
             @test md.kernel isa BSplinePulse
 
-            # The ContinuousImage form nests the wrapping and stays evaluable: chained
-            # order-1 models multiply their spectral factors.
+            # Chaining extends the model tuple rather than nesting, and stays evaluable:
+            # chained order-1 models multiply their spectral factors.
             md2 = MultiDomainImage(md, dom)
-            @test md2 isa ContinuousImage
-            @test md2.params isa MultiDomainParams
-            @test md2.params.params isa MultiDomainParams
+            @test md2 isa MultiDomainImage
+            @test md2.params.base ≈ base
+            @test length(md2.params.models) == 2
+            @test !(md2.params.base isa MultiDomainParams)
             gcube = RectiGrid((; X = gXY.X, Y = gXY.Y, Fr = [ref, 2 * ref]))
             img1 = intensitymap(md, gcube)
             img2 = intensitymap(md2, gcube)
@@ -814,16 +797,29 @@ end
             @test flux(md2) ≈ flux(md)
             @test eltype(md2) == Float64
 
-            # Nested MultiDomainParams evaluate the inner chain first.
+            # Chaining onto an existing chain is the same model as building it flat.
+            flat = MultiDomainImage(IntensityMap(base, gXY), BSplinePulse{3}(), dom, dom)
+            @test flat.params.models == md2.params.models
+            @test intensitymap(flat, gcube) ≈ img2
+
+            # A chain may not appear among the models of another chain.
+            @test_throws ArgumentError MultiDomainParams(
+                3.0, MultiDomainParams(3.0, PolySpectral(1.0, ref))
+            )
+            @test_throws "cannot be a model in another chain" MultiDomainParams(
+                3.0, MultiDomainParams(3.0, PolySpectral(1.0, ref))
+            )
+
+            # A chain as the base flattens, so the composite factor is unchanged.
             mdp2 = MultiDomainParams(
                 MultiDomainParams(3.0, PolySpectral(1.0, ref)),
                 PolySpectral(0.5, ref)
             )
             @test ComradeBase.build_param(mdp2, (; Fr = 2 * ref)) ≈ 3.0 * 2.0 * 2.0^0.5
-            # eltype and the base image come from the root of the chain.
-            @test eltype(mdp2) == Float64
-            @test VLBISkyModels.baseparams(mdp2) === 3.0
-            @test VLBISkyModels.baseparams(md2.params) ≈ base
+            # The element type and the base come from the single base of the chain.
+            @test ComradeBase.paramtype(typeof(mdp2)) == Float64
+            @test mdp2.base === 3.0
+            @test md2.params.base ≈ base
         end
 
         @testset "MultiDomainImage intensity/visibility correctness" begin
@@ -861,6 +857,44 @@ end
     end
 end
 
+# A family that varies across the image but does not define `restrict_params`: the fallback
+# leaves its field at full size while the base is restricted to the pulse's window.
+struct UnrestrictedField{A} <: ComradeBase.DomainParams{Float64}
+    fac::A
+end
+ComradeBase.paramfield(m::UnrestrictedField, p) = m.fac
+ComradeBase.apply_param(base, ::UnrestrictedField, fac, p) = base .* fac
+
+@testset "restrict_params" begin
+    ref = 230.0e9
+    g = imagepixels(10.0, 10.0, 8, 8)
+    base = rand(8, 8)
+    coeff = rand(8, 8)
+    p0 = rand(8, 8)
+    md = MultiDomainParams(base, PolySpectral((coeff,), ref, p0))
+
+    ix, iy = 2:4, 3:5
+    sub = VLBISkyModels.restrict_params(md, ix, iy)
+
+    # Fields are viewed, not copied, and a scalar parameter passes through.
+    @test sub.base == view(base, ix, iy)
+    @test sub.models[1].index[1] == view(coeff, ix, iy)
+    @test sub.models[1].p0 == view(p0, ix, iy)
+    @test sub.models[1].freq0 === md.models[1].freq0
+
+    # Restricting then evaluating agrees with evaluating then restricting.
+    p = (; Fr = 2 * ref)
+    @test ComradeBase.build_param(sub, p) ≈ ComradeBase.build_param(md, p)[ix, iy]
+
+    # A spatially varying family that does not define `restrict_params` fails loudly rather
+    # than combining its full-sized field with a restricted base.
+    bad = ContinuousImage(
+        MultiDomainParams(base, UnrestrictedField(fill(2.0, 8, 8))), g, BSplinePulse{3}()
+    )
+    pt = (; X = g.X[4], Y = g.Y[4], Fr = ref)
+    @test_throws DimensionMismatch ComradeBase.intensity_point(bad, pt)
+end
+
 @testset "intensity_point respects Fr for multidomain images" begin
     g = imagepixels(10.0, 10.0, 24, 24)
     base = rand(24, 24)
@@ -888,18 +922,21 @@ end
     @test diff345 ≈ diff230 .* (345 / 230)^1.5
 end
 
-@testset "build_param! threads immutable buffers" begin
+@testset "scalar chains fold like array chains" begin
     ref = 230.0e9
     p = (; Fr = 2 * ref)
     m1 = PolySpectral(1.0, ref)
     m2 = PolySpectral(0.5, ref, 1.0)
 
     md1 = MultiDomainParams(5.0, m1)
-    @test VLBISkyModels.build_param!(5.0, md1, p) ≈ ComradeBase.build_param(md1, p)
+    @test ComradeBase.build_param(md1, p) ≈ 5.0 * 2.0
 
     md2 = MultiDomainParams(5.0, m1, m2)
-    @test VLBISkyModels.build_param!(5.0, md2, p) ≈ ComradeBase.build_param(md2, p)
-    @test VLBISkyModels.build_param!(5.0, md2, p) ≈ (5.0 * 2.0) * exp(0.5 * log(2.0)) + 1.0
+    @test ComradeBase.build_param(md2, p) ≈ (5.0 * 2.0) * exp(0.5 * log(2.0)) + 1.0
+    # each model transforms the result of the previous one
+    @test ComradeBase.build_param(md2, p) ≈
+        MultiDomainParams(ComradeBase.build_param(md1, p), m2)(p)
+    @test @inferred(ComradeBase.build_param(md2, p)) isa Float64
 end
 
 @testset "FFTAlg rejects multidomain images" begin
@@ -959,42 +996,61 @@ end
     @test cI.params isa MultiDomainParams
     @test parent(intensitymap(cI, gcube)) ≈ parent(stokes(img, :I))
 
-    # A scalar nonzero p0 cannot offset a polarized base.
-    cbad = MultiDomainImage(
-        IntensityMap(pimg, g), BSplinePulse{3}(),
-        PolySpectral((1.0,), ref, 1.0)
-    )
-    @test_throws "cannot offset a polarized" intensitymap(cbad, gcube)
+    # `p0` offsets every Stokes component of a polarized base alike. At `Fr = ref` the
+    # spectral factor is 1, so the offset is all that is left.
+    off = MultiDomainParams(pimg, PolySpectral((1.0,), ref, 1.0))((; Fr = ref))
+    for s in (:I, :Q, :U, :V)
+        @test stokes(off, s) ≈ stokes(pimg, s) .+ 1
+    end
 
-    # A StokesParams p0 is a valid offset and breaks pure frequency scaling.
-    cok = MultiDomainImage(
-        IntensityMap(pimg, g), BSplinePulse{3}(),
-        PolySpectral((1.0,), ref, StokesParams(0.5, 0.0, 0.0, 0.0))
-    )
-    psI = parent(stokes(intensitymap(cok, gcube), :I))
-    @test !(psI[:, :, 2] ≈ 2 .* psI[:, :, 1])
+    # A component gets its own spectrum from its own model, not from a polarized parameter.
+    mk(a) = MultiDomainImage(IntensityMap(I, g), BSplinePulse{3}(), PolySpectral((a,), ref))
+    pm = PolarizedModel(mk(1.0), mk(0.5), mk(-0.5), mk(0.0))
+    pimgs = intensitymap(pm, gcube)
+    for (s, a) in ((:I, 1.0), (:Q, 0.5), (:U, -0.5), (:V, 0.0))
+        ps = parent(stokes(pimgs, s))
+        @test ps[:, :, 2] ≈ 2.0^a .* ps[:, :, 1]
+    end
 end
 
-@testset "bare PolySpectral as ContinuousImage params" begin
+@testset "an image needs an explicit base" begin
     ref = 230.0e9
     g = imagepixels(10.0, 10.0, 8, 8)
 
-    indmap = fill(1.0, 8, 8)
-    c = ContinuousImage(PolySpectral((indmap,), ref), g, BSplinePulse{3}())
-    @test eltype(c) == Float64
-    @test ComradeBase.ispolarized(typeof(c)) == ComradeBase.NotPolarized()
-    gcube = RectiGrid((; X = g.X, Y = g.Y, Fr = [ref, 2 * ref]))
-    img = intensitymap(c, gcube)
-    @test parent(img)[:, :, 2] ≈ 2 .* parent(img)[:, :, 1]
+    # A lone spectral model carries no base image, so it cannot describe one.
+    @test_throws ArgumentError ContinuousImage(
+        PolySpectral((fill(1.0, 8, 8),), ref), g, BSplinePulse{3}()
+    )
+    @test_throws "has no base image" ContinuousImage(
+        PolySpectral(1.0, ref), g, BSplinePulse{3}()
+    )
 
-    # A scalar-index bare model produces a sub-cube-shaped raw result and exercises
-    # the broadcast-up branch of _paramcube.
-    c2 = ContinuousImage(PolySpectral(1.0, ref), g, BSplinePulse{3}())
-    img2 = intensitymap(c2, gcube)
-    @test parent(img2)[:, :, 2] ≈ 2 .* parent(img2)[:, :, 1]
+    # A model transforms a base, so it has no value of its own anywhere — not just as an
+    # image. Pairing it with a unit base gives the spectral factor.
+    ps = PolySpectral(1.0, ref)
+    @test_throws "has none of its own" ComradeBase.build_param(ps, (; Fr = 2 * ref))
+    @test ComradeBase.build_param(MultiDomainParams(1.0, ps), (; Fr = 2 * ref)) ≈ 2.0
 
-    # A bare spectral image has no static spatial map.
-    @test_throws "no static spatial map" size(c)
+    # A chain whose base is not a spatial array is refused too.
+    @test_throws "must be a chain whose base is the spatial image" ContinuousImage(
+        MultiDomainParams(1.0, ps), g, BSplinePulse{3}()
+    )
+end
+
+@testset "_paramcube broadcasts a partial model up to the cube" begin
+    ref = 230.0e9
+    g = imagepixels(10.0, 10.0, 8, 8)
+    base = rand(8, 8)
+    # A frequency-only model on a frequency+time grid produces a result smaller than the
+    # full cube, so it must be broadcast up along `Ti`.
+    c = MultiDomainImage(IntensityMap(base, g), BSplinePulse{3}(), PolySpectral(1.0, ref))
+    g4 = RectiGrid((; X = g.X, Y = g.Y, Fr = [ref, 2 * ref], Ti = [0.0, 1.0, 2.0]))
+    img = intensitymap(c, g4)
+    @test size(img) == (8, 8, 2, 3)
+    for k in 1:3
+        @test parent(img)[:, :, 2, k] ≈ 2 .* parent(img)[:, :, 1, k]
+        @test parent(img)[:, :, 1, k] ≈ parent(img)[:, :, 1, 1]
+    end
 end
 
 @testset "ContinuousImage construction validation" begin
@@ -1051,8 +1107,23 @@ end
     @test occursin("MultiDomainParams", smd)
     @test occursin("BSplinePulse", smd)
     @test length(smd) < 120
+end
 
-    # bare spectral params also print without a static map
-    sps = sprint(show, ContinuousImage(PolySpectral((fill(1.0, 8, 8),), 230.0e9), g, BSplinePulse{3}()))
-    @test occursin("PolySpectral", sps)
+@testset "PolySpectral and MultiDomainParams show" begin
+    ref = 230.0e9
+    @test sprint(show, PolySpectral((1.5, 0.5), ref)) == "PolySpectral((1.5, 0.5), 2.3e11)"
+    # a zero offset is the default and is left off
+    @test sprint(show, PolySpectral(1.5, ref)) == "PolySpectral((1.5,), 2.3e11)"
+    @test occursin(", 1.0)", sprint(show, PolySpectral(1.5, ref, 1.0)))
+
+    # array-valued coefficients and bases print as a summary, never inline
+    sarr = sprint(show, PolySpectral((fill(1.0, 64, 64),), ref))
+    @test occursin("64×64", sarr)
+    @test length(sarr) < 120
+
+    smd = sprint(show, MultiDomainParams(rand(64, 64), PolySpectral(1.5, ref)))
+    @test startswith(smd, "MultiDomainParams(")
+    @test occursin("64×64", smd)
+    @test occursin("PolySpectral", smd)
+    @test length(smd) < 120
 end

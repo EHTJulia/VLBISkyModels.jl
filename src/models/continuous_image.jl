@@ -1,4 +1,4 @@
-export ContinuousImage, spatialdims
+export ContinuousImage, MultiDomainImage
 
 """
     ContinuousImage{P, G, K} <: AbstractModel
@@ -15,15 +15,21 @@ and visibility location. The image model is
 where `Iᵢⱼ` are the flux densities of the image `img` and κ is the intensity function for the
 `kernel`.
 
-The pixel parameters may also be a `DomainParams` (e.g. a [`MultiDomainParams`](@ref)
-built by [`MultiDomainImage`](@ref)) describing how the image varies across frequency
-and/or time.
+The pixel parameters may also be a [`MultiDomainParams`](@ref) describing how the image
+varies across frequency and/or time, in which case the image is a
+[`MultiDomainImage`](@ref). A bare `DomainParams` is not accepted: an image needs a base,
+which a chain supplies and a lone spectral or temporal model does not.
 
 Note that if the image grid is the same as the grid passed to `intensitymap` then the discrete image
 is used directly for efficiency.
+
+!!! note
+    `intensity_point` on a [`MultiDomainImage`](@ref) evaluates the domain models over the
+    kernel's support window around the requested point, not over the whole image. Modifiers
+    that displace the image (`ModifiedModel`) still evaluate point by point.
 """
 struct ContinuousImage{
-        P <: Union{AbstractArray, DomainParams}, G <: AbstractRectiGrid,
+        P <: Union{AbstractArray, MultiDomainParams}, G <: AbstractRectiGrid,
         K <: AbstractModel,
     } <: AbstractModel
     """
@@ -40,46 +46,64 @@ struct ContinuousImage{
     kernel::K
 end
 
+# The bounds on `G` and `K` must repeat those of `ContinuousImage`. Leaving them off widens
+# those slots, which makes the alias and `ContinuousImage` incomparable rather than nested,
+# and methods signed on the alias then lose dispatch to the general ones.
+const MultiDomainImage{
+    M <: MultiDomainParams, G <: AbstractRectiGrid, K <: AbstractModel,
+} = ContinuousImage{M, G, K}
+
+@doc """
+    MultiDomainImage{M<:MultiDomainParams, G, K}
+    MultiDomainImage(img::IntensityMap, kernel, domains...)
+    MultiDomainImage(cimg::ContinuousImage, domains...)
+
+A [`ContinuousImage`](@ref) whose pixel parameters vary across the extra (frequency and/or
+time) domains, i.e. one whose `params` field is a [`MultiDomainParams`](@ref). This is a
+type alias, so `img isa MultiDomainImage` and dispatch on it both work.
+
+The spatial image `img` (a 2D `IntensityMap`) provides the base parameters and the
+spatial `(X, Y)` grid, `kernel` is the image pulse, and `domains...` are one or more
+`DomainParams` models (such as [`PolySpectral`](@ref)) describing how the image varies
+across the extra domains.
+
+When passed to `intensitymap` or `visibilitymap` over a grid with extra `Fr`/`Ti`
+dimensions the spatial image cube is materialized by evaluating the domain models at
+each frequency/time. `FFTAlg` cannot transform these images, since it interpolates a
+single 2D FFT; use a nonuniform transform such as `NFFTAlg` or `DFTAlg`.
+
+Chaining extends the model tuple rather than nesting, so
+`MultiDomainImage(MultiDomainImage(img, kernel, m1), m2)` and
+`MultiDomainImage(img, kernel, m1, m2)` are the same model.
+
+# Example
+```julia
+base = IntensityMap(rand(64, 64), imagepixels(10.0, 10.0, 64, 64))
+dom  = PolySpectral((1.0,), 230.0e9)          # spectral index = 1
+cimg = MultiDomainImage(base, BSplinePulse{3}(), dom)
+```
+""" MultiDomainImage
+
 make_map(cimg::ContinuousImage) = IntensityMap(cimg.params, cimg.grid)
-# A bare spectral/temporal model has no static spatial map: there is no base image to
-# show until the model is evaluated at a frequency/time.
-function make_map(cimg::ContinuousImage{<:DomainParams})
-    throw(
-        ArgumentError(
-            "A `$(nameof(typeof(cimg.params)))`-parameterized image has no static " *
-                "spatial map; evaluate it with `intensitymap` over a grid with the " *
-                "extra `Fr`/`Ti` dimensions."
-        )
-    )
-end
-# For a multidomain `ContinuousImage` the `params` field is a `MultiDomainParams` whose
-# base spatial image lives at the root of a (possibly nested) chain, and `grid` is the
-# spatial (X, Y) grid. Build the spatial map from that base so `size`/`show`/`flux`/etc.
-# work on these images.
-make_map(cimg::ContinuousImage{<:MultiDomainParams}) = IntensityMap(baseparams(cimg.params), cimg.grid)
+# For a multidomain image the `params` field is a chain whose base is the spatial image at
+# the reference domain point, and `grid` is the spatial (X, Y) grid. Build the map from that
+# base so `size`/`show`/`flux`/etc. describe the reference image.
+make_map(cimg::MultiDomainImage) = IntensityMap(cimg.params.base, cimg.grid)
 
 function Base.show(io::IO, img::ContinuousImage)
     pname = nameof(typeof(img.params))
     kname = nameof(typeof(img.kernel))
-    # Use the grid for the size: it is defined even for bare `DomainParams` params,
-    # which have no static spatial map.
+    # The grid gives the spatial size for both plain and multidomain images; the extra
+    # `Fr`/`Ti` extent belongs to the grid an image is evaluated over, not to the image.
     return print(io, "ContinuousImage{$pname{$(eltype(img))}, $kname}($(size(img.grid)))")
 end
 
-# An image whose pixels are stored directly as an array
-function ComradeBase.ispolarized(::Type{<:ContinuousImage{A}}) where {A <: AbstractArray{<:StokesParams}}
-    return IsPolarized()
-end
-function ComradeBase.ispolarized(::Type{<:ContinuousImage{A}}) where {A <: AbstractArray{<:Number}}
-    return NotPolarized()
-end
-# A multidomain image whose pixels are described by a `DomainParams` (e.g. a frequency
-# or time model). The polarization is determined by the base parameter element type.
-function ComradeBase.ispolarized(::Type{<:ContinuousImage{A}}) where {A <: DomainParams}
-    return _ispol_paramtype(eltype(paramtype(A)))
-end
-@inline _ispol_paramtype(::Type{<:StokesParams}) = IsPolarized()
-@inline _ispol_paramtype(::Type{<:Number}) = NotPolarized()
+# `paramtype` reports the element type of a single pixel whether the pixels are stored
+# directly as an array or described by a chain of domain models, so both cases read the
+# same way here.
+ComradeBase.ispolarized(::Type{<:ContinuousImage{P}}) where {P} = _ispol(paramtype(P))
+@inline _ispol(::Type{<:StokesParams}) = IsPolarized()
+@inline _ispol(::Type{<:Number}) = NotPolarized()
 # For a multidomain image these reduce to the base (reference-domain) spatial image via
 # `make_map`, i.e. `flux`/`centroid` describe the reference-frequency/-time image, not the
 # whole cube. Evaluate `intensitymap` over an `Fr`/`Ti` grid for per-domain quantities.
@@ -88,12 +112,10 @@ ComradeBase.flux(m::ContinuousImage) = flux(make_map(m)) * flux(m.kernel)
 function ComradeBase.stokes(cimg::ContinuousImage, v)
     return ContinuousImage(stokes(make_map(cimg), v), cimg.kernel)
 end
-# Project a multidomain image onto a Stokes component by projecting the base spatial
-# `params` array and keeping the domain models, so the multidomain structure (and the
-# spatial `grid`/`kernel`) is preserved. The generic `make_map`-based method would instead
-# collapse to a plain base image. Like plain images, `stokes` is polarized-only (the
-# root base must be a `StokesParams` array).
-function ComradeBase.stokes(cimg::ContinuousImage{<:MultiDomainParams}, v)
+# Project a multidomain image onto a Stokes component by projecting the whole chain, so the
+# multidomain structure (and the spatial `grid`/`kernel`) is preserved. The generic
+# `make_map`-based method would instead collapse to a plain base image.
+function ComradeBase.stokes(cimg::MultiDomainImage, v)
     return ContinuousImage(stokes(cimg.params, v), cimg.grid, cimg.kernel)
 end
 ComradeBase.centroid(m::ContinuousImage) = centroid(make_map(m))
@@ -103,8 +125,7 @@ Base.size(m::ContinuousImage) = size(make_map(m))
 Base.size(m::ContinuousImage, i::Int) = size(make_map(m), i::Int)
 Base.firstindex(m::ContinuousImage) = firstindex(make_map(m))
 Base.lastindex(m::ContinuousImage) = lastindex(make_map(m))
-Base.eltype(::ContinuousImage{A, P}) where {A, P} = eltype(A)
-Base.eltype(::ContinuousImage{A}) where {A <: DomainParams} = eltype(paramtype(A))
+Base.eltype(::ContinuousImage{P}) where {P} = paramtype(P)
 
 Base.getindex(img::ContinuousImage, args...) = getindex(make_map(img), args...)
 Base.axes(m::ContinuousImage) = axes(make_map(m))
@@ -127,6 +148,34 @@ function ContinuousImage(im::AbstractArray, g::AbstractRectiGrid, kernel::Abstra
     return ContinuousImage{typeof(arr), typeof(g), typeof(kernel)}(arr, g, kernel)
 end
 
+function ContinuousImage(
+        params::MultiDomainParams, g::AbstractRectiGrid, kernel::AbstractModel
+    )
+    base = params.base
+    base isa AbstractArray || throw(
+        ArgumentError(
+            "The parameters of an image must be a chain whose base is the spatial image " *
+                "array; got a base of type $(nameof(typeof(base)))."
+        )
+    )
+    size(base) == size(g) || throw(
+        DimensionMismatch(
+            "The base image size $(size(base)) does not match the grid size $(size(g))."
+        )
+    )
+    return ContinuousImage{typeof(params), typeof(g), typeof(kernel)}(params, g, kernel)
+end
+
+# A lone spectral or temporal model carries no base image, so it cannot describe one.
+function ContinuousImage(params::DomainParams, ::AbstractRectiGrid, ::AbstractModel)
+    throw(
+        ArgumentError(
+            "A `$(nameof(typeof(params)))` has no base image. Pair it with one using " *
+                "`MultiDomainParams(base, model)`, or build the image with `MultiDomainImage`."
+        )
+    )
+end
+
 function InterpolatedModel(
         model::ContinuousImage,
         d::FourierDualDomain{
@@ -145,43 +194,7 @@ imanalytic(::Type{<:ContinuousImage}) = IsAnalytic()
 
 radialextent(c::ContinuousImage) = maximum(values(fieldofview(spatialdims(c.grid)))) / 2
 
-"""
-    spatialdims(g::AbstractRectiGrid)
-    spatialdims(img::IntensityMap)
 
-Return the spatial (`X`, `Y`) sub-grid of a (possibly multidomain) grid or image,
-dropping any extra dimensions such as frequency (`Fr`) or time (`Ti`).
-"""
-function spatialdims(g::AbstractRectiGrid)
-    ds = dims(g)
-    return rebuild(g; dims = ds[1:2])
-end
-spatialdims(img::IntensityMap) = spatialdims(axisdims(img))
-
-@doc """
-    MultiDomainImage(img::IntensityMap, kernel, domains...)
-    MultiDomainImage(cimg::ContinuousImage, domains...)
-
-Convenience constructor for a multidomain (e.g. multifrequency or multitime)
-[`ContinuousImage`](@ref).
-
-The spatial image `img` (a 2D `IntensityMap`) provides the base parameters and the
-spatial `(X, Y)` grid, `kernel` is the image pulse, and `domains...` are one or more
-`DomainParams` models (such as [`PolySpectral`](@ref)) describing how the image varies
-across the extra domains.
-
-The result is a `ContinuousImage` whose `params` field is a [`MultiDomainParams`](@ref).
-When passed to `intensitymap` or `visibilitymap` over a grid with extra `Fr`/`Ti`
-dimensions the spatial image cube is materialized by evaluating the domain models at
-each frequency/time.
-
-# Example
-```julia
-base = IntensityMap(rand(64, 64), imagepixels(10.0, 10.0, 64, 64))
-dom  = PolySpectral((1.0,), 230.0e9)          # spectral index = 1
-cimg = MultiDomainImage(base, BSplinePulse{3}(), dom)
-```
-"""
 function MultiDomainImage(img::SpatialIntensityMap, kernel, domains...)
     mdp = MultiDomainParams(parent(img), domains)
     return ContinuousImage(mdp, spatialdims(img), kernel)
@@ -199,52 +212,70 @@ function MultiDomainImage(cimg::ContinuousImage, domains...)
     return ContinuousImage(mdp, cimg.grid, cimg.kernel)
 end
 
-function support_ranges(img, p, rx, ry)
-    dx, dy = pixelsizes(img)
-    g = axisdims(img)
-    x0 = first(g.X)
-    y0 = first(g.Y)
+# A point expressed on the grid's own axes. `domainpoints` places pixel `(i, j)` at
+# `rotmat(g) * (X[i], Y[j])`, so undoing that rotation once turns the grid back into a plain
+# `X`/`Y` product for everything downstream. The identity for an unrotated grid.
+@inline function togrid(g::AbstractRectiGrid, p)
+    v = ComradeBase.rotmat(g)' * SVector(p.X, p.Y)
+    return (X = v[1], Y = v[2])
+end
 
-    cs = round(Int, (p.X - x0) / dx) + 1
-    rs = round(Int, (p.Y - y0) / dy) + 1
+# The pixel index ranges covering the kernel's support around `p`, which must already be on
+# the grid's axes (see `togrid`). This depends only on the grid geometry, so it can be
+# computed before any pixel value is known.
+function support_ranges(g::AbstractRectiGrid, p, rx, ry)
+    dx, dy = pixelsizes(g)
+    X = g.X
+    Y = g.Y
+
+    cs = round(Int, (p.X - first(X)) / dx) + firstindex(X)
+    rs = round(Int, (p.Y - first(Y)) / dy) + firstindex(Y)
 
     # Units in pixels
     wx = ceil(Int, rx / dx)
     wy = ceil(Int, ry / dy)
 
-    ix = max(firstindex(img, 1), cs - wx):min(lastindex(img, 1), cs + wx)
-    iy = max(firstindex(img, 2), rs - wy):min(lastindex(img, 2), rs + wy)
+    ix = max(firstindex(X), cs - wx):min(lastindex(X), cs + wx)
+    iy = max(firstindex(Y), rs - wy):min(lastindex(Y), rs + wy)
 
     return ix, iy
 end
 
-function ComradeBase.build_param(param::AbstractArray{<:Number}, p)
-    return param
+# Pixel values covering the support window `(ix, iy)`, together with the offsets that turn a
+# grid index into an index into them. Stored pixels are used as they are, so the offsets are
+# zero; a chain of domain models is restricted to the window and evaluated there, which is
+# what keeps a single point from costing the whole image.
+@inline window_values(params::AbstractArray, ix, iy, p) = (params, 0, 0)
+@inline function window_values(params::MultiDomainParams, ix, iy, p)
+    sub = build_param(restrict_params(params, ix, iy), p)
+    return sub, first(ix) - first(axes(sub, 1)), first(iy) - first(axes(sub, 2))
 end
 
-
 @inline function intensity_point(m::ContinuousImage, p)
-    # Evaluate the stored params at the domain point so multidomain images keep their
-    # frequency/time dependence here (this is the path composite models sum through).
-    # For a plain array `params` this is a no-op passthrough.
-    img = IntensityMap(build_param(m.params, p), m.grid)
-    dx, dy = pixelsizes(axisdims(img))
+    g = m.grid
+    dx, dy = pixelsizes(g)
     ms = stretched(m.kernel, dx, dy)
 
     rx, ry = kernel_extent(m.kernel)
     rx *= dx
     ry *= dy
 
-    dp = domainpoints(img)
-    sum = zero(eltype(img))
+    # Both the support window and the pulse offset are computed on the grid's axes, so they
+    # stay consistent with each other and with the pixel footprints when the grid is rotated.
+    # The pulse is the pixel response, which is aligned with the pixels rather than the sky.
+    pg = togrid(g, p)
+    ix, iy = support_ranges(g, pg, rx, ry)
+    vals, i0, j0 = window_values(m.params, ix, iy, p)
 
-    ix, iy = support_ranges(img, p, rx, ry)
+    X = g.X
+    Y = g.Y
+    sum = zero(eltype(vals))
 
     @trace for j in iy
         @trace for i in ix
-            dpi = (X = p.X - dp[i, j].X, Y = p.Y - dp[i, j].Y)
+            dpi = (X = pg.X - X[i], Y = pg.Y - Y[j])
             k = intensity_point(ms, dpi)
-            sum += rgetindex(img, i, j) * k
+            sum += rgetindex(vals, i - i0, j - j0) * k
         end
     end
     return sum
@@ -330,13 +361,13 @@ function _paramcube(params::DomainParams, g::AbstractRectiGrid)
     return cube
 end
 
-function intensitymap_analytic(m::ContinuousImage{<:DomainParams}, dims::AbstractRectiGrid)
+function intensitymap_analytic(m::MultiDomainImage, dims::AbstractRectiGrid)
     out = allocate_imgmap(m, dims)
     intensitymap_analytic!(out, m)
     return out
 end
 
-function intensitymap_analytic!(img::IntensityMap, m::ContinuousImage{<:DomainParams})
+function intensitymap_analytic!(img::IntensityMap, m::MultiDomainImage)
     dims = axisdims(img)
     gspat = spatialdims(dims)
     datacube = _paramcube(m.params, dims)
@@ -351,7 +382,7 @@ function intensitymap_analytic!(img::IntensityMap, m::ContinuousImage{<:DomainPa
     return nothing
 end
 
-function visibilitymap_numeric(m::ContinuousImage{<:DomainParams}, grid::FourierDualDomain)
+function visibilitymap_numeric(m::MultiDomainImage, grid::FourierDualDomain)
     gimg = imgdomain(grid)
     checkgrid(axisdims(m), spatialdims(gimg))
     mfimg = IntensityMap(_paramcube(m.params, gimg), gimg)
@@ -370,11 +401,12 @@ end
     return visibilitymap(minterp, visdomain(grid))
 end
 
-# Disambiguates the multidomain method from the FFTAlg fast path above. FFTAlg evaluates
-# visibilities by interpolating a single 2D FFT (`InterpolatedModel`), which has no
-# notion of the extra `Fr`/`Ti` axes, so multidomain images cannot use it.
+# FFTAlg evaluates visibilities by interpolating a single 2D FFT (`InterpolatedModel`),
+# which has no notion of the extra `Fr`/`Ti` axes, so multidomain images cannot use it. This
+# method is load-bearing for dispatch as well as for the message: without it the multidomain
+# method and the FFTAlg fast path above are ambiguous.
 function visibilitymap_numeric(
-        ::ContinuousImage{<:DomainParams},
+        ::MultiDomainImage,
         ::FourierDualDomain{GI, GV, <:FFTAlg}
     ) where {
         GI <: AbstractSingleDomain,

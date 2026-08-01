@@ -69,6 +69,8 @@ ComradeBase.DomainParams
 ComradeBase.getparam
 ComradeBase.@unpack_params
 ComradeBase.build_param
+ComradeBase.apply_param
+ComradeBase.paramfield
 ComradeBase.paramtype
 ```
 

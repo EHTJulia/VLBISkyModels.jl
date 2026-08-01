@@ -96,3 +96,38 @@ end
     testrot(pm, g, gr, uv; alg = FFTAlg())
     testrot(pm, g, gr, uv; alg = DFTAlg())
 end
+
+@testset "ContinuousImage on a rotated grid" begin
+    # A rotated grid holds the same brightness distribution as an unrotated one, sampled at
+    # the rotated point, so rotating both the grid and the sample point must agree. This
+    # pins the support window and the pulse offset to the same frame: computing one on the
+    # grid's axes and the other on the sky's silently returns zero away from the centre.
+    n = 64
+    g = imagepixels(6.0, 6.0, n, n)
+    gr = imagepixels(6.0, 6.0, n, n; posang = π / 4)
+    b = rand(n, n)
+    R = ComradeBase.rotmat(gr)
+
+    c = ContinuousImage(IntensityMap(b, g), BSplinePulse{3}())
+    cr = ContinuousImage(IntensityMap(b, gr), BSplinePulse{3}())
+
+    for (fx, fy) in ((3.3, 4.7), (10.5, -8.2), (0.0, 0.0), (-15.0, 20.0))
+        px = fx * step(g.X)
+        py = fy * step(g.Y)
+        v = R * [px, py]
+        @test ComradeBase.intensity_point(c, (X = px, Y = py)) ≈
+            ComradeBase.intensity_point(cr, (X = v[1], Y = v[2]))
+    end
+
+    # the same must hold for a multidomain image, which shares the evaluation path
+    ν₀ = 230.0e9
+    mu = MultiDomainImage(IntensityMap(b, g), BSplinePulse{3}(), PolySpectral(1.5, ν₀))
+    mr = MultiDomainImage(IntensityMap(b, gr), BSplinePulse{3}(), PolySpectral(1.5, ν₀))
+    for (fx, fy) in ((3.3, 4.7), (10.5, -8.2))
+        px = fx * step(g.X)
+        py = fy * step(g.Y)
+        v = R * [px, py]
+        @test ComradeBase.intensity_point(mu, (X = px, Y = py, Fr = 2ν₀)) ≈
+            ComradeBase.intensity_point(mr, (X = v[1], Y = v[2], Fr = 2ν₀))
+    end
+end

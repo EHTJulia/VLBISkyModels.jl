@@ -123,29 +123,48 @@ which will make a Gaussian whose size as a function of frequency is given by
 If we wanted a different function form for the frequency dependence, we can define a new type
 
 ```julia
-struct MyFreq{T,F} <: VLBISkyModels.DomainParams
+struct MyFreq{T,F} <: VLBISkyModels.DomainParams{T}
     a::T
     F0::F
 end
 ```
 
-which only requires a single method to be defined for it to work
+The type parameter of `DomainParams` is the element type of the value the family produces at
+a point — a single parameter value, never a container. A family describes how a parameter
+*departs* from a base value as time and frequency change, so the single method it must
+define transforms a base
 
 ```julia
-function VLBISkyModels.build_param(param::MyFreq, p)
-    return param.a + p.Fr / p.F0
+function VLBISkyModels.apply_param(base, param::MyFreq, p)
+    return base * (param.a + p.Fr / param.F0)
 end
 ```
 
-which says that the depends changes as a function of frequency linearly with a slope of `F0` and
-a intercept of `a`. This can be used as follows
+which scales the base linearly with frequency. Pair it with a base to get something that can
+be evaluated
 
 ```julia
 ν₀ = 230e9
 σ₀ = 1.0
-size = MyFreq(1.0, ν₀)
+size = MultiDomainParams(σ₀, MyFreq(1.0, ν₀))
 gauss = MyGaussian(size)
 ```
+
+A [`MultiDomainParams`](@ref) chain applies several models in turn, each transforming the
+result of the previous one, so a family never needs to know what precedes it. A family on
+its own has no value — evaluating one is an error, because the base it transforms is
+missing.
+
+Two things are worth knowing when writing `apply_param`. Work that depends on only some of
+the domain axes should be computed before it is broadcast against `base`: the whole
+frequency axis may arrive at once, and fusing a per-frequency computation into the
+element-wise broadcast evaluates it once per point of the result instead of once per
+frequency. And a family may return a lazy `Base.Broadcasted` rather than an array, in which
+case the links of a chain compose without materializing and the value is realized once at
+the end; this is worth doing for long chains and unnecessary for short ones.
+
+If the family carries data that varies across the image, also define `restrict_params` so
+it can be evaluated over part of an image without materializing all of it.
 
 !!! note
     This extension of the model to be time and frequency dependent is only necessary for models
