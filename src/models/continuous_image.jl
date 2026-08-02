@@ -367,17 +367,33 @@ function intensitymap_analytic(m::MultiDomainImage, dims::AbstractRectiGrid)
     return out
 end
 
+# The grid the domain models are materialized on: the image's own spatial grid crossed with
+# the extra (`Fr`/`Ti`) dimensions of the grid being evaluated over. The pixel parameters
+# describe the image on `m.grid`, so that is where the cube has to be built.
+function _cubegrid(gspat::AbstractRectiGrid, gout::AbstractRectiGrid)
+    return rebuild(gspat; dims = (dims(gspat)..., dims(gout)[3:end]...))
+end
+
 function intensitymap_analytic!(img::IntensityMap, m::MultiDomainImage)
-    dims = axisdims(img)
-    gspat = spatialdims(dims)
-    datacube = _paramcube(m.params, dims)
-    # Per-frequency/time kernel convolution, written directly into the caller's buffer.
-    # This path is not part of the Reactant forward model (which uses `visibilitymap`),
-    # so a simple slice loop is fine and keeps it type stable.
-    pimg = parent(img)
-    for k in CartesianIndices(axes(datacube)[3:end])
-        sl = ContinuousImage(view(datacube, :, :, k), gspat, m.kernel)
-        intensitymap_analytic!(IntensityMap(view(pimg, :, :, k), gspat), sl)
+    gout = axisdims(img)
+    gspat = spatialdims(gout)
+    datacube = _paramcube(m.params, _cubegrid(m.grid, gout))
+    # Per-frequency/time kernel convolution, written directly into the caller's buffer. Each
+    # slice is a `ContinuousImage` on the image's own grid, so it is resampled onto `gspat`
+    # through `intensity_point` exactly as a plain `ContinuousImage` would be.
+    #
+    # Collapsing the dimensions past `X`/`Y` into one axis covers any `Fr`/`Ti` structure with
+    # a single loop: `_cubegrid` gives the cube those dimensions in the order `gout` carries
+    # them, so both arrays flatten to the same points in the same order. `@trace` keeps this a
+    # loop when the arrays are traced rather than emitting a convolution per slice;
+    # `track_numbers = false` stops the numbers in the body being promoted along with the
+    # index, which would put a traced value into the `LinRange` of grid coordinates. Each
+    # slice is left to the executor of `gspat`.
+    cube = reshape(datacube, size(m.grid)..., :)
+    rimg = reshape(parent(img), size(gspat)..., :)
+    @trace track_numbers = false for k in axes(cube, 3)
+        sl = ContinuousImage(view(cube, :, :, k), m.grid, m.kernel)
+        intensitymap_analytic!(IntensityMap(view(rimg, :, :, k), gspat), sl)
     end
     return nothing
 end
@@ -455,9 +471,18 @@ end
 #     return nothing
 # end
 
+# The Fourier plans are built from the grid the visibilities are computed on, so the image
+# must live on exactly that grid: pixels spanning a different field of view or lying at a
+# different position angle would be transformed as if they sat at the wrong sky positions.
 function checkgrid(imgdims, grid)
-    truth = (dims(imgdims) == dims(grid))
-    return truth
+    (dims(imgdims) == dims(grid) && posang(imgdims) == posang(grid)) && return nothing
+    throw(
+        DimensionMismatch(
+            "The image grid does not match the grid the visibilities are computed on.\n" *
+                "  image: $(dims(imgdims)), posang = $(posang(imgdims))\n" *
+                "  grid:  $(dims(grid)), posang = $(posang(grid))"
+        )
+    )
 end
 ChainRulesCore.@non_differentiable checkgrid(::Any, ::Any)
 EnzymeRules.inactive(::typeof(checkgrid), args...) = nothing

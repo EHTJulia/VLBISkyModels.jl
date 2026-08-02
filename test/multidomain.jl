@@ -854,6 +854,74 @@ end
 
             @test visibilitymap(cimg, gfr) ≈ visibilitymap(cimg_ref, gfr) atol = 1.0e-8
         end
+
+        @testset "MultiDomainImage evaluated off its own grid" begin
+            α = 1.5
+            gXY = imagepixels(10.0, 10.0, 32, 32)
+            base = rand(32, 32)
+            cimg = MultiDomainImage(
+                IntensityMap(base, gXY), BSplinePulse{3}(), PolySpectral((α,), ref)
+            )
+            frs = [ref, 1.5 * ref]
+
+            # A grid the image does not live on resamples through the kernel, exactly as a
+            # plain ContinuousImage does, rather than reinterpreting the pixels as if they
+            # spanned the new field of view.
+            for gout in (imagepixels(20.0, 20.0, 32, 32), imagepixels(10.0, 10.0, 48, 48))
+                img = intensitymap(cimg, RectiGrid((; X = gout.X, Y = gout.Y, Fr = frs)))
+                for (i, fr) in enumerate(frs)
+                    slice_ref = intensitymap(
+                        ContinuousImage(
+                            IntensityMap(base .* (fr / ref)^α, gXY), BSplinePulse{3}()
+                        ),
+                        gout
+                    )
+                    @test parent(img[Fr = i]) ≈ parent(slice_ref) atol = 1.0e-10
+                end
+            end
+
+            # Time and frequency together, in either order: every (Ti, Fr) point carries the
+            # spectrally scaled image, resampled onto the grid it is evaluated over.
+            tis = [0.0, 1.0]
+            gout = imagepixels(20.0, 20.0, 32, 32)
+            slice_ref = intensitymap(
+                ContinuousImage(
+                    IntensityMap(base .* (frs[2] / ref)^α, gXY), BSplinePulse{3}()
+                ),
+                gout
+            )
+            img_tf = intensitymap(
+                cimg, RectiGrid((; X = gout.X, Y = gout.Y, Ti = tis, Fr = frs))
+            )
+            img_ft = intensitymap(
+                cimg, RectiGrid((; X = gout.X, Y = gout.Y, Fr = frs, Ti = tis))
+            )
+            @test size(img_tf) == (32, 32, length(tis), length(frs))
+            @test size(img_ft) == (32, 32, length(frs), length(tis))
+            for i in eachindex(tis)
+                @test parent(img_tf)[:, :, i, 2] ≈ parent(slice_ref) atol = 1.0e-10
+                @test parent(img_ft)[:, :, 2, i] ≈ parent(slice_ref) atol = 1.0e-10
+            end
+
+            # A rotated grid resamples onto the rotated pixel centers.
+            grot = imagepixels(10.0, 10.0, 32, 32; posang = π / 4)
+            imgrot = intensitymap(
+                cimg, RectiGrid((; X = grot.X, Y = grot.Y, Fr = frs); posang = π / 4)
+            )
+            plain = ContinuousImage(IntensityMap(base, gXY), BSplinePulse{3}())
+            @test parent(imgrot[Fr = 1]) ≈ parent(intensitymap(plain, grot)) atol = 1.0e-10
+
+            # The Fourier plans are tied to the grid they are built from, so there the
+            # mismatch is an error rather than a resampling.
+            guv = UnstructuredDomain(
+                (; U = randn(20) ./ 4, V = randn(20) ./ 4, Fr = fill(ref, 20))
+            )
+            gbad = imagepixels(20.0, 20.0, 32, 32)
+            gfour = FourierDualDomain(
+                RectiGrid((; X = gbad.X, Y = gbad.Y, Fr = frs)), guv, NFFTAlg()
+            )
+            @test_throws DimensionMismatch visibilitymap(cimg, gfour)
+        end
     end
 end
 
