@@ -74,19 +74,17 @@ BSplinePulse{N}() where {N} = BSplinePulse{N, Float64}()
     return ifelse(mag < 1, 1 - mag, zero(Tl))
 end
 
+# Branch-free selection: both polynomials are total and cheap, and `ifelse` (with an eager
+# `&` in place of a chained comparison's short-circuit) is the form a traced or GPU scalar
+# kernel can take, where a branch on the data cannot.
 @inline function κ(::BSplinePulse{3}, x::T) where {T}
     mag = abs(x)
     Tl = T
     cond1 = mag < 1
-    cond2 = 1 ≤ mag < 2
-    r = @trace if cond1
-        evalpoly(mag, (4, 0, -6, 3)) / 6
-    elseif cond2
-        evalpoly(mag, (8, -12, 6, -1)) / 6
-    else
-        zero(Tl)
-    end
-    return r
+    cond2 = (1 ≤ mag) & (mag < 2)
+    r1 = evalpoly(mag, (4, 0, -6, 3)) / 6
+    r2 = evalpoly(mag, (8, -12, 6, -1)) / 6
+    return ifelse(cond1, r1, ifelse(cond2, r2, zero(Tl)))
 end
 @inline radialextent(::BSplinePulse{N, T}) where {N, T} = convert(paramtype(T), max(N, 1))
 
@@ -104,20 +102,16 @@ end
 
 BicubicPulse() = BicubicPulse{Float64}(-0.5)
 
+# Branch-free selection, for the same reason as the `BSplinePulse{3}` kernel.
 function κ(k::BicubicPulse, x::T) where {T}
     mag = abs(x)
     b = k.b
     Tl = T
     cond1 = mag < 1
-    cond2 = 1 ≤ mag < 2
-    r = @trace if cond1
-        evalpoly(mag, (one(Tl), zero(Tl), -(b + 3), b + 2))
-    elseif cond2
-        b * evalpoly(mag, (-Tl(4), Tl(8), -Tl(5), one(Tl)))
-    else
-        zero(Tl)
-    end
-    return r
+    cond2 = (1 ≤ mag) & (mag < 2)
+    r1 = evalpoly(mag, (one(Tl), zero(Tl), -(b + 3), b + 2))
+    r2 = b * evalpoly(mag, (-Tl(4), Tl(8), -Tl(5), one(Tl)))
+    return ifelse(cond1, r1, ifelse(cond2, r2, zero(Tl)))
 end
 radialextent(::BicubicPulse{T}) where {T} = convert(paramtype(T), 2)
 
@@ -150,32 +144,27 @@ end
 
 RaisedCosinePulse() = RaisedCosinePulse{Float64}(0.5)
 
+# Branch-free selection, for the same reason as the `BSplinePulse{3}` kernel.
 function κ(k::RaisedCosinePulse, x::T) where {T}
     mag = abs(x)
     β = k.rolloff
     Tl = T
     cond1 = 2 * mag < 1 - β
-    cond2 = 1 - β <= 2 * mag <= 1 + β
-    r = @trace if cond1
-        one(Tl)
-    elseif cond2
-        1 / 2 * (1 + cospi((mag - (1 - β) / 2) / β))
-    else
-        zero(Tl)
-    end
-    return r
+    cond2 = (1 - β <= 2 * mag) & (2 * mag <= 1 + β)
+    r2 = 1 / 2 * (1 + cospi((mag - (1 - β) / 2) / β))
+    return ifelse(cond1, one(Tl), ifelse(cond2, r2, zero(Tl)))
 end
 
 radialextent(κ::RaisedCosinePulse) = 1 + κ.rolloff
 
+# Branch-free selection, matching the `BicubicPulse` frequency response above. `ifelse`
+# selects lanewise, so the NaN the general expression produces at the removable singularity
+# `|u| = 1/(2β)` never reaches the result.
 function ω(k::RaisedCosinePulse, u::T) where {T}
     β = k.rolloff
     Tπ = T(π)
     cond1 = abs(u) ≈ inv(2 * β)
-    r = @trace if cond1
-        complex(Tπ / 4 * sinc(inv(2 * β)))
-    else
-        complex(sinc(u) * cospi(β * u) * inv(1 - (2β * u)^2))
-    end
-    return r
+    r1 = complex(Tπ / 4 * sinc(inv(2 * β)))
+    r2 = complex(sinc(u) * cospi(β * u) * inv(1 - (2β * u)^2))
+    return ifelse(cond1, r1, r2)
 end

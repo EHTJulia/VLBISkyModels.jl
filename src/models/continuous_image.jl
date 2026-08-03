@@ -220,24 +220,35 @@ end
     return (X = v[1], Y = v[2])
 end
 
-# The pixel index ranges covering the kernel's support around `p`, which must already be on
-# the grid's axes (see `togrid`). This depends only on the grid geometry, so it can be
-# computed before any pixel value is known.
-function support_ranges(g::AbstractRectiGrid, p, rx, ry)
+# The center pixel of the kernel's support around `p`, which must already be on the grid's
+# axes (see `togrid`). Only this position depends on the point; the support half-widths
+# below are fixed by the grid and pulse alone.
+function support_center(g::AbstractRectiGrid, p)
     dx, dy = pixelsizes(g)
+    cs = round(Int, (p.X - first(g.X)) / dx) + firstindex(g.X)
+    rs = round(Int, (p.Y - first(g.Y)) / dy) + firstindex(g.Y)
+    return cs, rs
+end
+
+# The support half-widths in pixels: static once the grid and pulse are fixed.
+function support_halfwidths(g::AbstractRectiGrid, rx, ry)
+    dx, dy = pixelsizes(g)
+    return ceil(Int, rx / dx), ceil(Int, ry / dy)
+end
+
+# The pixel index ranges covering the kernel's support around `p`, clamped to the grid.
+# The center itself is clamped first, so the ranges are never empty even for a point whose
+# whole window lies off the grid: the masked accumulation below still needs somewhere
+# valid to (harmlessly) read, and every off-grid tap contributes zero regardless.
+function support_ranges(g::AbstractRectiGrid, p, rx, ry)
+    cs, rs = support_center(g, p)
+    wx, wy = support_halfwidths(g, rx, ry)
     X = g.X
     Y = g.Y
-
-    cs = round(Int, (p.X - first(X)) / dx) + firstindex(X)
-    rs = round(Int, (p.Y - first(Y)) / dy) + firstindex(Y)
-
-    # Units in pixels
-    wx = ceil(Int, rx / dx)
-    wy = ceil(Int, ry / dy)
-
-    ix = max(firstindex(X), cs - wx):min(lastindex(X), cs + wx)
-    iy = max(firstindex(Y), rs - wy):min(lastindex(Y), rs + wy)
-
+    csf = clamp(cs, firstindex(X), lastindex(X))
+    rsf = clamp(rs, firstindex(Y), lastindex(Y))
+    ix = max(firstindex(X), csf - wx):min(lastindex(X), csf + wx)
+    iy = max(firstindex(Y), rsf - wy):min(lastindex(Y), rsf + wy)
     return ix, iy
 end
 
@@ -271,11 +282,33 @@ end
     Y = g.Y
     sum = zero(eltype(vals))
 
-    @trace for j in iy
-        @trace for i in ix
-            dpi = (X = pg.X - X[i], Y = pg.Y - Y[j])
+    cs, rs = support_center(g, pg)
+    wx, wy = support_halfwidths(g, rx, ry)
+    ilo, ihi = firstindex(X), lastindex(X)
+    jlo, jhi = firstindex(Y), lastindex(Y)
+
+    # The loops run over the static support offsets — only the window center depends on the
+    # point — so the trip count is fixed by the grid and pulse, and a tracing compiler may
+    # unroll or keep the loop as it sees fit. A tap falling off the grid is masked to zero
+    # rather than truncating the ranges, which is what the clamped `support_ranges` did;
+    # its clamped index always lands inside the fetched window, so the masked read is
+    # in bounds. `track_numbers = false` for the same reason as the slice loop of a
+    # multidomain image: promoting the numbers captured by the loop would put a traced
+    # value into the `LinRange` of grid coordinates, whose length parameter cannot hold
+    # one. The coordinate lookups go through `rgetindex` like the pixel values, so they
+    # too accept a traced index.
+    @trace track_numbers = false for dj in -wy:wy
+        @trace track_numbers = false for di in -wx:wx
+            i = cs + di
+            j = rs + dj
+            inb = (ilo <= i) & (i <= ihi) & (jlo <= j) & (j <= jhi)
+            ic = clamp(i, ilo, ihi)
+            jc = clamp(j, jlo, jhi)
+            dpi = (X = pg.X - rgetindex(X, ic), Y = pg.Y - rgetindex(Y, jc))
             k = intensity_point(ms, dpi)
-            sum += rgetindex(vals, i - i0, j - j0) * k
+            v = rgetindex(vals, ic - i0, jc - j0)
+            sum += ifelse(inb, v * k, zero(sum))
+            nothing
         end
     end
     return sum
@@ -374,26 +407,64 @@ function _cubegrid(gspat::AbstractRectiGrid, gout::AbstractRectiGrid)
     return rebuild(gspat; dims = (dims(gspat)..., dims(gout)[3:end]...))
 end
 
+# Grid evaluation of any `ContinuousImage` goes through the slice resampler: a plain image
+# is the one-slice case, a stored cube resamples slice by slice, and a multidomain image
+# (below) materializes its cube first. Composite and modified models still evaluate per
+# point through the generic path.
+function intensitymap_analytic!(img::IntensityMap, m::ContinuousImage)
+    gout = axisdims(img)
+    gspat = spatialdims(gout)
+    _resample_slices!(parent(img), m.params, m, gspat)
+    return nothing
+end
+
 function intensitymap_analytic!(img::IntensityMap, m::MultiDomainImage)
     gout = axisdims(img)
     gspat = spatialdims(gout)
     datacube = _paramcube(m.params, _cubegrid(m.grid, gout))
-    # Per-frequency/time kernel convolution, written directly into the caller's buffer. Each
-    # slice is a `ContinuousImage` on the image's own grid, so it is resampled onto `gspat`
-    # through `intensity_point` exactly as a plain `ContinuousImage` would be.
-    #
-    # Collapsing the dimensions past `X`/`Y` into one axis covers any `Fr`/`Ti` structure with
-    # a single loop: `_cubegrid` gives the cube those dimensions in the order `gout` carries
-    # them, so both arrays flatten to the same points in the same order. `@trace` keeps this a
-    # loop when the arrays are traced rather than emitting a convolution per slice;
-    # `track_numbers = false` stops the numbers in the body being promoted along with the
-    # index, which would put a traced value into the `LinRange` of grid coordinates. Each
-    # slice is left to the executor of `gspat`.
-    cube = reshape(datacube, size(m.grid)..., :)
-    rimg = reshape(parent(img), size(gspat)..., :)
-    @trace track_numbers = false for k in axes(cube, 3)
-        sl = ContinuousImage(view(cube, :, :, k), m.grid, m.kernel)
-        intensitymap_analytic!(IntensityMap(view(rimg, :, :, k), gspat), sl)
+    _resample_slices!(parent(img), datacube, m, gspat)
+    return nothing
+end
+
+# Per-slice kernel resampling, written directly into the caller's buffer `pimg`. Each
+# spatial slice is a `ContinuousImage` on the image's own grid, resampled onto `gspat`
+# through `intensity_point` by the executor of `gspat` — called directly, since the entry
+# points above own the `intensitymap_analytic!` dispatch for images.
+#
+# Collapsing the dimensions past `X`/`Y` into one axis covers any `Fr`/`Ti` structure with
+# a single loop: the cube carries those dimensions in the order the output grid does, so
+# both arrays flatten to the same points in the same order. A single stored slice
+# evaluated over a larger grid is replicated, matching per-point evaluation of a spatial
+# image at any `Fr`/`Ti`.
+#
+# A traced array can be neither reshaped without a wrapper nor viewed at a traced index, so
+# the Reactant extension overrides this method with a `dynamic_slice`/`dynamic_update_slice`
+# version, leaving this one as the allocation-free CPU path.
+function _resample_slices!(pimg::AbstractArray, datacube, m::ContinuousImage, gspat)
+    # The dominant case — a spatial image evaluated over a spatial grid — pays no slice
+    # machinery: the executor reads the model's raw pixel array directly. (`datacube` is
+    # `m.params` itself exactly when no multidomain cube was materialized.)
+    if ndims(pimg) == 2 && ndims(datacube) == 2 && datacube === m.params
+        return ComradeBase.intensitymap_analytic_executor!(
+            IntensityMap(pimg, gspat), m, ComradeBase.executor(gspat)
+        )
+    end
+    gsrc = spatialdims(m.grid)
+    cube = reshape(datacube, size(gsrc)..., :)
+    rimg = reshape(pimg, size(gspat)..., :)
+    nsl = size(cube, 3)
+    (nsl == size(rimg, 3) || nsl == 1) || throw(
+        DimensionMismatch(
+            "The image carries $(nsl) spatial slices but the output grid carries " *
+                "$(size(rimg, 3))."
+        )
+    )
+    ex = ComradeBase.executor(gspat)
+    for k in axes(rimg, 3)
+        sl = ContinuousImage(view(cube, :, :, min(k, nsl)), gsrc, m.kernel)
+        ComradeBase.intensitymap_analytic_executor!(
+            IntensityMap(view(rimg, :, :, k), gspat), sl, ex
+        )
     end
     return nothing
 end
