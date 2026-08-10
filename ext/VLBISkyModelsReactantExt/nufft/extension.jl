@@ -12,6 +12,65 @@ function VLBISkyModels._jlnuft!(out, A::NUFFTSetPts, b::Reactant.AnyTracedRArray
     return nothing
 end
 
+# Batched Stokes transform: stack I,Q,U,V into a trailing ntrans axis and run a
+# single type-2 NUFFT rather than four independent transforms (one fused
+# oversampled FFT + one stencil gather instead of four of each).
+function VLBISkyModels.nuft(
+        A::VLBISkyModels.NUFTPlan{<:Any, <:NUFFTSetPts},
+        b::ComradeBase.IntensityMap{<:VLBISkyModels.StokesParams}
+    )
+    fk = cat(
+        ComradeBase.baseimage(stokes(b, :I)),
+        ComradeBase.baseimage(stokes(b, :Q)),
+        ComradeBase.baseimage(stokes(b, :U)),
+        ComradeBase.baseimage(stokes(b, :V));
+        dims = 3
+    )
+    c = execute_nufft(VLBISkyModels.getplan(A), complex.(fk))
+    return VLBISkyModels.StructArrays.StructArray{VLBISkyModels.StokesParams{eltype(c)}}(
+        (I = c[:, 1], Q = c[:, 2], U = c[:, 3], V = c[:, 4])
+    )
+end
+
+# Multidomain (Ti/Fr) polarized transform. Each subdomain has its own
+# nonuniform point set, so the subdomains cannot share one ntrans axis;
+# instead batch the 4 Stokes within each subdomain's plan (one transform per
+# subdomain instead of four).
+function VLBISkyModels.nuft(
+        A::VLBISkyModels.NUFTPlan{<:Any, <:AbstractDict{<:Any, <:NUFFTSetPts}},
+        b::ComradeBase.IntensityMap{<:VLBISkyModels.StokesParams}
+    )
+    bI = ComradeBase.baseimage(stokes(b, :I))
+    bQ = ComradeBase.baseimage(stokes(b, :Q))
+    bU = ComradeBase.baseimage(stokes(b, :U))
+    bV = ComradeBase.baseimage(stokes(b, :V))
+    CT = complex(unwrapped_eltype(bI))
+    visI = similar(bI, CT, A.totalvis)
+    visQ = similar(bI, CT, A.totalvis)
+    visU = similar(bI, CT, A.totalvis)
+    visV = similar(bI, CT, A.totalvis)
+    plans = VLBISkyModels.getplan(A)
+    iminds, visinds = VLBISkyModels.getindices(A)
+    for i in eachindex(iminds, visinds)
+        imind = iminds[i]
+        visind = visinds[i]
+        length(visind) == 0 && continue
+        fk = cat(
+            @view(bI[:, :, imind]), @view(bQ[:, :, imind]),
+            @view(bU[:, :, imind]), @view(bV[:, :, imind]);
+            dims = 3
+        )
+        c = execute_nufft(plans[imind], complex.(fk))
+        copyto!(@view(visI[visind]), c[:, 1])
+        copyto!(@view(visQ[visind]), c[:, 2])
+        copyto!(@view(visU[visind]), c[:, 3])
+        copyto!(@view(visV[visind]), c[:, 4])
+    end
+    return VLBISkyModels.StructArrays.StructArray{VLBISkyModels.StokesParams{eltype(visI)}}(
+        (I = visI, Q = visQ, U = visU, V = visV)
+    )
+end
+
 function VLBISkyModels.plan_nuft_spatial(
         alg::VLBISkyModels.ReactantNUFFTAlg, imgdomain::ComradeBase.AbstractRectiGrid, visdomain::UnstructuredDomain
     )
