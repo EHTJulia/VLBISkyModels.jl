@@ -55,6 +55,38 @@ end
 
     end
 
+    # Large-M parity: M * w^2 * 16 above INTERP_WIDE_WS_LIMIT (128 MiB) routes
+    # the type-2 interp through `_interp_wide` instead of the chunk loop.
+    # Regression test for the wide-path miscompilation/segfault chain seen on
+    # Reactant 0.2.271 (complex gather-from-concatenate folded to zeros, then
+    # DotGeneralSimplify segfaulted on the zero-operand complex dot_general).
+    @testset "VisibilityMap Parity wide path (large M)" begin
+        gim = imagepixels(10.0, 10.0, 32, 32)
+        gimr = @jit(identity(gim))
+
+        rast = rand(32, 32)
+        rastr = Reactant.to_rarray(rast)
+
+        mr = ContinuousImage(rastr, gimr, BSplinePulse{3}())
+        m = ContinuousImage(rast, gim, BSplinePulse{3}())
+
+        rng = Random.MersenneTwister(42)
+        # eps=1e-9 gives w=10, so M=90_000 puts the workspace at
+        # 90_000 * 100 * 16 B = 144 MB > 128 MiB — the wide path.
+        M = 90_000
+        u = randn(rng, M) / 5.0
+        v = randn(rng, M) / 5.0
+        guv = UnstructuredDomain((U = u, V = v))
+
+        gfn = FourierDualDomain(gim, guv, NFFTAlg())
+        gfr = FourierDualDomain(gimr, Reactant.to_rarray(guv), VLBISkyModels.ReactantNUFFTAlg(Float64; eps = 1.0e-9))
+
+        vnf = visibilitymap(m, gfn)
+        vrf = @jit visibilitymap(mr, gfr)
+
+        @test parent(vrf) ≈ vnf
+    end
+
     @testset "PolExp2Map" begin
         gim = imagepixels(1.0, 1.0, 128, 128)
         gimr = @jit(identity(gim))
