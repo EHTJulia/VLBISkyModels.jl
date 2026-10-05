@@ -9,9 +9,6 @@ if get(ENV, "VLBISKYMODELS_TEST_GPU", "0") != "1"
     ENV["CUDA_VISIBLE_DEVICES"] = ""
 end
 
-using Pkg
-Pkg.develop(PackageSpec(url = "https://github.com/ptiede/ComradeBase.jl"))
-
 using VLBISkyModels
 using ChainRulesTestUtils
 using ChainRulesCore
@@ -41,10 +38,14 @@ function FiniteDifferences.to_vec(k::IntensityMap)
     return v, back
 end
 
-function FiniteDifferences.to_vec(k::UnstructuredMap)
-    v, b = to_vec(parent(k))
-    back(x) = UnstructuredMap(b(x), axisdims(k))
-    return v, back
+# The points of a `(Pt,)` domain whose `Ti` and `Fr` coordinates equal the given values.
+function selectpoints(d; Ti = nothing, Fr = nothing)
+    keep = trues(length(d))
+    isnothing(Ti) || (keep .&= d.Ti .== Ti)
+    isnothing(Fr) || (keep .&= d.Fr .== Fr)
+    inds = findall(keep)
+    isempty(inds) && throw(ArgumentError("no point has Ti = $Ti, Fr = $Fr"))
+    return UnstructuredDomain(map(c -> c[inds], ComradeBase.coords(d)); executor = executor(d), header = header(d))
 end
 
 function testgrad(f, x; atol = 1.0e-8, rtol = 1.0e-7)

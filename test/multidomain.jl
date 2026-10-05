@@ -201,7 +201,7 @@ function test4dgaussiansft(Nx, Nt, alg)
                 Fr = [p.imgdomain.Fr[1]],
             )
         )
-        visdomain_analytic = p.visdomain[Ti = t, Fr = p.imgdomain.Fr[1]]
+        visdomain_analytic = selectpoints(p.visdomain; Ti = t, Fr = p.imgdomain.Fr[1])
         p_analytic = FourierDualDomain(imgdomain_analytic, visdomain_analytic, alg)
         gaussian = gaussians[i]
         vis_analytic_t = VLBISkyModels.visibilitymap_analytic(gaussian, p_analytic)
@@ -224,7 +224,7 @@ function test4dft_individual(Nx, Nt, alg)
                 Fr = [p.imgdomain.Fr[1]],
             )
         )
-        visdomain_ind = p.visdomain[Ti = t, Fr = p.imgdomain.Fr[1]]
+        visdomain_ind = selectpoints(p.visdomain; Ti = t, Fr = p.imgdomain.Fr[1])
         p_ind = FourierDualDomain(imgdomain_ind, visdomain_ind, alg)
         img = intensitymap(gaussians[i], imgdomain_ind)
         cimg = ContinuousImage(img, BSplinePulse{3}())
@@ -273,7 +273,7 @@ function test4dgaussiansft_swap(Nx, Nt, alg)
                 Fr = [p.imgdomain.Fr[1]], Ti = [t],
             )
         )
-        visdomain_analytic = p.visdomain[Fr = p.imgdomain.Fr[1], Ti = t]
+        visdomain_analytic = selectpoints(p.visdomain; Fr = p.imgdomain.Fr[1], Ti = t)
         p_analytic = FourierDualDomain(imgdomain_analytic, visdomain_analytic, alg)
         gaussian = gaussians[i]
         vis_analytic_t = VLBISkyModels.visibilitymap(gaussian, p_analytic)
@@ -312,7 +312,7 @@ function test3dgaussians(Nx, Nt, alg)
 
     for (i, t) in enumerate(p.imgdomain.Ti)
         imgdomain_analytic = RectiGrid((; X = p.imgdomain.X, Y = p.imgdomain.Y, Ti = [t]))
-        visdomain_analytic = p.visdomain[Ti = t]
+        visdomain_analytic = selectpoints(p.visdomain; Ti = t)
         p_analytic = FourierDualDomain(imgdomain_analytic, visdomain_analytic, alg)
         gaussian = gaussians[i]
         vis_analytic_t = VLBISkyModels.visibilitymap(gaussian, p_analytic)
@@ -351,7 +351,7 @@ function test3dgaussians_freq(Nx, Nf, alg)
 
     for (i, fr) in enumerate(p.imgdomain.Fr)
         imgdomain_analytic = RectiGrid((; X = p.imgdomain.X, Y = p.imgdomain.Y, Fr = [fr]))
-        visdomain_analytic = p.visdomain[Fr = fr]
+        visdomain_analytic = selectpoints(p.visdomain; Fr = fr)
         p_analytic = FourierDualDomain(imgdomain_analytic, visdomain_analytic, alg)
         gaussian = gaussians[i]
         vis_analytic_t = VLBISkyModels.visibilitymap_analytic(gaussian, p_analytic)
@@ -604,11 +604,11 @@ end
             fr = vcat(fill(230.0e9, 10), fill(345.0e9, 40))
             guv = UnstructuredDomain((; U = u, V = v, Fr = fr, Ti = ti))
             vmf = visibilitymap(convolved(m1, m2), guv)
-            v230 = visibilitymap(mtr230, guv[Fr = 230.0e9])
-            v345 = visibilitymap(mtr345, guv[Fr = 345.0e9])
+            v230 = visibilitymap(mtr230, selectpoints(guv; Fr = 230.0e9))
+            v345 = visibilitymap(mtr345, selectpoints(guv; Fr = 345.0e9))
 
-            @test vmf[1:10] ≈ v230 atol = 1.0e-8
-            @test vmf[11:50] ≈ v345 atol = 1.0e-8
+            @test parent(vmf)[1:10] ≈ parent(v230) atol = 1.0e-8
+            @test parent(vmf)[11:50] ≈ parent(v345) atol = 1.0e-8
         end
     end
 

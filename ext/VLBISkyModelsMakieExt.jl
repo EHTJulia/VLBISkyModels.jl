@@ -18,7 +18,7 @@ end
 
 import VLBISkyModels: polimage, polimage!, imageviz
 
-Makie.convert_single_argument(m::ComradeBase.UnstructuredMap) = parent(m)
+Makie.convert_single_argument(m::ComradeBase.StructuredMap) = parent(m)
 
 
 function Makie.convert_arguments(

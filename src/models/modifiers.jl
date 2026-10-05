@@ -320,7 +320,7 @@ doesnot_uv_modify(::Shift) = true
     @unpack_params Δx, Δy = transform(p)
     X = p.X - Δx
     Y = p.Y - Δy
-    return update_spat(p, X, Y)
+    return merge(p, (; X, Y))
 end
 
 @inline transform_uv(model, ::Shift, p) = p
@@ -461,7 +461,7 @@ stretched(model, α) = stretched(model, α, α)
     (; X, Y) = p
     @unpack_params α, β = transform(p)
     # @show p
-    pt = update_spat(p, X / α, Y / β)
+    pt = merge(p, (; X = X / α, Y = Y / β))
     # @show pt
     return pt
 end
@@ -469,7 +469,7 @@ end
 @inline function transform_uv(m, transform::Stretch, p)
     (; U, V) = p
     @unpack_params α, β = transform(p)
-    return update_spat(p, U * α, V * β)
+    return merge(p, (; U = U * α, V = V * β))
 end
 
 @inline function scale_image(m, transform::Stretch, p)
@@ -537,7 +537,7 @@ posangle(model::Rotate) = atan(model.s, model.c)
     (; X, Y) = p
     Xr = c * X - s * Y
     Yr = s * X + c * Y
-    pt = update_spat(p, Xr, Yr)
+    pt = merge(p, (; X = Xr, Y = Yr))
     return pt
 end
 
@@ -546,7 +546,7 @@ end
     (; U, V) = p
     Ur = c * U - s * V
     Vr = s * U + c * V
-    return update_spat(p, Ur, Vr)
+    return merge(p, (; U = Ur, V = Vr))
 end
 
 @inline scale_image(::NotPolarized, model::Rotate, p) = one(typeof(getparam(model, :s, p)))

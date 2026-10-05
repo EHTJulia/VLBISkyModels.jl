@@ -908,11 +908,11 @@ end
     ComradeBase.visibilitymap_numeric(m, VLBISkyModels.uvgrid(g))
 
     guv = UnstructuredDomain((U = u1, V = v1))
-    @test_throws "UnstructuredDomain not supported" ComradeBase.visibilitymap_numeric(
+    @test_throws "StructuredDomain not supported" ComradeBase.visibilitymap_numeric(
         m,
         guv
     )
-    @test_throws "UnstructuredDomain not supported" ComradeBase.intensitymap_numeric(m, guv)
+    @test_throws "StructuredDomain not supported" ComradeBase.intensitymap_numeric(m, guv)
 
     gnf = FourierDualDomain(g, guv, NFFTAlg())
     @test intensitymap(m, gnf) ≈ img

@@ -83,7 +83,7 @@ function create_interpolator(g, vis::AbstractArray{<:Complex, N}, pulse) where {
             pl = visibility_point(pulse, p)
             U2 = _rotatex(p.U, p.V, rm)
             V2 = _rotatey(p.U, p.V, rm)
-            p2 = update_spat(p, U2, V2)
+            p2 = merge(p, (; U = U2, V = V2))
             x = SVector{N}(myselect(p2, kg))
             vreal = interpolate(itp, visre, x)
             vimag = interpolate(itp, visim, x)
@@ -115,7 +115,7 @@ function create_interpolator(g, vis::StructArray{<:StokesParams}, pulse)
         pl = visibility_point(pulse, p)
         U2 = _rotatex(p.U, p.V, rm)
         V2 = _rotatey(p.U, p.V, rm)
-        p2 = update_spat(p, U2, V2)
+        p2 = merge(p, (; U = U2, V = V2))
         x = SVector(myselect(p2, kg))
         return StokesParams(
             complex(

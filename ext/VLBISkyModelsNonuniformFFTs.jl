@@ -1,6 +1,6 @@
 module VLBISkyModelsNonuniformFFTs
 using VLBISkyModels
-using ComradeBase: AbstractRectiGrid, UnstructuredDomain, domainpoints
+using ComradeBase: AbstractRectiGrid, StructuredDomain
 using VLBISkyModels: NonuniformFFTsAlg, _nuft!, _jlnuft!
 using EnzymeCore: EnzymeRules
 using EnzymeCore
@@ -10,13 +10,9 @@ const KA = NonuniformFFTs.KA
 
 function VLBISkyModels.plan_nuft_spatial(
         alg::NonuniformFFTsAlg, imgdomain::AbstractRectiGrid,
-        visdomain::UnstructuredDomain
+        visdomain::StructuredDomain
     )
-    # check_image_uv(imagegrid, visdomain)
-    # Check if Ti or Fr in visdomain are subset of imgdomain Ti or Fr if present
-    visp = domainpoints(visdomain)
-    U = visp.U
-    V = visp.V
+    (; U, V) = visdomain
     T = eltype(U)
     dx, dy = pixelsizes(imgdomain)
     rm = ComradeBase.rotmat(imgdomain)'
@@ -63,14 +59,6 @@ function _reltol_to_m(reltol)
     w = ceil(Int, log(10, 1 / reltol)) + 1
     m = (w) ÷ 2
     return m
-end
-
-function VLBISkyModels.make_phases(
-        ::NonuniformFFTsAlg, imgdomain::AbstractRectiGrid,
-        visdomain::UnstructuredDomain
-    )
-    # These use the same phases to just use the same code since it doesn't depend on NFFTAlg at all.
-    return VLBISkyModels.make_phases(NFFTAlg(), imgdomain, visdomain)
 end
 
 # @inline function VLBISkyModels._jlnuft!(out, A::PlanNUFFT, b::AbstractArray{<:Complex})

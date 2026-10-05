@@ -1,6 +1,6 @@
 module VLBISkyModelsFINUFFT
 using VLBISkyModels
-using ComradeBase: AbstractRectiGrid, UnstructuredDomain, domainpoints
+using ComradeBase: AbstractRectiGrid, StructuredDomain
 using VLBISkyModels: FINUFFTAlg, FINUFFTPlan, AdjointFINPlan, _nuft!, _jlnuft!
 using EnzymeCore: EnzymeRules
 using EnzymeCore
@@ -9,13 +9,9 @@ using FINUFFT
 
 function VLBISkyModels.plan_nuft_spatial(
         alg::FINUFFTAlg, imgdomain::AbstractRectiGrid,
-        visdomain::UnstructuredDomain
+        visdomain::StructuredDomain
     )
-    # check_image_uv(imagegrid, visdomain)
-    # Check if Ti or Fr in visdomain are subset of imgdomain Ti or Fr if present
-    visp = domainpoints(visdomain)
-    U = visp.U
-    V = visp.V
+    (; U, V) = visdomain
     T = eltype(U)
     dx, dy = pixelsizes(imgdomain)
     rm = ComradeBase.rotmat(imgdomain)'
@@ -47,14 +43,6 @@ function VLBISkyModels.plan_nuft_spatial(
         end, p
     )
     return p
-end
-
-function VLBISkyModels.make_phases(
-        ::FINUFFTAlg, imgdomain::AbstractRectiGrid,
-        visdomain::UnstructuredDomain
-    )
-    # These use the same phases to just use the same code since it doesn't depend on NFFTAlg at all.
-    return VLBISkyModels.make_phases(NFFTAlg(), imgdomain, visdomain)
 end
 
 @noinline function getcache(A::FINUFFTPlan)

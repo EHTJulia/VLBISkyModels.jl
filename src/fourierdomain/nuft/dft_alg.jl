@@ -13,29 +13,28 @@ struct DFTAlg <: NUFT end
 _rot(u, v, c, s) = (c * u - s * v, s * u + c * v) # inverse rotation
 function plan_nuft_spatial(
         ::DFTAlg, imagegrid::AbstractRectiGrid,
-        visdomain::UnstructuredDomain
+        visdomain::StructuredDomain
     )
-    visp = domainpoints(visdomain)
     (; X, Y) = imagegrid
-    uv = domainpoints(visdomain)
+    (; U, V) = visdomain
     rmat = ComradeBase.rotmat(imagegrid)' # adjoint because we need to move into rotated frame
     dft = similar(
         Array{complex(eltype(imagegrid))}, length(visdomain),
         size(imagegrid)[1:2]...
     )
-    @fastmath for i in eachindex(Y), j in eachindex(X), k in eachindex(visp)
-        uvr = rmat * SVector(uv.U[k], uv.V[k])
+    @fastmath for i in eachindex(Y), j in eachindex(X), k in eachindex(U, V)
+        uvr = rmat * SVector(U[k], V[k])
         u = uvr[1]
         v = uvr[2]
         # - sign is taken care of in _visibilitymap
         dft[k, j, i] = cispi(2(u * X[j] + v * Y[i]))
     end
     # reshape to a matrix so we can take advantage of an easy BLAS call
-    return reshape(dft, length(visp), :)
+    return reshape(dft, length(visdomain), :)
 end
 
 # internal function to make the phases to phase center the image.
-function make_phases(::DFTAlg, imgdomain::AbstractRectiGrid, visdomain::UnstructuredDomain)
+function make_phases(::DFTAlg, imgdomain::AbstractRectiGrid, visdomain::StructuredDomain)
     return one(complex(eltype(visdomain.U)))
 end
 

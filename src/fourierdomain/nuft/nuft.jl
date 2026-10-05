@@ -27,9 +27,7 @@ _compare(nv::NamedTuple{N}, val) where {N} = mapreduce(n -> (nv[n] == val[n]), *
 # iminds whose elements defines the index in the image domain
 # visinds whose elements are the indices of the visibilities that correspond to that imind
 # The order of data is currently set by imgdomain.
-
-# The order of data is currently set by imgdomain.
-function plan_indices(imgdomain::AbstractRectiGrid, visdomain::UnstructuredDomain)
+function plan_indices(imgdomain::AbstractRectiGrid, visdomain::StructuredDomain)
     # TODO: Change the ordering so that visdomain is accessed in a constant stride so
     # we can utilize in-place nuft and save a bunch of allocations
     extradims = ComradeBase.dims(imgdomain)[3:end]
@@ -39,11 +37,10 @@ function plan_indices(imgdomain::AbstractRectiGrid, visdomain::UnstructuredDomai
     isempty(extradims) && return (0, 0)
 
     itr = DimPoints(extradims)
-    visp = domainpoints(visdomain)
     # The grouping depends only on the trailing (Fr/Ti) coordinates. Materialize just
     # those columns on the host so this one-time structural computation also works when
     # the visibility coordinates are Reactant arrays (the plan is built outside `@jit`).
-    cmp = StructArray(NamedTuple{nms}(map(n -> collect(getproperty(visp, n)), nms)))
+    cmp = StructArray(NamedTuple{nms}(map(n -> collect(getproperty(visdomain, n)), nms)))
     inds = map(eachindex(itr), itr) do i, vals
         nv = NamedTuple{nms}(vals)
         # Check if visinds are strided if so switch to a iterator
@@ -67,6 +64,7 @@ function plan_indices(imgdomain::AbstractRectiGrid, visdomain::UnstructuredDomai
 
     iminds = vec(parent(first.(inds)))
     visinds = vec(parent(last.(inds)))
+    _check_planned(visinds, length(visdomain))
 
     inds = findall(isempty, visinds)
     deleteat!(iminds, inds)
@@ -75,32 +73,42 @@ function plan_indices(imgdomain::AbstractRectiGrid, visdomain::UnstructuredDomai
     return iminds, visinds
 end
 
+function _check_planned(visinds, n)
+    planned = sum(length, visinds; init = 0)
+    planned == n || throw(
+        ArgumentError(
+            "$(n - planned) of $n visibility points match no Ti/Fr plane of the image grid; every point's Ti and Fr must equal a plane label of the grid"
+        )
+    )
+    return nothing
+end
+
+function _subdomain(visdomain::StructuredDomain, visind)
+    U = visdomain.U[visind]
+    V = visdomain.V[visind]
+    return UnstructuredDomain((; U, V); executor = executor(visdomain), header = header(visdomain))
+end
+
 function plan_nuft(
         alg::NUFT, imagegrid::AbstractRectiGrid,
-        visdomain::UnstructuredDomain, indices
+        visdomain::StructuredDomain, indices
     )
-    # check_image_uv(imagegrid, visdomain)
-    # Check if Ti or Fr in visdomain are subset of imgdomain Ti or Fr if present
-    points = domainpoints(visdomain)
     iminds, visinds = indices
 
-    uv = UnstructuredDomain(points[visinds[1]], executor(visdomain), header(visdomain))
-    tplan = plan_nuft_spatial(alg, imagegrid, uv)
+    tplan = plan_nuft_spatial(alg, imagegrid, _subdomain(visdomain, visinds[1]))
     plans = Dict{typeof(iminds[1]), typeof(tplan)}()
 
     for i in eachindex(iminds, visinds)
-        imind = iminds[i]
-        visind = visinds[i]
-        uv = UnstructuredDomain(points[visind], executor(visdomain), header(visdomain))
-        plans[imind] = plan_nuft_spatial(alg, imagegrid, uv)
+        plans[iminds[i]] = plan_nuft_spatial(alg, imagegrid, _subdomain(visdomain, visinds[i]))
     end
     return plans
 end
 
 function create_forward_plan(
         algorithm::NUFT, imgdomain::AbstractRectiGrid,
-        visdomain::UnstructuredDomain
+        visdomain::StructuredDomain
     )
+    _check_pointlist(visdomain)
     phases = make_phases(algorithm, imgdomain, visdomain)
     indices = plan_indices(imgdomain, visdomain)
     if hasproperty(imgdomain, :Ti) || hasproperty(imgdomain, :Fr)
@@ -108,7 +116,16 @@ function create_forward_plan(
     else
         plan = plan_nuft_spatial(algorithm, imgdomain, visdomain)
     end
-    return NUFTPlan(algorithm, plan, phases, indices, size(visdomain)[1])
+    return NUFTPlan(algorithm, plan, phases, indices, length(visdomain))
+end
+
+function _check_pointlist(visdomain::StructuredDomain)
+    ndims(visdomain) == 1 || throw(
+        ArgumentError(
+            "nonuniform Fourier transforms need a visibility domain with the single dim `Pt`, got dims $(keys(visdomain)); give `Ti` and `Fr` as per-point coordinates"
+        )
+    )
+    return nothing
 end
 
 function inverse_plan(plan::NUFTPlan)

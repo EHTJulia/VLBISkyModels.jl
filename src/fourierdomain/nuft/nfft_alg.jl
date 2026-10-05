@@ -39,28 +39,28 @@ _rotatey(u, v, rm) = sum(rm[2, :] .* SVector(u, v))
 
 function plan_nuft_spatial(
         alg::NFFTAlg, imagegrid::AbstractRectiGrid,
-        visdomain::UnstructuredDomain
+        visdomain::StructuredDomain
     )
-    visp = domainpoints(visdomain)
-    uv2 = similar(visp.U, (2, length(visdomain)))
+    (; U, V) = visdomain
+    uv2 = similar(U, (2, length(visdomain)))
     dpx = pixelsizes(imagegrid)
     dx = dpx.X
     dy = dpx.Y
     rm = ComradeBase.rotmat(imagegrid)'
     # Here we flip the sign because the NFFT uses the -2pi convention
-    uv2[1, :] .= -_rotatex.(visp.U, visp.V, Ref(rm)) .* dx
-    uv2[2, :] .= -_rotatey.(visp.U, visp.V, Ref(rm)) .* dy
+    uv2[1, :] .= -_rotatex.(U, V, Ref(rm)) .* dx
+    uv2[2, :] .= -_rotatey.(U, V, Ref(rm)) .* dy
     (; reltol, precompute, fftflags) = alg
     plan = plan_nfft(NFFTBackend(), uv2, size(imagegrid)[1:2]; reltol, precompute, fftflags)
     return plan
 end
 
-function make_phases(::NFFTAlg, imgdomain::AbstractRectiGrid, visdomain::UnstructuredDomain)
+# Every gridding NUFFT shares these phases; `DFTAlg` overrides them.
+function make_phases(::NUFT, imgdomain::AbstractRectiGrid, visdomain::StructuredDomain)
     dx, dy = pixelsizes(imgdomain)
     x0, y0 = phasecenter(imgdomain)
-    visp = domainpoints(visdomain)
-    u = visp.U
-    v = visp.V
+    u = visdomain.U
+    v = visdomain.V
     rm = ComradeBase.rotmat(imgdomain)'
     # Correct for the nFFT phase center and the img phase center
     return cispi.(

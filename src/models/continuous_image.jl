@@ -515,13 +515,7 @@ function applypulse!(vis, pulse, gfour::AbstractFourierDualDomain)
     # we grab the parent array since for some reason Enzyme struggles to see
     # through the broadcast
     pvis = parent(vis)
-    dp = domainpoints(guv)
-    vp = Base.Fix1(visibility_point, mp)
-    pvis .*= vp.(dp)
-    # for i in eachindex(pvis, dp)
-    #     pvis[i] *= visibility_point(mp, dp[i])
-    # end
-    # pvis .*= visibility_point.(Ref(mp), dp)
+    pvis .*= ComradeBase._pointbroadcast(Base.Fix1(visibility_point, mp), guv)
     return vis
 end
 
@@ -582,7 +576,13 @@ end
     # out = similar(vbase)
     pvbase = baseimage(vbase)
     uc = unitscale(complex(eltype(p.U)), mbase)
-    dp = domainpoints(p)
-    pvbase .*= last.(modify_uv.(Ref(mbase), Ref(t), dp, Ref(uc)))
+    pvbase .*= ComradeBase._pointbroadcast(UVScale(mbase, t, uc), p)
     return nothing
 end
+
+struct UVScale{M, T, S}
+    model::M
+    transform::T
+    scale::S
+end
+(f::UVScale)(p) = last(modify_uv(f.model, f.transform, p, f.scale))

@@ -50,7 +50,7 @@ end
     (X[begin] > X2 || X2 > X[end]) && return zero(eltype(m.img))
     (Y[begin] > Y2 || Y2 > Y[end]) && return zero(eltype(m.img))
     # - sign is because we need to move into the frame of the vertical-horizontal image
-    p2 = ComradeBase.update_spat(p, X2, Y2)
+    p2 = merge(p, (; X = X2, Y = Y2))
     return interpolate(m.itp, m.img, SVector(values(p2))) / (dx * dy)
 end
 function ModifiedModel(

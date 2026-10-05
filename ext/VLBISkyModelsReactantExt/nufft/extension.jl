@@ -13,11 +13,9 @@ function VLBISkyModels._jlnuft!(out, A::NUFFTSetPts, b::Reactant.AnyTracedRArray
 end
 
 function VLBISkyModels.plan_nuft_spatial(
-        alg::VLBISkyModels.ReactantNUFFTAlg, imgdomain::ComradeBase.AbstractRectiGrid, visdomain::UnstructuredDomain
+        alg::VLBISkyModels.ReactantNUFFTAlg, imgdomain::ComradeBase.AbstractRectiGrid, visdomain::ComradeBase.StructuredDomain
     )
-    visp = domainpoints(visdomain)
-    U = visp.U
-    V = visp.V
+    (; U, V) = visdomain
     T = eltype(U)
     dx, dy = pixelsizes(imgdomain)
     rm = ComradeBase.rotmat(imgdomain)'
@@ -33,14 +31,6 @@ function VLBISkyModels.plan_nuft_spatial(
         pls = @jit set_nufft_points(pl, (u, v))
     end
     return pls
-end
-
-function VLBISkyModels.make_phases(
-        ::ReactantNUFFTAlg, imgdomain::ComradeBase.AbstractRectiGrid,
-        visdomain::UnstructuredDomain
-    )
-    # These use the same phases to just use the same code since it doesn't depend on NFFTAlg at all.
-    return VLBISkyModels.make_phases(NFFTAlg(), imgdomain, visdomain)
 end
 
 Base.adjoint(plan::NUFFTSetPts) = plan # Not needed Reactant is too smart for this

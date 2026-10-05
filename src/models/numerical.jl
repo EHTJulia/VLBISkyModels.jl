@@ -92,21 +92,21 @@ function visibilitymap_numeric(m::AbstractModel, grid::AbstractRectiGrid)
     return vis
 end
 
-function intensitymap_numeric(::AbstractModel, ::UnstructuredDomain)
+function intensitymap_numeric(::AbstractModel, ::StructuredDomain)
     throw(
         ArgumentError(
-            "UnstructuredDomain not supported for numeric intensity maps." *
-                "To make this well defined you must first specify a [`FourierDualDomain`](@ref)" *
+            "StructuredDomain not supported for numeric intensity maps. " *
+                "To make this well defined you must first specify a `FourierDualDomain` " *
                 "for the grid."
         )
     )
 end
 
-function visibilitymap_numeric(::AbstractModel, ::UnstructuredDomain)
+function visibilitymap_numeric(::AbstractModel, ::StructuredDomain)
     throw(
         ArgumentError(
-            "UnstructuredDomain not supported for numeric intensity maps." *
-                "To make this well defined you must first specify a [`FourierDualDomain`](@ref)" *
+            "StructuredDomain not supported for numeric visibility maps. " *
+                "To make this well defined you must first specify a `FourierDualDomain` " *
                 "for the grid."
         )
     )
