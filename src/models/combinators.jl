@@ -302,6 +302,28 @@ end
     return nothing
 end
 
+# Modified models require some special handling for Convolved models because the
+# modifiers need to be split between the two factors in some cases.
+@inline _uvmod_only(::Tuple{}) = ()
+@inline _uvmod_only(t::Tuple) = _uvmod_prepend(first(t), _uvmod_only(Base.tail(t)))
+@inline _uvmod_prepend(t::ModelModifier, rest::Tuple) = (t, rest...)
+@inline _uvmod_prepend(::Union{Shift, Renormalize}, rest::Tuple) = rest
+
+@inline _maybe_modify(m, ::Tuple{}) = m
+@inline _maybe_modify(m, t::Tuple) = ModifiedModel(m, t)
+
+@inline function ModifiedModel(m::ConvolvedModel, ts::Tuple)
+    return ConvolvedModel(
+        _maybe_modify(m.m1, ts),
+        _maybe_modify(m.m2, _uvmod_only(ts))
+    )
+end
+
+# Addition is linear, so the full modifier applies to both summands.
+@inline function ModifiedModel(m::AddModel, ts::Tuple)
+    return AddModel(_maybe_modify(m.m1, ts), _maybe_modify(m.m2, ts))
+end
+
 # function intensitymap_numeric(model::ConvolvedModel, dims::ComradeBase.AbstractDomain)
 #     (;X, Y) = dims
 #     vis1 = visibilitymap(model.m1, dims)

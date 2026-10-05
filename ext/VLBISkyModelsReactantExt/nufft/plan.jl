@@ -15,7 +15,7 @@ Static plan parameters. `T` is the real eltype, `D` is the dimensionality,
 
 Construct via [`plan_nufft`](@ref).
 """
-struct NUFFTPlan{T <: Real, D, K}
+struct NUFFTPlan{T <: Real, D, K, CoefsType<:AbstractMatrix, PhiHatType<:AbstractVector}
     nmodes::NTuple{D, Int}
     ngrid::NTuple{D, Int}
     iflag::Int                        # +1 or -1
@@ -26,9 +26,11 @@ struct NUFFTPlan{T <: Real, D, K}
     bin_dims::NTuple{D, Int}
     nbins::NTuple{D, Int}
     chunk_size::Int
-    horner_coefs::Matrix{T}           # (w, deg+1)
-    phi_hat::NTuple{D, Vector{T}}      # length nmodes[d] each
+    horner_coefs::CoefsType           # (w, deg+1)
+    phi_hat::NTuple{D, PhiHatType}      # length nmodes[d] each
 end
+
+NUFFTPlan{T,D,K}(args...) where {T,D,K} = NUFFTPlan{T,D,K,Matrix{T},Vector{T}}(args...)
 
 nufft_type(::NUFFTPlan{<:Any, <:Any, K}) where {K} = K
 Base.eltype(::NUFFTPlan{T}) where {T} = T
@@ -56,7 +58,7 @@ end
 # `bin_dim ≥ w` is required for binning to provide locality benefit (each
 # NU point's stencil spans `w` cells per dim).
 #
-# A1 sweep finding (see PROFILE.md): GPU performance vs `bin_dim` is *very*
+# Sweep finding: GPU performance vs `bin_dim` is *very*
 # non-monotonic with sharp cache cliffs (5–25× swings between adjacent bin
 # sizes). No single `α` is robust — every default lands in good pockets
 # for some workloads and bad pockets for others. We therefore keep the

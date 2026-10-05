@@ -71,9 +71,8 @@ end
 """
     execute_nufft(prep::NUFFTSetPts, data) -> result
 
-Dispatch on the plan's transform type. Body uses `@opcall` so it must be
-called inside a Reactant trace — wrap your call in `Reactant.@jit` /
-`Reactant.@compile`.
+Dispatch on the plan's transform type. Intended to run inside a Reactant
+trace — wrap your call in `Reactant.@jit` / `Reactant.@compile`.
 """
 function execute_nufft(prep::NUFFTSetPts, data::AbstractArray)
     K = nufft_type(prep.plan)
