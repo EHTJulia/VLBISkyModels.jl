@@ -32,5 +32,5 @@ VLBISkyModels = "d6343c73-7174-4e0f-bb64-562643efbeca"
 Enzyme = "0.13"
 
 [sources]
-ComradeBase = {path = "../../ComradeBase-Shard"}
+ComradeBase = {url = "https://github.com/ptiede/ComradeBase.jl", rev = "ptiede-shard"}
 VLBISkyModels = {path = ".."}
