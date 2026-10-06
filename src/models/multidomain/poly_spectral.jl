@@ -77,11 +77,9 @@ end
     return reduce(+, ntuple(n -> index[n] * x^n, Val(N)))
 end
 
-# A polarized value is a static vector, so its offset is elementwise: every Stokes component
-# takes the same `p0`. Broadcasting inside the kernel is the only way to reach it, since the
-# enclosing broadcast has already stepped down to a single parameter value.
+# Through the tuple: broadcasting a static vector with a traced `p0` fails under Reactant.
 @inline addoffset(x::Number, p0) = x + p0
-@inline addoffset(x::AbstractArray, p0) = x .+ p0
+@inline addoffset(x::StaticArray, p0) = similar_type(x)(Tuple(x) .+ p0)
 
 # The spectral factor. `p.Fr` is a scalar for a single domain point, or reshaped along the
 # cube's `Fr` axis when building a cube, so materializing here evaluates the expansion once

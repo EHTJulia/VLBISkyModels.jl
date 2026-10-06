@@ -120,3 +120,33 @@ end
     @test collect(centroid(img)) ≈ collect(centroid(img, gbg)) rtol = 1.0e-3
     @test flux(img) ≈ flux(img, gbg) rtol = 1.0e-4
 end
+
+@testset "separable resampling agrees with the support window" begin
+    g = imagepixels(10.0, 8.0, 16, 12, 0.3, -0.2)
+    for kernel in (BSplinePulse{0}(), BSplinePulse{1}(), BSplinePulse{3}(), BicubicPulse(), RaisedCosinePulse())
+        for gout in (imagepixels(10.0, 8.0, 32, 24, 0.3, -0.2), imagepixels(14.0, 11.0, 21, 17), imagepixels(6.0, 5.0, 9, 7, 1.0, 0.5))
+            src = IntensityMap(rand(16, 12), g)
+            a = allocate_imgmap(ContinuousImage(src, kernel), gout)
+            b = similar(a)
+            VLBISkyModels._resample!(a, src, kernel)
+            VLBISkyModels._resample_window!(b, src, kernel)
+            @test a ≈ b
+        end
+    end
+
+    psrc = IntensityMap(rand(16, 12, 4), g, Stokes())
+    gfr = RectiGrid((; X = range(-5.0, 5.0; length = 20), Y = range(-4.0, 4.0; length = 18), Fr = [230.0e9, 345.0e9]))
+    c = ContinuousImage(psrc, BSplinePulse{3}())
+    img = @inferred intensitymap(c, gfr)
+    for s in (:I, :Q, :U, :V), f in 1:2
+        ref = intensitymap(ContinuousImage(stokes(psrc, s), BSplinePulse{3}()), VLBISkyModels.spatialdims(gfr))
+        @test baseimage(stokes(img, s))[:, :, f] ≈ baseimage(ref)
+    end
+
+    grot = RectiGrid((; X = range(-5.0, 5.0; length = 20), Y = range(-4.0, 4.0; length = 18)); posang = 0.3)
+    @test intensitymap(ContinuousImage(IntensityMap(rand(16, 12), g), BSplinePulse{3}()), grot) isa IntensityMap
+
+    gout = imagepixels(10.0, 8.0, 24, 20)
+    loss(x) = sum(abs2, baseimage(intensitymap(ContinuousImage(IntensityMap(x, g), BSplinePulse{3}()), gout)))
+    testgrad(loss, rand(16, 12))
+end

@@ -7,7 +7,8 @@ using Pyehtim
     )
 
     imc = load_fits(fname, IntensityMap)
-    load_fits(fname, IntensityMap{StokesParams})
+    load_fits(fname, StokesMap)
+    @test_throws "call `load_fits(filename, StokesMap)`" load_fits(fname, IntensityMap{StokesParams})
     ime = ehtim.image.load_image(fname)
     @test pyconvert(Tuple, ime.imarr("I").shape) == size(imc)
     @test flux(imc) ≈ pyconvert(Float64, ime.total_flux())
@@ -31,7 +32,7 @@ using Pyehtim
     img1 = IntensityMap(imgP[:, :, 1, 1], RectiGrid((; X = x, Y = y)))
     save_fits("ptest.fits", img1)
     load_fits("ptest.fits", IntensityMap)
-    img2 = load_fits("ptest.fits", IntensityMap{StokesParams})
+    img2 = load_fits("ptest.fits", StokesMap)
     rm("ptest.fits")
     @test parent(img1) ≈ parent(img2)
     @test parent(img1.X) ≈ parent(img2.X)

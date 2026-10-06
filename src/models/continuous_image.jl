@@ -84,11 +84,32 @@ cimg = MultiDomainImage(base, BSplinePulse{3}(), dom)
 ```
 """ MultiDomainImage
 
-make_map(cimg::ContinuousImage) = IntensityMap(cimg.params, cimg.grid)
+make_map(cimg::ContinuousImage) = _paramsmap(cimg.params, cimg.grid)
 # For a multidomain image the `params` field is a chain whose base is the spatial image at
 # the reference domain point, and `grid` is the spatial (X, Y) grid. Build the map from that
 # base so `size`/`show`/`flux`/etc. describe the reference image.
-make_map(cimg::MultiDomainImage) = IntensityMap(cimg.params.base, cimg.grid)
+make_map(cimg::MultiDomainImage) = _paramsmap(cimg.params.base, cimg.grid)
+
+"""
+    pixelparams(img::IntensityMap)
+
+The pixel parameters of `img`: its storage, or for a `StokesMap` a `StokesParams` element view
+of its storage.
+"""
+pixelparams(img::IntensityMap) = _pixelparams(baseimage(img), eldims(img), Val(ndims(axisdims(img))))
+_pixelparams(storage, ::Tuple{}, ::Val) = storage
+_pixelparams(storage, ::Tuple{Stokes}, ::Val{N}) where {N} = ViewStructArray{StokesParams, N}(storage)
+
+_paramsmap(params, grid) = IntensityMap(params, grid)
+_paramsmap(params::ViewStructArray{<:StokesParams}, grid) = IntensityMap(parent(params), grid, Stokes())
+
+_asparams(im::AbstractArray, g) = im
+_asparams(im::IntensityMap, g) = pixelparams(im)
+_asparams(im::StructArray{<:StokesParams}, g) = pixelparams(IntensityMap(im, g))
+_asparams(im::Array{<:StokesParams}, g) = pixelparams(IntensityMap(im, g))
+
+_storage(params) = params
+_storage(params::ViewStructArray) = parent(params)
 
 function Base.show(io::IO, img::ContinuousImage)
     pname = nameof(typeof(img.params))
@@ -133,18 +154,18 @@ ComradeBase.domainpoints(m::ContinuousImage) = domainpoints(m.grid)
 ComradeBase.axisdims(m::ContinuousImage) = m.grid
 
 function ContinuousImage(img::IntensityMap, kernel)
-    arr = baseimage(img)
+    arr = pixelparams(img)
     g = axisdims(img)
     return ContinuousImage{typeof(arr), typeof(g), typeof(kernel)}(arr, g, kernel)
 end
 
 function ContinuousImage(im::AbstractArray, g::AbstractRectiGrid, kernel::AbstractModel)
-    size(im) == size(g) || throw(
+    size(_asparams(im, g)) == size(g) || throw(
         DimensionMismatch(
             "The image array size $(size(im)) does not match the grid size $(size(g))."
         )
     )
-    arr = baseimage(im)
+    arr = _asparams(im, g)
     return ContinuousImage{typeof(arr), typeof(g), typeof(kernel)}(arr, g, kernel)
 end
 
@@ -195,8 +216,15 @@ imanalytic(::Type{<:ContinuousImage}) = IsAnalytic()
 radialextent(c::ContinuousImage) = maximum(values(fieldofview(spatialdims(c.grid)))) / 2
 
 
-function MultiDomainImage(img::SpatialIntensityMap, kernel, domains...)
-    mdp = MultiDomainParams(parent(img), domains)
+function MultiDomainImage(img::IntensityMap, kernel, domains...)
+    ndims(axisdims(img)) == 2 || throw(
+        ArgumentError(
+            "MultiDomainImage expects an image on a 2D spatial grid, got " *
+                "$(ndims(axisdims(img))) dimensions; the extra Fr/Ti structure " *
+                "comes from `domains`."
+        )
+    )
+    mdp = MultiDomainParams(pixelparams(img), domains)
     return ContinuousImage(mdp, spatialdims(img), kernel)
 end
 
@@ -350,7 +378,7 @@ convolved(cimg::AbstractModel, m::ContinuousImage) = convolved(m, cimg)
     checkgrid(axisdims(m), imgdomain(grid))
     img = make_map(m)
     vis = applyft(forward_plan(grid), img)
-    return applypulse!(vis, m.kernel, grid)
+    return _vismap(applypulse!(vis, m.kernel, grid), img, grid)
 end
 
 # Multidomain (e.g. multifrequency/multitime) images. The `params` field is a
@@ -412,69 +440,119 @@ end
 # (below) materializes its cube first. Composite and modified models still evaluate per
 # point through the generic path.
 function intensitymap_analytic!(img::IntensityMap, m::ContinuousImage)
-    gout = axisdims(img)
-    gspat = spatialdims(gout)
-    _resample_slices!(parent(img), m.params, m, gspat)
+    _resample!(img, make_map(m), m.kernel)
     return nothing
 end
 
 function intensitymap_analytic!(img::IntensityMap, m::MultiDomainImage)
-    gout = axisdims(img)
-    gspat = spatialdims(gout)
-    datacube = _paramcube(m.params, _cubegrid(m.grid, gout))
-    _resample_slices!(parent(img), datacube, m, gspat)
+    gcube = _cubegrid(m.grid, axisdims(img))
+    _resample!(img, _paramsmap(_paramcube(m.params, gcube), gcube), m.kernel)
     return nothing
 end
 
-# Per-slice kernel resampling, written directly into the caller's buffer `pimg`. Each
-# spatial slice is a `ContinuousImage` on the image's own grid, resampled onto `gspat`
-# through `intensity_point` by the executor of `gspat` — called directly, since the entry
-# points above own the `intensitymap_analytic!` dispatch for images.
-#
-# Collapsing the dimensions past `X`/`Y` into one axis covers any `Fr`/`Ti` structure with
-# a single loop: the cube carries those dimensions in the order the output grid does, so
-# both arrays flatten to the same points in the same order. A single stored slice
-# evaluated over a larger grid is replicated, matching per-point evaluation of a spatial
-# image at any `Fr`/`Ti`.
-#
-# A traced array can be neither reshaped without a wrapper nor viewed at a traced index, so
-# the Reactant extension overrides this method with a `dynamic_slice`/`dynamic_update_slice`
-# version, leaving this one as the allocation-free CPU path.
-function _resample_slices!(pimg::AbstractArray, datacube, m::ContinuousImage, gspat)
-    # The dominant case — a spatial image evaluated over a spatial grid — pays no slice
-    # machinery: the executor reads the model's raw pixel array directly. (`datacube` is
-    # `m.params` itself exactly when no multidomain cube was materialized.)
-    if ndims(pimg) == 2 && ndims(datacube) == 2 && datacube === m.params
-        return ComradeBase.intensitymap_analytic_executor!(
-            IntensityMap(pimg, gspat), m, ComradeBase.executor(gspat)
-        )
-    end
-    gsrc = spatialdims(m.grid)
-    cube = reshape(datacube, size(gsrc)..., :)
-    rimg = reshape(pimg, size(gspat)..., :)
-    nsl = size(cube, 3)
-    (nsl == size(rimg, 3) || nsl == 1) || throw(
-        DimensionMismatch(
-            "The image carries $(nsl) spatial slices but the output grid carries " *
-                "$(size(rimg, 3))."
-        )
-    )
+"""
+    _resample!(img::IntensityMap, src::IntensityMap, kernel)
+
+Writes into `img` the kernel resampling of the pixel map `src` onto the spatial grid of `img`,
+for every index of the dims beyond `X` and `Y` (`Fr`, `Ti`, `Stokes`); a dim of `img` that
+`src` lacks is replicated, matched by name.
+
+A `Pulse` factors as `κ(ΔX)κ(ΔY)`, so on grids that share a position angle the resampling is
+two 1D passes, along `X` and then `Y`. Each output pixel along an axis reads a fixed number
+of source pixels (the kernel's taps) with precomputed weights (`AxisTaps`), and each
+pass is one broadcast that sums the taps' weighted gathers, fused so that only the pass's
+result is allocated. The same code runs on CPU arrays and under Reactant, where it lowers to
+gathers and elementwise operations. Other kernels and rotated pairs of grids evaluate each
+output pixel over its support window instead (CPU only).
+"""
+function _resample!(img::IntensityMap, src::IntensityMap, kernel)
+    extra = DD.otherdims(img, (X, Y))
+    _check_resample(img, src, extra)
+    gsrc = spatialdims(axisdims(src))
+    gspat = spatialdims(axisdims(img))
+    (kernel isa Pulse && posang(gsrc) == posang(gspat)) || return _resample_window!(img, src, kernel)
+    tx = AxisTaps(kernel, gsrc.X, gspat.X)
+    ty = AxisTaps(kernel, gsrc.Y, gspat.Y)
+    R = _pass(_pass(baseimage(src), tx, Val(1)), ty, Val(2))
+    DD.broadcast_dims!(identity, img, DD.DimArray(R, (dims(gspat)..., DD.otherdims(src, (X, Y))...)))
+    return nothing
+end
+
+"""
+    AxisTaps(kernel::Pulse, xs, xo)
+
+The taps of `kernel` for resampling an axis with pixel centers `xs` onto `xo`: output `a`
+reads source pixels `index[:, a]` with weights `weight[:, a]`. A tap off the grid reads the
+nearest pixel with weight 0.
+"""
+struct AxisTaps{W, I <: AbstractMatrix{Int}, M <: AbstractMatrix}
+    index::I
+    weight::M
+end
+
+function AxisTaps(kernel::Pulse, xs::AbstractVector, xo::AbstractVector)
+    dx = step(xs)
+    r = radialextent(kernel)
+    w = 2 * ceil(Int, r)
+    lo = floor.(Int, (xo .- first(xs)) ./ dx .+ 1 .- r) .+ 1
+    raw = lo' .+ (0:(w - 1))
+    index = clamp.(raw, firstindex(xs), lastindex(xs))
+    k = κ.(Ref(kernel), (xo' .- xs[index]) ./ dx) .* (step(xo) / dx)
+    weight = ifelse.(raw .== index, k, zero(eltype(k)))
+    return AxisTaps{w, typeof(index), typeof(weight)}(index, weight)
+end
+
+struct Tap{D, A, T}
+    S::A
+    taps::T
+end
+Tap{D}(S, taps) where {D} = Tap{D, typeof(S), typeof(taps)}(S, taps)
+(f::Tap{1})(t) = Broadcast.broadcasted(*, view(f.taps.weight, t, :), selectdim(f.S, 1, view(f.taps.index, t, :)))
+(f::Tap{2})(t) = Broadcast.broadcasted(*, reshape(view(f.taps.weight, t, :), 1, :), selectdim(f.S, 2, view(f.taps.index, t, :)))
+
+function _pass(S, taps::AxisTaps{W}, ::Val{D}) where {W, D}
+    return Broadcast.materialize(Broadcast.broadcasted(+, ntuple(Tap{D}(S, taps), Val(W))...))
+end
+
+function _resample_window!(img::IntensityMap, src::IntensityMap, kernel)
+    extra = DD.otherdims(img, (X, Y))
+    shared = DD.commondims(src, extra)
+    pos = map(Base.Fix1(DD.dimnum, extra), shared)
+    gsrc = spatialdims(axisdims(src))
+    gspat = spatialdims(axisdims(img))
     ex = ComradeBase.executor(gspat)
-    for k in axes(rimg, 3)
-        sl = ContinuousImage(view(cube, :, :, min(k, nsl)), gsrc, m.kernel)
+    for I in CartesianIndices(map(length, extra))
+        i = Tuple(I)
+        out = _sliceat(img, map(rebuild, extra, i))
+        sl = _sliceat(src, map(rebuild, shared, getindex.(Ref(i), pos)))
         ComradeBase.intensitymap_analytic_executor!(
-            IntensityMap(view(rimg, :, :, k), gspat), sl, ex
+            out, ContinuousImage(baseimage(sl), gsrc, kernel), ex
         )
     end
     return nothing
+end
+
+_sliceat(A, ::Tuple{}) = A
+_sliceat(A, ds::Tuple) = view(A, ds...)
+
+function _check_resample(img, src, extra)
+    srcextra = DD.otherdims(src, (X, Y))
+    shared = DD.commondims(src, extra)
+    length(shared) == length(srcextra) || throw(
+        DimensionMismatch(
+            "the image has dims $(map(name, srcextra)) but the output grid has only $(map(name, extra)) beyond X and Y"
+        )
+    )
+    DD.comparedims(shared, dims(img, shared))
+    return shared
 end
 
 function visibilitymap_numeric(m::MultiDomainImage, grid::FourierDualDomain)
     gimg = imgdomain(grid)
     checkgrid(axisdims(m), spatialdims(gimg))
-    mfimg = IntensityMap(_paramcube(m.params, gimg), gimg)
+    mfimg = _paramsmap(_paramcube(m.params, gimg), gimg)
     vis = applyft(forward_plan(grid), mfimg)
-    return applypulse!(vis, m.kernel, grid)
+    return _vismap(applypulse!(vis, m.kernel, grid), mfimg, grid)
 end
 
 @inline function visibilitymap_numeric(

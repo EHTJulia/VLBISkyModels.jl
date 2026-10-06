@@ -1,55 +1,13 @@
-function _fft(img::AbstractArray{<:StokesParams{<:Number}})
-    vI = complex(stokes(img, :I))
-    vQ = complex(stokes(img, :Q))
-    vU = complex(stokes(img, :U))
-    vV = complex(stokes(img, :V))
-    p = plan_fft!(vI, 1:2)
-    p * vI
-    p * vQ
-    p * vU
-    p * vV
-    return StructArray{StokesParams{eltype(I)}}((vI, vQ, vU, vV))
-end
-
 function _fft(img::AbstractArray{<:Number})
     vI = complex(img)
     fft!(vI, 1:2)
     return vI
 end
 
-function AbstractFFTs.ifft!(vis::AbstractArray{<:StokesParams}, region = 1:ndims(vis))
-    vI = stokes(vis, :I)
-    vQ = stokes(vis, :Q)
-    vU = stokes(vis, :U)
-    vV = stokes(vis, :V)
-    p = plan_ifft!(vI, region)
-    p * vI
-    p * vQ
-    p * vU
-    p * vV
-    return StructArray{StokesParams{eltype(I)}}((vI, vQ, vU, vV))
-end
-
-function AbstractFFTs.fftshift(vis::AbstractArray{<:StokesParams}, region = 1:ndims(vis))
-    vI = stokes(vis, :I)
-    vQ = stokes(vis, :Q)
-    vU = stokes(vis, :U)
-    vV = stokes(vis, :V)
-    return StructArray{StokesParams{eltype(I)}}(
-        (
-            fftshift(vI, region),
-            fftshift(vQ, region),
-            fftshift(vU, region),
-            fftshift(vV, region),
-        )
-    )
-end
-
 # Special because I just want to do the straight FFT thing no matter what
 function intensitymap_numeric!(img::IntensityMap, m::AbstractModel)
     grid = axisdims(img)
     griduv = uvgrid(grid)
-    # We do this so the array isn't a StructArray
     vis = allocate_vismap(m, griduv)
     visibilitymap!(vis, m)
     visk = ifftshift(parent(phasedecenter!(vis, grid, griduv)), 1:2)
@@ -58,14 +16,6 @@ function intensitymap_numeric!(img::IntensityMap, m::AbstractModel)
     bimg .= real.(visk)
     return nothing
 end
-
-# function intensitymap_numeric!(vis::IntensityMap{<:StokesParams}, m::AbstractModel)
-#     intensitymap_numeric!(stokes(vis, :I), m)
-#     intensitymap_numeric!(stokes(vis, :Q), m)
-#     intensitymap_numeric!(stokes(vis, :U), m)
-#     intensitymap_numeric!(stokes(vis, :V), m)
-#     return nothing
-# end
 
 function intensitymap_numeric(m::AbstractModel, grid::AbstractSingleDomain)
     img = allocate_imgmap(m, grid)

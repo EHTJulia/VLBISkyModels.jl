@@ -93,16 +93,6 @@ function padimage(img::IntensityMap{T, N}, alg::FFTAlg) where {T, N}
     return PaddedView(zero(eltype(img)), img, dims)
 end
 
-function padimage(img::IntensityMap{<:StokesParams}, alg::FFTAlg)
-    pI = padimage(stokes(img, :I), alg)
-    pQ = padimage(stokes(img, :Q), alg)
-    pU = padimage(stokes(img, :U), alg)
-    pV = padimage(stokes(img, :V), alg)
-    return StructArray{eltype(img)}((I = pI, Q = pQ, U = pU, V = pV))
-end
-
-FFTW.plan_fft(A::AbstractArray{<:StokesParams}, args...) = plan_fft(stokes(A, :I), args...)
-
 function inverse_plan(plan::FFTPlan)
     a = zeros(eltype(plan.plan), size(plan.plan))
     ip = plan_ifft(a, 1:2; flags = plan.alg.flags)
@@ -114,16 +104,7 @@ function applyft(plan::FFTPlan, img::AbstractArray{<:Number})
     return fftshift(plan.plan * pimg, 1:2)
 end
 
-function applyft(
-        plan::FFTPlan,
-        img::AbstractArray{<:StokesParams}
-    )
-    visI = applyft(plan, stokes(img, :I))
-    visQ = applyft(plan, stokes(img, :Q))
-    visU = applyft(plan, stokes(img, :U))
-    visV = applyft(plan, stokes(img, :V))
-    return StructArray{StokesParams{eltype(visI)}}((I = visI, Q = visQ, U = visU, V = visV))
-end
+applyft(plan::FFTPlan, img::StokesMap) = _stokesft(plan, img)
 
 @fastmath function phasedecenter!(vis, grid, griduv)
     (; X, Y) = grid

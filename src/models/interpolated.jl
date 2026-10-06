@@ -43,9 +43,27 @@ function build_intermodel(img::IntensityMap, plan, alg::FFTAlg, pulse = DeltaPul
     griduv = build_padded_uvgrid(grid, alg)
     phasecenter!(vis, grid, griduv)
     dx, dy = pixelsizes(grid)
-    sitp = create_interpolator(griduv, vis, stretched(pulse, dx, dy))
-    return sitp
+    return _interpolator(eldims(img), griduv, vis, stretched(pulse, dx, dy))
 end
+
+_interpolator(::Tuple{}, g, vis, pulse) = create_interpolator(g, vis, pulse)
+function _interpolator(::Tuple{Stokes}, g, vis, pulse)
+    n = ndims(vis)
+    return StokesInterpolator(
+        create_interpolator(g, selectdim(vis, n, 1), pulse),
+        create_interpolator(g, selectdim(vis, n, 2), pulse),
+        create_interpolator(g, selectdim(vis, n, 3), pulse),
+        create_interpolator(g, selectdim(vis, n, 4), pulse),
+    )
+end
+
+struct StokesInterpolator{FI, FQ, FU, FV}
+    I::FI
+    Q::FQ
+    U::FU
+    V::FV
+end
+(s::StokesInterpolator)(p) = StokesParams(s.I(p), s.Q(p), s.U(p), s.V(p))
 
 function InterpolatedModel(
         model::AbstractModel,
@@ -89,51 +107,5 @@ function create_interpolator(g, vis::AbstractArray{<:Complex, N}, pulse) where {
             vimag = interpolate(itp, visim, x)
             return pl * complex(vreal, vimag)
         end
-    end
-end
-
-function create_interpolator(g, vis::StructArray{<:StokesParams}, pulse)
-    # Construct the interpolator
-    itp = RectangleGrid(map(ComradeBase.basedim, dims(g))...)
-    kg = keys(g)
-
-    vIreal = real(vis.I)
-    vIimag = imag(vis.I)
-
-    vQreal = real(vis.Q)
-    vQimag = imag(vis.Q)
-
-    vUreal = real(vis.U)
-    vUimag = imag(vis.U)
-
-    vVreal = real(vis.V)
-    vVimag = imag(vis.V)
-
-    # - sign is because we need to move into the frame of the vertical-horizontal image
-    rm = ComradeBase.rotmat(g)'
-    return function (p)
-        pl = visibility_point(pulse, p)
-        U2 = _rotatex(p.U, p.V, rm)
-        V2 = _rotatey(p.U, p.V, rm)
-        p2 = merge(p, (; U = U2, V = V2))
-        x = SVector(myselect(p2, kg))
-        return StokesParams(
-            complex(
-                interpolate(itp, vIreal, x),
-                interpolate(itp, vIimag, x)
-            ) * pl,
-            complex(
-                interpolate(itp, vQreal, x),
-                interpolate(itp, vQimag, x)
-            ) * pl,
-            complex(
-                interpolate(itp, vUreal, x),
-                interpolate(itp, vUimag, x)
-            ) * pl,
-            complex(
-                interpolate(itp, vVreal, x),
-                interpolate(itp, vVimag, x)
-            ) * pl
-        )
     end
 end

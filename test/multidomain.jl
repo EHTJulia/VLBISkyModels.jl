@@ -1139,9 +1139,9 @@ end
     @test ccI isa ContinuousImage
     @test ccI.kernel === cc.kernel
 
-    # MultiDomainImage takes a 2D spatial base: a cube has no matching method.
+    # MultiDomainImage takes a 2D spatial base.
     gcube = RectiGrid((; X = g.X, Y = g.Y, Fr = [230.0e9, 345.0e9]))
-    @test_throws MethodError MultiDomainImage(
+    @test_throws "2D spatial grid" MultiDomainImage(
         IntensityMap(rand(8, 8, 2), gcube), BSplinePulse{3}(), PolySpectral((1.0,), 230.0e9)
     )
     @test_throws "2D spatial grid" MultiDomainImage(

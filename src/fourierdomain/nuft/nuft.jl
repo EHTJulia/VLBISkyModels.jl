@@ -152,6 +152,16 @@ function applyft(p::AbstractNUFTPlan, img::AbstractArray)
     return vis
 end
 
+applyft(p::AbstractNUFTPlan, img::StokesMap) = _stokesft(p, img)
+
+function _stokesft(plan, img::StokesMap)
+    vI = applyft(plan, stokes(img, :I))
+    vQ = applyft(plan, stokes(img, :Q))
+    vU = applyft(plan, stokes(img, :U))
+    vV = applyft(plan, stokes(img, :V))
+    return _stokescat(vI, vQ, vU, vV)
+end
+
 function applyphases!(vis::AbstractArray, phases::AbstractArray)
     @inbounds begin
         @trace for i in eachindex(vis, phases)
@@ -172,26 +182,8 @@ function applyphases!(vis::AbstractArray, phases::Number)
     return vis
 end
 
-# function applyft(p::AbstractNUFTPlan, img::AbstractArray)
-#     vis = nuft(p, img)
-#     ph = getphases(p)
-#     @trace for i in eachindex(vis, ph)
-#         vis[i] = vis[i] * ph[i]
-#     end
-#     return vis
-# end
-
-
 @inline function nuft(A, b::IntensityMap)
     return _nuft(A, baseimage(b))
-end
-
-@inline function nuft(A, b::IntensityMap{<:StokesParams})
-    I = _nuft(A, baseimage(stokes(b, :I)))
-    Q = _nuft(A, baseimage(stokes(b, :Q)))
-    U = _nuft(A, baseimage(stokes(b, :U)))
-    V = _nuft(A, baseimage(stokes(b, :V)))
-    return StructArray{StokesParams{eltype(I)}}((; I, Q, U, V))
 end
 
 function _nuft(A::NUFTPlan, b)

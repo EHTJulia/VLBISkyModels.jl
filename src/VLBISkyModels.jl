@@ -20,6 +20,7 @@ using RecipesBase
 using SpecialFunctions
 using StaticArrays
 using StructArrays
+using ViewStructArrays: ViewStructArray
 using LinearAlgebra
 using Printf
 using Serialization

@@ -89,10 +89,46 @@ end
         vnf = visibilitymap(pm, gfn)
         vrf = @jit(visibilitymap(ppmr, gfr))
 
-        @test parent(vrf).I ≈ parent(vnf).I
-        @test parent(vrf).Q ≈ parent(vnf).Q
-        @test parent(vrf).U ≈ parent(vnf).U
-        @test parent(vrf).V ≈ parent(vnf).V
+        @test vrf isa StokesMap
+        for s in (:I, :Q, :U, :V)
+            @test Array(baseimage(stokes(vrf, s))) ≈ baseimage(stokes(vnf, s))
+        end
+    end
+
+    @testset "Polarized MultiDomainImage" begin
+        ref = 230.0e9
+        g = imagepixels(10.0, 10.0, 16, 16)
+        img = IntensityMap(rand(16, 16, 4), g, Stokes())
+        spec = PolySpectral((1.0, 0.1), ref, 0.01)
+        cimg = MultiDomainImage(img, BSplinePulse{3}(), spec)
+        gcube = RectiGrid((; X = g.X, Y = g.Y, Fr = [ref, 1.5 * ref]))
+        guv = UnstructuredDomain(
+            (; U = randn(40) ./ 5, V = randn(40) ./ 5, Fr = vcat(fill(ref, 20), fill(1.5 * ref, 20)))
+        )
+        vis = visibilitymap(cimg, FourierDualDomain(gcube, guv, NFFTAlg()))
+        @test vis isa StokesMap
+
+        gcuber = @jit(identity(gcube))
+        cimgr = MultiDomainImage(Reactant.to_rarray(img), BSplinePulse{3}(), spec)
+        gfr = FourierDualDomain(gcuber, Reactant.to_rarray(guv), VLBISkyModels.ReactantNUFFTAlg(Float64; eps = 1.0e-10))
+        visr = @jit visibilitymap(cimgr, gfr)
+        imr = @jit intensitymap(cimgr, gcuber)
+        im = intensitymap(cimg, gcube)
+        for s in (:I, :Q, :U, :V)
+            @test Array(baseimage(stokes(visr, s))) ≈ baseimage(stokes(vis, s))
+            @test Array(baseimage(stokes(imr, s))) ≈ baseimage(stokes(im, s))
+        end
+    end
+
+    @testset "Polarized plus unpolarized" begin
+        g = imagepixels(10.0, 10.0, 32, 32)
+        img = IntensityMap(rand(32, 32, 4), g, Stokes())
+        guv = UnstructuredDomain((; U = randn(50) ./ 5, V = randn(50) ./ 5))
+        gf = FourierDualDomain(g, guv, NFFTAlg())
+        gfr = FourierDualDomain(@jit(identity(g)), Reactant.to_rarray(guv), VLBISkyModels.ReactantNUFFTAlg(Float64; eps = 1.0e-10))
+        m = ContinuousImage(img, BSplinePulse{3}()) + 0.5 * Gaussian()
+        mr = ContinuousImage(Reactant.to_rarray(img), BSplinePulse{3}()) + 0.5 * Gaussian()
+        @test Array(baseimage(@jit visibilitymap(mr, gfr))) ≈ baseimage(visibilitymap(m, gf))
     end
 
     @testset "Analytic Models" begin

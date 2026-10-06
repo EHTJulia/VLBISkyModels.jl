@@ -14,7 +14,7 @@ using Printf
 
     tickfontsize --> 11
     guidefontsize --> 14
-    if typeof(image) <: IntensityMap{<:StokesParams}
+    if image isa StokesMap
 
         # get the mean linear pol
         maxI = maximum(stokes(image, :I))

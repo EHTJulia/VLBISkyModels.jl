@@ -8,11 +8,11 @@ function centroid_mean(imgs::AbstractVector{<:IntensityMap})
 end
 
 """
-    center_image(img::SpatialIntensityMap)
+    center_image(img::IntensityMap)
 
 centers the `img` such that the centroid of the image is approximately at the origin.
 """
-function center_image(img::SpatialIntensityMap)
+function center_image(img::IntensityMap)
     x, y = centroid(img)
     return modify(img, Shift(-x, -y))
 end
@@ -25,7 +25,7 @@ struct InterpolatedImage{I, P} <: AbstractModel
 end
 
 function InterpolatedImage(img::IntensityMap)
-    itp = RectangleGrid(map(ComradeBase.basedim, dims(img))...)
+    itp = RectangleGrid(map(ComradeBase.basedim, dims(axisdims(img)))...)
     return InterpolatedImage{typeof(img), typeof(itp)}(img, itp)
 end
 
@@ -35,10 +35,8 @@ end
 
 imanalytic(::Type{<:InterpolatedImage}) = IsAnalytic()
 visanalytic(::Type{<:InterpolatedImage}) = NotAnalytic()
-ispolarized(::Type{<:InterpolatedImage{<:IntensityMap{T}}}) where {T <: Number} = NotPolarized()
-function ispolarized(::Type{<:InterpolatedImage{<:IntensityMap{T}}}) where {T <: StokesParams}
-    return IsPolarized()
-end
+ispolarized(::Type{<:InterpolatedImage}) = NotPolarized()
+ispolarized(::Type{<:InterpolatedImage{<:StokesMap}}) = IsPolarized()
 
 @inline function intensity_point(m::InterpolatedImage, p)
     g = axisdims(m.img)
@@ -47,11 +45,22 @@ end
     rm = rotmat(g)'
     X2 = _rotatex(p.X, p.Y, rm)
     Y2 = _rotatey(p.X, p.Y, rm)
-    (X[begin] > X2 || X2 > X[end]) && return zero(eltype(m.img))
-    (Y[begin] > Y2 || Y2 > Y[end]) && return zero(eltype(m.img))
+    (X[begin] > X2 || X2 > X[end]) && return _zeropoint(m.img)
+    (Y[begin] > Y2 || Y2 > Y[end]) && return _zeropoint(m.img)
     # - sign is because we need to move into the frame of the vertical-horizontal image
     p2 = merge(p, (; X = X2, Y = Y2))
-    return interpolate(m.itp, m.img, SVector(values(p2))) / (dx * dy)
+    return _interpolate(m.itp, m.img, SVector(values(p2))) / (dx * dy)
+end
+
+_zeropoint(img::IntensityMap) = zero(eltype(img))
+_zeropoint(img::StokesMap) = zero(StokesParams{eltype(img)})
+
+_interpolate(itp, img::IntensityMap, x) = interpolate(itp, img, x)
+function _interpolate(itp, img::StokesMap, x)
+    return StokesParams(
+        interpolate(itp, stokes(img, :I), x), interpolate(itp, stokes(img, :Q), x),
+        interpolate(itp, stokes(img, :U), x), interpolate(itp, stokes(img, :V), x)
+    )
 end
 function ModifiedModel(
         img::IntensityMap,
@@ -95,7 +104,7 @@ function convolve!(img::IntensityMap{<:Real}, m::AbstractModel)
     (; X, Y) = img
     u = U(rfftfreq(size(img, 1), inv(step(X))))
     v = V(fftfreq(size(img, 2), inv(step(Y))))
-    ds = (u, v, dims(img)[3:end]...)
+    ds = (u, v, dims(axisdims(img))[3:end]...)
     griduv = rebuild(axisdims(img); dims = ds)
     puv = domainpoints(griduv)
 
@@ -129,21 +138,6 @@ function convolve(img::IntensityMap{<:Real}, m::AbstractModel)
     return convolve!(cimg, m)
 end
 
-function convolve(img::IntensityMap{<:StokesParams}, m::AbstractModel)
-    g = axisdims(img)
-    bimg = copy(baseimage(img))
-    cimg = IntensityMap(StructArray(bimg), g, refdims(img), name(img))
-    return convolve!(cimg, m)
-end
-
-function convolve!(img::IntensityMap{<:StokesParams}, m)
-    convolve!(stokes(img, :I), m)
-    convolve!(stokes(img, :Q), m)
-    convolve!(stokes(img, :U), m)
-    convolve!(stokes(img, :V), m)
-    return img
-end
-
 """
     smooth(img::IntensityMap)
 
@@ -155,9 +149,6 @@ function smooth(img::IntensityMap, σ::Number)
     return convolve(img, modify(Gaussian(), Stretch(σ)))
 end
 
-# function convolve(img::IntensityMap, m::AbstractModel)
-#     return map(x->convolve(x, m), eachslice(img, dims=(:X, :Y)))
-# end
 
 # """
 #     $(SIGNATURES)

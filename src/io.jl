@@ -5,7 +5,7 @@ export load_fits, save_fits
 
 This loads in a fits file that is more robust to the various imaging algorithms
 in the EHT, i.e. is works with clean, smili, eht-imaging.
-The function returns an `T<:IntensityMap`. By default if `T===IntensityMap` then we only return the Stokes I image. If `T<:IntensityMap{StokesParams}` then we return the full Stokes image.  
+The function returns an `T<:IntensityMap`. If `T === IntensityMap` it returns only the Stokes I image; if `T === StokesMap` it returns the full Stokes image as a `StokesMap`.
 """
 function load_fits(file, T::Type{<:IntensityMap})
     if !endswith(file, ".fits")
@@ -18,7 +18,7 @@ function _load_fits(fname, ::Type{IntensityMap})
     img = FITS(fname, "r") do f
         if length(f) > 1
             @warn "Currently only loading stokes I. To load polarized quantities\n" *
-                "please call `load_fits(filename, IntensityMap{StokesParams})`"
+                "please call `load_fits(filename, StokesMap)`"
         end
         # assume that the first element is stokes I
         return _extract_fits_image(f[1])
@@ -36,26 +36,20 @@ function try_loading(f, stokes, imgI)
     end
 end
 
-function _load_fits(fname, ::Type{<:IntensityMap{<:StokesParams}})
+function _load_fits(fname, ::Type{<:StokesMap})
     img = FITS(fname, "r") do f
         # assume that the first element is stokes I
         imgI = _extract_fits_image(f[1])
         imgQ = try_loading(f, "Q", imgI)
         imgU = try_loading(f, "U", imgI)
         imgV = try_loading(f, "V", imgI)
-        return IntensityMap(
-            StructArray{StokesParams{eltype(imgI)}}(
-                (
-                    I = baseimage(imgI),
-                    Q = baseimage(imgQ),
-                    U = baseimage(imgU),
-                    V = baseimage(imgV),
-                )
-            ),
-            axisdims(imgI)
-        )
+        return stokes_intensitymap(imgI, imgQ, imgU, imgV)
     end
     return img
+end
+
+function _load_fits(fname, ::Type{<:IntensityMap{<:StokesParams}})
+    throw(ArgumentError("a polarized image is a `StokesMap`; call `load_fits(filename, StokesMap)`"))
 end
 
 function _extract_fits_image(f::FITSIO.ImageHDU{T}) where {T}
@@ -251,7 +245,7 @@ function write_stokes(f, image, stokes = "I", innername = "")
     return FITSIO.write(f, img; header = hdeheader, name = innername)
 end
 
-function _save_fits(fname::String, image::IntensityMap{T}) where {T <: StokesParams}
+function _save_fits(fname::String, image::StokesMap{<:Number})
     return FITS(fname, "w") do fits
         write_stokes(fits, stokes(image, :I), "I")
         write_stokes(fits, stokes(image, :Q), "Q", "Q")

@@ -131,7 +131,23 @@ end
 
 flux(m::AddModel) = flux(m.m1) + flux(m.m2)
 
-_numeric_add(m1, m2, dims) = intensitymap(m1, dims) + intensitymap(m2, dims)
+_numeric_add(m1, m2, dims) = _addmaps(intensitymap(m1, dims), intensitymap(m2, dims))
+
+# An unpolarized value or map adds to Stokes I only.
+_addvalues(a, b) = a + b
+_addvalues(a::StokesParams, b::Number) = StokesParams(a.I + b, a.Q, a.U, a.V)
+_addvalues(a::Number, b::StokesParams) = _addvalues(b, a)
+
+_addmaps(a, b) = a .+ b
+_addmaps(a::StokesMap, b::IntensityMap) = _addstokesI(a, b)
+_addmaps(a::IntensityMap, b::StokesMap) = _addstokesI(b, a)
+_addmaps(a::StokesMap, b::StokesMap) = a .+ b
+function _addstokesI(pol::StokesMap, unpol::IntensityMap)
+    out = similar(pol, promote_type(eltype(pol), eltype(unpol)))
+    out .= pol
+    stokes(out, :I) .+= unpol
+    return out
+end
 
 function intensitymap_numeric(m::AddModel, dims::AbstractSingleDomain)
     return _numeric_add(m.m1, m.m2, dims)
@@ -150,8 +166,8 @@ function intensitymap_numeric!(sim::IntensityMap, m::AddModel)
     return nothing
 end
 
-@inline uv_combinator(::AddModel) = Base.:+
-@inline xy_combinator(::AddModel) = Base.:+
+@inline uv_combinator(::AddModel) = _addvalues
+@inline xy_combinator(::AddModel) = _addvalues
 
 # @inline function _visibilitymap(model::CompositeModel{M1,M2}, u, v, t, ν, cache) where {M1,M2}
 #     _combinatorvis(visanalytic(M1), visanalytic(M2), uv_combinator(model), model, u, v, t, ν, cache)
@@ -167,24 +183,30 @@ end
         model::AddModel{M1, M2},
         p::AbstractSingleDomain
     ) where {M1, M2}
-    return _visibilitymap(visanalytic(M1), model.m1, p) .+
+    return _addmaps(
+        _visibilitymap(visanalytic(M1), model.m1, p),
         _visibilitymap(visanalytic(M2), model.m2, p)
+    )
 end
 
 @inline function visibilitymap_numeric(
         model::AddModel{M1, M2},
         p::AbstractRectiGrid
     ) where {M1, M2}
-    return _visibilitymap(visanalytic(M1), model.m1, p) .+
+    return _addmaps(
+        _visibilitymap(visanalytic(M1), model.m1, p),
         _visibilitymap(visanalytic(M2), model.m2, p)
+    )
 end
 
 @inline function visibilitymap_numeric(
         model::AddModel{M1, M2},
         p::FourierDualDomain
     ) where {M1, M2}
-    return _visibilitymap(visanalytic(M1), model.m1, p) .+
+    return _addmaps(
+        _visibilitymap(visanalytic(M1), model.m1, p),
         _visibilitymap(visanalytic(M2), model.m2, p)
+    )
 end
 
 # @inline function _visibilitymap(::IsAnalytic, model::CompositeModel, u::AbstractArray, v::AbstractArray, args...)
