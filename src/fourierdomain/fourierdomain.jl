@@ -185,10 +185,8 @@ end
 function visibilitymap_numeric(m::AbstractModel, grid::AbstractFourierDualDomain)
     img = intensitymap_analytic(m, imgdomain(grid))
     vis = applyft(forward_plan(grid), img)
-    return _vismap(vis, img, grid)
+    return IntensityMap(vis, visdomain(grid))
 end
-
-_vismap(vis, img::IntensityMap, grid::AbstractFourierDualDomain) = IntensityMap(vis, visdomain(grid), eldims(img)...)
 
 function intensitymap_analytic(m::AbstractModel, grid::AbstractFourierDualDomain)
     return intensitymap_analytic(m, imgdomain(grid))

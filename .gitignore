@@ -12,3 +12,4 @@ examples/Manifest.toml
 .vscode/settings.json
 .DS_Store
 bench
+/test/LocalPreferences.toml

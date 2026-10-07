@@ -84,32 +84,11 @@ cimg = MultiDomainImage(base, BSplinePulse{3}(), dom)
 ```
 """ MultiDomainImage
 
-make_map(cimg::ContinuousImage) = _paramsmap(cimg.params, cimg.grid)
+make_map(cimg::ContinuousImage) = IntensityMap(cimg.params, cimg.grid)
 # For a multidomain image the `params` field is a chain whose base is the spatial image at
 # the reference domain point, and `grid` is the spatial (X, Y) grid. Build the map from that
 # base so `size`/`show`/`flux`/etc. describe the reference image.
-make_map(cimg::MultiDomainImage) = _paramsmap(cimg.params.base, cimg.grid)
-
-"""
-    pixelparams(img::IntensityMap)
-
-The pixel parameters of `img`: its storage, or for a `StokesMap` a `StokesParams` element view
-of its storage.
-"""
-pixelparams(img::IntensityMap) = _pixelparams(baseimage(img), eldims(img), Val(ndims(axisdims(img))))
-_pixelparams(storage, ::Tuple{}, ::Val) = storage
-_pixelparams(storage, ::Tuple{Stokes}, ::Val{N}) where {N} = FieldDimArray{StokesParams, N}(storage)
-
-_paramsmap(params, grid) = IntensityMap(params, grid)
-_paramsmap(params::FieldDimArray{<:StokesParams}, grid) = IntensityMap(parent(params), grid, Stokes())
-
-_asparams(im::AbstractArray, g) = im
-_asparams(im::IntensityMap, g) = pixelparams(im)
-_asparams(im::StructArray{<:StokesParams}, g) = pixelparams(IntensityMap(im, g))
-_asparams(im::Array{<:StokesParams}, g) = pixelparams(IntensityMap(im, g))
-
-_storage(params) = params
-_storage(params::FieldDimArray) = parent(params)
+make_map(cimg::MultiDomainImage) = IntensityMap(cimg.params.base, cimg.grid)
 
 function Base.show(io::IO, img::ContinuousImage)
     pname = nameof(typeof(img.params))
@@ -153,20 +132,15 @@ Base.axes(m::ContinuousImage) = axes(make_map(m))
 ComradeBase.domainpoints(m::ContinuousImage) = domainpoints(m.grid)
 ComradeBase.axisdims(m::ContinuousImage) = m.grid
 
-function ContinuousImage(img::IntensityMap, kernel)
-    arr = pixelparams(img)
-    g = axisdims(img)
-    return ContinuousImage{typeof(arr), typeof(g), typeof(kernel)}(arr, g, kernel)
-end
+ContinuousImage(img::IntensityMap, kernel) = ContinuousImage(baseimage(img), axisdims(img), kernel)
 
 function ContinuousImage(im::AbstractArray, g::AbstractRectiGrid, kernel::AbstractModel)
-    size(_asparams(im, g)) == size(g) || throw(
+    size(im) == size(g) || throw(
         DimensionMismatch(
             "The image array size $(size(im)) does not match the grid size $(size(g))."
         )
     )
-    arr = _asparams(im, g)
-    return ContinuousImage{typeof(arr), typeof(g), typeof(kernel)}(arr, g, kernel)
+    return ContinuousImage{typeof(im), typeof(g), typeof(kernel)}(im, g, kernel)
 end
 
 function ContinuousImage(
@@ -224,7 +198,7 @@ function MultiDomainImage(img::IntensityMap, kernel, domains...)
                 "comes from `domains`."
         )
     )
-    mdp = MultiDomainParams(pixelparams(img), domains)
+    mdp = MultiDomainParams(baseimage(img), domains)
     return ContinuousImage(mdp, spatialdims(img), kernel)
 end
 
@@ -378,7 +352,7 @@ convolved(cimg::AbstractModel, m::ContinuousImage) = convolved(m, cimg)
     checkgrid(axisdims(m), imgdomain(grid))
     img = make_map(m)
     vis = applyft(forward_plan(grid), img)
-    return _vismap(applypulse!(vis, m.kernel, grid), img, grid)
+    return IntensityMap(applypulse!(vis, m.kernel, grid), visdomain(grid))
 end
 
 # Multidomain (e.g. multifrequency/multitime) images. The `params` field is a
@@ -446,7 +420,7 @@ end
 
 function intensitymap_analytic!(img::IntensityMap, m::MultiDomainImage)
     gcube = _cubegrid(m.grid, axisdims(img))
-    _resample!(img, _paramsmap(_paramcube(m.params, gcube), gcube), m.kernel)
+    _resample!(img, IntensityMap(_paramcube(m.params, gcube), gcube), m.kernel)
     return nothing
 end
 
@@ -454,8 +428,8 @@ end
     _resample!(img::IntensityMap, src::IntensityMap, kernel)
 
 Writes into `img` the kernel resampling of the pixel map `src` onto the spatial grid of `img`,
-for every index of the dims beyond `X` and `Y` (`Fr`, `Ti`, `Stokes`); a dim of `img` that
-`src` lacks is replicated, matched by name.
+for every index of the dims beyond `X` and `Y` (`Fr`, `Ti`); a dim of `img` that `src` lacks
+is replicated, matched by name. A `StokesMap` is resampled one Stokes component at a time.
 
 A `Pulse` factors as `κ(ΔX)κ(ΔY)`, so on grids that share a position angle the resampling is
 two 1D passes, along `X` and then `Y`. Each output pixel along an axis reads a fixed number
@@ -475,6 +449,15 @@ function _resample!(img::IntensityMap, src::IntensityMap, kernel)
     ty = AxisTaps(kernel, gsrc.Y, gspat.Y)
     R = _pass(_pass(baseimage(src), tx, Val(1)), ty, Val(2))
     DD.broadcast_dims!(identity, img, DD.DimArray(R, (dims(gspat)..., DD.otherdims(src, (X, Y))...)))
+    return nothing
+end
+
+function _resample!(img::StokesMap, src::StokesMap, kernel)
+    I, Q, U, V = _stokesviews(img)
+    _resample!(I, stokes(src, :I), kernel)
+    _resample!(Q, stokes(src, :Q), kernel)
+    _resample!(U, stokes(src, :U), kernel)
+    _resample!(V, stokes(src, :V), kernel)
     return nothing
 end
 
@@ -550,9 +533,9 @@ end
 function visibilitymap_numeric(m::MultiDomainImage, grid::FourierDualDomain)
     gimg = imgdomain(grid)
     checkgrid(axisdims(m), spatialdims(gimg))
-    mfimg = _paramsmap(_paramcube(m.params, gimg), gimg)
+    mfimg = IntensityMap(_paramcube(m.params, gimg), gimg)
     vis = applyft(forward_plan(grid), mfimg)
-    return _vismap(applypulse!(vis, m.kernel, grid), mfimg, grid)
+    return IntensityMap(applypulse!(vis, m.kernel, grid), visdomain(grid))
 end
 
 @inline function visibilitymap_numeric(

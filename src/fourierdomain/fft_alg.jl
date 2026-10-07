@@ -104,7 +104,6 @@ function applyft(plan::FFTPlan, img::AbstractArray{<:Number})
     return fftshift(plan.plan * pimg, 1:2)
 end
 
-applyft(plan::FFTPlan, img::StokesMap) = _stokesft(plan, img)
 
 @fastmath function phasedecenter!(vis, grid, griduv)
     (; X, Y) = grid

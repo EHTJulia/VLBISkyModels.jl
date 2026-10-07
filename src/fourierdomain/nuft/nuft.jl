@@ -152,14 +152,12 @@ function applyft(p::AbstractNUFTPlan, img::AbstractArray)
     return vis
 end
 
-applyft(p::AbstractNUFTPlan, img::StokesMap) = _stokesft(p, img)
-
-function _stokesft(plan, img::StokesMap)
+function applyft(plan::AbstractNUFTPlan, img::StokesMap)
     vI = applyft(plan, stokes(img, :I))
     vQ = applyft(plan, stokes(img, :Q))
     vU = applyft(plan, stokes(img, :U))
     vV = applyft(plan, stokes(img, :V))
-    return _stokescat(vI, vQ, vU, vV)
+    return _stokesparams(vI, vQ, vU, vV)
 end
 
 function applyphases!(vis::AbstractArray, phases::AbstractArray)

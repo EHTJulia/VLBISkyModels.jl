@@ -11,6 +11,9 @@ using Test
 Reactant.set_default_backend("cpu")
 
 
+polarized_gaussian(σ) = PolarizedModel(stretched(Gaussian(), σ, σ), ZeroModel(), 0.2 * stretched(Gaussian(), σ, σ), ZeroModel())
+polarized_numeric(σ, g) = baseimage(VLBISkyModels.visibilitymap_numeric(polarized_gaussian(σ), g))
+
 function test_analytic(m, mr, gf, gfr)
 
     if ComradeBase.visanalytic(typeof(m)) isa ComradeBase.IsAnalytic
@@ -98,7 +101,7 @@ end
     @testset "Polarized MultiDomainImage" begin
         ref = 230.0e9
         g = imagepixels(10.0, 10.0, 16, 16)
-        img = IntensityMap(rand(16, 16, 4), g, Stokes())
+        img = IntensityMap(FieldDimArray{StokesParams}(rand(16, 16, 4)), g)
         spec = PolySpectral((1.0, 0.1), ref, 0.01)
         cimg = MultiDomainImage(img, BSplinePulse{3}(), spec)
         gcube = RectiGrid((; X = g.X, Y = g.Y, Fr = [ref, 1.5 * ref]))
@@ -122,13 +125,25 @@ end
 
     @testset "Polarized plus unpolarized" begin
         g = imagepixels(10.0, 10.0, 32, 32)
-        img = IntensityMap(rand(32, 32, 4), g, Stokes())
+        img = IntensityMap(FieldDimArray{StokesParams}(rand(32, 32, 4)), g)
         guv = UnstructuredDomain((; U = randn(50) ./ 5, V = randn(50) ./ 5))
         gf = FourierDualDomain(g, guv, NFFTAlg())
         gfr = FourierDualDomain(@jit(identity(g)), Reactant.to_rarray(guv), VLBISkyModels.ReactantNUFFTAlg(Float64; eps = 1.0e-10))
         m = ContinuousImage(img, BSplinePulse{3}()) + 0.5 * Gaussian()
         mr = ContinuousImage(Reactant.to_rarray(img), BSplinePulse{3}()) + 0.5 * Gaussian()
-        @test Array(baseimage(@jit visibilitymap(mr, gfr))) ≈ baseimage(visibilitymap(m, gf))
+        vr = @jit visibilitymap(mr, gfr)
+        @test vr isa StokesMap
+        @test Array(parent(baseimage(vr))) ≈ parent(baseimage(visibilitymap(m, gf)))
+        @test !occursin("scatter", string(@code_hlo visibilitymap(mr, gfr)))
+    end
+
+    @testset "Polarized numeric FFT" begin
+        guv = VLBISkyModels.uvgrid(imagepixels(10.0, 10.0, 32, 32))
+        guvr = @jit(identity(guv))
+        σ = Reactant.ConcreteRNumber(2.0)
+        vr = @jit polarized_numeric(σ, guvr)
+        @test Array(parent(vr)) ≈ parent(polarized_numeric(2.0, guv))
+        @test count("stablehlo.fft", string(@code_hlo optimize = true polarized_numeric(σ, guvr))) == 1
     end
 
     @testset "Analytic Models" begin

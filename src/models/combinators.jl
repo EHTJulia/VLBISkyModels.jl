@@ -138,16 +138,7 @@ _addvalues(a, b) = a + b
 _addvalues(a::StokesParams, b::Number) = StokesParams(a.I + b, a.Q, a.U, a.V)
 _addvalues(a::Number, b::StokesParams) = _addvalues(b, a)
 
-_addmaps(a, b) = a .+ b
-_addmaps(a::StokesMap, b::IntensityMap) = _addstokesI(a, b)
-_addmaps(a::IntensityMap, b::StokesMap) = _addstokesI(b, a)
-_addmaps(a::StokesMap, b::StokesMap) = a .+ b
-function _addstokesI(pol::StokesMap, unpol::IntensityMap)
-    out = similar(pol, promote_type(eltype(pol), eltype(unpol)))
-    out .= pol
-    stokes(out, :I) .+= unpol
-    return out
-end
+_addmaps(a, b) = _addvalues.(a, b)
 
 function intensitymap_numeric(m::AddModel, dims::AbstractSingleDomain)
     return _numeric_add(m.m1, m.m2, dims)

@@ -64,7 +64,7 @@
         @test size(rimg) == (64, 64)
 
         rpimg = regrid(pimg, g)
-        @test size(rpimg) == (64, 64, 4)
+        @test size(rpimg) == (64, 64)
     end
 
     @testset "center image" begin

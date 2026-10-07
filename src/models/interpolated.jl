@@ -43,17 +43,15 @@ function build_intermodel(img::IntensityMap, plan, alg::FFTAlg, pulse = DeltaPul
     griduv = build_padded_uvgrid(grid, alg)
     phasecenter!(vis, grid, griduv)
     dx, dy = pixelsizes(grid)
-    return _interpolator(eldims(img), griduv, vis, stretched(pulse, dx, dy))
+    return create_interpolator(griduv, vis, stretched(pulse, dx, dy))
 end
 
-_interpolator(::Tuple{}, g, vis, pulse) = create_interpolator(g, vis, pulse)
-function _interpolator(::Tuple{Stokes}, g, vis, pulse)
-    n = ndims(vis)
+function build_intermodel(img::StokesMap, plan, alg::FFTAlg, pulse = DeltaPulse())
     return StokesInterpolator(
-        create_interpolator(g, selectdim(vis, n, 1), pulse),
-        create_interpolator(g, selectdim(vis, n, 2), pulse),
-        create_interpolator(g, selectdim(vis, n, 3), pulse),
-        create_interpolator(g, selectdim(vis, n, 4), pulse),
+        build_intermodel(stokes(img, :I), plan, alg, pulse),
+        build_intermodel(stokes(img, :Q), plan, alg, pulse),
+        build_intermodel(stokes(img, :U), plan, alg, pulse),
+        build_intermodel(stokes(img, :V), plan, alg, pulse),
     )
 end
 

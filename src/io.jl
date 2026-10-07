@@ -36,7 +36,7 @@ function try_loading(f, stokes, imgI)
     end
 end
 
-function _load_fits(fname, ::Type{<:StokesMap})
+function _load_fits(fname, ::Type{<:IntensityMap{<:StokesParams}})
     img = FITS(fname, "r") do f
         # assume that the first element is stokes I
         imgI = _extract_fits_image(f[1])
@@ -46,10 +46,6 @@ function _load_fits(fname, ::Type{<:StokesMap})
         return stokes_intensitymap(imgI, imgQ, imgU, imgV)
     end
     return img
-end
-
-function _load_fits(fname, ::Type{<:IntensityMap{<:StokesParams}})
-    throw(ArgumentError("a polarized image is a `StokesMap`; call `load_fits(filename, StokesMap)`"))
 end
 
 function _extract_fits_image(f::FITSIO.ImageHDU{T}) where {T}

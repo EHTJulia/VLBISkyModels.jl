@@ -755,13 +755,13 @@ end
     img = intensitymap(mG, g)
     p0 = (X = g.X[64], Y = g.Y[64])
     dxdy = prod(values(pixelsizes(g)))
-    @test linearpol(mG, p0) ≈ linearpol(VLBISkyModels.pixelparams(img)[64, 64]) / prod(values(pixelsizes(g)))
-    @test mpol(mG, p0) ≈ mpol(VLBISkyModels.pixelparams(img)[64, 64])
-    @test polarization(mG, p0) ≈ polarization(VLBISkyModels.pixelparams(img)[64, 64]) / dxdy
-    @test fracpolarization(mG, p0) ≈ fracpolarization(VLBISkyModels.pixelparams(img)[64, 64])
-    @test evpa(mG, p0) ≈ evpa(VLBISkyModels.pixelparams(img)[64, 64])
+    @test linearpol(mG, p0) ≈ linearpol(img[64, 64]) / prod(values(pixelsizes(g)))
+    @test mpol(mG, p0) ≈ mpol(img[64, 64])
+    @test polarization(mG, p0) ≈ polarization(img[64, 64]) / dxdy
+    @test fracpolarization(mG, p0) ≈ fracpolarization(img[64, 64])
+    @test evpa(mG, p0) ≈ evpa(img[64, 64])
     pmG = polellipse(mG, p0)
-    pimg = polellipse(VLBISkyModels.pixelparams(img)[64, 64])
+    pimg = polellipse(img[64, 64])
     @test pmG.a ≈ pimg.a / dxdy
     @test pmG.b ≈ pimg.b / dxdy
     @test pmG.evpa ≈ pimg.evpa

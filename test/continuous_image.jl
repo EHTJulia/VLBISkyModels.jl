@@ -134,7 +134,7 @@ end
         end
     end
 
-    psrc = IntensityMap(rand(16, 12, 4), g, Stokes())
+    psrc = IntensityMap(FieldDimArray{StokesParams}(rand(16, 12, 4)), g)
     gfr = RectiGrid((; X = range(-5.0, 5.0; length = 20), Y = range(-4.0, 4.0; length = 18), Fr = [230.0e9, 345.0e9]))
     c = ContinuousImage(psrc, BSplinePulse{3}())
     img = @inferred intensitymap(c, gfr)

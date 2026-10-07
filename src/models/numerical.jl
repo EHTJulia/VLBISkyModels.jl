@@ -1,19 +1,12 @@
-function _fft(img::AbstractArray{<:Number})
-    vI = complex(img)
-    fft!(vI, 1:2)
-    return vI
-end
-
 # Special because I just want to do the straight FFT thing no matter what
 function intensitymap_numeric!(img::IntensityMap, m::AbstractModel)
     grid = axisdims(img)
     griduv = uvgrid(grid)
     vis = allocate_vismap(m, griduv)
     visibilitymap!(vis, m)
-    visk = ifftshift(parent(phasedecenter!(vis, grid, griduv)), 1:2)
+    visk = ifftshift(phasedecenter!(baseimage(vis), grid, griduv), 1:2)
     ifft!(visk, 1:2)
-    bimg = baseimage(img)
-    bimg .= real.(visk)
+    baseimage(img) .= real.(visk)
     return nothing
 end
 
@@ -30,9 +23,8 @@ function visibilitymap_numeric!(vis::IntensityMap, m::AbstractModel)
     gridxy = xygrid(grid)
     img = allocate_imgmap(m, gridxy)
     intensitymap!(img, m)
-    tildeI = _fft(parent(img))
-    copyto!(baseimage(vis), fftshift(tildeI, 1:2))
-    phasecenter!(vis, gridxy, grid)
+    fftshift!(baseimage(vis), fft(baseimage(img), 1:2), 1:2)
+    phasecenter!(baseimage(vis), gridxy, grid)
     return nothing
 end
 

@@ -14,15 +14,16 @@ end
     stokes_intensitymap(I, Q, U, V, domain)
 
 Constructs a `StokesMap` from four maps, or four arrays on `domain`, holding Stokes I, Q, U
-and V. The components are copied into one array with a trailing `Stokes` dim.
+and V. The components are copied into one dense array whose last dim holds I, Q, U and V,
+seen as `StokesParams` through a `FieldDimArray`.
 """
 @inline function stokes_intensitymap(
         I::IntensityMap, Q::IntensityMap,
         U::IntensityMap, V::IntensityMap
     )
     _check_grid(I, Q, U, V) || throw(ArgumentError("the Stokes I, Q, U and V maps must share one domain"))
-    storage = _stokescat(baseimage(I), baseimage(Q), baseimage(U), baseimage(V))
-    return IntensityMap(storage, axisdims(I), Stokes(); refdims = refdims(I), name = name(I))
+    data = _stokesparams(baseimage(I), baseimage(Q), baseimage(U), baseimage(V))
+    return IntensityMap(data, axisdims(I), refdims(I), name(I))
 end
 
 @inline function stokes_intensitymap(
@@ -30,10 +31,10 @@ end
         U::AbstractArray, V::AbstractArray,
         domain::AbstractSingleDomain
     )
-    return IntensityMap(_stokescat(I, Q, U, V), domain, Stokes())
+    return IntensityMap(_stokesparams(I, Q, U, V), domain)
 end
 
-_stokescat(I, Q, U, V) = cat(I, Q, U, V; dims = Val(ndims(I) + 1))
+_stokesparams(I, Q, U, V) = FieldDimArray{StokesParams}(cat(I, Q, U, V; dims = Val(ndims(I) + 1)))
 
 """
     $(TYPEDEF)
@@ -122,11 +123,23 @@ function visibilitymap_numeric(pimg::PolarizedModel, p::FourierDualDomain)
 end
 
 function intensitymap!(pimg::StokesMap, pmodel::PolarizedModel)
-    intensitymap!(stokes(pimg, :I), pmodel.I)
-    intensitymap!(stokes(pimg, :Q), pmodel.Q)
-    intensitymap!(stokes(pimg, :U), pmodel.U)
-    intensitymap!(stokes(pimg, :V), pmodel.V)
+    I, Q, U, V = _stokesviews(pimg)
+    intensitymap!(I, pmodel.I)
+    intensitymap!(Q, pmodel.Q)
+    intensitymap!(U, pmodel.U)
+    intensitymap!(V, pmodel.V)
     return pimg
+end
+
+# `stokes` copies data that is not a `FieldDimArray` or `StructArray`, so writes would be lost.
+function _stokesviews(img::StokesMap)
+    data = baseimage(img)
+    data isa Union{FieldDimArray, StructArray} || throw(
+        ArgumentError(
+            "writing a StokesMap in place needs FieldDimArray or StructArray data; got $(nameof(typeof(data)))"
+        )
+    )
+    return stokes(img, :I), stokes(img, :Q), stokes(img, :U), stokes(img, :V)
 end
 
 function intensitymap(pmodel::PolarizedModel, dims::AbstractSingleDomain)

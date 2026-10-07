@@ -45,15 +45,13 @@ ispolarized(::Type{<:InterpolatedImage{<:StokesMap}}) = IsPolarized()
     rm = rotmat(g)'
     X2 = _rotatex(p.X, p.Y, rm)
     Y2 = _rotatey(p.X, p.Y, rm)
-    (X[begin] > X2 || X2 > X[end]) && return _zeropoint(m.img)
-    (Y[begin] > Y2 || Y2 > Y[end]) && return _zeropoint(m.img)
+    (X[begin] > X2 || X2 > X[end]) && return zero(eltype(m.img))
+    (Y[begin] > Y2 || Y2 > Y[end]) && return zero(eltype(m.img))
     # - sign is because we need to move into the frame of the vertical-horizontal image
     p2 = merge(p, (; X = X2, Y = Y2))
     return _interpolate(m.itp, m.img, SVector(values(p2))) / (dx * dy)
 end
 
-_zeropoint(img::IntensityMap) = zero(eltype(img))
-_zeropoint(img::StokesMap) = zero(StokesParams{eltype(img)})
 
 _interpolate(itp, img::IntensityMap, x) = interpolate(itp, img, x)
 function _interpolate(itp, img::StokesMap, x)
@@ -137,6 +135,17 @@ function convolve(img::IntensityMap{<:Real}, m::AbstractModel)
     cimg = copy(img)
     return convolve!(cimg, m)
 end
+
+function convolve!(img::StokesMap, m::AbstractModel)
+    I, Q, U, V = _stokesviews(img)
+    convolve!(I, m)
+    convolve!(Q, m)
+    convolve!(U, m)
+    convolve!(V, m)
+    return img
+end
+
+convolve(img::StokesMap, m::AbstractModel) = convolve!(copy(img), m)
 
 """
     smooth(img::IntensityMap)

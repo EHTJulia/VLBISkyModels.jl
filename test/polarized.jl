@@ -144,7 +144,7 @@ end
     m = PolarizedModel(Gaussian(), Gaussian(), ZeroModel(), 0.1 * Gaussian())
     g = imagepixels(5.0, 5.0, 128, 128)
     img1 = intensitymap(m, g)
-    @test size(VLBISkyModels.padimage(img1, FFTAlg(; padfac = 2))) == (2 .* size(img1)[1:2]..., 4)
+    @test size(VLBISkyModels.padimage(img1, FFTAlg(; padfac = 2))) == 2 .* size(img1)
     @test all(==(1), stokes(img1, :Q) .≈ stokes(img1, :I))
     @test all(==(1), stokes(img1, :U) .≈ 0.0 * stokes(img1, :I))
     @test all(==(1), stokes(img1, :V) .≈ 0.1 * stokes(img1, :I))
@@ -235,7 +235,7 @@ end
     img = intensitymap(m, g)
     pimg = PolExp2Map(randn(24, 24), randn(24, 24), randn(24, 24), randn(24, 24), g)
     @test pimg isa StokesMap
-    @test mapreduce(*, VLBISkyModels.pixelparams(pimg)) do x
+    @test mapreduce(*, baseimage(pimg)) do x
         v = (x.I^2 >= x.Q^2 + x.U^2 + x.V^2)
         return v
     end
@@ -243,7 +243,7 @@ end
 
 @testset "polarized ContinuousImage is type stable and zero copy" begin
     g = imagepixels(10.0, 10.0, 16, 16)
-    img = IntensityMap(rand(16, 16, 4), g, Stokes())
+    img = IntensityMap(FieldDimArray{StokesParams}(rand(16, 16, 4)), g)
     cimg = @inferred ContinuousImage(img, BSplinePulse{3}())
     @test ComradeBase.ispolarized(typeof(cimg)) === ComradeBase.IsPolarized()
     pmap = @inferred VLBISkyModels.make_map(cimg)
@@ -274,9 +274,44 @@ end
     img = intensitymap(pm + unpol, g)
     @test baseimage(stokes(img, :I)) ≈ baseimage(intensitymap(Gaussian() + unpol, g))
 
-    pimg = IntensityMap(rand(32, 32, 4), g, Stokes())
+    pimg = IntensityMap(FieldDimArray{StokesParams}(rand(32, 32, 4)), g)
     vn = visibilitymap(ContinuousImage(pimg, BSplinePulse{3}()) + unpol, gf)
     vI = visibilitymap(ContinuousImage(stokes(pimg, :I), BSplinePulse{3}()), gf)
     @test baseimage(stokes(vn, :I)) ≈ baseimage(vI) .+ baseimage(visibilitymap(unpol, guv))
     @test baseimage(stokes(vn, :U)) ≈ baseimage(visibilitymap(ContinuousImage(stokes(pimg, :U), BSplinePulse{3}()), gf))
+end
+
+@testset "StructArray Stokes parameters" begin
+    g = imagepixels(10.0, 10.0, 16, 16)
+    P = rand(16, 16, 4)
+    sa = StructArray{StokesParams{Float64}}((P[:, :, 1], P[:, :, 2], P[:, :, 3], P[:, :, 4]))
+    csa = ContinuousImage(IntensityMap(sa, g), BSplinePulse{3}())
+    cfd = ContinuousImage(IntensityMap(FieldDimArray{StokesParams}(P), g), BSplinePulse{3}())
+    @test baseimage(VLBISkyModels.make_map(csa)) === sa
+    @test intensitymap(csa, g) ≈ intensitymap(cfd, g)
+    gf = FourierDualDomain(g, UnstructuredDomain((U = randn(20) ./ 5, V = randn(20) ./ 5)), NFFTAlg())
+    @test visibilitymap(csa, gf) ≈ visibilitymap(cfd, gf)
+end
+
+@testset "in-place Stokes writes need component views" begin
+    g = imagepixels(10.0, 10.0, 8, 8)
+    img = IntensityMap(fill(zero(StokesParams{Float64}), 8, 8), g)
+    m = PolarizedModel(Gaussian(), ZeroModel(), ZeroModel(), ZeroModel())
+    @test_throws "needs FieldDimArray or StructArray data" intensitymap!(img, m)
+end
+
+@testset "numeric FFT of a polarized model" begin
+    g = imagepixels(10.0, 10.0, 32, 32)
+    guv = VLBISkyModels.uvgrid(g)
+    mI, mU = stretched(Gaussian(), 2.0, 1.0), 0.2 * Gaussian()
+    pm = PolarizedModel(mI, ZeroModel(), mU, ZeroModel())
+    v = VLBISkyModels.visibilitymap_numeric(pm, guv)
+    @test v isa StokesMap
+    @test baseimage(stokes(v, :I)) ≈ baseimage(VLBISkyModels.visibilitymap_numeric(mI, guv))
+    @test baseimage(stokes(v, :U)) ≈ baseimage(VLBISkyModels.visibilitymap_numeric(mU, guv))
+    @test all(iszero, baseimage(stokes(v, :Q)))
+    img = VLBISkyModels.intensitymap_numeric(pm, g)
+    @test img isa StokesMap
+    @test baseimage(stokes(img, :I)) ≈ baseimage(VLBISkyModels.intensitymap_numeric(mI, g))
+    @test baseimage(stokes(img, :U)) ≈ baseimage(VLBISkyModels.intensitymap_numeric(mU, g))
 end
