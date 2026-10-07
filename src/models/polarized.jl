@@ -115,10 +115,10 @@ end
 # we need to re-dispatch
 function visibilitymap_numeric(pimg::PolarizedModel, p::FourierDualDomain)
     mI, mQ, mU, mV = split_stokes(pimg)
-    si = _visibilitymap(visanalytic(typeof(mI)), mI, p)
-    sq = _visibilitymap(visanalytic(typeof(mQ)), mQ, p)
-    su = _visibilitymap(visanalytic(typeof(mU)), mU, p)
-    sv = _visibilitymap(visanalytic(typeof(mV)), mV, p)
+    si = visibilitymap(mI, p)
+    sq = visibilitymap(mQ, p)
+    su = visibilitymap(mU, p)
+    sv = visibilitymap(mV, p)
     return stokes_intensitymap(baseimage(si), baseimage(sq), baseimage(su), baseimage(sv), visdomain(p))
 end
 

@@ -175,8 +175,8 @@ end
         p::AbstractSingleDomain
     ) where {M1, M2}
     return _addmaps(
-        _visibilitymap(visanalytic(M1), model.m1, p),
-        _visibilitymap(visanalytic(M2), model.m2, p)
+        visibilitymap(model.m1, p),
+        visibilitymap(model.m2, p)
     )
 end
 
@@ -185,8 +185,8 @@ end
         p::AbstractRectiGrid
     ) where {M1, M2}
     return _addmaps(
-        _visibilitymap(visanalytic(M1), model.m1, p),
-        _visibilitymap(visanalytic(M2), model.m2, p)
+        visibilitymap(model.m1, p),
+        visibilitymap(model.m2, p)
     )
 end
 
@@ -195,8 +195,8 @@ end
         p::FourierDualDomain
     ) where {M1, M2}
     return _addmaps(
-        _visibilitymap(visanalytic(M1), model.m1, p),
-        _visibilitymap(visanalytic(M2), model.m2, p)
+        visibilitymap(model.m1, p),
+        visibilitymap(model.m2, p)
     )
 end
 
@@ -291,16 +291,16 @@ flux(m::ConvolvedModel) = flux(m.m1) * flux(m.m2)
         model::ConvolvedModel{M1, M2},
         p::AbstractRectiGrid
     ) where {M1, M2}
-    return _visibilitymap(visanalytic(M1), model.m1, p) .*
-        _visibilitymap(visanalytic(M2), model.m2, p)
+    return visibilitymap(model.m1, p) .*
+        visibilitymap(model.m2, p)
 end
 
 @inline function visibilitymap_numeric(
         model::ConvolvedModel{M1, M2},
         p::FourierDualDomain
     ) where {M1, M2}
-    return _visibilitymap(visanalytic(M1), model.m1, p) .*
-        _visibilitymap(visanalytic(M2), model.m2, p)
+    return visibilitymap(model.m1, p) .*
+        visibilitymap(model.m2, p)
 end
 
 @inline function visibilitymap_numeric!(
