@@ -79,6 +79,10 @@ StructArrays = "0.6, 0.7"
 FieldDimArrays = "0.1"
 julia = "1.10"
 
+[sources]
+ComradeBase = {url = "https://github.com/ptiede/ComradeBase.jl", rev = "ptiede-shard"}
+FieldDimArrays = {url = "https://github.com/ptiede/FieldDimArrays.jl", rev = "main"}
+
 [extras]
 FINUFFT = "d8beea63-0952-562e-9c6a-8e8ef7364055"
 Makie = "ee78f7c6-11fb-53f2-987a-cfe4a2b5a57a"

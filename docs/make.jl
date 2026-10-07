@@ -2,6 +2,12 @@ using Pkg
 script_dir = @__DIR__
 Pkg.activate(script_dir)
 parent_dir = dirname(script_dir)
+Pkg.add(
+    [
+        PackageSpec(; url = "https://github.com/ptiede/FieldDimArrays.jl", rev = "main"),
+        PackageSpec(; url = "https://github.com/ptiede/ComradeBase.jl", rev = "ptiede-shard"),
+    ]
+)
 Pkg.develop(PackageSpec(; path = parent_dir))
 Pkg.instantiate()
 
@@ -13,8 +19,6 @@ using Pkg
 using Glob
 
 const VLBISkyModelsMakieExt = Base.get_extension(VLBISkyModels, :VLBISkyModelsMakieExt)
-
-Pkg.develop(PackageSpec(; url = "https://github.com/ptiede/ComradeBase.jl"))
 
 GENERATED = joinpath(@__DIR__, "../", "examples")
 OUTDIR = joinpath(@__DIR__, "src", "examples")
