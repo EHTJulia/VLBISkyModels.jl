@@ -98,10 +98,10 @@ of its storage.
 """
 pixelparams(img::IntensityMap) = _pixelparams(baseimage(img), eldims(img), Val(ndims(axisdims(img))))
 _pixelparams(storage, ::Tuple{}, ::Val) = storage
-_pixelparams(storage, ::Tuple{Stokes}, ::Val{N}) where {N} = ViewStructArray{StokesParams, N}(storage)
+_pixelparams(storage, ::Tuple{Stokes}, ::Val{N}) where {N} = FieldDimArray{StokesParams, N}(storage)
 
 _paramsmap(params, grid) = IntensityMap(params, grid)
-_paramsmap(params::ViewStructArray{<:StokesParams}, grid) = IntensityMap(parent(params), grid, Stokes())
+_paramsmap(params::FieldDimArray{<:StokesParams}, grid) = IntensityMap(parent(params), grid, Stokes())
 
 _asparams(im::AbstractArray, g) = im
 _asparams(im::IntensityMap, g) = pixelparams(im)
@@ -109,7 +109,7 @@ _asparams(im::StructArray{<:StokesParams}, g) = pixelparams(IntensityMap(im, g))
 _asparams(im::Array{<:StokesParams}, g) = pixelparams(IntensityMap(im, g))
 
 _storage(params) = params
-_storage(params::ViewStructArray) = parent(params)
+_storage(params::FieldDimArray) = parent(params)
 
 function Base.show(io::IO, img::ContinuousImage)
     pname = nameof(typeof(img.params))
