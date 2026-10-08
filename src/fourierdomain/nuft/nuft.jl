@@ -8,80 +8,80 @@ Internal type used to store the cache for a non-uniform Fourier transform (NUFT)
 
 The user should instead create this using the [`FourierDualDomain`](@ref) function.
 """
-struct NUFTPlan{A, P, M, I, T} <: AbstractNUFTPlan
+struct NUFTPlan{A, P, M, I, S} <: AbstractNUFTPlan
     alg::A # which algorithm to use
     plan::P #NUFT matrix or plan
     phases::M #FT phases needed to phase center things
-    indices::I # imgdomain Ti/Fr indices mapped to visdomain indices
-    totalvis::T # Total number of visibility points
+    indices::I # image planes and the flat point indices that use each
+    visshape::S # size of the visibility domain
 end
 
 getindices(p::NUFTPlan) = getfield(p, :indices)
 EnzymeRules.inactive(::typeof(getindices), args...) = nothing
 
+# Plan construction runs once, on the host: the domain with its coordinates copied to `Array`s.
+# Reactant arrays cannot be indexed or broadcast outside `@jit`.
+_hostdomain(visdomain::StructuredDomain) = DD.rebuild(visdomain; coords = map(Array, ComradeBase.coords(visdomain)))
 
-# We do this for speed an readability since all seems to be very slow
-_compare(nv::NamedTuple{N}, val) where {N} = mapreduce(n -> (nv[n] == val[n]), *, N)
+# A coordinate from `shapedcoords` broadcast up to the full domain shape.
+function _fullcoord(c, sz)
+    m = Broadcast.materialize(c)
+    out = similar(m, sz)
+    out .= m
+    return out
+end
 
-# creates the indexing plan for the multidomain nuft. Returns a tuple with
-# iminds whose elements defines the index in the image domain
-# visinds whose elements are the indices of the visibilities that correspond to that imind
-# The order of data is currently set by imgdomain.
-function plan_indices(imgdomain::AbstractRectiGrid, visdomain::StructuredDomain)
-    # TODO: Change the ordering so that visdomain is accessed in a constant stride so
-    # we can utilize in-place nuft and save a bunch of allocations
-    extradims = ComradeBase.dims(imgdomain)[3:end]
-    nms = map(name, extradims)
-
-    # DimPoints stack overflows for an empty tuple
-    isempty(extradims) && return (0, 0)
-
-    itr = DimPoints(extradims)
-    # The grouping depends only on the trailing (Fr/Ti) coordinates. Materialize just
-    # those columns on the host so this one-time structural computation also works when
-    # the visibility coordinates are Reactant arrays (the plan is built outside `@jit`).
-    cmp = StructArray(NamedTuple{nms}(map(n -> collect(getproperty(visdomain, n)), nms)))
-    inds = map(eachindex(itr), itr) do i, vals
-        nv = NamedTuple{nms}(vals)
-        # Check if visinds are strided if so switch to a iterator
-        visind = findall(p -> _compare(nv, p), cmp)
-        length(visind) == 0 && return (i, 1:0)
-        # A single-element group has an empty diff, so treat it as trivially contiguous.
-        length(visind) == 1 && return (i, visind[1]:visind[1])
-        dfs = diff(visind)
-        if all(==(dfs[1]), dfs)
-            if dfs[1] == 1
-                # Extract information to let it know we have a contiguous array
-                return (i, visind[1]:visind[end])
-            else
-                return (i, visind[1]:dfs[1]:visind[end])
-            end
-
-        else
-            return (i, visind)
-        end
+# The image plane of every point of `visdomain`, as `CartesianIndex`es over the non-spatial
+# dims of `imgdomain`, with the domain's shape.
+function _pointplanes(imgdomain::AbstractRectiGrid, visdomain::StructuredDomain)
+    sc = ComradeBase.shapedcoords(_hostdomain(visdomain))
+    frames = map(DD.otherdims(imgdomain, (X, Y))) do d
+        n = name(d)
+        haskey(sc, n) || throw(
+            ArgumentError(
+                "the image grid has a `$n` dim, but the visibility domain has no `$n` coordinate or dim to match its planes against; domain coordinates are $(keys(sc))"
+            )
+        )
+        return _fullcoord(frameindex(d, Broadcast.materialize(sc[n])), size(visdomain))
     end
+    return CartesianIndex.(frames...)
+end
 
-    iminds = vec(parent(first.(inds)))
-    visinds = vec(parent(last.(inds)))
-    _check_planned(visinds, length(visdomain))
-
-    inds = findall(isempty, visinds)
-    deleteat!(iminds, inds)
-    deleteat!(visinds, inds)
-
+# The image planes the points use, and for each the flat indices of its points. A run of
+# indices with a constant stride is stored as a range.
+function plan_indices(imgdomain::AbstractRectiGrid, visdomain::StructuredDomain)
+    isempty(DD.otherdims(imgdomain, (X, Y))) && return (0, 0)
+    planes = vec(_pointplanes(imgdomain, visdomain))
+    iminds = sort!(unique(planes))
+    visinds = map(iminds) do p
+        return _asrange(findall(==(p), planes))
+    end
     return iminds, visinds
 end
 
-function _check_planned(visinds, n)
-    planned = sum(length, visinds; init = 0)
-    planned == n || throw(
-        ArgumentError(
-            "$(n - planned) of $n visibility points match no Ti/Fr plane of the image grid; every point's Ti and Fr must equal a plane label of the grid"
-        )
-    )
-    return nothing
+function _asrange(inds::Vector{Int})
+    length(inds) == 1 && return inds[1]:inds[1]
+    step = inds[2] - inds[1]
+    all(==(step), diff(inds)) || return inds
+    return step == 1 ? (inds[1]:inds[end]) : (inds[1]:step:inds[end])
 end
+
+# The points of `visdomain` as one flat list, in the domain's memory order, stored in the
+# array type of its baseline coordinates.
+_pointlist(visdomain::StructuredDomain{<:Tuple{<:Pt}}) = visdomain
+function _pointlist(visdomain::StructuredDomain)
+    sc = ComradeBase.shapedcoords(_hostdomain(visdomain))
+    sz = size(visdomain)
+    cs = ComradeBase.coords(visdomain)
+    proto = haskey(cs, :U) ? cs.U : cs.u
+    U = _like(proto, vec(_fullcoord(sc.U, sz)))
+    V = _like(proto, vec(_fullcoord(sc.V, sz)))
+    return UnstructuredDomain((; U, V); executor = executor(visdomain), header = header(visdomain))
+end
+
+# The phases built from the points must keep the domain's array type: under Reactant, a host
+# `Vector` indexed by a traced index overflows the stack (EnzymeAD/Reactant.jl#3301).
+_like(proto, a) = copyto!(similar(proto, eltype(a), size(a)), a)
 
 function _subdomain(visdomain::StructuredDomain, visind)
     U = visdomain.U[visind]
@@ -108,28 +108,19 @@ function create_forward_plan(
         algorithm::NUFT, imgdomain::AbstractRectiGrid,
         visdomain::StructuredDomain
     )
-    _check_pointlist(visdomain)
-    phases = make_phases(algorithm, imgdomain, visdomain)
+    pts = _pointlist(visdomain)
+    phases = make_phases(algorithm, imgdomain, pts)
     indices = plan_indices(imgdomain, visdomain)
-    if hasproperty(imgdomain, :Ti) || hasproperty(imgdomain, :Fr)
-        plan = plan_nuft(algorithm, imgdomain, visdomain, indices)
+    if isempty(DD.otherdims(imgdomain, (X, Y)))
+        plan = plan_nuft_spatial(algorithm, imgdomain, pts)
     else
-        plan = plan_nuft_spatial(algorithm, imgdomain, visdomain)
+        plan = plan_nuft(algorithm, imgdomain, pts, indices)
     end
-    return NUFTPlan(algorithm, plan, phases, indices, length(visdomain))
-end
-
-function _check_pointlist(visdomain::StructuredDomain)
-    ndims(visdomain) == 1 || throw(
-        ArgumentError(
-            "nonuniform Fourier transforms need a visibility domain with the single dim `Pt`, got dims $(keys(visdomain)); give `Ti` and `Fr` as per-point coordinates"
-        )
-    )
-    return nothing
+    return NUFTPlan(algorithm, plan, phases, indices, size(visdomain))
 end
 
 function inverse_plan(plan::NUFTPlan)
-    return NUFTPlan(plan.alg, plan.plan', inv.(plan.phases), plan.indices, plan.totalvis)
+    return NUFTPlan(plan.alg, plan.plan', inv.(plan.phases), plan.indices, plan.visshape)
 end
 
 function inverse_plan(plan::NUFTPlan{<:FourierTransform, <:AbstractDict})
@@ -143,14 +134,18 @@ function inverse_plan(plan::NUFTPlan{<:FourierTransform, <:AbstractDict})
         inverse_plans[imind] = plan.plan[imind]'
     end
 
-    return NUFTPlan(plan.alg, inverse_plans, inv.(plan.phases), plan.indices, plan.totalvis)
+    return NUFTPlan(plan.alg, inverse_plans, inv.(plan.phases), plan.indices, plan.visshape)
 end
 
 function applyft(p::AbstractNUFTPlan, img::AbstractArray)
     vis = nuft(p, img)
     applyphases!(vis, p.phases)
-    return vis
+    return _withshape(vis, p.visshape)
 end
+
+# `reshape` to a vector's own size still allocates a new array header.
+_withshape(vis::AbstractVector, ::Tuple{Int}) = vis
+_withshape(vis, sz) = reshape(vis, sz)
 
 function applyft(plan::AbstractNUFTPlan, img::StokesMap)
     vI = applyft(plan, stokes(img, :I))
@@ -201,7 +196,7 @@ end
         p::NUFTPlan{<:FourierTransform, <:AbstractDict},
         img::AbstractArray{<:Number}
     )
-    vis_list = similar(baseimage(img), complex(eltype(img)), p.totalvis)
+    vis_list = similar(baseimage(img), complex(eltype(img)), prod(p.visshape))
     plans = getplan(p)
     iminds, visinds = getindices(p)
     for i in eachindex(iminds, visinds)

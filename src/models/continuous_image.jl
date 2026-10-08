@@ -501,12 +501,16 @@ function applypulse!(vis, pulse, gfour::AbstractFourierDualDomain)
     guv = visdomain(gfour)
     dx, dy = pixelsizes(grid)
     mp = stretched(pulse, dx, dy)
-    # we grab the parent array since for some reason Enzyme struggles to see
-    # through the broadcast
-    pvis = parent(vis)
+    pvis = _densevis(vis)
     pvis .*= ComradeBase.pointbroadcasted(Base.Fix1(visibility_point, mp), guv)
     return vis
 end
+
+# Polarized visibilities are scaled through their dense storage: Enzyme does not see through
+# a broadcast into the `StokesParams` view. Other arrays are scaled directly, since under
+# Reactant a reshaped visibility map is a lazy `ReshapedArray` whose parent is flat.
+_densevis(vis::FieldDimArray) = parent(vis)
+_densevis(vis) = vis
 
 # function intensitymap_analytic!(img::IntensityMap, m::Union{ContinuousImage, ModifiedModel{<:ContinuousImage}})
 #     intensitymap_numeric!(img, m)

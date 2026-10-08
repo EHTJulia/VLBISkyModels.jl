@@ -123,6 +123,24 @@ end
         end
     end
 
+    @testset "(Pt, Fr) visibility domain" begin
+        ref = 230.0e9
+        c = 299_792_458.0
+        g = spatialgrid(10.0, 10.0, 16, 16)
+        frs = [ref, 1.5 * ref]
+        n = 30
+        dpf = StructuredDomain((Pt(n), Fr(frs)); u = randn(n) ./ 10 .* c ./ ref, v = randn(n) ./ 10 .* c ./ ref)
+        base = rand(16, 16)
+        spec = PolySpectral(1.2, ref)
+        gcube = g ⊗ Fr(frs)
+        vis = visibilitymap(MultiDomainImage(IntensityMap(base, g), BSplinePulse{3}(), spec), FourierDualDomain(gcube, dpf, DFTAlg()))
+        cimgr = MultiDomainImage(IntensityMap(Reactant.to_rarray(base), g), BSplinePulse{3}(), spec)
+        gfr = FourierDualDomain(gcube, Reactant.to_rarray(dpf), VLBISkyModels.ReactantNUFFTAlg(Float64; eps = 1.0e-10))
+        visr = @jit visibilitymap(cimgr, gfr)
+        @test size(visr) == (n, 2)
+        @test Array(baseimage(visr)) ≈ baseimage(vis)
+    end
+
     @testset "Polarized plus unpolarized" begin
         g = spatialgrid(10.0, 10.0, 32, 32)
         img = IntensityMap(FieldDimArray{StokesParams}(rand(32, 32, 4)), g)

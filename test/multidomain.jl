@@ -889,7 +889,7 @@ end
             # The Fourier plans are tied to the grid they are built from, so there the
             # mismatch is an error rather than a resampling.
             guv = UnstructuredDomain(
-                (; U = randn(20) ./ 4, V = randn(20) ./ 4, Fr = fill(ref, 20))
+                (; U = randn(20) ./ 8, V = randn(20) ./ 8, Fr = fill(ref, 20))
             )
             gbad = spatialgrid(20.0, 20.0, 32, 32)
             gfour = FourierDualDomain(
@@ -1211,4 +1211,62 @@ end
     p = (; X = 1.0, Y = 0.5, Fr = 460.0e9)
     @test VLBISkyModels.transform_image(Gaussian(), r, p) ==
         VLBISkyModels.transform_image(Gaussian(), Rotate(2.0), p)
+end
+
+@testset "visibility points matched to image planes" begin
+    ref = 230.0e9
+    c = 299_792_458.0
+    g = spatialgrid(10.0, 10.0, 16, 16)
+    frs = [ref, 1.5 * ref]
+    n = 30
+    dpf = StructuredDomain((Pt(n), Fr(frs)); u = randn(n) ./ 10 .* c ./ ref, v = randn(n) ./ 10 .* c ./ ref)
+    U, V = vec(dpf.U), vec(dpf.V)
+    dpt = UnstructuredDomain((; U, V, Fr = vec(repeat(frs', n))))
+    pimg = IntensityMap(FieldDimArray{StokesParams}(rand(16, 16, 4)), g)
+    models = (
+        MultiDomainImage(IntensityMap(rand(16, 16), g), BSplinePulse{3}(), PolySpectral(1.2, ref)),
+        MultiDomainImage(pimg, BSplinePulse{3}(), PolySpectral(1.2, ref)),
+    )
+    algs = (NFFTAlg(), DFTAlg(), FINUFFTAlg(), NonuniformFFTsAlg())
+    for m in models, alg in algs
+        vpf = visibilitymap(m, FourierDualDomain(g ⊗ Fr(frs), dpf, alg))
+        vpt = visibilitymap(m, FourierDualDomain(g ⊗ Fr(frs), dpt, alg))
+        @test size(vpf) == (n, 2)
+        @test vec(baseimage(vpf)) == baseimage(vpt)
+    end
+
+    # A per-point `Ti` coordinate on a `(Pt, Fr)` domain selects the time plane.
+    tis = [0.0, 1.0]
+    tpt = repeat([0.0, 1.0], n ÷ 2)
+    uv = ComradeBase.coords(dpf)
+    dptf = StructuredDomain((Pt(n), Fr(frs)); uv.u, uv.v, Ti = tpt)
+    gtf = g ⊗ Ti(tis) ⊗ Fr(frs)
+    cube = ContinuousImage(IntensityMap(rand(16, 16, 2, 2), gtf), BSplinePulse{3}())
+    vtf = visibilitymap(cube, FourierDualDomain(gtf, dptf, NFFTAlg()))
+    dflat = UnstructuredDomain((; U, V, Ti = repeat(tpt, 2), Fr = vec(repeat(frs', n))))
+    @test vec(baseimage(vtf)) == baseimage(visibilitymap(cube, FourierDualDomain(gtf, dflat, NFFTAlg())))
+
+    # A grid without `Fr` is constant along the domain's `Fr` dim.
+    plain = ContinuousImage(IntensityMap(rand(16, 16), g), BSplinePulse{3}())
+    vplain = visibilitymap(plain, FourierDualDomain(g, dpf, NFFTAlg()))
+    @test vec(baseimage(vplain)) == baseimage(visibilitymap(plain, FourierDualDomain(g, UnstructuredDomain((; U, V)), NFFTAlg())))
+
+    # `Intervals` planes match raw observation times by containment.
+    gt = g ⊗ ComradeBase.intervals(Ti, [0.0, 2.0], [1.0, 3.0])
+    traw = rand(16, 16, 2)
+    tcube = ContinuousImage(IntensityMap(traw, gt), BSplinePulse{3}())
+    dti = UnstructuredDomain((; U = U[1:20], V = V[1:20], Ti = [rand(10); 2 .+ rand(10)]))
+    vt = baseimage(visibilitymap(tcube, FourierDualDomain(gt, dti, NFFTAlg())))
+    for k in 1:2
+        sel = (1:10) .+ 10 * (k - 1)
+        slice = ContinuousImage(IntensityMap(traw[:, :, k], g), BSplinePulse{3}())
+        gk = FourierDualDomain(g, UnstructuredDomain((; U = U[sel], V = V[sel])), NFFTAlg())
+        @test vt[sel] ≈ baseimage(visibilitymap(slice, gk))
+    end
+
+    @test_throws "has no `Ti` coordinate or dim" FourierDualDomain(gt, UnstructuredDomain((; U, V)), NFFTAlg())
+    @test_throws "1 of 2 coordinates match no plane" FourierDualDomain(
+        gt, UnstructuredDomain((; U = U[1:2], V = V[1:2], Ti = [0.5, 1.5])), NFFTAlg()
+    )
+    @test_throws "match no plane" FourierDualDomain(g ⊗ Fr([ref]), dpf, NFFTAlg())
 end

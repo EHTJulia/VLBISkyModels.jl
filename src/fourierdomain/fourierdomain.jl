@@ -161,6 +161,14 @@ is specified by the `algorithm` which is a subtype of `VLBISkyModels.FourierTran
   - `imgdomain`: The image domain grid
   - `visdomain`: The visibility domain grid
   - `algorithm`: The Fourier transform algorithm to use see `subtypes(VLBISkyModels.FourierTransform)` for a list
+
+When `imgdomain` has `Ti` or `Fr` dims, each visibility point uses the image plane that
+[`frameindex`](@ref) assigns to its `Ti` and `Fr` (a per-point coordinate or a dim of
+`visdomain`): the interval containing it for an `Intervals` lookup, the equal value
+otherwise. Points matching no plane, and a `Ti` or `Fr` dim of `imgdomain` that `visdomain`
+has no coordinate for, throw. A `Ti` or `Fr` of `visdomain` that `imgdomain` lacks is
+ignored, so the image is the same along it. The visibility map has the shape of
+`visdomain`.
 """
 function FourierDualDomain(
         imgdomain::AbstractSingleDomain, visdomain::AbstractSingleDomain,
