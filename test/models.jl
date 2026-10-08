@@ -1,5 +1,5 @@
 @testset "Moments" begin
-    g = imagepixels(30.0, 30.0, 512, 512)
+    g = spatialgrid(30.0, 30.0, 512, 512)
     m1 = Gaussian()
     img = VLBISkyModels.allocate_imgmap(m1, g)
     intensitymap!(img, m1)
@@ -311,7 +311,7 @@ end
     m1 = Gaussian()
     m2 = ExtendedRing(10.0)
     m = m1 + m2
-    g = imagepixels(
+    g = spatialgrid(
         2 * VLBISkyModels.radialextent(m), 2 * VLBISkyModels.radialextent(m),
         128, 128
     )
@@ -444,7 +444,7 @@ end
     guv = UnstructuredDomain((U = u, V = v, Ti = t, Fr = f))
 
     @testset "Add models" begin
-        g = imagepixels(20.0, 20.0, 256, 256)
+        g = spatialgrid(20.0, 20.0, 256, 256)
         mt1 = m1 + m2
         img = allocate_imgmap(mt1, g)
         mt2 = shifted(m1, 1.0, 1.0) + m2
@@ -502,7 +502,7 @@ end
     end
 
     @testset "Convolved models" begin
-        g = imagepixels(20.0, 20.0, 256, 256)
+        g = spatialgrid(20.0, 20.0, 256, 256)
         guv = UnstructuredDomain((U = randn(32), V = randn(32)))
         gfour = FourierDualDomain(g, guv, NFFTAlg())
         mt1 = convolved(m1, m2)
@@ -558,7 +558,7 @@ end
         # lost. Modifiers distribute over composites, so the results must match
         # the equivalent inside-the-composite form, and the independent FFT-grid
         # and NUFT code paths must agree.
-        g = imagepixels(20.0, 20.0, 256, 256)
+        g = spatialgrid(20.0, 20.0, 256, 256)
         guv = UnstructuredDomain((U = randn(64) ./ 20, V = randn(64) ./ 20))
         gfour = FourierDualDomain(g, guv, NFFTAlg())
         mc = convolved(m1, m2)  # m1 = Gaussian(), m2 = ExtendedRing(8.0) (numeric)
@@ -606,7 +606,7 @@ end
     @testset "Convolved Non-analytic" begin
         m1 = Gaussian()
         m2 = VLBISkyModels.NonAnalyticTest(Gaussian())
-        g = imagepixels(20.0, 20.0, 256, 256)
+        g = spatialgrid(20.0, 20.0, 256, 256)
         mt = convolved(m1, m2)
         img1 = intensitymap(mt, g)
         img2 = intensitymap(convolved(m1, m2.model), g)
@@ -615,7 +615,7 @@ end
     end
 
     @testset "All composite" begin
-        g = imagepixels(20.0, 20.0, 256, 256)
+        g = spatialgrid(20.0, 20.0, 256, 256)
         guv = UnstructuredDomain((U = randn(32), V = randn(32)))
         gfour = FourierDualDomain(g, guv, NFFTAlg())
 
@@ -702,7 +702,7 @@ end
     @inferred visibility(m, (U = 0.0, V = 0.0))
     @inferred ComradeBase.intensity_point(m, (X = 0.0, Y = 0.0))
     guv = UnstructuredDomain((U = randn(64), V = randn(64)))
-    g = imagepixels(10.0, 10.0, 64, 64)
+    g = spatialgrid(10.0, 10.0, 64, 64)
 
     foo(x) = sum(
         norm,
@@ -751,7 +751,7 @@ end
     p = (U = 0.005, V = 0.01)
     v = visibility(m, p)
 
-    g = imagepixels(60.0, 60.0, 128, 128)
+    g = spatialgrid(60.0, 60.0, 128, 128)
     img = intensitymap(mG, g)
     p0 = (X = g.X[64], Y = g.Y[64])
     dxdy = prod(values(pixelsizes(g)))
@@ -767,7 +767,7 @@ end
     @test pmG.evpa ≈ pimg.evpa
     @test pmG.sn == pimg.sn
 
-    g = imagepixels(100.0, 100.0, 1024, 1024)
+    g = spatialgrid(100.0, 100.0, 1024, 1024)
     pI = IntensityMap(zeros(1024, 1024), g)
     pQ = similar(pI)
     pU = similar(pI)
@@ -830,7 +830,7 @@ end
 end
 
 @testset "Serialization" begin
-    gim = imagepixels(10.0, 10.0, 128, 128)
+    gim = spatialgrid(10.0, 10.0, 128, 128)
     u = randn(100) * 0.5
     v = randn(100) * 0.5
     t = sort(rand(100) * 0.5)
@@ -887,19 +887,19 @@ end
 end
 
 @testset "FourierDualDomain" begin
-    g = imagepixels(μas2rad(12.0), μas2rad(12.0), 24, 12)
+    g = spatialgrid(μas2rad(12.0), μas2rad(12.0), 24, 12)
     m = rotated(stretched(Gaussian(), μas2rad(2.0), μas2rad(1.0)), π / 8)
     img = intensitymap(m, g)
     u1 = 10.0e9 * rand(100) .- 5.0e9
     v1 = 10.0e9 * rand(100) .- 5.0e9
 
     @testset "Dual domain test" begin
-        grid = imagepixels(10.0, 10.0, 12, 12)
+        grid = spatialgrid(10.0, 10.0, 12, 12)
         g2 = VLBISkyModels.xygrid(VLBISkyModels.uvgrid(grid))
         @test g2.X ≈ grid.X
         @test g2.Y ≈ grid.Y
 
-        grid = imagepixels(10.0, 10.0, 13, 13)
+        grid = spatialgrid(10.0, 10.0, 13, 13)
         g2 = VLBISkyModels.xygrid(VLBISkyModels.uvgrid(grid))
         @test g2.X ≈ grid.X
         @test g2.Y ≈ grid.Y
@@ -939,14 +939,14 @@ end
 using ForwardDiff
 @testset "Rules" begin
     data = rand(32, 32)
-    g = imagepixels(10.0, 10.0, 32, 32)
+    g = spatialgrid(10.0, 10.0, 32, 32)
     # test_rrule(IntensityMap, data, g ⊢ NoTangent())
 
     gfour = FourierDualDomain(g, FFTAlg())
     plan = VLBISkyModels.forward_plan(gfour)
 
     data = rand(8, 8)
-    g = imagepixels(10.0, 10.0, 8, 8)
+    g = spatialgrid(10.0, 10.0, 8, 8)
     gfour = FourierDualDomain(g, FFTAlg())
     plan = VLBISkyModels.forward_plan(gfour)
 

@@ -1,6 +1,6 @@
 @testset "image modifiers" begin
     m = Gaussian()
-    g = imagepixels(20.0, 20.0, 128, 128)
+    g = spatialgrid(20.0, 20.0, 128, 128)
     img = intensitymap(m, g)
 
     mp = PolarizedModel(Gaussian(), Gaussian(), ZeroModel(), Gaussian())
@@ -19,7 +19,7 @@
     end
 
     @testset "Stretched" begin
-        g = imagepixels(20.0, 20.0, 128, 128)
+        g = spatialgrid(20.0, 20.0, 128, 128)
         m2 = stretched(m, 2.0, 1.0)
         imgs = intensitymap(m2, g)
         imgs2 = stretched(img, 2.0, 1.0)
@@ -32,7 +32,7 @@
     end
 
     @testset "Stretch and rotate" begin
-        g = imagepixels(20.0, 20.0, 128, 128)
+        g = spatialgrid(20.0, 20.0, 128, 128)
 
         m2 = modify(m, Stretch(2.0, 1.0), Rotate(π / 4))
         imgs = intensitymap(m2, axisdims(img))
@@ -59,7 +59,7 @@
     end
 
     @testset "regrid" begin
-        g = imagepixels(10.0, 10.0, 64, 64)
+        g = spatialgrid(10.0, 10.0, 64, 64)
         rimg = regrid(img, g)
         @test size(rimg) == (64, 64)
 

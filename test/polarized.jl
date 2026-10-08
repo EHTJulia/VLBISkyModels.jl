@@ -1,5 +1,5 @@
 function testpol(m, uv)
-    g = imagepixels(5.0, 5.0, 128, 128)
+    g = spatialgrid(5.0, 5.0, 128, 128)
     img = intensitymap(m, g)
     img2 = zero(img)
     intensitymap!(img2, m)
@@ -20,7 +20,7 @@ end
 
 @testset "Polarized Analytic" begin
     m = PolarizedModel(Gaussian(), 0.1 * Gaussian(), 0.1 * Gaussian(), 0.1 * Gaussian())
-    g = imagepixels(10.0, 10.0, 512, 512)
+    g = spatialgrid(10.0, 10.0, 512, 512)
     s = map(length, dims(g))
     tsp = MultiDomainParams(0.1, PolySpectral(1.0, 230.0))
     mf = PolarizedModel(Gaussian(), tsp * Gaussian(), 0.1 * Gaussian(), 0.1 * Gaussian())
@@ -57,7 +57,7 @@ end
         ExtendedRing(8.0), 0.1 * Gaussian(), 0.1 * Gaussian(),
         0.1 * Gaussian()
     )
-    g = imagepixels(10.0, 10.0, 512, 512)
+    g = spatialgrid(10.0, 10.0, 512, 512)
     s = map(length, dims(g))
 
     u = fftshift(fftfreq(length(g.X), 1 / step(g.X)))
@@ -77,7 +77,7 @@ end
 end
 
 @testset "Polarized Modified" begin
-    g = imagepixels(5.0, 5.0, 128, 128)
+    g = spatialgrid(5.0, 5.0, 128, 128)
     u = fftshift(fftfreq(length(g.X), 1 / step(g.X)))
     uv = UnstructuredDomain((U = u, V = -u))
 
@@ -104,7 +104,7 @@ end
 @testset "Polarized Combinators" begin
     m1 = PolarizedModel(Gaussian(), 0.1 * Gaussian(), 0.1 * Gaussian(), 0.1 * Gaussian())
     m2 = PolarizedModel(Disk(), shifted(Disk(), 0.1, 1.0), ZeroModel(), ZeroModel())
-    g = imagepixels(5.0, 5.0, 128, 128)
+    g = spatialgrid(5.0, 5.0, 128, 128)
     u = fftshift(fftfreq(length(g.X), 1 / step(g.X)))
     uv = UnstructuredDomain((U = u, V = -u))
 
@@ -117,7 +117,7 @@ end
 @testset "Polarized NonAnalytic" begin
     m = PolarizedModel(Gaussian(), 0.1 * Gaussian(), 0.1 * Gaussian(), 0.1 * Gaussian())
     mna = VLBISkyModels.NonAnalyticTest(m)
-    g = imagepixels(10.0, 10.0, 128, 128)
+    g = spatialgrid(10.0, 10.0, 128, 128)
     guv = VLBISkyModels.uvgrid(g)
     v = visibilitymap(mna, guv)
     van = visibilitymap(m, guv)
@@ -131,7 +131,7 @@ end
         ZeroModel()
     )
     m = convolved(convolved(m1, Gaussian()), m2) + convolved(Gaussian(), m1)
-    g = imagepixels(5.0, 5.0, 128, 128)
+    g = spatialgrid(5.0, 5.0, 128, 128)
     s = map(length, dims(g))
     u = fftshift(fftfreq(length(g.X), 1 / step(g.X))) ./ 40
     uv = UnstructuredDomain((U = u, V = -u))
@@ -142,7 +142,7 @@ end
 
 @testset "Rotation" begin
     m = PolarizedModel(Gaussian(), Gaussian(), ZeroModel(), 0.1 * Gaussian())
-    g = imagepixels(5.0, 5.0, 128, 128)
+    g = spatialgrid(5.0, 5.0, 128, 128)
     img1 = intensitymap(m, g)
     @test size(VLBISkyModels.padimage(img1, FFTAlg(; padfac = 2))) == 2 .* size(img1)
     @test all(==(1), stokes(img1, :Q) .≈ stokes(img1, :I))
@@ -174,7 +174,7 @@ end
 
 @testset "ContinuousImage" begin
     m = PolarizedModel(Gaussian(), Gaussian(), ZeroModel(), 0.1 * Gaussian())
-    g = imagepixels(10.0, 10.0, 24, 24)
+    g = spatialgrid(10.0, 10.0, 24, 24)
     img = intensitymap(m, g)
     cimg = ContinuousImage(img, BicubicPulse(0.0))
     @test ComradeBase.ispolarized(typeof(cimg)) === ComradeBase.IsPolarized()
@@ -203,7 +203,7 @@ end
 
 @testset "PoincareSphere2Map" begin
     m = PolarizedModel(Gaussian(), Gaussian(), ZeroModel(), 0.1 * Gaussian())
-    g = imagepixels(5.0, 5, 24, 24)
+    g = spatialgrid(5.0, 5, 24, 24)
 
     img = intensitymap(m, g)
 
@@ -230,7 +230,7 @@ end
 
 @testset "PolExp2Map" begin
     m = PolarizedModel(Gaussian(), Gaussian(), ZeroModel(), 0.1 * Gaussian())
-    g = imagepixels(5.0, 5, 24, 24)
+    g = spatialgrid(5.0, 5, 24, 24)
 
     img = intensitymap(m, g)
     pimg = PolExp2Map(randn(24, 24), randn(24, 24), randn(24, 24), randn(24, 24), g)
@@ -242,7 +242,7 @@ end
 end
 
 @testset "polarized ContinuousImage is type stable and zero copy" begin
-    g = imagepixels(10.0, 10.0, 16, 16)
+    g = spatialgrid(10.0, 10.0, 16, 16)
     img = IntensityMap(FieldDimArray{StokesParams}(rand(16, 16, 4)), g)
     cimg = @inferred ContinuousImage(img, BSplinePulse{3}())
     @test ComradeBase.ispolarized(typeof(cimg)) === ComradeBase.IsPolarized()
@@ -261,7 +261,7 @@ end
 end
 
 @testset "an unpolarized model adds to Stokes I" begin
-    g = imagepixels(10.0, 10.0, 32, 32)
+    g = spatialgrid(10.0, 10.0, 32, 32)
     guv = UnstructuredDomain((; U = randn(50) ./ 5, V = randn(50) ./ 5))
     gf = FourierDualDomain(g, guv, NFFTAlg())
     unpol = 0.5 * shifted(Gaussian(), 1.0, 0.0)
@@ -282,7 +282,7 @@ end
 end
 
 @testset "StructArray Stokes parameters" begin
-    g = imagepixels(10.0, 10.0, 16, 16)
+    g = spatialgrid(10.0, 10.0, 16, 16)
     P = rand(16, 16, 4)
     sa = StructArray{StokesParams{Float64}}((P[:, :, 1], P[:, :, 2], P[:, :, 3], P[:, :, 4]))
     csa = ContinuousImage(IntensityMap(sa, g), BSplinePulse{3}())
@@ -294,14 +294,14 @@ end
 end
 
 @testset "in-place Stokes writes need component views" begin
-    g = imagepixels(10.0, 10.0, 8, 8)
+    g = spatialgrid(10.0, 10.0, 8, 8)
     img = IntensityMap(fill(zero(StokesParams{Float64}), 8, 8), g)
     m = PolarizedModel(Gaussian(), ZeroModel(), ZeroModel(), ZeroModel())
     @test_throws "needs FieldDimArray or StructArray data" intensitymap!(img, m)
 end
 
 @testset "numeric FFT of a polarized model" begin
-    g = imagepixels(10.0, 10.0, 32, 32)
+    g = spatialgrid(10.0, 10.0, 32, 32)
     guv = VLBISkyModels.uvgrid(g)
     mI, mU = stretched(Gaussian(), 2.0, 1.0), 0.2 * Gaussian()
     pm = PolarizedModel(mI, ZeroModel(), mU, ZeroModel())

@@ -63,12 +63,12 @@ function testmodel(
     GC.gc()
     @info "Testing $(m)"
     # Plots.plot(m)
-    g = imagepixels(
+    g = spatialgrid(
         radmul * VLBISkyModels.radialextent(m),
         radmul * VLBISkyModels.radialextent(m),
         npix, npix
     )
-    gth = imagepixels(
+    gth = spatialgrid(
         radmul * VLBISkyModels.radialextent(m),
         radmul * VLBISkyModels.radialextent(m),
         npix, npix; executor = ThreadsEx()
@@ -124,7 +124,7 @@ function testft(m, npix = 256, atol = 1.0e-4)
     mn = VLBISkyModels.NonAnalyticTest(m)
     uu = push!(0.25 * randn(1000), 0.0)
     vv = push!(0.25 * randn(1000), 0.0)
-    gim = imagepixels(
+    gim = spatialgrid(
         2 * VLBISkyModels.radialextent(m), 2 * VLBISkyModels.radialextent(m),
         npix, npix
     )
@@ -161,7 +161,7 @@ end
 function testft_nonan(mn, npix = 256, atol = 1.0e-4)
     uu = push!(0.25 * randn(25), 0.0)
     vv = push!(0.25 * randn(25), 0.0)
-    gim = imagepixels(
+    gim = spatialgrid(
         3 * VLBISkyModels.radialextent(mn),
         3 * VLBISkyModels.radialextent(mn),
         npix, npix

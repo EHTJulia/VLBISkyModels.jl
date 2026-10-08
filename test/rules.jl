@@ -34,7 +34,7 @@ end
 end
 
 @testset "FINUFFT Enzyme rules" begin
-    g = imagepixels(10.0, 10.0, 16, 16)
+    g = spatialgrid(10.0, 10.0, 16, 16)
     U = randn(64)
     V = randn(64)
     guv = UnstructuredDomain((; U, V))
@@ -55,7 +55,7 @@ end
 end
 
 @testset "NonuniformFFTs Enzyme rules" begin
-    g = imagepixels(10.0, 10.0, 16, 16)
+    g = spatialgrid(10.0, 10.0, 16, 16)
     U = randn(64)
     V = randn(64)
     guv = UnstructuredDomain((; U, V))

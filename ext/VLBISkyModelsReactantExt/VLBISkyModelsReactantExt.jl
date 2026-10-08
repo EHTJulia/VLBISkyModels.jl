@@ -35,8 +35,7 @@ function VLBISkyModels.PolExp2Map!(
         grid::ComradeBase.AbstractRectiGrid
     )
 
-    # TODO figure out why the regular looped version isn't getting
-    # raised nicely? Looks like some dus is getting in the way?
+    # The generic loop traces to a `while` over `dynamic_update_slice`; broadcasts do not.
     p = sqrt.(b .^ 2 .+ c .^ 2 .+ d .^ 2)
     pimgI = exp.(a) .* cosh.(p)
     tmp = exp.(a) .* sinh.(p) ./ p

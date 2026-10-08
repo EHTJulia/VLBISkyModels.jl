@@ -53,9 +53,8 @@ struct PolySpectral{E, T, F <: Number, P0} <: ComradeBase.DomainParams{E}
     end
 end
 
-# Canonical constructor: a tuple of coefficients defines the expansion order.
 function PolySpectral(index::Tuple, freq0::Number, p0 = zero(freq0))
-    P = map(x -> paramtype(typeof(x)), index)
+    P = map(paramtype ∘ typeof, index)
     E = promote_type(P..., typeof(freq0), paramtype(typeof(p0)))
     return PolySpectral{E}(index, freq0, p0)
 end
@@ -64,15 +63,11 @@ function PolySpectral{E}(index, freq0, p0 = zero(E)) where {E}
     return PolySpectral{E, typeof(index), typeof(freq0), typeof(p0)}(index, freq0, p0)
 end
 
-# A single spectral index is an order-1 expansion.
 function PolySpectral(index::Number, freq0::Number, p0 = zero(freq0))
     return PolySpectral((index,), freq0, p0)
 end
 
-# Per-element polynomial exponent. The coefficients are splatted into the broadcast rather
-# than passed as a tuple, so this scalar kernel fuses over both the frequency axis and
-# (spatially varying) array-valued coefficients without materializing a term-sized
-# temporary for each order.
+# Coefficients are splatted so array-valued ones fuse into one broadcast.
 @inline function polyarg(x, index::Vararg{Any, N}) where {N}
     return reduce(+, ntuple(n -> index[n] * x^n, Val(N)))
 end
@@ -81,11 +76,8 @@ end
 @inline addoffset(x::Number, p0) = x + p0
 @inline addoffset(x::StaticArray, p0) = similar_type(x)(Tuple(x) .+ p0)
 
-# The spectral factor. `p.Fr` is a scalar for a single domain point, or reshaped along the
-# cube's `Fr` axis when building a cube, so materializing here evaluates the expansion once
-# per frequency rather than once per cube point. Spatially varying coefficients make the
-# factor as large as the result, with nothing to reuse, so those stay lazy and fuse into the
-# broadcast below instead of building a temporary.
+# Scalar coefficients: materialized once per frequency. Array coefficients: left lazy to fuse
+# with `apply_param`, since the factor is as large as the result.
 @inline specfactor(x, index::Tuple{Vararg{Number}}) = exp.(polyarg.(x, index...))
 @inline specfactor(x, index) = Base.broadcasted(exp, Base.broadcasted(polyarg, x, index...))
 
@@ -95,22 +87,15 @@ end
 
 ComradeBase.apply_param(base, domain::PolySpectral, fac, p) = addoffset.(base .* fac, domain.p0)
 
-# The expansion is scalar, so it scales every Stokes component of a polarized base
-# identically and survives projection onto a component unchanged.
+# The factor is scalar, so every Stokes component scales alike.
 ComradeBase.stokes(ps::PolySpectral, v) = ps
 
 function restrict_params(ps::PolySpectral, ix, iy)
     return PolySpectral(
-        map(x -> restrict_params(x, ix, iy), ps.index), ps.freq0,
+        map(RestrictTo(ix, iy), ps.index), ps.freq0,
         restrict_params(ps.p0, ix, iy)
     )
 end
-
-# A field of values prints as a summary: a full 64×64 matrix inline is never what the
-# reader wants. A single value prints in full.
-_showparam(io::IO, x) = show(io, x)
-_showparam(io::IO, x::AbstractArray) = print(io, summary(x))
-_showparam(io::IO, x::StaticArray) = show(io, x)
 
 function Base.show(io::IO, ps::PolySpectral)
     print(io, "PolySpectral((")

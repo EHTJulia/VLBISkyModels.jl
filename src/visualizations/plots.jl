@@ -134,7 +134,7 @@ end
         nx = 512, ny = 512,
         x0 = 0.0, y0 = 0.0
     )
-    grid = imagepixels(fovx, fovy, nx, ny, x0, y0)
+    grid = spatialgrid(fovx, fovy, nx, ny, x0, y0)
     image = intensitymap(m, grid)
     (; X, Y) = image
     xitr, yitr = uvscale.((X, Y))

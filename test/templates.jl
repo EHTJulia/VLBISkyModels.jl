@@ -8,7 +8,7 @@ function test_template(θ::ComradeBase.AbstractModel; npix = 128, fov = 120.0)
     @test ComradeBase.intensity_point(θ, (X = 0.0, Y = 0.0)) isa AbstractFloat
     @inferred ComradeBase.radialextent(θ)
     @test ComradeBase.radialextent(θ) isa AbstractFloat
-    g = imagepixels(fov, fov, npix, npix)
+    g = spatialgrid(fov, fov, npix, npix)
     # VLBISkyModels.__extract_tangent(θ)
     @inferred intensitymap(θ, g)
     flux(θ)
@@ -20,7 +20,7 @@ end
     test_template(t)
     test_template(GaussianRing(0.1))
     test_template(GaussianRing(5.0, 0.1, 0.1, 0.1))
-    g = imagepixels(fovx, fovy, npix, npix)
+    g = spatialgrid(fovx, fovy, npix, npix)
 
     @test intensitymap(modify(GaussianRing(0.1 / 5), Stretch(5.0), Shift(0.1, 0.1)), g) ≈
         intensitymap(GaussianRing(5.0, 0.1, 0.1, 0.1), g)
@@ -44,7 +44,7 @@ end
     t = modify(RingTemplate(RadialGaussian(0.1), AzimuthalUniform()), Stretch(0.5, 2.0))
     test_template(t)
     test_template(EllipticalGaussianRing(5.0, 0.1, 0.5, 0.0, 0.1, 0.1))
-    g = imagepixels(fovx, fovy, npix, npix)
+    g = spatialgrid(fovx, fovy, npix, npix)
     # @test intensitymap(modify(GaussianRing(0.1/5), Stretch(5.0), Shift(0.1, 0.1)), g) ==
     #       intensitymap(GaussianRing(5.0, 0.1, 0.1, 0.1), g)
     foo(x) = sum(
@@ -99,7 +99,7 @@ end
     end
 
     rads = (gr, dr, tr, jr)
-    g = imagepixels(fovx, fovy, npix, npix)
+    g = spatialgrid(fovx, fovy, npix, npix)
 
     au = AzimuthalUniform()
     ac1 = AzimuthalCosine(0.5, π / 2)
@@ -174,7 +174,7 @@ end
     @test ComradeBase.intensity_point(t3, p) ≈
         ComradeBase.intensity_point(t4, p)
 
-    g = imagepixels(10.0, 10.0, 64, 64)
+    g = spatialgrid(10.0, 10.0, 64, 64)
     img1 = intensitymap(t1, g)
     img2 = intensitymap(t2, g)
     @test img1 ≈ img2
@@ -201,7 +201,7 @@ end
     )
     test_template(tr2)
 
-    g = imagepixels(10.0, 10.0, 64, 64)
+    g = spatialgrid(10.0, 10.0, 64, 64)
     img1 = intensitymap(tr1, g)
     img2 = intensitymap(tr2, g)
     @test img1 ≈ img2

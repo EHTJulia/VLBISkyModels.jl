@@ -44,7 +44,7 @@ For this notebook we will use the *fast Fourier transform* or FFT. Specifically 
 use FFTW. To compute a numerical Fourier transform we first need to specify the image domain
 
 ````@example nonanalytic
-gim = imagepixels(10.0, 10.0, 256, 256)
+gim = spatialgrid(10.0, 10.0, 256, 256)
 ````
 
 Second we need to specify the list of points in the uv domain we are interested in.

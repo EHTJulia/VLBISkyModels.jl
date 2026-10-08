@@ -23,8 +23,8 @@ function testrot(m, g, gr, uv; alg = NFFTAlg(), atoli = 5.0e-4, atolu = 1.0e-6)
 end
 
 @testset "Rotated Grid" begin
-    g = imagepixels(6.0, 6.0, 256, 256)
-    gr = imagepixels(6.0, 6.0, 256, 256; posang = π / 4)
+    g = spatialgrid(6.0, 6.0, 256, 256)
+    gr = spatialgrid(6.0, 6.0, 256, 256; posang = π / 4)
 
     uv = range(-2.0, 2.0)
 
@@ -35,8 +35,8 @@ end
 end
 
 @testset "Rotated Grid and shifted" begin
-    g = imagepixels(6.0, 6.0, 256, 256, 0.25, 0.25)
-    gr = imagepixels(6.0, 6.0, 256, 256, 0.25, 0.25; posang = π / 4)
+    g = spatialgrid(6.0, 6.0, 256, 256, 0.25, 0.25)
+    gr = spatialgrid(6.0, 6.0, 256, 256, 0.25, 0.25; posang = π / 4)
 
     uv = range(-2.0, 2.0)
 
@@ -47,8 +47,8 @@ end
 end
 
 @testset "Rotated Grid and shifted model" begin
-    g = imagepixels(6.0, 6.0, 256, 256)
-    gr = imagepixels(6.0, 6.0, 256, 256; posang = π / 4)
+    g = spatialgrid(6.0, 6.0, 256, 256)
+    gr = spatialgrid(6.0, 6.0, 256, 256; posang = π / 4)
 
     uv = range(-2.0, 2.0)
 
@@ -59,8 +59,8 @@ end
 end
 
 @testset "Polarized Rotated Grid" begin
-    g = imagepixels(6.0, 6.0, 256, 256)
-    gr = imagepixels(6.0, 6.0, 256, 256; posang = π / 4)
+    g = spatialgrid(6.0, 6.0, 256, 256)
+    gr = spatialgrid(6.0, 6.0, 256, 256; posang = π / 4)
 
     uv = range(-2.0, 2.0)
 
@@ -72,8 +72,8 @@ end
 end
 
 @testset "Rotated Grid and shifted" begin
-    g = imagepixels(6.0, 6.0, 256, 256, 0.25, 0.25)
-    gr = imagepixels(6.0, 6.0, 256, 256, 0.25, 0.25; posang = π / 4)
+    g = spatialgrid(6.0, 6.0, 256, 256, 0.25, 0.25)
+    gr = spatialgrid(6.0, 6.0, 256, 256, 0.25, 0.25; posang = π / 4)
 
     uv = range(-2.0, 2.0)
 
@@ -85,8 +85,8 @@ end
 end
 
 @testset "Rotated Grid and shifted model" begin
-    g = imagepixels(6.0, 6.0, 256, 256)
-    gr = imagepixels(6.0, 6.0, 256, 256; posang = π / 4)
+    g = spatialgrid(6.0, 6.0, 256, 256)
+    gr = spatialgrid(6.0, 6.0, 256, 256; posang = π / 4)
 
     uv = range(-2.0, 2.0)
 
@@ -103,8 +103,8 @@ end
     # pins the support window and the pulse offset to the same frame: computing one on the
     # grid's axes and the other on the sky's silently returns zero away from the centre.
     n = 64
-    g = imagepixels(6.0, 6.0, n, n)
-    gr = imagepixels(6.0, 6.0, n, n; posang = π / 4)
+    g = spatialgrid(6.0, 6.0, n, n)
+    gr = spatialgrid(6.0, 6.0, n, n; posang = π / 4)
     b = rand(n, n)
     R = ComradeBase.rotmat(gr)
 

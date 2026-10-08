@@ -78,43 +78,30 @@ Chaining extends the model tuple rather than nesting, so
 
 # Example
 ```julia
-base = IntensityMap(rand(64, 64), imagepixels(10.0, 10.0, 64, 64))
+base = IntensityMap(rand(64, 64), spatialgrid(10.0, 10.0, 64, 64))
 dom  = PolySpectral((1.0,), 230.0e9)          # spectral index = 1
 cimg = MultiDomainImage(base, BSplinePulse{3}(), dom)
 ```
 """ MultiDomainImage
 
 make_map(cimg::ContinuousImage) = IntensityMap(cimg.params, cimg.grid)
-# For a multidomain image the `params` field is a chain whose base is the spatial image at
-# the reference domain point, and `grid` is the spatial (X, Y) grid. Build the map from that
-# base so `size`/`show`/`flux`/etc. describe the reference image.
+# The base image at the reference domain point; `size`, `flux`, etc. describe it.
 make_map(cimg::MultiDomainImage) = IntensityMap(cimg.params.base, cimg.grid)
 
 function Base.show(io::IO, img::ContinuousImage)
     pname = nameof(typeof(img.params))
     kname = nameof(typeof(img.kernel))
-    # The grid gives the spatial size for both plain and multidomain images; the extra
-    # `Fr`/`Ti` extent belongs to the grid an image is evaluated over, not to the image.
     return print(io, "ContinuousImage{$pname{$(eltype(img))}, $kname}($(size(img.grid)))")
 end
 
-# `paramtype` reports the element type of a single pixel whether the pixels are stored
-# directly as an array or described by a chain of domain models, so both cases read the
-# same way here.
 ComradeBase.ispolarized(::Type{<:ContinuousImage{P}}) where {P} = _ispol(paramtype(P))
 @inline _ispol(::Type{<:StokesParams}) = IsPolarized()
 @inline _ispol(::Type{<:Number}) = NotPolarized()
-# For a multidomain image these reduce to the base (reference-domain) spatial image via
-# `make_map`, i.e. `flux`/`centroid` describe the reference-frequency/-time image, not the
-# whole cube. Evaluate `intensitymap` over an `Fr`/`Ti` grid for per-domain quantities.
 ComradeBase.flux(m::ContinuousImage) = flux(make_map(m)) * flux(m.kernel)
 
 function ComradeBase.stokes(cimg::ContinuousImage, v)
     return ContinuousImage(stokes(make_map(cimg), v), cimg.kernel)
 end
-# Project a multidomain image onto a Stokes component by projecting the whole chain, so the
-# multidomain structure (and the spatial `grid`/`kernel`) is preserved. The generic
-# `make_map`-based method would instead collapse to a plain base image.
 function ComradeBase.stokes(cimg::MultiDomainImage, v)
     return ContinuousImage(stokes(cimg.params, v), cimg.grid, cimg.kernel)
 end
@@ -254,10 +241,8 @@ function support_ranges(g::AbstractRectiGrid, p, rx, ry)
     return ix, iy
 end
 
-# Pixel values covering the support window `(ix, iy)`, together with the offsets that turn a
-# grid index into an index into them. Stored pixels are used as they are, so the offsets are
-# zero; a chain of domain models is restricted to the window and evaluated there, which is
-# what keeps a single point from costing the whole image.
+# Pixel values covering the support window `(ix, iy)` and the offsets from grid indices into
+# them. A chain is evaluated on the window only.
 @inline window_values(params::AbstractArray, ix, iy, p) = (params, 0, 0)
 @inline function window_values(params::MultiDomainParams, ix, iy, p)
     sub = build_param(restrict_params(params, ix, iy), p)
@@ -289,16 +274,9 @@ end
     ilo, ihi = firstindex(X), lastindex(X)
     jlo, jhi = firstindex(Y), lastindex(Y)
 
-    # The loops run over the static support offsets — only the window center depends on the
-    # point — so the trip count is fixed by the grid and pulse, and a tracing compiler may
-    # unroll or keep the loop as it sees fit. A tap falling off the grid is masked to zero
-    # rather than truncating the ranges, which is what the clamped `support_ranges` did;
-    # its clamped index always lands inside the fetched window, so the masked read is
-    # in bounds. `track_numbers = false` for the same reason as the slice loop of a
-    # multidomain image: promoting the numbers captured by the loop would put a traced
-    # value into the `LinRange` of grid coordinates, whose length parameter cannot hold
-    # one. The coordinate lookups go through `rgetindex` like the pixel values, so they
-    # too accept a traced index.
+    # Fixed trip count: only the window center depends on the point. Off-grid taps are
+    # masked, and their clamped index stays inside the window. `track_numbers = false`
+    # keeps traced values out of the grid's `LinRange` length.
     @trace track_numbers = false for dj in -wy:wy
         @trace track_numbers = false for di in -wx:wx
             i = cs + di
@@ -317,35 +295,10 @@ end
 end
 
 
-# function intensity_point(m::ContinuousImage, p)
-#     @unpack_params img = m(p)
-#     dx, dy = pixelsizes(m.img)
-#     sum = zero(eltype(m.img))
-#     ms = stretched(m.kernel, dx, dy)
-#     @inbounds for (I, p0) in pairs(domainpoints(m.img))
-#         dp = (X = (p.X - p0.X), Y = (p.Y - p0.Y))
-#         k = intensity_point(ms, dp)
-#         sum += m.img[I] * k
-#     end
-#     return sum
-# end
-
 function convolved(cimg::ContinuousImage, m::AbstractModel)
     return ContinuousImage(cimg.params, cimg.grid, convolved(cimg.kernel, m))
 end
 convolved(cimg::AbstractModel, m::ContinuousImage) = convolved(m, cimg)
-
-# @inline function ModifiedModel(m::ContinuousImage, t::Tuple)
-#     doesnot_uv_modify(t) === Static.False() && throw(
-#                           ArgumentError(
-#                             "ContinuousImage does not support modifying the uv plane."*
-#                             "This would require a dynamic grid which is not currently implemented"*
-#                             "Transformations like rotations just introduce additional degeneracies,
-#                              making imaging more difficult"
-#                             ))
-#     return ModifiedModel{typeof(m), typeof(t)}(m, t)
-# end
-
 
 @inline function visibilitymap_numeric(m::ContinuousImage, grid::FourierDualDomain)
     # We need to make sure that the grid is the same size as the image
@@ -355,42 +308,32 @@ convolved(cimg::AbstractModel, m::ContinuousImage) = convolved(m, cimg)
     return IntensityMap(applypulse!(vis, m.kernel, grid), visdomain(grid))
 end
 
-# Multidomain (e.g. multifrequency/multitime) images. The `params` field is a
-# `DomainParams` (such as a `MultiDomainParams` or `PolySpectral`) that knows how to
-# materialize the spatial image at each point of the extra (`Fr`/`Ti`) dimensions.
-# The stored `grid` is the spatial (X, Y) grid; the full cube grid comes from the
-# image domain of the visibility grid passed to `visibilitymap`.
-
 # Shape with `len` on axis `i` and `1` elsewhere, e.g. `_axisshape(nfr, 3, Val(3)) = (1,1,nfr)`.
 @inline _axisshape(len::Int, i::Int, ::Val{Nd}) where {Nd} = ntuple(j -> j == i ? len : 1, Val(Nd))
 
-# Factor a grid's coordinates for broadcasting: a NamedTuple mapping each dimension name
-# to its coordinate vector reshaped onto that dimension's axis (e.g. `Fr -> (1, 1, nfr)`).
-# Passing this to `build_param` lets the spectral model broadcast the base image across the
-# extra `Fr`/`Ti` axes, materializing the whole cube in one pass. Must stay type-stable
-# (per-dimension `map`, `Val`-sized shapes, `basedim` for values): a `Union`-typed
-# coordinate tuple here breaks Enzyme's type analysis.
+struct OnAxis{N}
+    nd::Val{N}
+end
+function (a::OnAxis)(d, i)
+    v = ComradeBase.basedim(d)
+    return reshape(v, _axisshape(length(v), i, a.nd))
+end
+
+# Each dim's coordinates reshaped onto its own axis, e.g. `Fr => (1, 1, nfr)`, so that
+# `build_param` broadcasts the whole cube at once. Must stay type stable: a `Union`-typed
+# coordinate tuple breaks Enzyme's type analysis.
 function _cubepoint(g::AbstractRectiGrid)
     ds = dims(g)
     nd = Val(length(ds))
-    nms = map(name, ds)
-    coords = map(ds, ntuple(identity, nd)) do d, i
-        v = collect(ComradeBase.basedim(d))
-        reshape(v, _axisshape(length(v), i, nd))
-    end
-    return NamedTuple{nms}(coords)
+    return NamedTuple{map(name, ds)}(map(OnAxis(nd), ds, ntuple(identity, nd)))
 end
 
-# Materialize the spatial image cube by evaluating the domain model `params` over the
-# whole cube grid `g` in a single broadcast (via `_cubepoint`). This is generic (any
-# `DomainParams` whose `build_param` is written with broadcasts works), allocation-light,
-# type stable, and traceable by Reactant — unlike a per-slice `mapslices`/scalar loop.
+# The chain evaluated over the whole cube grid `g` in one broadcast.
 function _paramcube(params::DomainParams, g::AbstractRectiGrid)
     raw = build_param(params, _cubepoint(g))
     sz = size(g)
     size(raw) == sz && return raw
-    # A model need not depend on every extra dimension (e.g. a frequency-only model on a
-    # time+frequency grid); broadcast it up to the full cube shape.
+    # A chain that does not read a dim of `g` is constant along it.
     cube = similar(raw, sz)
     cube .= raw
     return cube
@@ -402,11 +345,9 @@ function intensitymap_analytic(m::MultiDomainImage, dims::AbstractRectiGrid)
     return out
 end
 
-# The grid the domain models are materialized on: the image's own spatial grid crossed with
-# the extra (`Fr`/`Ti`) dimensions of the grid being evaluated over. The pixel parameters
-# describe the image on `m.grid`, so that is where the cube has to be built.
+# The image's own spatial grid crossed with the non-spatial dims of `gout`.
 function _cubegrid(gspat::AbstractRectiGrid, gout::AbstractRectiGrid)
-    return rebuild(gspat; dims = (dims(gspat)..., dims(gout)[3:end]...))
+    return gridproduct(gspat, DD.otherdims(gout, (X, Y))...)
 end
 
 # Grid evaluation of any `ContinuousImage` goes through the slice resampler: a plain image

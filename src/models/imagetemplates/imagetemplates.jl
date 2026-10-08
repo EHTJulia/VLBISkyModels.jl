@@ -25,7 +25,7 @@ visanalytic(::Type{<:AbstractImageTemplate}) = NotAnalytic()
 imanalytic(::Type{<:AbstractImageTemplate}) = IsAnalytic()
 
 function flux(m::AbstractImageTemplate)
-    g = imagepixels(radialextent(m), radialextent(m), 512, 512)
+    g = spatialgrid(radialextent(m), radialextent(m), 512, 512)
     return flux(intensitymap(m, g))
 end
 

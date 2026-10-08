@@ -1,6 +1,6 @@
 @testset "Makie Visualizations" begin
     m = PolarizedModel(Gaussian(), 0.1 * Gaussian(), 0.25 * Gaussian(), 0.1 * Gaussian())
-    g = imagepixels(10.0, 10.0, 256, 256)
+    g = spatialgrid(10.0, 10.0, 256, 256)
     img = intensitymap(m, g)
     imgsa = IntensityMap(
         StructArray{eltype(img)}(map(k -> parent(stokes(img, k)), (I = :I, Q = :Q, U = :U, V = :V))),

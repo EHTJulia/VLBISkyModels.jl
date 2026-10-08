@@ -137,31 +137,6 @@ end
     end
 end
 
-# Time complexity tests
-# function testtimecomplexity(Nx, Nt1, Nt2, Nf1, Nf2, alg)
-#     p1 = create_domains(Nx, alg; Nt=Nt1, Nf=Nf1)
-#     cimg1 = ContinuousImage(IntensityMap(randn(Nx, Nx, Nt1, Nf1),
-#                                          VLBISkyModels.imgdomain(p1)),
-#                             BSplinePulse{3}())
-#     t1 = @benchmark VLBISkyModels.visibilitymap_numeric($cimg1, $p1)
-#     median_t1 = median(t1).time / 1e6
-
-#     p2 = create_domains(Nx, alg; Nt=Nt2, Nf=Nf2)
-#     cimg2 = ContinuousImage(IntensityMap(randn(Nx, Nx, Nt2, Nf2),
-#                                          VLBISkyModels.imgdomain(p2)),
-#                             BSplinePulse{3}())
-#     t2 = @benchmark VLBISkyModels.visibilitymap_numeric($cimg2, $p2)
-#     median_t2 = median(t2).time / 1e6
-
-#     return median_t2 / median_t1
-# end
-
-# @testset "Check time complexity for time and freq image FT" begin
-#     @test isapprox(testtimecomplexity(24, 1, 2, 1, 2, NFFTAlg()), 4.0, atol=0.5)
-#     @test isapprox(testtimecomplexity(24, 1, 2, 1, 1, NFFTAlg()), 2.0, atol=0.5)
-#     @test isapprox(testtimecomplexity(24, 1, 1, 1, 2, NFFTAlg()), 2.0, atol=0.5)
-# end
-
 function rotating4dgaussian(p)
     # Elliptical gaussians rotating with a constant stretch and varying rotation
     gaussians = [
@@ -431,7 +406,7 @@ end
     end
 
     @testset "Modifiers Multidomain" begin
-        gXY = imagepixels(40.0, 40.0, 256, 256)
+        gXY = spatialgrid(40.0, 40.0, 256, 256)
         g = RectiGrid((; X = gXY.X, Y = gXY.Y, Fr = [230.0e9, 345.0e9]))
         u = randn(50) .* 0.25
         v = randn(50) .* 0.25
@@ -533,7 +508,7 @@ end
     end
 
     @testset "Add model" begin
-        gXY = imagepixels(40.0, 40.0, 256, 256)
+        gXY = spatialgrid(40.0, 40.0, 256, 256)
         g = RectiGrid((; X = gXY.X, Y = gXY.Y, Fr = [230.0e9, 345.0e9]))
         u = randn(50) .* 0.25
         v = randn(50) .* 0.25
@@ -567,7 +542,7 @@ end
 
             mtr230 = modify(Gaussian(), Stretch(sqrt(2)))
             mtr345 = modify(Gaussian(), Stretch(sqrt(1 + (345 / 230)^2)))
-            gXY = imagepixels(20.0, 20.0, 256, 256)
+            gXY = spatialgrid(20.0, 20.0, 256, 256)
             g = RectiGrid((; X = gXY.X, Y = gXY.Y, Fr = [230.0e9, 345.0e9]))
             @test intensitymap(convolved(m1, m2), g)[Fr = 1] ≈ intensitymap(mtr230, gXY) atol = 1.0e-8
             @test intensitymap(convolved(m1, m2), g)[Fr = 2] ≈ intensitymap(mtr345, gXY) atol = 1.0e-8
@@ -591,7 +566,7 @@ end
 
             mtr230 = modify(Gaussian(), Stretch(sqrt(2)))
             mtr345 = modify(Gaussian(), Stretch(sqrt(1 + (345 / 230)^2)))
-            gXY = imagepixels(20.0, 20.0, 256, 256)
+            gXY = spatialgrid(20.0, 20.0, 256, 256)
             g = RectiGrid((; X = gXY.X, Y = gXY.Y, Ti = 1.0:2.0, Fr = [230.0e9, 345.0e9]))
             @test intensitymap(convolved(m1, m2), g)[Ti = 1, Fr = 1] ≈ intensitymap(mtr230, gXY) atol = 1.0e-8
             @test intensitymap(convolved(m1, m2), g)[Ti = 1, Fr = 2] ≈ intensitymap(mtr345, gXY) atol = 1.0e-8
@@ -769,7 +744,7 @@ end
         ref = 230.0e9
 
         @testset "MultiDomainImage builds a ContinuousImage" begin
-            gXY = imagepixels(10.0, 10.0, 8, 8)
+            gXY = spatialgrid(10.0, 10.0, 8, 8)
             base = rand(8, 8)
             dom = PolySpectral((1.0,), ref)
             md = MultiDomainImage(IntensityMap(base, gXY), BSplinePulse{3}(), dom)
@@ -824,7 +799,7 @@ end
 
         @testset "MultiDomainImage intensity/visibility correctness" begin
             α = 1.5
-            gXY = imagepixels(10.0, 10.0, 32, 32)
+            gXY = spatialgrid(10.0, 10.0, 32, 32)
             base = rand(32, 32)
             dom = PolySpectral((α,), ref)
             cimg = MultiDomainImage(IntensityMap(base, gXY), BSplinePulse{3}(), dom)
@@ -857,7 +832,7 @@ end
 
         @testset "MultiDomainImage evaluated off its own grid" begin
             α = 1.5
-            gXY = imagepixels(10.0, 10.0, 32, 32)
+            gXY = spatialgrid(10.0, 10.0, 32, 32)
             base = rand(32, 32)
             cimg = MultiDomainImage(
                 IntensityMap(base, gXY), BSplinePulse{3}(), PolySpectral((α,), ref)
@@ -867,7 +842,7 @@ end
             # A grid the image does not live on resamples through the kernel, exactly as a
             # plain ContinuousImage does, rather than reinterpreting the pixels as if they
             # spanned the new field of view.
-            for gout in (imagepixels(20.0, 20.0, 32, 32), imagepixels(10.0, 10.0, 48, 48))
+            for gout in (spatialgrid(20.0, 20.0, 32, 32), spatialgrid(10.0, 10.0, 48, 48))
                 img = intensitymap(cimg, RectiGrid((; X = gout.X, Y = gout.Y, Fr = frs)))
                 for (i, fr) in enumerate(frs)
                     slice_ref = intensitymap(
@@ -883,7 +858,7 @@ end
             # Time and frequency together, in either order: every (Ti, Fr) point carries the
             # spectrally scaled image, resampled onto the grid it is evaluated over.
             tis = [0.0, 1.0]
-            gout = imagepixels(20.0, 20.0, 32, 32)
+            gout = spatialgrid(20.0, 20.0, 32, 32)
             slice_ref = intensitymap(
                 ContinuousImage(
                     IntensityMap(base .* (frs[2] / ref)^α, gXY), BSplinePulse{3}()
@@ -904,7 +879,7 @@ end
             end
 
             # A rotated grid resamples onto the rotated pixel centers.
-            grot = imagepixels(10.0, 10.0, 32, 32; posang = π / 4)
+            grot = spatialgrid(10.0, 10.0, 32, 32; posang = π / 4)
             imgrot = intensitymap(
                 cimg, RectiGrid((; X = grot.X, Y = grot.Y, Fr = frs); posang = π / 4)
             )
@@ -916,7 +891,7 @@ end
             guv = UnstructuredDomain(
                 (; U = randn(20) ./ 4, V = randn(20) ./ 4, Fr = fill(ref, 20))
             )
-            gbad = imagepixels(20.0, 20.0, 32, 32)
+            gbad = spatialgrid(20.0, 20.0, 32, 32)
             gfour = FourierDualDomain(
                 RectiGrid((; X = gbad.X, Y = gbad.Y, Fr = frs)), guv, NFFTAlg()
             )
@@ -925,8 +900,6 @@ end
     end
 end
 
-# A family that varies across the image but does not define `restrict_params`: the fallback
-# leaves its field at full size while the base is restricted to the pulse's window.
 struct UnrestrictedField{A} <: ComradeBase.DomainParams{Float64}
     fac::A
 end
@@ -935,14 +908,14 @@ ComradeBase.apply_param(base, ::UnrestrictedField, fac, p) = base .* fac
 
 @testset "restrict_params" begin
     ref = 230.0e9
-    g = imagepixels(10.0, 10.0, 8, 8)
+    g = spatialgrid(10.0, 10.0, 8, 8)
     base = rand(8, 8)
     coeff = rand(8, 8)
     p0 = rand(8, 8)
     md = MultiDomainParams(base, PolySpectral((coeff,), ref, p0))
 
     ix, iy = 2:4, 3:5
-    sub = VLBISkyModels.restrict_params(md, ix, iy)
+    sub = ComradeBase.restrict_params(md, ix, iy)
 
     # Fields are viewed, not copied, and a scalar parameter passes through.
     @test sub.base == view(base, ix, iy)
@@ -954,17 +927,15 @@ ComradeBase.apply_param(base, ::UnrestrictedField, fac, p) = base .* fac
     p = (; Fr = 2 * ref)
     @test ComradeBase.build_param(sub, p) ≈ ComradeBase.build_param(md, p)[ix, iy]
 
-    # A spatially varying family that does not define `restrict_params` fails loudly rather
-    # than combining its full-sized field with a restricted base.
     bad = ContinuousImage(
         MultiDomainParams(base, UnrestrictedField(fill(2.0, 8, 8))), g, BSplinePulse{3}()
     )
     pt = (; X = g.X[4], Y = g.Y[4], Fr = ref)
-    @test_throws DimensionMismatch ComradeBase.intensity_point(bad, pt)
+    @test_throws "UnrestrictedField does not define `restrict_params" ComradeBase.intensity_point(bad, pt)
 end
 
 @testset "intensity_point respects Fr for multidomain images" begin
-    g = imagepixels(10.0, 10.0, 24, 24)
+    g = spatialgrid(10.0, 10.0, 24, 24)
     base = rand(24, 24)
     cimg = MultiDomainImage(IntensityMap(base, g), BSplinePulse{3}(), PolySpectral((1.5,), 230.0e9))
 
@@ -1008,7 +979,7 @@ end
 end
 
 @testset "FFTAlg rejects multidomain images" begin
-    g = imagepixels(10.0, 10.0, 16, 16)
+    g = spatialgrid(10.0, 10.0, 16, 16)
     cimg = MultiDomainImage(
         IntensityMap(rand(16, 16), g), BSplinePulse{3}(),
         PolySpectral((1.0,), 230.0e9)
@@ -1020,7 +991,7 @@ end
 end
 
 @testset "single visibility per Fr bin" begin
-    g = imagepixels(10.0, 10.0, 16, 16)
+    g = spatialgrid(10.0, 10.0, 16, 16)
     gcube = RectiGrid((; X = g.X, Y = g.Y, Fr = [230.0e9, 345.0e9]))
     U = [0.05, 0.1]
     V = [0.05, -0.1]
@@ -1043,7 +1014,7 @@ end
 
 @testset "polarized multidomain images" begin
     ref = 230.0e9
-    g = imagepixels(10.0, 10.0, 8, 8)
+    g = spatialgrid(10.0, 10.0, 8, 8)
     I = rand(8, 8)
     Q = 0.1 .* rand(8, 8)
     U = 0.1 .* rand(8, 8)
@@ -1083,7 +1054,7 @@ end
 
 @testset "an image needs an explicit base" begin
     ref = 230.0e9
-    g = imagepixels(10.0, 10.0, 8, 8)
+    g = spatialgrid(10.0, 10.0, 8, 8)
 
     # A lone spectral model carries no base image, so it cannot describe one.
     @test_throws ArgumentError ContinuousImage(
@@ -1107,7 +1078,7 @@ end
 
 @testset "_paramcube broadcasts a partial model up to the cube" begin
     ref = 230.0e9
-    g = imagepixels(10.0, 10.0, 8, 8)
+    g = spatialgrid(10.0, 10.0, 8, 8)
     base = rand(8, 8)
     # A frequency-only model on a frequency+time grid produces a result smaller than the
     # full cube, so it must be broadcast up along `Ti`.
@@ -1122,7 +1093,7 @@ end
 end
 
 @testset "ContinuousImage construction validation" begin
-    g = imagepixels(10.0, 10.0, 8, 8)
+    g = spatialgrid(10.0, 10.0, 8, 8)
 
     # Non-grid grid arguments and mismatched sizes fail at construction.
     @test_throws MethodError ContinuousImage(rand(4, 4), "not a grid", BSplinePulse{3}())
@@ -1156,12 +1127,12 @@ end
     @test map(DD.name, DD.dims(spatialdims(gok))) == (:X, :Y)
     @test spatialdims(IntensityMap(rand(8, 8, 2), gok)) == spatialdims(gok)
 
-    g2 = imagepixels(10.0, 10.0, 8, 8)
+    g2 = spatialgrid(10.0, 10.0, 8, 8)
     @test spatialdims(g2) == g2
 end
 
 @testset "ContinuousImage show" begin
-    g = imagepixels(10.0, 10.0, 8, 8)
+    g = spatialgrid(10.0, 10.0, 8, 8)
     ci = ContinuousImage(IntensityMap(rand(8, 8), g), BSplinePulse{3}())
     s = sprint(show, ci)
     @test occursin("ContinuousImage", s)
@@ -1194,4 +1165,46 @@ end
     @test occursin("64×64", smd)
     @test occursin("PolySpectral", smd)
     @test length(smd) < 120
+end
+
+@testset "chain construction is inferred" begin
+    ref = 230.0e9
+    g = spatialgrid(10.0, 10.0, 8, 8)
+    base, coeff, p0 = rand(8, 8), rand(8, 8), rand(8, 8)
+    ps = @inferred PolySpectral((coeff, 0.5), ref, p0)
+    md = @inferred MultiDomainParams(base, ps)
+    @inferred MultiDomainParams(md, PolySpectral(1.0, ref))
+    @inferred ComradeBase.build_param(md, (; Fr = 2 * ref))
+    @inferred ComradeBase.restrict_params(md, 2:4, 3:5)
+
+    gcube = g ⊗ Fr([ref, 2 * ref])
+    @test @inferred(VLBISkyModels._cubegrid(g, gcube)) == gcube
+    cp = @inferred VLBISkyModels._cubepoint(gcube)
+    @test size(cp.Fr) == (1, 1, 2)
+    @test vec(cp.Fr) == [ref, 2 * ref]
+end
+
+@testset "gradient through a chain built in the differentiated function" begin
+    ref = 230.0e9
+    g = spatialgrid(10.0, 10.0, 8, 8)
+    gcube = g ⊗ Fr([ref, 1.5 * ref, 2 * ref])
+    base = rand(8, 8)
+    function loss(x, α)
+        m = MultiDomainImage(IntensityMap(x, g), BSplinePulse{3}(), PolySpectral((α,), ref))
+        return sum(abs2, baseimage(intensitymap(m, gcube)))
+    end
+    dx, dα = Enzyme.gradient(set_runtime_activity(Enzyme.Reverse), loss, base, 0.7)
+    @test dx ≈ grad(central_fdm(5, 1), x -> loss(x, 0.7), base)[1] rtol = 1.0e-6
+    @test dα ≈ grad(central_fdm(5, 1), a -> loss(base, a), 0.7)[1] rtol = 1.0e-6
+end
+
+@testset "Rotate stores its angle" begin
+    @test Rotate(0.3).ξ == 0.3
+    @test VLBISkyModels.posangle(Rotate(2π + 0.1)) ≈ 0.1
+    ξ = MultiDomainParams(1.0, PolySpectral(1.0, 230.0e9))
+    r = Rotate(ξ)
+    @test r.ξ === ξ
+    p = (; X = 1.0, Y = 0.5, Fr = 460.0e9)
+    @test VLBISkyModels.transform_image(Gaussian(), r, p) ==
+        VLBISkyModels.transform_image(Gaussian(), Rotate(2.0), p)
 end

@@ -495,25 +495,7 @@ true
 ```
 """
 struct Rotate{T} <: ModelModifier{T}
-    s::T
-    c::T
-    function Rotate(ξ::F) where {F <: Number}
-        s, c = sincos(ξ)
-        return new{F}(s, c)
-    end
-    function Rotate(ξ::DomainParams)
-        return new{typeof(ξ)}(ξ, ξ)
-    end
-end
-
-function getparam(
-        m::Rotate{T},
-        s::Symbol,
-        p
-    ) where {T <: DomainParams}
-    m = getproperty(m, s)
-    mr = Rotate(build_param(m, p))
-    return getproperty(mr, s)
+    ξ::T
 end
 
 """
@@ -528,12 +510,12 @@ rotated(model, ξ) = ModifiedModel(model, Rotate(ξ))
 
 Returns the rotation angle of the rotated `model`
 """
-posangle(model::Rotate) = atan(model.s, model.c)
+posangle(model::Rotate) = atan(sincos(model.ξ)...)
 
 @inline doesnot_uv_modify(::Rotate) = false
 
 @inline function transform_image(m, transform::Rotate, p)
-    @unpack_params s, c = transform(p)
+    s, c = sincos(getparam(transform, :ξ, p))
     (; X, Y) = p
     Xr = c * X - s * Y
     Yr = s * X + c * Y
@@ -542,14 +524,14 @@ posangle(model::Rotate) = atan(model.s, model.c)
 end
 
 @inline function transform_uv(m, transform::Rotate, p)
-    @unpack_params s, c = transform(p)
+    s, c = sincos(getparam(transform, :ξ, p))
     (; U, V) = p
     Ur = c * U - s * V
     Vr = s * U + c * V
     return merge(p, (; U = Ur, V = Vr))
 end
 
-@inline scale_image(::NotPolarized, model::Rotate, p) = one(typeof(getparam(model, :s, p)))
+@inline scale_image(::NotPolarized, model::Rotate, p) = one(float(typeof(getparam(model, :ξ, p))))
 
 @inline function spinor2_rotate(c, s)
     u = oneunit(c)
@@ -565,14 +547,14 @@ end
 end
 
 @inline function scale_image(::IsPolarized, model::Rotate, p)
-    @unpack_params s, c = model(p)
+    s, c = sincos(getparam(model, :ξ, p))
     return spinor2_rotate(c, s)
 end
 
-@inline scale_uv(::NotPolarized, model::Rotate, p) = one(typeof(getparam(model, :s, p)))
+@inline scale_uv(::NotPolarized, model::Rotate, p) = one(float(typeof(getparam(model, :ξ, p))))
 
 @inline function scale_uv(::IsPolarized, model::Rotate, p)
-    @unpack_params s, c = model(p)
+    s, c = sincos(getparam(model, :ξ, p))
     return spinor2_rotate(c, s)
 end
 @inline radialextent_modified(r::Number, ::Rotate) = r

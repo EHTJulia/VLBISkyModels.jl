@@ -1,5 +1,5 @@
 @testset "ContinuousImage Bspline0" begin
-    g = imagepixels(12.0, 12.0, 12, 12)
+    g = spatialgrid(12.0, 12.0, 12, 12)
     img = intensitymap(rotated(stretched(Gaussian(), 2.0, 1.0), π / 8), g)
     cimg = ContinuousImage(img, BSplinePulse{0}())
     # testmodel(InterpolatedModel(cimg, g; algorithm=FFTAlg()), 1024, 1e-2)
@@ -7,7 +7,7 @@
 end
 
 @testset "ContinuousImage BSpline1" begin
-    g = imagepixels(12.0, 12.0, 12, 12)
+    g = spatialgrid(12.0, 12.0, 12, 12)
     img = intensitymap(rotated(stretched(Gaussian(), 2.0, 1.0), π / 8), g)
     cimg = ContinuousImage(img, BSplinePulse{1}())
     # testmodel(InterpolatedModel(cimg, g; algorithm=FFTAlg()), 1024, 1e-3)
@@ -15,7 +15,7 @@ end
 end
 
 @testset "ContinuousImage BSpline3" begin
-    g = imagepixels(24.0, 24.0, 12, 12)
+    g = spatialgrid(24.0, 24.0, 12, 12)
     img = intensitymap(rotated(stretched(Gaussian(), 2.0, 1.0), π / 8), g)
     cimg = ContinuousImage(img, BSplinePulse{3}())
     # testmodel(InterpolatedModel(cimg, g; algorithm=FFTAlg()), 1024, 1e-3)
@@ -56,7 +56,7 @@ end
 end
 
 @testset "ContinuousImage Bicubic" begin
-    g = imagepixels(24.0, 24.0, 12, 12)
+    g = spatialgrid(24.0, 24.0, 12, 12)
     img = intensitymap(rotated(stretched(Gaussian(), 2.0, 1.0), π / 8), g)
     cimg = ContinuousImage(img, BicubicPulse())
     # testmodel(InterpolatedModel(cimg, g), 1024, 1e-3)
@@ -64,7 +64,7 @@ end
 end
 
 @testset "ContinuousImage" begin
-    g = imagepixels(10.0, 10.0, 16, 16)
+    g = spatialgrid(10.0, 10.0, 16, 16)
     data = rand(16, 16)
     img = ContinuousImage(IntensityMap(data, g), BSplinePulse{3}())
     @test img == ContinuousImage(data, g, BSplinePulse{3}())
@@ -116,15 +116,15 @@ end
     @test intensitymap(img, g) ≈ intensitymap(img, gfour)
     @test intensitymap(img, g) ≈ ComradeBase.imgmap(dualmap(img, gfour))
 
-    gbg = imagepixels(12.1, 12.1, 96, 96)
+    gbg = spatialgrid(12.1, 12.1, 96, 96)
     @test collect(centroid(img)) ≈ collect(centroid(img, gbg)) rtol = 1.0e-3
     @test flux(img) ≈ flux(img, gbg) rtol = 1.0e-4
 end
 
 @testset "separable resampling agrees with the support window" begin
-    g = imagepixels(10.0, 8.0, 16, 12, 0.3, -0.2)
+    g = spatialgrid(10.0, 8.0, 16, 12, 0.3, -0.2)
     for kernel in (BSplinePulse{0}(), BSplinePulse{1}(), BSplinePulse{3}(), BicubicPulse(), RaisedCosinePulse())
-        for gout in (imagepixels(10.0, 8.0, 32, 24, 0.3, -0.2), imagepixels(14.0, 11.0, 21, 17), imagepixels(6.0, 5.0, 9, 7, 1.0, 0.5))
+        for gout in (spatialgrid(10.0, 8.0, 32, 24, 0.3, -0.2), spatialgrid(14.0, 11.0, 21, 17), spatialgrid(6.0, 5.0, 9, 7, 1.0, 0.5))
             src = IntensityMap(rand(16, 12), g)
             a = allocate_imgmap(ContinuousImage(src, kernel), gout)
             b = similar(a)
@@ -146,7 +146,7 @@ end
     grot = RectiGrid((; X = range(-5.0, 5.0; length = 20), Y = range(-4.0, 4.0; length = 18)); posang = 0.3)
     @test intensitymap(ContinuousImage(IntensityMap(rand(16, 12), g), BSplinePulse{3}()), grot) isa IntensityMap
 
-    gout = imagepixels(10.0, 8.0, 24, 20)
+    gout = spatialgrid(10.0, 8.0, 24, 20)
     loss(x) = sum(abs2, baseimage(intensitymap(ContinuousImage(IntensityMap(x, g), BSplinePulse{3}()), gout)))
     testgrad(loss, rand(16, 12))
 end

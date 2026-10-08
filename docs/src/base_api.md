@@ -72,13 +72,18 @@ ComradeBase.build_param
 ComradeBase.apply_param
 ComradeBase.paramfield
 ComradeBase.paramtype
+ComradeBase.MultiDomainParams
+ComradeBase.restrict_params
 ```
 
 ### Image Domain
 
 ```@docs
-ComradeBase.imagepixels
+ComradeBase.spatialgrid
 ComradeBase.RectiGrid
+ComradeBase.gridproduct
+ComradeBase.intervals
+ComradeBase.frameindex
 ComradeBase.UnstructuredDomain
 ComradeBase.dims
 ComradeBase.named_dims

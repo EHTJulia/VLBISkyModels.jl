@@ -31,7 +31,7 @@ end
 
 @testset "Reactant" begin
     @testset "VisibilityMap Parity" begin
-        gim = imagepixels(10.0, 10.0, 128, 128)
+        gim = spatialgrid(10.0, 10.0, 128, 128)
         gimr = @jit(identity(gim))
 
         rast = rand(128, 128)
@@ -64,7 +64,7 @@ end
     end
 
     @testset "PolExp2Map" begin
-        gim = imagepixels(1.0, 1.0, 128, 128)
+        gim = spatialgrid(1.0, 1.0, 128, 128)
         gimr = @jit(identity(gim))
 
         a = randn(128, 128)
@@ -100,7 +100,7 @@ end
 
     @testset "Polarized MultiDomainImage" begin
         ref = 230.0e9
-        g = imagepixels(10.0, 10.0, 16, 16)
+        g = spatialgrid(10.0, 10.0, 16, 16)
         img = IntensityMap(FieldDimArray{StokesParams}(rand(16, 16, 4)), g)
         spec = PolySpectral((1.0, 0.1), ref, 0.01)
         cimg = MultiDomainImage(img, BSplinePulse{3}(), spec)
@@ -124,7 +124,7 @@ end
     end
 
     @testset "Polarized plus unpolarized" begin
-        g = imagepixels(10.0, 10.0, 32, 32)
+        g = spatialgrid(10.0, 10.0, 32, 32)
         img = IntensityMap(FieldDimArray{StokesParams}(rand(32, 32, 4)), g)
         guv = UnstructuredDomain((; U = randn(50) ./ 5, V = randn(50) ./ 5))
         gf = FourierDualDomain(g, guv, NFFTAlg())
@@ -138,7 +138,7 @@ end
     end
 
     @testset "Polarized numeric FFT" begin
-        guv = VLBISkyModels.uvgrid(imagepixels(10.0, 10.0, 32, 32))
+        guv = VLBISkyModels.uvgrid(spatialgrid(10.0, 10.0, 32, 32))
         guvr = @jit(identity(guv))
         σ = Reactant.ConcreteRNumber(2.0)
         vr = @jit polarized_numeric(σ, guvr)
@@ -147,7 +147,7 @@ end
     end
 
     @testset "Analytic Models" begin
-        g = imagepixels(10.0, 10.0, 128, 128)
+        g = spatialgrid(10.0, 10.0, 128, 128)
         gr = @jit(identity(g))
 
         guv = UnstructuredDomain((U = randn(10^2) / 5.0, V = randn(10^2) / 5.0))
