@@ -163,10 +163,9 @@ frequency. And a family may return a lazy `Base.Broadcasted` rather than an arra
 case the links of a chain compose without materializing and the value is realized once at
 the end; this is worth doing for long chains and unnecessary for short ones.
 
-A family used in a [`ContinuousImage`](@ref) must also define
-[`restrict_params`](@ref ComradeBase.restrict_params), which restricts it to a block of pixels:
-return the family unchanged if it does not vary across the image, or rebuild it from
-restricted components if it does. A family without a method throws an error naming it.
+A [`ContinuousImage`](@ref) evaluated at a single point reads only the pixels under its
+kernel, so a family whose `apply_param` returns a lazy `Base.Broadcasted` is evaluated at
+those pixels alone; one that returns an array evaluates the whole image at every point.
 
 !!! note
     This extension of the model to be time and frequency dependent is only necessary for models

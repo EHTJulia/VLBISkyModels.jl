@@ -1,3 +1,3 @@
-import ComradeBase: restrict_params, RestrictTo, _showparam
+import ComradeBase: _showparam
 
 include("poly_spectral.jl")

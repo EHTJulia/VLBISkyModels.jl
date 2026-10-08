@@ -73,7 +73,6 @@ ComradeBase.apply_param
 ComradeBase.paramfield
 ComradeBase.paramtype
 ComradeBase.MultiDomainParams
-ComradeBase.restrict_params
 ```
 
 ### Image Domain

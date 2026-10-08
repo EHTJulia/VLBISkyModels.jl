@@ -24,8 +24,9 @@ Note that if the image grid is the same as the grid passed to `intensitymap` the
 is used directly for efficiency.
 
 !!! note
-    `intensity_point` on a [`MultiDomainImage`](@ref) evaluates the domain models over the
-    kernel's support window around the requested point, not over the whole image. Modifiers
+    `intensity_point` on a [`MultiDomainImage`](@ref) evaluates the domain models only at the
+    pixels under the kernel around the requested point, provided every family's
+    `apply_param` returns a lazy `Base.Broadcasted`. Modifiers
     that displace the image (`ModifiedModel`) still evaluate point by point.
 """
 struct ContinuousImage{
@@ -225,29 +226,16 @@ function support_halfwidths(g::AbstractRectiGrid, rx, ry)
     return ceil(Int, rx / dx), ceil(Int, ry / dy)
 end
 
-# The pixel index ranges covering the kernel's support around `p`, clamped to the grid.
-# The center itself is clamped first, so the ranges are never empty even for a point whose
-# whole window lies off the grid: the masked accumulation below still needs somewhere
-# valid to (harmlessly) read, and every off-grid tap contributes zero regardless.
-function support_ranges(g::AbstractRectiGrid, p, rx, ry)
-    cs, rs = support_center(g, p)
-    wx, wy = support_halfwidths(g, rx, ry)
-    X = g.X
-    Y = g.Y
-    csf = clamp(cs, firstindex(X), lastindex(X))
-    rsf = clamp(rs, firstindex(Y), lastindex(Y))
-    ix = max(firstindex(X), csf - wx):min(lastindex(X), csf + wx)
-    iy = max(firstindex(Y), rsf - wy):min(lastindex(Y), rsf + wy)
-    return ix, iy
+# The pixel values at `p`. A chain stays lazy, so a point evaluates only the pixels under
+# the kernel.
+@inline pointvalues(params::AbstractArray, p) = params
+@inline function pointvalues(params::MultiDomainParams, p)
+    chain = ComradeBase._applymodels(build_param(params.base, p), params.models, p)
+    return Base.Broadcast.instantiate(chain)
 end
 
-# Pixel values covering the support window `(ix, iy)` and the offsets from grid indices into
-# them. A chain is evaluated on the window only.
-@inline window_values(params::AbstractArray, ix, iy, p) = (params, 0, 0)
-@inline function window_values(params::MultiDomainParams, ix, iy, p)
-    sub = build_param(restrict_params(params, ix, iy), p)
-    return sub, first(ix) - first(axes(sub, 1)), first(iy) - first(axes(sub, 2))
-end
+pointeltype(vals) = eltype(vals)
+pointeltype(bc::Base.Broadcast.Broadcasted) = Base.Broadcast.combine_eltypes(bc.f, bc.args)
 
 @inline function intensity_point(m::ContinuousImage, p)
     g = m.grid
@@ -262,12 +250,11 @@ end
     # stay consistent with each other and with the pixel footprints when the grid is rotated.
     # The pulse is the pixel response, which is aligned with the pixels rather than the sky.
     pg = togrid(g, p)
-    ix, iy = support_ranges(g, pg, rx, ry)
-    vals, i0, j0 = window_values(m.params, ix, iy, p)
+    vals = pointvalues(m.params, p)
 
     X = g.X
     Y = g.Y
-    sum = zero(eltype(vals))
+    sum = zero(pointeltype(vals))
 
     cs, rs = support_center(g, pg)
     wx, wy = support_halfwidths(g, rx, ry)
@@ -275,7 +262,7 @@ end
     jlo, jhi = firstindex(Y), lastindex(Y)
 
     # Fixed trip count: only the window center depends on the point. Off-grid taps are
-    # masked, and their clamped index stays inside the window. `track_numbers = false`
+    # masked, and their clamped index stays on the grid. `track_numbers = false`
     # keeps traced values out of the grid's `LinRange` length.
     @trace track_numbers = false for dj in -wy:wy
         @trace track_numbers = false for di in -wx:wx
@@ -286,7 +273,7 @@ end
             jc = clamp(j, jlo, jhi)
             dpi = (X = pg.X - rgetindex(X, ic), Y = pg.Y - rgetindex(Y, jc))
             k = intensity_point(ms, dpi)
-            v = rgetindex(vals, ic - i0, jc - j0)
+            v = rgetindex(vals, ic, jc)
             sum += ifelse(inb, v * k, zero(sum))
             nothing
         end

@@ -85,17 +85,12 @@ function ComradeBase.paramfield(domain::PolySpectral, p)
     return specfactor(log.(p.Fr ./ domain.freq0), domain.index)
 end
 
-ComradeBase.apply_param(base, domain::PolySpectral, fac, p) = addoffset.(base .* fac, domain.p0)
+function ComradeBase.apply_param(base, domain::PolySpectral, fac, p)
+    return Base.broadcasted(addoffset, Base.broadcasted(*, base, fac), domain.p0)
+end
 
 # The factor is scalar, so every Stokes component scales alike.
 ComradeBase.stokes(ps::PolySpectral, v) = ps
-
-function restrict_params(ps::PolySpectral, ix, iy)
-    return PolySpectral(
-        map(RestrictTo(ix, iy), ps.index), ps.freq0,
-        restrict_params(ps.p0, ix, iy)
-    )
-end
 
 function Base.show(io::IO, ps::PolySpectral)
     print(io, "PolySpectral((")

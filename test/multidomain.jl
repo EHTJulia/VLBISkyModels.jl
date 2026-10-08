@@ -900,38 +900,43 @@ end
     end
 end
 
-struct UnrestrictedField{A} <: ComradeBase.DomainParams{Float64}
+struct MaterializingField{A} <: ComradeBase.DomainParams{Float64}
     fac::A
 end
-ComradeBase.paramfield(m::UnrestrictedField, p) = m.fac
-ComradeBase.apply_param(base, ::UnrestrictedField, fac, p) = base .* fac
+ComradeBase.paramfield(m::MaterializingField, p) = m.fac
+ComradeBase.apply_param(base, ::MaterializingField, fac, p) = base .* fac
 
-@testset "restrict_params" begin
+@testset "point evaluation of a chain image" begin
     ref = 230.0e9
     g = spatialgrid(10.0, 10.0, 8, 8)
     base = rand(8, 8)
-    coeff = rand(8, 8)
-    p0 = rand(8, 8)
-    md = MultiDomainParams(base, PolySpectral((coeff,), ref, p0))
-
-    ix, iy = 2:4, 3:5
-    sub = ComradeBase.restrict_params(md, ix, iy)
-
-    # Fields are viewed, not copied, and a scalar parameter passes through.
-    @test sub.base == view(base, ix, iy)
-    @test sub.models[1].index[1] == view(coeff, ix, iy)
-    @test sub.models[1].p0 == view(p0, ix, iy)
-    @test sub.models[1].freq0 === md.models[1].freq0
-
-    # Restricting then evaluating agrees with evaluating then restricting.
-    p = (; Fr = 2 * ref)
-    @test ComradeBase.build_param(sub, p) ≈ ComradeBase.build_param(md, p)[ix, iy]
-
-    bad = ContinuousImage(
-        MultiDomainParams(base, UnrestrictedField(fill(2.0, 8, 8))), g, BSplinePulse{3}()
+    pimg = StructArray{StokesParams{Float64}}((; I = base, Q = 0.1 .* rand(8, 8), U = 0.1 .* rand(8, 8), V = 0.05 .* rand(8, 8)))
+    pts = [(; X = x, Y = y, Fr = 1.7 * ref) for (x, y) in ((0.3, -0.2), (g.X[1], g.Y[8]), (6.0, 0.0))]
+    chains = (
+        MultiDomainParams(base, PolySpectral(1.5, ref)),
+        MultiDomainParams(base, PolySpectral((rand(8, 8), 0.2), ref, rand(8, 8))),
+        MultiDomainParams(pimg, PolySpectral(1.5, ref)),
+        MultiDomainParams(base, PolySpectral(1.5, ref), MaterializingField(fill(2.0, 8, 8))),
     )
-    pt = (; X = g.X[4], Y = g.Y[4], Fr = ref)
-    @test_throws "UnrestrictedField does not define `restrict_params" ComradeBase.intensity_point(bad, pt)
+    for md in chains, p in pts
+        img = ContinuousImage(md, g, BSplinePulse{3}())
+        plain = ContinuousImage(ComradeBase.build_param(md, p), g, BSplinePulse{3}())
+        @test ComradeBase.intensity_point(img, p) ≈ ComradeBase.intensity_point(plain, p)
+    end
+
+    img = ContinuousImage(chains[1], g, BSplinePulse{3}())
+    pointalloc(m, p) = @allocated ComradeBase.intensity_point(m, p)
+    pointalloc(img, pts[1])
+    @test pointalloc(img, pts[1]) == 0
+
+    gcube = g ⊗ Fr([ref, 1.5 * ref])
+    function loss(x, α)
+        m = MultiDomainImage(IntensityMap(x, g), BSplinePulse{3}(), PolySpectral((α,), ref))
+        return sum(abs2, baseimage(intensitymap(shifted(m, 0.3, -0.2), gcube)))
+    end
+    dx, dα = Enzyme.gradient(set_runtime_activity(Enzyme.Reverse), loss, base, 0.7)
+    @test dx ≈ grad(central_fdm(5, 1), x -> loss(x, 0.7), base)[1] rtol = 1.0e-6
+    @test dα ≈ grad(central_fdm(5, 1), a -> loss(base, a), 0.7)[1] rtol = 1.0e-6
 end
 
 @testset "intensity_point respects Fr for multidomain images" begin
@@ -1175,7 +1180,6 @@ end
     md = @inferred MultiDomainParams(base, ps)
     @inferred MultiDomainParams(md, PolySpectral(1.0, ref))
     @inferred ComradeBase.build_param(md, (; Fr = 2 * ref))
-    @inferred ComradeBase.restrict_params(md, 2:4, 3:5)
 
     gcube = g ⊗ Fr([ref, 2 * ref])
     @test @inferred(VLBISkyModels._cubegrid(g, gcube)) == gcube
