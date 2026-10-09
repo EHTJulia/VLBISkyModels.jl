@@ -81,7 +81,7 @@ ComradeBase.MultiDomainParams
 ComradeBase.spatialgrid
 ComradeBase.RectiGrid
 ComradeBase.gridproduct
-ComradeBase.intervals
+ComradeBase.frames
 ComradeBase.frameindex
 ComradeBase.UnstructuredDomain
 ComradeBase.dims

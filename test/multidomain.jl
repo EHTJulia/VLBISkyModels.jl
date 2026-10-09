@@ -1252,7 +1252,7 @@ end
     @test vec(baseimage(vplain)) == baseimage(visibilitymap(plain, FourierDualDomain(g, UnstructuredDomain((; U, V)), NFFTAlg())))
 
     # `Intervals` planes match raw observation times by containment.
-    gt = g ⊗ ComradeBase.intervals(Ti, [0.0, 2.0], [1.0, 3.0])
+    gt = g ⊗ frames(Ti, [0.0, 2.0], [1.0, 3.0])
     traw = rand(16, 16, 2)
     tcube = ContinuousImage(IntensityMap(traw, gt), BSplinePulse{3}())
     dti = UnstructuredDomain((; U = U[1:20], V = V[1:20], Ti = [rand(10); 2 .+ rand(10)]))
