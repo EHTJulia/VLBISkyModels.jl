@@ -81,6 +81,12 @@ dimensions the spatial image cube is materialized by evaluating the domain model
 each frequency/time. `FFTAlg` cannot transform these images, since it interpolates a
 single 2D FFT; use a nonuniform transform such as `NFFTAlg` or `DFTAlg`.
 
+A chain that does not vary along an extra dim of the grid is evaluated once and copied along
+it, and every copy is transformed, so give the grid only the dims the model varies along. In
+a sum whose components vary along different dims, evaluate each component on its own grid,
+with a `FourierDualDomain` per grid built from the same visibility domain, and add the
+visibilities.
+
 Chaining extends the model tuple rather than nesting, so
 `MultiDomainImage(MultiDomainImage(img, kernel, m1), m2)` and
 `MultiDomainImage(img, kernel, m1, m2)` are the same model.

@@ -1444,6 +1444,15 @@ InverseFunctions.inverse(::typeof(testlogit)) = testlogistic
         @inferred visibilitymap(mm, dt)
     end
 
+    @testset "components on their own grids" begin
+        ring = MultiDomainImage(cube, pulse, ps)
+        jet = MultiDomainImage(frame(1), pulse, ps)
+        shared = visibilitymap(ring + jet, FourierDualDomain(gf, dom, DFTAlg()))
+        vring = visibilitymap(ring, FourierDualDomain(gf, dom, DFTAlg()))
+        vjet = visibilitymap(jet, FourierDualDomain(gs ⊗ fr, dom, DFTAlg()))
+        @test parent(vring) .+ parent(vjet) ≈ parent(shared)
+    end
+
     @testset "Enzyme gradients" begin
         gfn = FourierDualDomain(gf, dom, NFFTAlg())
         lm(v) = sum(real, parent(visibilitymap(shifted(Gaussian(), MultiDomainParams(0.2, PolyTemporal(v, 1.0; link = identity)), 0.0), UnstructuredDomain((; U, V, Ti = t)))))
