@@ -1268,9 +1268,12 @@ end
     @test_throws "match no plane" FourierDualDomain(g ⊗ Fr([ref]), dpf, NFFTAlg())
 end
 
-# The logit link: keeps a fraction in (0, 1).
-struct LogitLink <: VLBISkyModels.AbstractLink end
-VLBISkyModels.applylink(::LogitLink, base, η) = inv(1 + (1 - base) / base * exp(-η))
+import InverseFunctions
+
+# A link from outside the package: keeps a fraction in (0, 1).
+testlogit(x) = log(x / (1 - x))
+testlogistic(x) = inv(1 + exp(-x))
+InverseFunctions.inverse(::typeof(testlogit)) = testlogistic
 
 @testset "time-variable images and per-frame bases" begin
     pulse = BSplinePulse{3}()
@@ -1397,25 +1400,31 @@ VLBISkyModels.applylink(::LogitLink, base, η) = inv(1 + (1 - base) / base * exp
     end
 
     @testset "links" begin
-        pt = MultiDomainParams(2.0, PolyTemporal((0.3, -0.1), 1.0, 0.5; link = IdentityLink()))
+        pt = MultiDomainParams(2.0, PolyTemporal((0.3, -0.1), 1.0, 0.5; link = identity))
         @test build_param(pt, (; Ti = 2.5)) ≈ 2.0 + 0.3 * 1.5 - 0.1 * 1.5^2 + 0.5
-        psl = MultiDomainParams(2.0, PolySpectral(0.3, 230.0e9; link = IdentityLink()))
+        psl = MultiDomainParams(2.0, PolySpectral(0.3, 230.0e9; link = identity))
         @test build_param(psl, (; Fr = 345.0e9)) ≈ 2.0 + 0.3 * log(1.5)
-        @test PolyTemporal(0.3, 1.0).link === LogLink()
-        @test sprint(show, PolyTemporal(0.3, 1.0; link = IdentityLink())) == "PolyTemporal((0.3,), 1.0; link = IdentityLink())"
-        @test sprint(show, PolySpectral(0.3, 1.0, 0.5; link = IdentityLink())) == "PolySpectral((0.3,), 1.0, 0.5; link = IdentityLink())"
-        @test_throws TypeError PolyTemporal(0.3, 1.0; link = exp)
+        @test PolyTemporal(0.3, 1.0).link === log
+        @test sprint(show, PolyTemporal(0.3, 1.0; link = identity)) == "PolyTemporal((0.3,), 1.0; link = identity)"
+        @test sprint(show, PolySpectral(0.3, 1.0, 0.5; link = identity)) == "PolySpectral((0.3,), 1.0, 0.5; link = identity)"
+        @test_throws "the link `sin` has no inverse" PolyTemporal(0.3, 1.0; link = sin)
+        @test_throws "the link `sin` has no inverse" PolySpectral(0.3, 1.0; link = sin)
 
-        fl = MultiDomainParams(0.2, PolyTemporal(0.5, 1.0; link = LogitLink()))
+        # The log link multiplies by `exp(η)`: a zero or negative base works, with finite gradients.
+        lz(b) = build_param(MultiDomainParams(b, PolyTemporal(0.3, 1.0)), (; Ti = 2.0))
+        @test lz(-2.0) ≈ -2.0 * exp(0.3)
+        @test Enzyme.gradient(Enzyme.Reverse, lz, 0.0)[1] ≈ exp(0.3)
+
+        fl = MultiDomainParams(0.2, PolyTemporal(0.5, 1.0; link = testlogit))
         @test build_param(fl, (; Ti = 1.0)) ≈ 0.2
         @test build_param(fl, (; Ti = 3.0)) ≈ inv(1 + 4 * exp(-1.0))
         @test 0.99 < build_param(fl, (; Ti = 20.0)) < 1
 
-        pol = MultiDomainParams(StokesParams(1.0, 0.1, 0.2, 0.0), PolyTemporal(0.3, 1.0; link = IdentityLink()))
+        pol = MultiDomainParams(StokesParams(1.0, 0.1, 0.2, 0.0), PolyTemporal(0.3, 1.0; link = identity))
         @test build_param(pol, (; Ti = 2.0)) ≈ StokesParams(1.3, 0.4, 0.5, 0.3)
 
         # Proper motion: the center moves 0.5 per unit time from 0.2 at t0 = 1.
-        x = MultiDomainParams(0.2, PolyTemporal(0.5, 1.0; link = IdentityLink()))
+        x = MultiDomainParams(0.2, PolyTemporal(0.5, 1.0; link = identity))
         mm = shifted(Gaussian(), x, 0.0)
         im = intensitymap(mm, gc)
         for (k, tk) in enumerate(collect(ti))
@@ -1425,7 +1434,7 @@ VLBISkyModels.applylink(::LogitLink, base, η) = inv(1 + (1 - base) / base * exp
         vis = visibilitymap(mm, dt)
         @test parent(vis) ≈ [VLBISkyModels.visibility_point(shifted(Gaussian(), 0.2 + 0.5 * (t[i] - 1.0), 0.0), (; U = U[i], V = V[i])) for i in eachindex(t)]
 
-        mi = MultiDomainImage(frame(1), pulse, PolyTemporal(0.2, 2.0; link = IdentityLink()))
+        mi = MultiDomainImage(frame(1), pulse, PolyTemporal(0.2, 2.0; link = identity))
         imi = intensitymap(mi, gc)
         for (k, tk) in enumerate(collect(ti))
             ref = ContinuousImage(IntensityMap(baseimage(frame(1)) .+ 0.2 * (tk - 2.0), gs), pulse)
@@ -1437,7 +1446,7 @@ VLBISkyModels.applylink(::LogitLink, base, η) = inv(1 + (1 - base) / base * exp
 
     @testset "Enzyme gradients" begin
         gfn = FourierDualDomain(gf, dom, NFFTAlg())
-        lm(v) = sum(real, parent(visibilitymap(shifted(Gaussian(), MultiDomainParams(0.2, PolyTemporal(v, 1.0; link = IdentityLink())), 0.0), UnstructuredDomain((; U, V, Ti = t)))))
+        lm(v) = sum(real, parent(visibilitymap(shifted(Gaussian(), MultiDomainParams(0.2, PolyTemporal(v, 1.0; link = identity)), 0.0), UnstructuredDomain((; U, V, Ti = t)))))
         dv = Enzyme.gradient(set_runtime_activity(Enzyme.Reverse), Const(lm), 0.5)[1]
         @test dv ≈ central_fdm(5, 1)(lm, 0.5) rtol = 1.0e-6
         lc(c) = sum(abs2, baseimage(visibilitymap(MultiDomainImage(IntensityMap(c, gc), pulse, ps), gfn)))

@@ -1,4 +1,5 @@
 import ComradeBase: _showparam
+using InverseFunctions: inverse, NoInverse
 
 # Coefficients are splatted so array-valued ones fuse into one broadcast.
 @inline function polyarg(x, index::Vararg{Any, N}) where {N}
@@ -9,52 +10,21 @@ end
 @inline addoffset(x::Number, p0) = x + p0
 @inline addoffset(x::StaticArray, p0) = similar_type(x)(Tuple(x) .+ p0)
 
-"""
-    AbstractLink
+# A link `g` gives `g⁻¹(g(base) + η)`, split into a part that depends only on `η`, computed
+# once per plane, and a part that combines it with the base. `log` multiplies by `exp(η)`, so
+# a base that is zero or negative works and its gradient stays finite.
+linkfield(link, η) = η
+linkfield(::typeof(log), η) = exp(η)
+linkapply(link, base, η) = inverse(link)(link(base) + η)
+linkapply(::typeof(log), base, f) = base * f
+linkapply(::typeof(identity), base, η) = addoffset(base, η)
 
-How a polynomial family such as [`PolySpectral`](@ref) or [`PolyTemporal`](@ref) combines
-its polynomial `η = ∑ₙ index[n] * xⁿ` with the base parameter. A family's value is
-`applylink(link, base, η) + p0`.
-
-To define a new link, subtype `AbstractLink` and add a method to [`applylink`](@ref).
-"""
-abstract type AbstractLink end
-
-"""
-    applylink(link::AbstractLink, base, η)
-
-The base parameter `base` changed by the polynomial value `η` according to `link`.
-For a link function `g` this is `g⁻¹(g(base) + η)`.
-"""
-function applylink end
-
-"""
-    LogLink()
-
-The log link: `applylink(LogLink(), base, η) = base * exp(η)`. The polynomial gives the log
-of a positive factor, so the base never changes sign. This is the default of every
-polynomial family.
-"""
-struct LogLink <: AbstractLink end
-
-"""
-    IdentityLink()
-
-The identity link: `applylink(IdentityLink(), base, η) = base + η`, for a parameter that
-drifts additively, such as a position. Against a polarized base, `η` is added to every
-Stokes component.
-"""
-struct IdentityLink <: AbstractLink end
-
-applylink(::LogLink, base, η) = base * exp(η)
-applylink(::IdentityLink, base, η) = addoffset(base, η)
-
-# A link splits into a part that depends only on `η` and a part that combines it with the
-# base, so the first is computed once per plane rather than once per pixel.
-linkfield(::AbstractLink, η) = η
-linkfield(::LogLink, η) = exp(η)
-linkapply(link::AbstractLink, base, f) = applylink(link, base, f)
-linkapply(::LogLink, base, f) = base * f
+function checklink(link)
+    inverse(link) isa NoInverse && throw(
+        ArgumentError("the link `$link` has no inverse; define `InverseFunctions.inverse` for it")
+    )
+    return link
+end
 
 # The link field of the polynomial. Scalar coefficients: materialized once per frequency or
 # time. Array coefficients: left lazy to fuse with `apply_param`, since the field is as
@@ -94,10 +64,10 @@ function _showpoly(io::IO, name, index, ref, p0, link)
         print(io, ", ")
         _showparam(io, p0)
     end
-    link isa LogLink || print(io, "; link = ", link)
+    link === log || print(io, "; link = ", link)
     return print(io, ")")
 end
 
 include("poly_spectral.jl")
 include("poly_temporal.jl")
-export PolySpectral, PolyTemporal, LogLink, IdentityLink
+export PolySpectral, PolyTemporal

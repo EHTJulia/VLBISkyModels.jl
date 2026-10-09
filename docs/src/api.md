@@ -19,10 +19,6 @@ Pages = ["api.md"]
 ```@docs
 VLBISkyModels.PolySpectral
 VLBISkyModels.PolyTemporal
-VLBISkyModels.AbstractLink
-VLBISkyModels.applylink
-VLBISkyModels.LogLink
-VLBISkyModels.IdentityLink
 ```
 
 ### Combinators

@@ -1,17 +1,17 @@
 export PolySpectral
 
 @doc """
-    PolySpectral(index::Tuple, freq0::Number, p0=zero(freq0); link=LogLink())
-    PolySpectral(index::Number, freq0::Number, p0=zero(freq0); link=LogLink())
+    PolySpectral(index::Tuple, freq0::Number, p0=zero(freq0); link=log)
+    PolySpectral(index::Number, freq0::Number, p0=zero(freq0); link=log)
 
 A frequency-dependent [`DomainParams`](@ref) model that changes a base parameter by a
 polynomial expansion in log-frequency, `η = ∑ₙ index[n] * log(Fr / freq0)^n`:
 
-    applylink(link, base, η) + p0
+    inverse(link)(link(base) + η) + p0
 
 where `Fr` is the observation frequency and `freq0` is the reference frequency. With the
-default [`LogLink`](@ref) this is `base * exp(η) + p0`, a power law in frequency for
-order 1.
+default `link = log` this is `base * exp(η) + p0`, a power law in frequency for order 1, and
+it is computed in that form, so a zero or negative base works.
 
 The base is not stored here: like every `DomainParams`, `PolySpectral` is a transformation
 and has no value until it is paired with one by [`MultiDomainParams`](@ref). Use a unit base
@@ -27,13 +27,13 @@ frequency-independent. To give a component its own spectrum, give it its own mod
 - `index`: polynomial coefficients. A `Tuple` of length `N` for an order-`N` expansion, or
   a single `Number` for order-1 (a spectral index). Each coefficient may itself be an
   `AbstractArray` for spatially varying coefficients.
-- `freq0`: reference frequency. At `Fr = freq0`, `η = 0`, and for [`LogLink`](@ref) and
-  [`IdentityLink`](@ref) the value is `base + p0`.
+- `freq0`: reference frequency. At `Fr = freq0`, `η = 0` and the value is `base + p0`.
 - `p0` (optional): additive offset term, a real value or a field of them. Defaults to a
   zero that does not widen the element type. Against a polarized base it offsets every
   Stokes component alike, so a nonzero `p0` changes the fractional polarization.
-- `link` (keyword): an [`AbstractLink`](@ref VLBISkyModels.AbstractLink) that sets how `η`
-  changes the base.
+- `link` (keyword): a function with an `InverseFunctions.inverse`, such as `log`,
+  `identity` or `LogExpFunctions.logit`, that sets how `η` changes the base. A link without
+  an inverse throws.
 
 # Examples
 ```julia
@@ -48,28 +48,28 @@ MultiDomainParams(1.0, PolySpectral((1.0, 0.5), 230.0e9))
 MultiDomainParams(rand(64, 64), PolySpectral(1.5, 230.0e9))
 ```
 """
-struct PolySpectral{E, T, F <: Number, P0, L <: AbstractLink} <: ComradeBase.DomainParams{E}
+struct PolySpectral{E, T, F <: Number, P0, L} <: ComradeBase.DomainParams{E}
     index::T
     freq0::F
     p0::P0
     link::L
 
     function PolySpectral{E, T, F, P0, L}(index, freq0, p0, link) where {E, T, F, P0, L}
-        return new{E, T, F, P0, L}(index, freq0, p0, link)
+        return new{E, T, F, P0, L}(index, freq0, p0, checklink(link))
     end
 end
 
-function PolySpectral(index::Tuple, freq0::Number, p0 = zero(freq0); link = LogLink())
+function PolySpectral(index::Tuple, freq0::Number, p0 = zero(freq0); link = log)
     P = map(paramtype ∘ typeof, index)
     E = promote_type(P..., typeof(freq0), paramtype(typeof(p0)))
     return PolySpectral{E}(index, freq0, p0; link)
 end
 
-function PolySpectral{E}(index, freq0, p0 = zero(E); link = LogLink()) where {E}
+function PolySpectral{E}(index, freq0, p0 = zero(E); link = log) where {E}
     return PolySpectral{E, typeof(index), typeof(freq0), typeof(p0), typeof(link)}(index, freq0, p0, link)
 end
 
-function PolySpectral(index::Number, freq0::Number, p0 = zero(freq0); link = LogLink())
+function PolySpectral(index::Number, freq0::Number, p0 = zero(freq0); link = log)
     return PolySpectral((index,), freq0, p0; link)
 end
 

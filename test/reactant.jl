@@ -156,7 +156,7 @@ end
         cases = (
             ("per-frame base", a -> MultiDomainImage(IntensityMap(a, gs ⊗ ti), pulse, ps), rand(16, 16, 3)),
             ("PolyTemporal", a -> MultiDomainImage(IntensityMap(a, gs), pulse, PolyTemporal(0.2, 2.0), ps), rand(16, 16)),
-            ("identity link", a -> MultiDomainImage(IntensityMap(a, gs), pulse, PolyTemporal(0.2, 2.0; link = IdentityLink()), ps), rand(16, 16)),
+            ("identity link", a -> MultiDomainImage(IntensityMap(a, gs), pulse, PolyTemporal(0.2, 2.0; link = identity), ps), rand(16, 16)),
         )
         for (lbl, mk, a) in cases
             @testset "$lbl" begin
