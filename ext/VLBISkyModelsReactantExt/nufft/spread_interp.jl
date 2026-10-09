@@ -342,9 +342,13 @@ end
 end
 
 # Wide-stencil interp (the pre-#139 kernel): read every point's full (w, w)
-# stencil in one batched gather (slice_sizes = [w, w, ntrans]) from the
-# circular-padded grid, then contract against the separable per-dim weights.
-# Points are read in original order, so no output permutation is needed.
+# stencil in one batched gather from the circular-padded grid, then contract
+# against the separable per-dim weights. Points are read in original order,
+# so no output permutation is needed.
+#
+# The grid is gathered as stacked real and imaginary planes, a real (N1, N2, 2ntrans)
+# tensor: the adjoint of the gather is a scatter-add, and XLA has no 128-bit atomic add, so
+# two real scatters are much faster on GPU than one complex scatter (as in `_spread`).
 # Used for 2D work in both directions above INTERP_WIDE_WS_LIMIT (see above).
 function _interp_wide(prep::NUFFTSetPts{T, 2}, fw::AbstractArray, ntrans::Int) where {T}
     plan = prep.plan
@@ -359,7 +363,8 @@ function _interp_wide(prep::NUFFTSetPts{T, 2}, fw::AbstractArray, ntrans::Int) w
     start2 = mod.(prep.base[2], N2) .+ 1
 
     fw3 = reshape(fw, N1, N2, ntrans)
-    fw_padded = _circular_pad_spatial(fw3, w, Val(2))      # (N1+w-1, N2+w-1, ntrans)
+    fw_ri = cat(real.(fw3), imag.(fw3); dims = 3)          # (N1, N2, 2ntrans) real
+    fw_padded = _circular_pad_spatial(fw_ri, w, Val(2))    # (N1+w-1, N2+w-1, 2ntrans)
     start_idx = hcat(
         reshape(start1, M, 1),
         reshape(start2, M, 1),
@@ -375,13 +380,14 @@ function _interp_wide(prep::NUFFTSetPts{T, 2}, fw::AbstractArray, ntrans::Int) w
         start_indices_batching_dims = Int64[],
         start_index_map = Int64[1, 2, 3],
         index_vector_dim = Int64(2),
-        slice_sizes = Int64[w, w, ntrans],
-    )                                                      # (M, w, w, ntrans)
+        slice_sizes = Int64[w, w, 2 * ntrans],
+    )                                                      # (M, w, w, 2ntrans)
 
     # Two-step sum-product over the w^2 stencil, contracting the trailing
     # stencil dim first so the intermediate shrinks.
     tmp = dropdims(sum(reshape(w2, M, 1, w, 1) .* vals; dims = 3); dims = 3)
-    return dropdims(sum(reshape(w1, M, w, 1) .* tmp; dims = 2); dims = 2)  # (M, ntrans)
+    ri = dropdims(sum(reshape(w1, M, w, 1) .* tmp; dims = 2); dims = 2)    # (M, 2ntrans)
+    return complex.(ri[:, 1:ntrans], ri[:, (ntrans + 1):(2 * ntrans)])
 end
 
 _interp_ad_fallback(prep::NUFFTSetPts{T, 2}, fw::AbstractArray, ntrans::Int) where {T} =

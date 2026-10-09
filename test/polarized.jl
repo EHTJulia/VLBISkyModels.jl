@@ -315,3 +315,37 @@ end
     @test baseimage(stokes(img, :I)) ≈ baseimage(VLBISkyModels.intensitymap_numeric(mI, g))
     @test baseimage(stokes(img, :U)) ≈ baseimage(VLBISkyModels.intensitymap_numeric(mU, g))
 end
+
+@testset "polarized transforms equal per-component transforms" begin
+    pulse = BSplinePulse{3}()
+    gs = spatialgrid(10.0, 10.0, 8, 8)
+    fr = Fr([230.0e9, 345.0e9])
+    U, V = randn(12) ./ 20, randn(12) ./ 20
+    cases = (
+        ("one plane", gs, UnstructuredDomain((; U, V)), rand(8, 8, 4)),
+        ("Fr planes", gs ⊗ fr, UnstructuredDomain((; U, V, Fr = repeat([230.0e9, 345.0e9], 6))), rand(8, 8, 2, 4)),
+    )
+    algs = (DFTAlg(), NFFTAlg(), FINUFFTAlg(), NonuniformFFTsAlg())
+    for (lbl, g, dom, P) in cases, alg in algs
+        @testset "$lbl, $(nameof(typeof(alg)))" begin
+            gf = FourierDualDomain(g, dom, alg)
+            img = IntensityMap(FieldDimArray{StokesParams}(P), g)
+            vis = visibilitymap(ContinuousImage(img, pulse), gf)
+            for s in (:I, :Q, :U, :V)
+                @test baseimage(stokes(vis, s)) ≈ baseimage(visibilitymap(ContinuousImage(stokes(img, s), pulse), gf))
+            end
+            comps = ntuple(k -> selectdim(P, ndims(P), k), 4)
+            sa = IntensityMap(StructArray{StokesParams{Float64}}(comps), g)
+            @test visibilitymap(ContinuousImage(sa, pulse), gf) ≈ vis
+            @inferred visibilitymap(ContinuousImage(img, pulse), gf)
+        end
+    end
+
+    P0 = cases[2][4]
+    for alg in (DFTAlg(), FINUFFTAlg())
+        gd = FourierDualDomain(gs ⊗ fr, cases[2][3], alg)
+        loss(P) = sum(abs2, parent(baseimage(visibilitymap(ContinuousImage(IntensityMap(FieldDimArray{StokesParams}(P), gs ⊗ fr), pulse), gd))))
+        dP = Enzyme.gradient(set_runtime_activity(Enzyme.Reverse), Const(loss), P0)[1]
+        @test dP ≈ grad(central_fdm(5, 1), loss, P0)[1] rtol = 1.0e-6
+    end
+end

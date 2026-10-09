@@ -63,6 +63,20 @@ end
 
     end
 
+    # Above `INTERP_WIDE_WS_LIMIT` (M * w^2 * 16 bytes > 128 MiB) the type-2 interpolation
+    # gathers each point's whole stencil at once: eps = 1e-9 gives w = 10, so M = 90 000
+    # needs 144 MB.
+    @testset "VisibilityMap Parity wide path (large M)" begin
+        gim = spatialgrid(10.0, 10.0, 32, 32)
+        rast = rand(32, 32)
+        m = ContinuousImage(rast, gim, BSplinePulse{3}())
+        mr = ContinuousImage(Reactant.to_rarray(rast), @jit(identity(gim)), BSplinePulse{3}())
+        guv = UnstructuredDomain((U = randn(90_000) ./ 5, V = randn(90_000) ./ 5))
+        gfn = FourierDualDomain(gim, guv, NFFTAlg())
+        gfr = FourierDualDomain(@jit(identity(gim)), Reactant.to_rarray(guv), VLBISkyModels.ReactantNUFFTAlg(Float64; eps = 1.0e-9))
+        @test parent(@jit visibilitymap(mr, gfr)) ≈ visibilitymap(m, gfn)
+    end
+
     @testset "PolExp2Map" begin
         gim = spatialgrid(1.0, 1.0, 128, 128)
         gimr = @jit(identity(gim))

@@ -56,10 +56,18 @@ end
 EnzymeRules.inactive(::typeof(getcache), args...) = nothing
 EnzymeRules.inactive_type(::Type{<:FINUFFT.finufft_plan}) = true
 
+# FINUFFT reads and writes contiguous memory only, so other arrays, such as the strided
+# view of one plane's points, go through a buffer.
 function VLBISkyModels._jlnuft!(out, A::FINUFFTPlan, b::AbstractArray{<:Real})
     bc = getcache(A)
     copyto!(bc, b)
-    FINUFFT.finufft_exec!(A.forward, bc, out)
+    if out isa DenseArray
+        FINUFFT.finufft_exec!(A.forward, bc, out)
+    else
+        tmp = similar(out, eltype(out), size(out))
+        FINUFFT.finufft_exec!(A.forward, bc, tmp)
+        copyto!(out, tmp)
+    end
     return nothing
 end
 
@@ -72,7 +80,7 @@ end
 
 function VLBISkyModels._jlnuft_adjointadd!(out, A::FINUFFTPlan, b::AbstractArray{<:Complex})
     bc = getcache(A)
-    FINUFFT.finufft_exec!(A.adjoint, b, bc)
+    FINUFFT.finufft_exec!(A.adjoint, b isa DenseArray ? b : collect(b), bc)
     out .+= real.(bc)
     return nothing
 end

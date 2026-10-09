@@ -147,12 +147,44 @@ end
 _withshape(vis::AbstractVector, ::Tuple{Int}) = vis
 _withshape(vis, sz) = reshape(vis, sz)
 
-function applyft(plan::AbstractNUFTPlan, img::StokesMap)
+applyft(plan::AbstractNUFTPlan, img::StokesMap) = _stokesft(getplan(plan), plan, img)
+
+# Backends that transform one Stokes component at a time.
+function _stokesft(_, plan, img)
     vI = applyft(plan, stokes(img, :I))
     vQ = applyft(plan, stokes(img, :Q))
     vU = applyft(plan, stokes(img, :U))
     vV = applyft(plan, stokes(img, :V))
     return _stokesparams(vI, vQ, vU, vV)
+end
+
+# A DFT matrix transforms the four components in one product.
+function _stokesft(m::AbstractMatrix, plan, img)
+    b = _stokesdense(baseimage(img))
+    vis = m * reshape(b, :, size(b, ndims(b)))
+    return _stokesvis(vis, plan)
+end
+
+function _stokesft(ms::AbstractDict{<:Any, <:AbstractMatrix}, plan, img)
+    b = _stokesdense(baseimage(img))
+    nc = size(b, ndims(b))
+    vis = similar(b, complex(eltype(b)), prod(plan.visshape), nc)
+    iminds, visinds = getindices(plan)
+    for i in eachindex(iminds, visinds)
+        plane = b[:, :, Tuple(iminds[i])..., :]
+        vis[visinds[i], :] .= ms[iminds[i]] * reshape(plane, :, nc)
+    end
+    return _stokesvis(vis, plan)
+end
+
+# Stokes components along a trailing dim.
+_stokesdense(data::FieldDimArray) = parent(data)
+_stokesdense(data) = cat(map(Base.Fix1(stokes, data), (:I, :Q, :U, :V))...; dims = Val(ndims(data) + 1))
+
+# `vis` holds one column per Stokes component.
+function _stokesvis(vis, plan)
+    vis .*= plan.phases
+    return FieldDimArray{StokesParams}(reshape(vis, plan.visshape..., size(vis, 2)))
 end
 
 function applyphases!(vis::AbstractArray, phases::AbstractArray)
