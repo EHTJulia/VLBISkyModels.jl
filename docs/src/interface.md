@@ -120,6 +120,12 @@ which will make a Gaussian whose size as a function of frequency is given by
 \sigma(\nu) = \sigma_0 (\nu / \nu_0)^a
 ```
 
+[`PolyTemporal`](@ref) does the same in time about a reference epoch `t₀`, and families
+compose in one chain, so `MultiDomainParams(σ₀, PolyTemporal(r, t₀), PolySpectral(a, ν₀))`
+varies the size in both time and frequency. Both scale the base by default
+([`LogLink`](@ref)); pass `link = IdentityLink()` for a parameter that drifts additively,
+such as a position.
+
 If we wanted a different function form for the frequency dependence, we can define a new type
 
 ```julia

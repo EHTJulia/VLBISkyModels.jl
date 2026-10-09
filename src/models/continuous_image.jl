@@ -20,6 +20,12 @@ varies across frequency and/or time, in which case the image is a
 [`MultiDomainImage`](@ref). A bare `DomainParams` is not accepted: an image needs a base,
 which a chain supplies and a lone spectral or temporal model does not.
 
+The grid may carry `Ti` and `Fr` dims, one image per plane, e.g. a movie on a grid built with
+[`frames`](@ref). Such an image is evaluated on grids and visibility domains whose `Ti` and
+`Fr` match its planes (see [`FourierDualDomain`](@ref)). A single point uses the plane that
+[`frameindex`](@ref) assigns its `Ti` and `Fr`, and a chain in `params` is evaluated at that
+plane's values, as on the grid.
+
 Note that if the image grid is the same as the grid passed to `intensitymap` then the discrete image
 is used directly for efficiency.
 
@@ -63,10 +69,12 @@ A [`ContinuousImage`](@ref) whose pixel parameters vary across the extra (freque
 time) domains, i.e. one whose `params` field is a [`MultiDomainParams`](@ref). This is a
 type alias, so `img isa MultiDomainImage` and dispatch on it both work.
 
-The spatial image `img` (a 2D `IntensityMap`) provides the base parameters and the
-spatial `(X, Y)` grid, `kernel` is the image pulse, and `domains...` are one or more
-`DomainParams` models (such as [`PolySpectral`](@ref)) describing how the image varies
-across the extra domains.
+The image `img` provides the base parameters and the grid, `kernel` is the image pulse, and
+`domains...` are one or more `DomainParams` models (such as [`PolySpectral`](@ref) or
+[`PolyTemporal`](@ref)) describing how the image varies across the extra domains. `img` is
+usually a 2D map on an `(X, Y)` grid. It may also carry `Ti` or `Fr` dims, e.g. one image
+per observing track with a spectral model on top; the grid it is evaluated on must then have
+those dims with the same planes, in the same order.
 
 When passed to `intensitymap` or `visibilitymap` over a grid with extra `Fr`/`Ti`
 dimensions the spatial image cube is materialized by evaluating the domain models at
@@ -179,25 +187,11 @@ radialextent(c::ContinuousImage) = maximum(values(fieldofview(spatialdims(c.grid
 
 
 function MultiDomainImage(img::IntensityMap, kernel, domains...)
-    ndims(axisdims(img)) == 2 || throw(
-        ArgumentError(
-            "MultiDomainImage expects an image on a 2D spatial grid, got " *
-                "$(ndims(axisdims(img))) dimensions; the extra Fr/Ti structure " *
-                "comes from `domains`."
-        )
-    )
     mdp = MultiDomainParams(baseimage(img), domains)
-    return ContinuousImage(mdp, spatialdims(img), kernel)
+    return ContinuousImage(mdp, axisdims(img), kernel)
 end
 
 function MultiDomainImage(cimg::ContinuousImage, domains...)
-    length(dims(cimg.grid)) == 2 || throw(
-        ArgumentError(
-            "MultiDomainImage expects an image on a 2D spatial grid, got " *
-                "$(length(dims(cimg.grid))) dimensions; the extra Fr/Ti structure " *
-                "comes from `domains`."
-        )
-    )
     mdp = MultiDomainParams(cimg.params, domains)
     return ContinuousImage(mdp, cimg.grid, cimg.kernel)
 end
@@ -237,6 +231,24 @@ end
 pointeltype(vals) = eltype(vals)
 pointeltype(bc::Base.Broadcast.Broadcasted) = Base.Broadcast.combine_eltypes(bc.f, bc.args)
 
+# For each non-spatial dim of `g`, the plane the point `p` falls in, and `p` with those
+# coordinates replaced by the planes' values, which the grid and visibility paths use.
+@inline function pointplanes(g::AbstractRectiGrid, p)
+    extra = DD.otherdims(g, (X, Y))
+    ks = map(d -> frameindex(d, planecoord(p, name(d))), extra)
+    vals = map((d, k) -> DD.lookup(d)[k], extra, ks)
+    return ks, merge(p, NamedTuple{map(name, extra)}(vals))
+end
+
+function planecoord(p, n::Symbol)
+    hasproperty(p, n) || throw(
+        ArgumentError(
+            "the image has a `$n` dim, but it is evaluated at a point with coordinates $(keys(p)); the point needs a `$n` coordinate to pick its plane"
+        )
+    )
+    return getproperty(p, n)
+end
+
 @inline function intensity_point(m::ContinuousImage, p)
     g = m.grid
     dx, dy = pixelsizes(g)
@@ -250,7 +262,8 @@ pointeltype(bc::Base.Broadcast.Broadcasted) = Base.Broadcast.combine_eltypes(bc.
     # stay consistent with each other and with the pixel footprints when the grid is rotated.
     # The pulse is the pixel response, which is aligned with the pixels rather than the sky.
     pg = togrid(g, p)
-    vals = pointvalues(m.params, p)
+    ks, pp = pointplanes(g, p)
+    vals = pointvalues(m.params, pp)
 
     X = g.X
     Y = g.Y
@@ -273,7 +286,7 @@ pointeltype(bc::Base.Broadcast.Broadcasted) = Base.Broadcast.combine_eltypes(bc.
             jc = clamp(j, jlo, jhi)
             dpi = (X = pg.X - rgetindex(X, ic), Y = pg.Y - rgetindex(Y, jc))
             k = intensity_point(ms, dpi)
-            v = rgetindex(vals, ic, jc)
+            v = rgetindex(vals, ic, jc, ks...)
             sum += ifelse(inb, v * k, zero(sum))
             nothing
         end
@@ -333,9 +346,31 @@ function intensitymap_analytic(m::MultiDomainImage, dims::AbstractRectiGrid)
 end
 
 # The image's own spatial grid crossed with the non-spatial dims of `gout`.
-function _cubegrid(gspat::AbstractRectiGrid, gout::AbstractRectiGrid)
-    return gridproduct(gspat, DD.otherdims(gout, (X, Y))...)
+function _cubegrid(gimg::AbstractRectiGrid, gout::AbstractRectiGrid)
+    return gridproduct(spatialdims(gimg), DD.otherdims(gout, (X, Y))...)
 end
+
+# The chain with its base reshaped onto the dims of `g` (size 1 along dims the base lacks),
+# so that it broadcasts against `_cubepoint(g)`.
+function _onbase(params::MultiDomainParams, gbase::AbstractRectiGrid, g::AbstractRectiGrid)
+    length(dims(gbase)) == 2 && return params
+    _checkbase(gbase, g)
+    shape = map(d -> DD.hasdim(gbase, d) ? length(dims(gbase, d)) : 1, dims(g))
+    return MultiDomainParams(reshape(params.base, shape), params.models)
+end
+
+function _checkbase(gbase, g)
+    extra = DD.otherdims(gbase, (X, Y))
+    all(d -> DD.hasdim(g, d), extra) && issorted(DD.dimnum(g, extra)) || throw(
+        DimensionMismatch(
+            "the base image has dims $(map(name, extra)) beyond X and Y, which the grid it is evaluated on, with dims $(map(name, dims(g))), must have in the same order"
+        )
+    )
+    DD.comparedims(extra, dims(g, extra); val = true)
+    return nothing
+end
+ChainRulesCore.@non_differentiable _checkbase(::Any, ::Any)
+EnzymeRules.inactive(::typeof(_checkbase), args...) = nothing
 
 # Grid evaluation of any `ContinuousImage` goes through the slice resampler: a plain image
 # is the one-slice case, a stored cube resamples slice by slice, and a multidomain image
@@ -348,7 +383,8 @@ end
 
 function intensitymap_analytic!(img::IntensityMap, m::MultiDomainImage)
     gcube = _cubegrid(m.grid, axisdims(img))
-    _resample!(img, IntensityMap(_paramcube(m.params, gcube), gcube), m.kernel)
+    cube = _paramcube(_onbase(m.params, m.grid, gcube), gcube)
+    _resample!(img, IntensityMap(cube, gcube), m.kernel)
     return nothing
 end
 
@@ -454,14 +490,14 @@ function _check_resample(img, src, extra)
             "the image has dims $(map(name, srcextra)) but the output grid has only $(map(name, extra)) beyond X and Y"
         )
     )
-    DD.comparedims(shared, dims(img, shared))
+    DD.comparedims(shared, dims(img, shared); val = true)
     return shared
 end
 
 function visibilitymap_numeric(m::MultiDomainImage, grid::FourierDualDomain)
     gimg = imgdomain(grid)
-    checkgrid(axisdims(m), spatialdims(gimg))
-    mfimg = IntensityMap(_paramcube(m.params, gimg), gimg)
+    checkgrid(spatialdims(m.grid), spatialdims(gimg))
+    mfimg = IntensityMap(_paramcube(_onbase(m.params, m.grid, gimg), gimg), gimg)
     vis = applyft(forward_plan(grid), mfimg)
     return IntensityMap(applypulse!(vis, m.kernel, grid), visdomain(grid))
 end

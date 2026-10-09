@@ -141,6 +141,36 @@ end
         @test Array(baseimage(visr)) ≈ baseimage(vis)
     end
 
+    @testset "time-variable images" begin
+        pulse = BSplinePulse{3}()
+        gs = spatialgrid(10.0, 10.0, 16, 16)
+        ti = frames(Ti, [0.0, 1.5, 4.0], [1.0, 3.0, 5.0])
+        gf = gs ⊗ ti ⊗ Fr([230.0e9, 345.0e9])
+        ps = PolySpectral(-0.7, 230.0e9)
+        # Two points per plane: a plane with a single point trips a Reactant bug in the
+        # per-plane write (`copyto!` into a length-1 view).
+        tf = [(a, b) for b in (230.0e9, 345.0e9) for a in (0.5, 2.0, 4.5) for _ in 1:2]
+        dom = UnstructuredDomain((; U = randn(12) ./ 10, V = randn(12) ./ 10, Ti = first.(tf), Fr = last.(tf)))
+        gfh = FourierDualDomain(gf, dom, DFTAlg())
+        gfr = FourierDualDomain(gf, Reactant.to_rarray(dom), VLBISkyModels.ReactantNUFFTAlg(Float64; eps = 1.0e-10))
+        cases = (
+            ("per-frame base", a -> MultiDomainImage(IntensityMap(a, gs ⊗ ti), pulse, ps), rand(16, 16, 3)),
+            ("PolyTemporal", a -> MultiDomainImage(IntensityMap(a, gs), pulse, PolyTemporal(0.2, 2.0), ps), rand(16, 16)),
+            ("identity link", a -> MultiDomainImage(IntensityMap(a, gs), pulse, PolyTemporal(0.2, 2.0; link = IdentityLink()), ps), rand(16, 16)),
+        )
+        for (lbl, mk, a) in cases
+            @testset "$lbl" begin
+                vf(a, g) = baseimage(visibilitymap(mk(a), g))
+                imf(a, g) = baseimage(intensitymap(mk(a), g))
+                ar = Reactant.to_rarray(a)
+                @test Array(@jit vf(ar, gfr)) ≈ vf(a, gfh)
+                @test Array(@jit imf(ar, gf)) ≈ imf(a, gf)
+                @test !occursin("while", string(@code_hlo vf(ar, gfr)))
+                @test !occursin("while", string(@code_hlo imf(ar, gf)))
+            end
+        end
+    end
+
     @testset "Polarized plus unpolarized" begin
         g = spatialgrid(10.0, 10.0, 32, 32)
         img = IntensityMap(FieldDimArray{StokesParams}(rand(32, 32, 4)), g)

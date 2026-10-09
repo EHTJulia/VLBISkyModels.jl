@@ -1115,15 +1115,12 @@ end
     @test ccI isa ContinuousImage
     @test ccI.kernel === cc.kernel
 
-    # MultiDomainImage takes a 2D spatial base.
-    gcube = RectiGrid((; X = g.X, Y = g.Y, Fr = [230.0e9, 345.0e9]))
-    @test_throws "2D spatial grid" MultiDomainImage(
-        IntensityMap(rand(8, 8, 2), gcube), BSplinePulse{3}(), PolySpectral((1.0,), 230.0e9)
-    )
-    @test_throws "2D spatial grid" MultiDomainImage(
-        ContinuousImage(IntensityMap(rand(8, 8, 2), gcube), BSplinePulse{3}()),
-        PolySpectral((1.0,), 230.0e9)
-    )
+    # A MultiDomainImage base may carry Ti/Fr dims; the image keeps the base's grid.
+    gcube = g ⊗ frames(Ti, [0.0, 1.0, 2.0])
+    cube = IntensityMap(rand(8, 8, 2), gcube)
+    mc = MultiDomainImage(cube, BSplinePulse{3}(), PolyTemporal((1.0,), 0.5))
+    @test axisdims(mc) == gcube
+    @test MultiDomainImage(ContinuousImage(cube, BSplinePulse{3}()), PolyTemporal((1.0,), 0.5)).params.base == baseimage(cube)
 end
 
 @testset "spatialdims" begin
@@ -1269,4 +1266,192 @@ end
         gt, UnstructuredDomain((; U = U[1:2], V = V[1:2], Ti = [0.5, 1.5])), NFFTAlg()
     )
     @test_throws "match no plane" FourierDualDomain(g ⊗ Fr([ref]), dpf, NFFTAlg())
+end
+
+# The logit link: keeps a fraction in (0, 1).
+struct LogitLink <: VLBISkyModels.AbstractLink end
+VLBISkyModels.applylink(::LogitLink, base, η) = inv(1 + (1 - base) / base * exp(-η))
+
+@testset "time-variable images and per-frame bases" begin
+    pulse = BSplinePulse{3}()
+    gs = spatialgrid(10.0, 10.0, 16, 16)
+    ti = frames(Ti, [0.0, 1.5, 4.0], [1.0, 3.0, 5.0])
+    fr = Fr([230.0e9, 345.0e9])
+    gc = gs ⊗ ti
+    gf = gc ⊗ fr
+    ps = PolySpectral(-0.7, 230.0e9)
+    cube = IntensityMap(rand(16, 16, 3), gc)
+    frame(k) = IntensityMap(baseimage(cube)[:, :, k], gs)
+    tf = [(a, b) for b in (230.0e9, 345.0e9) for a in (0.5, 2.0, 4.5) for _ in 1:2]
+    t, f = first.(tf), last.(tf)
+    U, V = randn(12) ./ 10, randn(12) ./ 10
+    dom = UnstructuredDomain((; U, V, Ti = t, Fr = f))
+
+    @testset "PolyTemporal" begin
+        pt = MultiDomainParams(2.0, PolyTemporal((0.3, -0.1), 1.0, 0.5))
+        @test build_param(pt, (; Ti = 2.5)) ≈ 2.0 * exp(0.3 * 1.5 - 0.1 * 1.5^2) + 0.5
+        @test build_param(MultiDomainParams(2.0, PolyTemporal(0.3, 1.0)), (; Ti = 1.0)) == 2.0
+        @test sprint(show, PolyTemporal(0.3, 1.0)) == "PolyTemporal((0.3,), 1.0)"
+        @test sprint(show, PolyTemporal((0.3, 0.1), 1.0, 0.5)) == "PolyTemporal((0.3, 0.1), 1.0, 0.5)"
+        @test ComradeBase.stokes(PolyTemporal(0.3, 1.0), :Q) == PolyTemporal(0.3, 1.0)
+        @test ComradeBase.paramtype(typeof(PolyTemporal(0.3f0, 1.0f0))) === Float32
+        @test_throws "`PolyTemporal` reads the `Ti` coordinate, but it is evaluated at a point with coordinates (:Fr,)" build_param(pt, (; Fr = 1.0))
+        m2 = MultiDomainImage(frame(1), pulse, ps)
+        @test_throws "`PolySpectral` reads the `Fr` coordinate" intensitymap(m2, gc)
+    end
+
+    @testset "a chain with time and frequency families" begin
+        mt = MultiDomainImage(frame(1), pulse, PolyTemporal(0.2, 2.0), ps)
+        im = intensitymap(mt, gf)
+        for (k, tk) in enumerate(collect(ti)), (j, fj) in enumerate(collect(fr))
+            ref = intensitymap(MultiDomainImage(frame(1), pulse, ps), gs ⊗ Fr([fj]))
+            @test parent(im)[:, :, k, j] ≈ parent(ref)[:, :, 1] .* exp(0.2 * (tk - 2.0))
+        end
+        vn = visibilitymap(mt, FourierDualDomain(gf, dom, NFFTAlg()))
+        vd = visibilitymap(mt, FourierDualDomain(gf, dom, DFTAlg()))
+        @test parent(vn) ≈ parent(vd)
+        for i in eachindex(t)
+            k = frameindex(ti, t[i])
+            di = UnstructuredDomain((; U = U[i:i], V = V[i:i], Fr = f[i:i]))
+            v1 = visibilitymap(MultiDomainImage(frame(1), pulse, ps), FourierDualDomain(gs ⊗ fr, di, DFTAlg()))
+            @test parent(vd)[i] ≈ only(parent(v1)) * exp(0.2 * (collect(ti)[k] - 2.0))
+        end
+        @inferred intensitymap(mt, gf)
+        @inferred visibilitymap(mt, FourierDualDomain(gf, dom, DFTAlg()))
+    end
+
+    @testset "per-frame cube" begin
+        m = ContinuousImage(cube, pulse)
+        img = intensitymap(m, gc)
+        pts = [VLBISkyModels.intensity_point(m, p) for p in domainpoints(gc)]
+        @test pts .* prod(pixelsizes(gs)) ≈ parent(img)
+        p = (; X = 0.1, Y = 0.2)
+        @test VLBISkyModels.intensity_point(m, (; p..., Ti = 2.9)) ≈ VLBISkyModels.intensity_point(m, (; p..., Ti = 1.5))
+        @test VLBISkyModels.intensity_point(m, (; p..., Ti = 2.0)) ≈ VLBISkyModels.intensity_point(ContinuousImage(frame(2), pulse), p)
+        @test_throws "the image has a `Ti` dim, but it is evaluated at a point with coordinates (:X, :Y)" VLBISkyModels.intensity_point(m, p)
+        @test_throws "the coordinate 1.2 matches no plane" VLBISkyModels.intensity_point(m, (; p..., Ti = 1.2))
+        ish = intensitymap(shifted(m, 0.3, 0.0), gc)
+        for k in 1:3
+            @test parent(ish)[:, :, k] ≈ parent(intensitymap(shifted(ContinuousImage(frame(k), pulse), 0.3, 0.0), gs))
+        end
+        @test_throws DimensionMismatch intensitymap(m, gs ⊗ frames(Ti, [0.0, 2.0, 4.0], [1.0, 3.0, 5.0]))
+    end
+
+    @testset "chain over a per-frame base" begin
+        mc = MultiDomainImage(cube, pulse, ps)
+        im = intensitymap(mc, gf)
+        for k in 1:3
+            @test parent(im)[:, :, k, :] ≈ parent(intensitymap(MultiDomainImage(frame(k), pulse, ps), gs ⊗ fr))
+        end
+        @test parent(intensitymap(mc, gs ⊗ fr ⊗ ti)) ≈ permutedims(parent(im), (1, 2, 4, 3))
+        vn = visibilitymap(mc, FourierDualDomain(gf, dom, NFFTAlg()))
+        vd = visibilitymap(mc, FourierDualDomain(gf, dom, DFTAlg()))
+        @test parent(vn) ≈ parent(vd)
+        for i in eachindex(t)
+            k = frameindex(ti, t[i])
+            di = UnstructuredDomain((; U = U[i:i], V = V[i:i], Fr = f[i:i]))
+            v1 = visibilitymap(MultiDomainImage(frame(k), pulse, ps), FourierDualDomain(gs ⊗ fr, di, DFTAlg()))
+            @test parent(vd)[i] ≈ only(parent(v1))
+        end
+        p = (; X = 0.3, Y = -0.2, Ti = 2.0, Fr = 345.0e9)
+        @test VLBISkyModels.intensity_point(mc, p) ≈ VLBISkyModels.intensity_point(MultiDomainImage(frame(2), pulse, ps), p)
+        @inferred VLBISkyModels.intensity_point(mc, p)
+        pointalloc(m, p) = @allocated VLBISkyModels.intensity_point(m, p)
+        pointalloc(mc, p)
+        @test pointalloc(mc, p) == 0
+        @inferred intensitymap(mc, gf)
+        @inferred visibilitymap(mc, FourierDualDomain(gf, dom, DFTAlg()))
+
+        @test_throws "the base image has dims (:Ti,) beyond X and Y, which the grid it is evaluated on, with dims (:X, :Y, :Fr), must have in the same order" intensitymap(mc, gs ⊗ fr)
+        c4 = MultiDomainImage(IntensityMap(rand(16, 16, 3, 2), gf), pulse, PolyTemporal(0.1, 2.0))
+        @test size(intensitymap(c4, gf)) == (16, 16, 3, 2)
+        @test_throws "must have in the same order" intensitymap(c4, gs ⊗ fr ⊗ ti)
+        @test_throws DimensionMismatch intensitymap(mc, gs ⊗ frames(Ti, [0.0, 2.0, 4.0], [1.0, 3.0, 5.0]) ⊗ fr)
+    end
+
+    @testset "geometric model with a time family" begin
+        σ = MultiDomainParams(1.0, PolyTemporal(0.2, 2.0))
+        mg = modify(Gaussian(), Stretch(σ, 1.0))
+        fixed(tk) = modify(Gaussian(), Stretch(exp(0.2 * (tk - 2.0)), 1.0))
+        im = intensitymap(mg, gc)
+        for (k, tk) in enumerate(collect(ti))
+            @test parent(im)[:, :, k] ≈ parent(intensitymap(fixed(tk), gs))
+        end
+        dt = UnstructuredDomain((; U, V, Ti = t))
+        vis = visibilitymap(mg, dt)
+        @test parent(vis) ≈ [VLBISkyModels.visibility_point(fixed(t[i]), (; U = U[i], V = V[i])) for i in eachindex(t)]
+    end
+
+    @testset "polarized base" begin
+        pimg = IntensityMap(FieldDimArray{StokesParams}(rand(16, 16, 4)), gs)
+        mp = MultiDomainImage(pimg, pulse, PolyTemporal(0.2, 2.0))
+        im = intensitymap(mp, gc)
+        for s in (:I, :Q, :U, :V)
+            mi = MultiDomainImage(stokes(pimg, s), pulse, PolyTemporal(0.2, 2.0))
+            @test baseimage(stokes(im, s)) ≈ baseimage(intensitymap(mi, gc))
+        end
+        dt = UnstructuredDomain((; U, V, Ti = t))
+        vp = visibilitymap(mp, FourierDualDomain(gc, dt, NFFTAlg()))
+        vI = visibilitymap(MultiDomainImage(stokes(pimg, :I), pulse, PolyTemporal(0.2, 2.0)), FourierDualDomain(gc, dt, NFFTAlg()))
+        @test baseimage(stokes(vp, :I)) ≈ baseimage(vI)
+    end
+
+    @testset "links" begin
+        pt = MultiDomainParams(2.0, PolyTemporal((0.3, -0.1), 1.0, 0.5; link = IdentityLink()))
+        @test build_param(pt, (; Ti = 2.5)) ≈ 2.0 + 0.3 * 1.5 - 0.1 * 1.5^2 + 0.5
+        psl = MultiDomainParams(2.0, PolySpectral(0.3, 230.0e9; link = IdentityLink()))
+        @test build_param(psl, (; Fr = 345.0e9)) ≈ 2.0 + 0.3 * log(1.5)
+        @test PolyTemporal(0.3, 1.0).link === LogLink()
+        @test sprint(show, PolyTemporal(0.3, 1.0; link = IdentityLink())) == "PolyTemporal((0.3,), 1.0; link = IdentityLink())"
+        @test sprint(show, PolySpectral(0.3, 1.0, 0.5; link = IdentityLink())) == "PolySpectral((0.3,), 1.0, 0.5; link = IdentityLink())"
+        @test_throws TypeError PolyTemporal(0.3, 1.0; link = exp)
+
+        fl = MultiDomainParams(0.2, PolyTemporal(0.5, 1.0; link = LogitLink()))
+        @test build_param(fl, (; Ti = 1.0)) ≈ 0.2
+        @test build_param(fl, (; Ti = 3.0)) ≈ inv(1 + 4 * exp(-1.0))
+        @test 0.99 < build_param(fl, (; Ti = 20.0)) < 1
+
+        pol = MultiDomainParams(StokesParams(1.0, 0.1, 0.2, 0.0), PolyTemporal(0.3, 1.0; link = IdentityLink()))
+        @test build_param(pol, (; Ti = 2.0)) ≈ StokesParams(1.3, 0.4, 0.5, 0.3)
+
+        # Proper motion: the center moves 0.5 per unit time from 0.2 at t0 = 1.
+        x = MultiDomainParams(0.2, PolyTemporal(0.5, 1.0; link = IdentityLink()))
+        mm = shifted(Gaussian(), x, 0.0)
+        im = intensitymap(mm, gc)
+        for (k, tk) in enumerate(collect(ti))
+            @test parent(im)[:, :, k] ≈ parent(intensitymap(shifted(Gaussian(), 0.2 + 0.5 * (tk - 1.0), 0.0), gs))
+        end
+        dt = UnstructuredDomain((; U, V, Ti = t))
+        vis = visibilitymap(mm, dt)
+        @test parent(vis) ≈ [VLBISkyModels.visibility_point(shifted(Gaussian(), 0.2 + 0.5 * (t[i] - 1.0), 0.0), (; U = U[i], V = V[i])) for i in eachindex(t)]
+
+        mi = MultiDomainImage(frame(1), pulse, PolyTemporal(0.2, 2.0; link = IdentityLink()))
+        imi = intensitymap(mi, gc)
+        for (k, tk) in enumerate(collect(ti))
+            ref = ContinuousImage(IntensityMap(baseimage(frame(1)) .+ 0.2 * (tk - 2.0), gs), pulse)
+            @test parent(imi)[:, :, k] ≈ parent(intensitymap(ref, gs))
+        end
+        @inferred intensitymap(mi, gc)
+        @inferred visibilitymap(mm, dt)
+    end
+
+    @testset "Enzyme gradients" begin
+        gfn = FourierDualDomain(gf, dom, NFFTAlg())
+        lm(v) = sum(real, parent(visibilitymap(shifted(Gaussian(), MultiDomainParams(0.2, PolyTemporal(v, 1.0; link = IdentityLink())), 0.0), UnstructuredDomain((; U, V, Ti = t)))))
+        dv = Enzyme.gradient(set_runtime_activity(Enzyme.Reverse), Const(lm), 0.5)[1]
+        @test dv ≈ central_fdm(5, 1)(lm, 0.5) rtol = 1.0e-6
+        lc(c) = sum(abs2, baseimage(visibilitymap(MultiDomainImage(IntensityMap(c, gc), pulse, ps), gfn)))
+        c0 = baseimage(cube)
+        dc = Enzyme.gradient(set_runtime_activity(Enzyme.Reverse), Const(lc), c0)[1]
+        @test dc ≈ grad(central_fdm(5, 1), lc, c0)[1] rtol = 1.0e-5
+        b0 = baseimage(frame(1))
+        lt(a) = sum(abs2, baseimage(visibilitymap(MultiDomainImage(IntensityMap(b0, gs), pulse, PolyTemporal(a, 2.0), ps), gfn)))
+        da = Enzyme.gradient(set_runtime_activity(Enzyme.Reverse), Const(lt), 0.2)[1]
+        @test da ≈ central_fdm(5, 1)(lt, 0.2) rtol = 1.0e-6
+        p = (; X = 0.3, Y = -0.1, Ti = 2.0, Fr = 345.0e9)
+        lp(c) = VLBISkyModels.intensity_point(MultiDomainImage(IntensityMap(c, gc), pulse, ps), p)
+        dp = Enzyme.gradient(set_runtime_activity(Enzyme.Reverse), Const(lp), c0)[1]
+        @test dp ≈ grad(central_fdm(5, 1), lp, c0)[1] rtol = 1.0e-6
+        @test all(iszero, dp[:, :, [1, 3]])
+    end
 end
