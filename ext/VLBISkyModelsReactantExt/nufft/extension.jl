@@ -35,3 +35,40 @@ end
 
 Base.adjoint(plan::NUFFTSetPts) = plan # Not needed Reactant is too smart for this
 VLBISkyModels.vissize(plan::NUFFTSetPts) = plan.M
+
+# A multi-plane image grid: one point set over every visibility, and the plane each point
+# reads (a linear index over the grid's non-spatial dims).
+struct PlaneStack{P, I}
+    points::P
+    plane::I
+end
+
+Base.adjoint(p::PlaneStack) = p
+
+function VLBISkyModels.plan_nuft(
+        alg::VLBISkyModels.ReactantNUFFTAlg, imgdomain::ComradeBase.AbstractRectiGrid,
+        visdomain::ComradeBase.StructuredDomain, indices
+    )
+    iminds, visinds = indices
+    planes = LinearIndices(size(imgdomain)[3:end])
+    plane = zeros(Int, length(visdomain))
+    for i in eachindex(iminds, visinds)
+        plane[visinds[i]] .= planes[iminds[i]]
+    end
+    pts = VLBISkyModels.plan_nuft_spatial(alg, imgdomain, visdomain)
+    if ReactantCore.within_compile()
+        return PlaneStack(pts, Reactant.promote_to(Reactant.TracedRArray{Int, 1}, plane))
+    end
+    return PlaneStack(pts, Reactant.to_rarray(plane))
+end
+
+function VLBISkyModels._nuft(
+        p::VLBISkyModels.NUFTPlan{<:VLBISkyModels.ReactantNUFFTAlg, <:PlaneStack},
+        img::Reactant.AnyTracedRArray
+    )
+    s = VLBISkyModels.getplan(p)
+    fk = complex.(reshape(img, size(img, 1), size(img, 2), :))
+    # The result may be a lazy `ReshapedArray`, which is slow to read back from the device.
+    out = similar(fk, s.points.M)
+    return copyto!(out, execute_type2(s.points, fk, s.plane))
+end

@@ -47,24 +47,19 @@ function _pointplanes(imgdomain::AbstractRectiGrid, visdomain::StructuredDomain)
     return CartesianIndex.(frames...)
 end
 
-# The image planes the points use, and for each the flat indices of its points. A run of
-# indices with a constant stride is stored as a range.
+# The image planes the points use, and for each the flat indices of its points: ranges when
+# every plane's points are contiguous, vectors otherwise. One concrete element type keeps the
+# plan traceable by Reactant.
 function plan_indices(imgdomain::AbstractRectiGrid, visdomain::StructuredDomain)
     isempty(DD.otherdims(imgdomain, (X, Y))) && return (0, 0)
     planes = vec(_pointplanes(imgdomain, visdomain))
     iminds = sort!(unique(planes))
-    visinds = map(iminds) do p
-        return _asrange(findall(==(p), planes))
-    end
-    return iminds, visinds
+    visinds = map(p -> findall(==(p), planes), iminds)
+    all(_iscontiguous, visinds) || return iminds, visinds
+    return iminds, map(v -> first(v):last(v), visinds)
 end
 
-function _asrange(inds::Vector{Int})
-    length(inds) == 1 && return inds[1]:inds[1]
-    step = inds[2] - inds[1]
-    all(==(step), diff(inds)) || return inds
-    return step == 1 ? (inds[1]:inds[end]) : (inds[1]:step:inds[end])
-end
+_iscontiguous(inds) = last(inds) - first(inds) == length(inds) - 1
 
 # The points of `visdomain` as one flat list, in the domain's memory order, stored in the
 # array type of its baseline coordinates.

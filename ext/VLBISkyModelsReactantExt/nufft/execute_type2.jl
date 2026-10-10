@@ -66,21 +66,34 @@ end
 function _execute_type2_impl(
         prep::NUFFTSetPts{T, D}, fk_full::AbstractArray, ntrans::Int, squeeze_out::Bool
     ) where {T, D}
+    fw = _type2_grid(prep, fk_full)
+    # Gather each point's stencil and contract against the kernel weights.
+    c = _interp(prep, fw, ntrans)
+    return squeeze_out ? dropdims(c; dims = 2) : c
+end
+
+# The oversampled grids of `fk_full :: (nmodes..., ntrans)`: deconvolve by the separable
+# phi_hat product, embed the central modes into the grid corners, and (inverse-)FFT with the
+# type-1 sign convention.
+function _type2_grid(prep::NUFFTSetPts{T, D}, fk_full::AbstractArray) where {T, D}
     plan = prep.plan
-
-    # 1. Deconvolve by the separable phi_hat product.
     fk_dec = fk_full ./ _phi_hat_tensor(plan)
-
-    # 2. Embed central modes into the corners of the oversampled grid.
     fw_hat = _corner_embed(fk_dec, plan.nmodes, plan.ngrid)
-
-    # 3. (Inverse-)FFT (same sign convention as type-1).
-    fw = plan.iflag < 0 ?
+    return plan.iflag < 0 ?
         AbstractFFTs.fft(fw_hat, 1:D) :
         AbstractFFTs.bfft(fw_hat, 1:D)
+end
 
-    # 4. Gather each point's stencil and contract against the kernel weights.
-    c = _interp(prep, fw, ntrans)
+"""
+    execute_type2(prep, fk, plane) -> c
 
-    return squeeze_out ? dropdims(c; dims = 2) : c
+Type-2 NUFFT of a stack of planes `fk :: (nmodes..., nplanes)` in which point `j` reads
+only plane `plane[j]`. Returns `c :: (M,)`. Every plane is deconvolved and FFTed in one
+batch; the interpolation gathers each point's stencil from its own plane.
+"""
+function execute_type2(prep::NUFFTSetPts{T, D}, fk::AbstractArray, plane::AbstractVector) where {T, D}
+    @assert nufft_type(prep.plan) == 2 "Plan was not built for type-2"
+    @assert ndims(fk) == D + 1 && size(fk)[1:D] == prep.plan.nmodes "fk must be (nmodes..., nplanes)"
+    @assert length(plane) == prep.M "need one plane index per point"
+    return _interp_plane(prep, _type2_grid(prep, fk), plane)
 end

@@ -77,6 +77,17 @@ end
         @test parent(@jit visibilitymap(mr, gfr)) ≈ visibilitymap(m, gfn)
     end
 
+    @testset "plane stack, wide path (large M)" begin
+        g = spatialgrid(10.0, 10.0, 32, 32) ⊗ Fr([230.0e9, 345.0e9])
+        cube = rand(32, 32, 2)
+        m = ContinuousImage(IntensityMap(cube, g), BSplinePulse{3}())
+        mr = ContinuousImage(IntensityMap(Reactant.to_rarray(cube), g), BSplinePulse{3}())
+        guv = UnstructuredDomain((U = randn(90_000) ./ 5, V = randn(90_000) ./ 5, Fr = rand([230.0e9, 345.0e9], 90_000)))
+        gfn = FourierDualDomain(g, guv, NFFTAlg())
+        gfr = FourierDualDomain(g, Reactant.to_rarray(guv), VLBISkyModels.ReactantNUFFTAlg(Float64; eps = 1.0e-9))
+        @test parent(@jit visibilitymap(mr, gfr)) ≈ parent(visibilitymap(m, gfn))
+    end
+
     @testset "PolExp2Map" begin
         gim = spatialgrid(1.0, 1.0, 128, 128)
         gimr = @jit(identity(gim))
@@ -161,10 +172,12 @@ end
         ti = frames(Ti, [0.0, 1.5, 4.0], [1.0, 3.0, 5.0])
         gf = gs ⊗ ti ⊗ Fr([230.0e9, 345.0e9])
         ps = PolySpectral(-0.7, 230.0e9)
-        # Two points per plane: a plane with a single point trips a Reactant bug in the
-        # per-plane write (`copyto!` into a length-1 view).
-        tf = [(a, b) for b in (230.0e9, 345.0e9) for a in (0.5, 2.0, 4.5) for _ in 1:2]
-        dom = UnstructuredDomain((; U = randn(12) ./ 10, V = randn(12) ./ 10, Ti = first.(tf), Fr = last.(tf)))
+        # Planes in scattered order, and plane (0.5, 230 GHz) with a single point.
+        tf = [
+            (0.5, 230.0e9), (2.0, 345.0e9), (4.5, 230.0e9), (2.0, 230.0e9), (0.5, 345.0e9), (4.5, 345.0e9),
+            (2.0, 345.0e9), (4.5, 230.0e9), (0.5, 345.0e9), (2.0, 230.0e9), (4.5, 345.0e9),
+        ]
+        dom = UnstructuredDomain((; U = randn(11) ./ 10, V = randn(11) ./ 10, Ti = first.(tf), Fr = last.(tf)))
         gfh = FourierDualDomain(gf, dom, DFTAlg())
         gfr = FourierDualDomain(gf, Reactant.to_rarray(dom), VLBISkyModels.ReactantNUFFTAlg(Float64; eps = 1.0e-10))
         cases = (
@@ -179,8 +192,15 @@ end
                 ar = Reactant.to_rarray(a)
                 @test Array(@jit vf(ar, gfr)) ≈ vf(a, gfh)
                 @test Array(@jit imf(ar, gf)) ≈ imf(a, gf)
-                @test !occursin("while", string(@code_hlo vf(ar, gfr)))
+                hlo = string(@code_hlo vf(ar, gfr))
+                @test !occursin("while", hlo)
+                @test count("stablehlo.fft", hlo) == 1
                 @test !occursin("while", string(@code_hlo imf(ar, gf)))
+                lh(a) = sum(abs2, vf(a, gfh))
+                lr(a, g) = sum(abs2, vf(a, g))
+                gr(a, g) = Enzyme.gradient(Enzyme.Reverse, lr, a, Const(g))[1]
+                dh = Enzyme.gradient(set_runtime_activity(Enzyme.Reverse), Const(lh), a)[1]
+                @test Array(@jit gr(ar, gfr)) ≈ dh
             end
         end
     end
