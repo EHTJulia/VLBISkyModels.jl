@@ -17,8 +17,9 @@ function _corner_embed(fk, nmodes::NTuple{D, Int}, ngrid::NTuple{D, Int}) where 
     if all(nmodes .== ngrid)
         return fk
     end
-    @assert ndims(fk) == D + 1
-    out = similar(fk, (ngrid..., size(fk, D + 1)))
+    @assert ndims(fk) > D
+    out = similar(fk, (ngrid..., size(fk)[(D + 1):end]...))
+    rest = ntuple(_ -> Colon(), ndims(fk) - D)
     fill!(out, zero(eltype(fk)))
     halves = nmodes .÷ 2
     n_poss = nmodes .- halves
@@ -35,7 +36,7 @@ function _corner_embed(fk, nmodes::NTuple{D, Int}, ngrid::NTuple{D, Int}) where 
                 ((ngrid[d] - halves[d] + 1):ngrid[d]) :
                 (1:n_poss[d]), Val(D)
         )
-        out[dst..., :] = fk[src..., :]
+        out[dst..., rest...] = fk[src..., rest...]
     end
     return out
 end
@@ -85,15 +86,19 @@ function _type2_grid(prep::NUFFTSetPts{T, D}, fk_full::AbstractArray) where {T, 
 end
 
 """
-    execute_type2(prep, fk, plane) -> c
+    execute_type2(prep, fk, plane, batched = ()) -> c
 
-Type-2 NUFFT of a stack of planes `fk :: (nmodes..., nplanes)` in which point `j` reads
-only plane `plane[j]`. Returns `c :: (M,)`. Every plane is deconvolved and FFTed in one
-batch; the interpolation gathers each point's stencil from its own plane.
+Type-2 NUFFT of a stack of planes `fk :: (nmodes..., planedims...)` in which each point
+reads only its own plane. Without `batched`, `plane :: (M, K)` holds point `j`'s index
+along each of the `K` plane dims. Otherwise the points are laid out as `size(plane)[1:end-1]`
+(in the order of `prep`'s points), its dim `i + 1` is plane dim `batched[i]` of `fk`, and
+`plane[..., :]` holds the index along each plane dim not in `batched`. Returns `c :: (M,)`.
+Every plane is deconvolved and FFTed in one batch; the interpolation gathers each point's
+stencil from its own plane.
 """
-function execute_type2(prep::NUFFTSetPts{T, D}, fk::AbstractArray, plane::AbstractVector) where {T, D}
+function execute_type2(prep::NUFFTSetPts{T, D}, fk::AbstractArray, plane::AbstractArray, batched::Tuple = ()) where {T, D}
     @assert nufft_type(prep.plan) == 2 "Plan was not built for type-2"
-    @assert ndims(fk) == D + 1 && size(fk)[1:D] == prep.plan.nmodes "fk must be (nmodes..., nplanes)"
-    @assert length(plane) == prep.M "need one plane index per point"
-    return _interp_plane(prep, _type2_grid(prep, fk), plane)
+    @assert ndims(fk) == D + length(batched) + size(plane, ndims(plane)) && size(fk)[1:D] == prep.plan.nmodes "fk must be (nmodes..., planedims...)"
+    @assert ndims(plane) == length(batched) + 2 && prod(size(plane)[1:(end - 1)]) == prep.M "need one plane index per point"
+    return _interp_plane(prep, _type2_grid(prep, fk), plane, batched)
 end

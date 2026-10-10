@@ -393,80 +393,46 @@ end
 _interp_ad_fallback(prep::NUFFTSetPts{T, 2}, fw::AbstractArray, ntrans::Int) where {T} =
     _interp_wide(prep, fw, ntrans)
 
-# Interpolation from a stack of grids `fw :: (N1, N2, nplanes)` in which point `j` reads
-# only plane `plane[j]`: the same kernels as `_interp` with one transform per point and the
-# plane offset added to each stencil index. Returns (M,).
-function _interp_plane(prep::NUFFTSetPts{T, 2}, fw::AbstractArray, plane::AbstractVector) where {T}
-    plan = prep.plan
-    CT = complex(T)
-    w = plan.nspread
-    ngrid = plan.ngrid
-    nflat = prod(ngrid)
-    M = prep.M
-    # Under AD the wide kernel is the faster one here even below the workspace limit.
-    if M * w^2 * sizeof(CT) > INTERP_WIDE_WS_LIMIT || EnzymeCore.within_autodiff()
-        return _interp_plane_wide(prep, fw, plane)
-    end
-
-    fw_vec = vec(fw)
-    coefs = plan.horner_coefs
-    cs, nchunks, Mpad = _chunk_plan(M, plan.chunk_size)
-    base_mat = ntuple(d -> reshape(_pad_to(prep.base[d], Mpad, 0), cs, nchunks), Val(2))
-    frac_mat = ntuple(d -> reshape(_pad_to(prep.frac[d], Mpad, zero(T)), cs, nchunks), Val(2))
-    offset_mat = reshape(_pad_to((plane .- 1) .* nflat, Mpad, 0), cs, nchunks)
-
-    out = similar(fw_vec, CT, (cs, nchunks))
-    fill!(out, zero(CT))
-    Reactant.@trace track_numbers = false for i in 1:nchunks
-        out[:, i] = _interp_plane_chunk(i, base_mat, frac_mat, offset_mat, coefs, ngrid, w, fw_vec)
-    end
-    c = vec(out)
-    return M == Mpad ? c : c[1:M]
-end
-
-function _interp_plane_chunk(
-        i, base_mat::NTuple{D}, frac_mat::NTuple{D}, offset_mat, coefs,
-        ngrid::NTuple{D, Int}, w::Int, fw_vec,
-    ) where {D}
-    base_c = ntuple(d -> base_mat[d][:, i], Val(D))
-    frac_c = ntuple(d -> frac_mat[d][:, i], Val(D))
-    wpd = ntuple(d -> _horner_weights(coefs, frac_c[d]), Val(D))
-    offs = ntuple(d -> _grid_offsets(base_c[d], ngrid[d], w), Val(D))
-    lin = _linear_indices(offs, ngrid) .+ offset_mat[:, i]
-    return _contract_weights(fw_vec[lin], wpd)
-end
-
-# As `_interp_wide`, with the real and imaginary parts of each plane adjacent so one
-# `(w, w, 2)` slice starting at the point's plane reads both.
-function _interp_plane_wide(prep::NUFFTSetPts{T, 2}, fw::AbstractArray, plane::AbstractVector) where {T}
+# Interpolation from a stack of grids `fw :: (N1, N2, planedims...)` in which each point
+# reads only its own plane (see `execute_type2`): the wide kernel with the `batched` plane
+# dims as gather batching dims and the rest collapsed, so a stack sharded along its plane
+# dims is read where it lives. Real and imaginary parts sit in their own dim, so each point
+# reads a `(w, w, 2)` slice. Returns (M,).
+function _interp_plane(prep::NUFFTSetPts{T, 2}, fw::AbstractArray, plane::AbstractArray, batched::Tuple) where {T}
     plan = prep.plan
     w = plan.nspread
     N1, N2 = plan.ngrid
     M = prep.M
+    K = ndims(fw) - 2
+    pshape = size(plane)[1:(end - 1)]
+    nb = length(pshape)
+    collapsed = filter(!in(batched), 1:K)
     coefs = plan.horner_coefs
-    nplanes = length(fw) ÷ (N1 * N2)
 
     w1 = _horner_weights(coefs, prep.frac[1])
     w2 = _horner_weights(coefs, prep.frac[2])
-    start1 = mod.(prep.base[1], N1) .+ 1
-    start2 = mod.(prep.base[2], N2) .+ 1
+    start1 = reshape(mod.(prep.base[1], N1) .+ 1, pshape..., 1)
+    start2 = reshape(mod.(prep.base[2], N2) .+ 1, pshape..., 1)
 
-    fw4 = reshape(fw, N1, N2, 1, nplanes)
-    fw_ri = reshape(cat(real.(fw4), imag.(fw4); dims = 3), N1, N2, 2 * nplanes)
-    fw_padded = _circular_pad_spatial(fw_ri, w, Val(2))
-    start_idx = hcat(reshape(start1, M, 1), reshape(start2, M, 1), reshape(2 .* plane .- 1, M, 1))
+    fw1 = reshape(fw, N1, N2, 1, size(fw)[3:end]...)
+    fw_ri = cat(real.(fw1), imag.(fw1); dims = 3)          # (N1, N2, 2, planedims...)
+    rest = ntuple(_ -> Colon(), K + 1)
+    padded = cat(fw_ri, fw_ri[:, 1:(w - 1), rest...]; dims = 2)
+    padded = cat(padded, padded[1:(w - 1), :, rest...]; dims = 1)
+    start_idx = cat(start1, start2, ones(Int, pshape..., 1), plane; dims = nb + 1)
 
     vals = Reactant.Ops.@opcall gather(
-        fw_padded,
-        Reactant.promote_to(Reactant.TracedRArray{Int, 2}, start_idx);
-        offset_dims = Int64[2, 3, 4],
-        collapsed_slice_dims = Int64[],
-        operand_batching_dims = Int64[],
-        start_indices_batching_dims = Int64[],
-        start_index_map = Int64[1, 2, 3],
-        index_vector_dim = Int64(2),
-        slice_sizes = Int64[w, w, 2],
-    )                                                      # (M, w, w, 2)
+        padded,
+        Reactant.promote_to(Reactant.TracedRArray{Int, nb + 1}, start_idx);
+        offset_dims = collect(Int64, (nb + 1):(nb + 3)),
+        collapsed_slice_dims = Int64[3 .+ collapsed...],
+        operand_batching_dims = Int64[3 .+ batched...],
+        start_indices_batching_dims = collect(Int64, 2:nb),
+        start_index_map = Int64[1, 2, 3, (3 .+ collapsed)...],
+        index_vector_dim = Int64(nb + 1),
+        slice_sizes = Int64[w, w, 2, ones(Int64, K)...],
+    )                                                      # (pshape..., w, w, 2)
+    vals = reshape(vals, M, w, w, 2)
     tmp = dropdims(sum(reshape(w2, M, 1, w, 1) .* vals; dims = 3); dims = 3)
     ri = dropdims(sum(reshape(w1, M, w, 1) .* tmp; dims = 2); dims = 2)    # (M, 2)
     return complex.(ri[:, 1], ri[:, 2])

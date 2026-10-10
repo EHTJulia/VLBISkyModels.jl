@@ -89,12 +89,13 @@ function plan_nuft(
         visdomain::StructuredDomain, indices
     )
     iminds, visinds = indices
+    pts = _pointlist(visdomain)
 
-    tplan = plan_nuft_spatial(alg, imagegrid, _subdomain(visdomain, visinds[1]))
+    tplan = plan_nuft_spatial(alg, imagegrid, _subdomain(pts, visinds[1]))
     plans = Dict{typeof(iminds[1]), typeof(tplan)}()
 
     for i in eachindex(iminds, visinds)
-        plans[iminds[i]] = plan_nuft_spatial(alg, imagegrid, _subdomain(visdomain, visinds[i]))
+        plans[iminds[i]] = plan_nuft_spatial(alg, imagegrid, _subdomain(pts, visinds[i]))
     end
     return plans
 end
@@ -109,7 +110,7 @@ function create_forward_plan(
     if isempty(DD.otherdims(imgdomain, (X, Y)))
         plan = plan_nuft_spatial(algorithm, imgdomain, pts)
     else
-        plan = plan_nuft(algorithm, imgdomain, pts, indices)
+        plan = plan_nuft(algorithm, imgdomain, visdomain, indices)
     end
     return NUFTPlan(algorithm, plan, phases, indices, size(visdomain))
 end

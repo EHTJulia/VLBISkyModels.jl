@@ -205,6 +205,82 @@ end
         end
     end
 
+    @testset "sharded plane stack" begin
+        ndev = length(Reactant.devices())
+        if ndev < 4
+            @warn "Sharded NUFFT tests skipped: start Julia with XLA_FLAGS=--xla_force_host_platform_device_count=4"
+        else
+            blocks(a, d) = sort!(unique(map(s -> s[d], a.sharding.device_to_array_slices)); by = first)
+            nogather(f, args...) = !occursin("all-gather", repr(@code_xla shardy_passes = :to_mhlo_shardings f(args...)))
+            mesh = Reactant.Sharding.Mesh(reshape(Reactant.devices()[1:4], 2, 2), (:t, :f))
+            layout = ShardLayout(mesh; Ti = :t, Fr = :f)
+            pulse = BSplinePulse{3}()
+            gs = spatialgrid(10.0, 10.0, 16, 16)
+            ti = frames(Ti, [0.0, 1.0, 2.0, 3.0], [1.0, 2.0, 3.0, 4.0])
+            frs = [230.0e9, 345.0e9]
+            g = gs ⊗ ti ⊗ Fr(frs)
+            alg = VLBISkyModels.ReactantNUFFTAlg(Float64; eps = 1.0e-10)
+            n = 200
+            dom = UnstructuredDomain((; U = randn(n) ./ 10, V = randn(n) ./ 10, Ti = 4 .* rand(n), Fr = rand(frs, n)))
+            gfh = FourierDualDomain(g, dom, DFTAlg())
+            sgf = shard(FourierDualDomain(g, Reactant.to_rarray(dom), alg), layout)
+            @test imgdomain(sgf) === g
+
+            onmesh(a, gr, lay) = lay === nothing ?
+                Reactant.to_rarray(a; sharding = Reactant.Sharding.Replicated(mesh)) :
+                baseimage(shard(IntensityMap(a, gr), lay))
+            gpf = gs ⊗ ti
+            cases = (
+                ("stored cube", a -> ContinuousImage(IntensityMap(a, g), pulse), rand(16, 16, 4, 2), g, layout, (3, 4)),
+                ("per-frame base", a -> MultiDomainImage(IntensityMap(a, gpf), pulse, PolySpectral(-0.7, 230.0e9)), rand(16, 16, 4), gpf, ShardLayout(mesh; Ti = :t), (3,)),
+                ("time and frequency families", a -> MultiDomainImage(IntensityMap(a, gs), pulse, PolyTemporal(0.2, 2.0), PolySpectral(-0.7, 230.0e9)), rand(16, 16), gs, nothing, ()),
+            )
+            for (lbl, mk, a, ga, lay, sdims) in cases
+                @testset "$lbl" begin
+                    vf(a, g) = baseimage(visibilitymap(mk(a), g))
+                    loss(a, g) = sum(abs2, vf(a, g))
+                    function grad!(da, a, g)
+                        Enzyme.autodiff(Enzyme.Reverse, loss, Active, Duplicated(a, da), Const(g))
+                        return da
+                    end
+                    ar = onmesh(a, ga, lay)
+                    @test Array(@jit vf(ar, sgf)) ≈ vf(a, gfh)
+                    @test nogather(vf, ar, sgf)
+                    dar = onmesh(zero(a), ga, lay)
+                    dr = @jit grad!(dar, ar, sgf)
+                    dh = Enzyme.gradient(set_runtime_activity(Enzyme.Reverse), Const(x -> loss(x, gfh)), a)[1]
+                    @test Array(dr) ≈ dh
+                    for d in sdims
+                        @test length(blocks(dr, d)) == 2
+                    end
+                    @test nogather(grad!, dar, ar, sgf)
+                end
+            end
+
+            @testset "polarized stored cube" begin
+                a = rand(16, 16, 4, 2, 4)
+                vf(a, gd) = parent(baseimage(visibilitymap(ContinuousImage(IntensityMap(FieldDimArray{StokesParams}(a), g), pulse), gd)))
+                ar = Reactant.to_rarray(a; sharding = Reactant.Sharding.DimsSharding(mesh, (3, 4), (:t, :f)))
+                @test Array(@jit vf(ar, sgf)) ≈ vf(a, gfh)
+                @test nogather(vf, ar, sgf)
+            end
+
+            @testset "(Pt, Fr) domain split along Fr" begin
+                np = 60
+                dpf = StructuredDomain((Pt(np), Fr(frs)); U = randn(np, 2) ./ 10, V = randn(np, 2) ./ 10, Ti = repeat(4 .* rand(np), 1, 2))
+                sg = shard(FourierDualDomain(g, Reactant.to_rarray(dpf), alg), layout)
+                vf(a, g) = baseimage(visibilitymap(ContinuousImage(IntensityMap(a, imgdomain(g)), pulse), g))
+                a = rand(16, 16, 4, 2)
+                ar = baseimage(shard(IntensityMap(a, g), layout))
+                v = @jit vf(ar, sg)
+                @test Array(v) ≈ vf(a, FourierDualDomain(g, dpf, DFTAlg()))
+                # The (Pt, Fr) result is a reshape of the flat points, which are in Fr-major order.
+                @test blocks(parent(v), 1) == [1:np, (np + 1):(2np)]
+                @test nogather(vf, ar, sg)
+            end
+        end
+    end
+
     @testset "Polarized plus unpolarized" begin
         g = spatialgrid(10.0, 10.0, 32, 32)
         img = IntensityMap(FieldDimArray{StokesParams}(rand(32, 32, 4)), g)
