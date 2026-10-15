@@ -14,20 +14,21 @@ stored in original point order by setpts.jl; the spread additionally applies
 the bin-sort permutation chunk-wise (see `_chunk_stencil`).
 ==============================================================================#
 
-# Horner weights for one dim and one chunk of points.
-# `coefs :: (w, deg+1)` host matrix, `frac` traced (cs,) vector.
-# Returns (cs, w): weights[j, k] = p_k(2*frac[j] - 1).
-function _horner_weights(coefs::AbstractMatrix, frac::AbstractVector)
+# Horner weights for one dim and a set of points.
+# `coefs :: (w, deg+1)` host matrix, `frac` traced array of offsets.
+# Returns (size(frac)..., w): weights[J, k] = p_k(2*frac[J] - 1).
+function _horner_weights(coefs::AbstractMatrix, frac::AbstractArray)
     t = 2 .* frac .- 1
     n = size(coefs, 2)
+    column(p) = reshape(coefs[:, p], ntuple(_ -> 1, ndims(t))..., :)
     # Seed the Horner recurrence with the leading coefficient broadcast to
-    # (cs, w), then fold in the remaining columns. Seeding from the constant
-    # (rather than starting the recurrence at column n-1) keeps the degree-0
-    # case (`n == 1`, single coefficient column) valid — the loop is then
-    # empty and `acc` is the constant column.
-    acc = one.(t) .* transpose(coefs[:, n])
+    # (size(frac)..., w), then fold in the remaining columns. Seeding from the
+    # constant (rather than starting the recurrence at column n-1) keeps the
+    # degree-0 case (`n == 1`, single coefficient column) valid — the loop is
+    # then empty and `acc` is the constant column.
+    acc = one.(t) .* column(n)
     for p in (n - 1):-1:1
-        acc = acc .* t .+ transpose(coefs[:, p])
+        acc = acc .* t .+ column(p)
     end
     return acc
 end
@@ -394,48 +395,74 @@ _interp_ad_fallback(prep::NUFFTSetPts{T, 2}, fw::AbstractArray, ntrans::Int) whe
     _interp_wide(prep, fw, ntrans)
 
 # Interpolation from a stack of grids `fw :: (N1, N2, planedims...)` in which each point
-# reads only its own plane (see `execute_type2`): the wide kernel with the `batched` plane
-# dims as gather batching dims and the rest collapsed, so a stack sharded along its plane
-# dims is read where it lives. Real and imaginary parts sit in their own dim, so each point
-# reads a `(w, w, 2)` slice. Returns (M,).
+# reads only its own plane (see `execute_type2`). Returns (M,).
 function _interp_plane(prep::NUFFTSetPts{T, 2}, fw::AbstractArray, plane::AbstractArray, batched::Tuple) where {T}
-    plan = prep.plan
-    w = plan.nspread
-    N1, N2 = plan.ngrid
-    M = prep.M
-    K = ndims(fw) - 2
+    N1, N2 = prep.plan.ngrid
     pshape = size(plane)[1:(end - 1)]
-    nb = length(pshape)
-    collapsed = filter(!in(batched), 1:K)
-    coefs = plan.horner_coefs
-
-    w1 = _horner_weights(coefs, prep.frac[1])
-    w2 = _horner_weights(coefs, prep.frac[2])
     start1 = reshape(mod.(prep.base[1], N1) .+ 1, pshape..., 1)
     start2 = reshape(mod.(prep.base[2], N2) .+ 1, pshape..., 1)
+    start = cat(start1, start2, ones(Int, pshape..., 1), plane; dims = length(pshape) + 1)
+    frac = map(f -> reshape(f, pshape), prep.frac)
+    ri = reshape(_interp_blocks(prep.plan, fw, start, frac, batched), prep.M, 2)
+    return complex.(ri[:, 1], ri[:, 2])
+end
+
+# The wide kernel over a stack of grids `fw :: (N1, N2, planedims...)`. Points are laid out
+# as `size(start)[1:end-1]`, and `start[J, :]` holds point `J`'s 1-based window corner, a 1,
+# and its index along each plane dim. Point dim `i + 1` is a gather batching dim: plane dim
+# `batched[i]` is split into `size(start, i + 1)` equal blocks, points in slice `b` read only
+# block `b`, and their index along that plane dim counts within the block. A stack sharded
+# along its plane dims is thus read where it lives when the points are grouped the same way.
+# Real and imaginary parts sit in their own dim, so each point reads a `(w, w, 2)` slice.
+# Returns the real and imaginary parts, `(size(start)[1:end-1]..., 2)`.
+function _interp_blocks(plan::NUFFTPlan{T, 2}, fw::AbstractArray, start::AbstractArray, frac::NTuple{2, AbstractArray}, batched::Tuple) where {T}
+    w = plan.nspread
+    N1, N2 = plan.ngrid
+    K = ndims(fw) - 2
+    pshape = size(start)[1:(end - 1)]
+    nb = length(pshape)
+    @assert nb == length(batched) + 1 && size(start, nb + 1) == 3 + K "start must be (points..., 3 + K)"
 
     fw1 = reshape(fw, N1, N2, 1, size(fw)[3:end]...)
     fw_ri = cat(real.(fw1), imag.(fw1); dims = 3)          # (N1, N2, 2, planedims...)
     rest = ntuple(_ -> Colon(), K + 1)
     padded = cat(fw_ri, fw_ri[:, 1:(w - 1), rest...]; dims = 2)
     padded = cat(padded, padded[1:(w - 1), :, rest...]; dims = 1)
-    start_idx = cat(start1, start2, ones(Int, pshape..., 1), plane; dims = nb + 1)
+
+    shape = collect(Int64, size(padded)[1:3])
+    within = Int64[]
+    blockdims = zeros(Int64, length(batched))
+    for k in 1:K
+        n = size(fw, 2 + k)
+        i = findfirst(==(k), batched)
+        nblk = i === nothing ? 1 : pshape[i + 1]
+        n % nblk == 0 || throw(DimensionMismatch("plane dim $k of length $n does not split into $nblk equal blocks"))
+        push!(shape, n ÷ nblk)
+        push!(within, length(shape))
+        if i !== nothing
+            push!(shape, nblk)
+            blockdims[i] = length(shape)
+        end
+    end
+    stack = isempty(batched) ? padded : Reactant.Ops.reshape(padded, shape...)
 
     vals = Reactant.Ops.@opcall gather(
-        padded,
-        Reactant.promote_to(Reactant.TracedRArray{Int, nb + 1}, start_idx);
+        stack,
+        Reactant.promote_to(Reactant.TracedRArray{Int, nb + 1}, start);
         offset_dims = collect(Int64, (nb + 1):(nb + 3)),
-        collapsed_slice_dims = Int64[3 .+ collapsed...],
-        operand_batching_dims = Int64[3 .+ batched...],
+        collapsed_slice_dims = within,
+        operand_batching_dims = blockdims,
         start_indices_batching_dims = collect(Int64, 2:nb),
-        start_index_map = Int64[1, 2, 3, (3 .+ collapsed)...],
+        start_index_map = Int64[1, 2, 3, within...],
         index_vector_dim = Int64(nb + 1),
-        slice_sizes = Int64[w, w, 2, ones(Int64, K)...],
+        slice_sizes = Int64[w, w, 2, ones(Int64, length(shape) - 3)...],
     )                                                      # (pshape..., w, w, 2)
-    vals = reshape(vals, M, w, w, 2)
-    tmp = dropdims(sum(reshape(w2, M, 1, w, 1) .* vals; dims = 3); dims = 3)
-    ri = dropdims(sum(reshape(w1, M, w, 1) .* tmp; dims = 2); dims = 2)    # (M, 2)
-    return complex.(ri[:, 1], ri[:, 2])
+
+    coefs = plan.horner_coefs
+    w1 = _horner_weights(coefs, frac[1])                   # (pshape..., w)
+    w2 = _horner_weights(coefs, frac[2])
+    tmp = dropdims(sum(reshape(w2, pshape..., 1, w, 1) .* vals; dims = nb + 2); dims = nb + 2)
+    return dropdims(sum(reshape(w1, pshape..., w, 1) .* tmp; dims = nb + 1); dims = nb + 1)
 end
 
 # D != 2: trace-time-unrolled chunk loop (capped). Each chunk is its own

@@ -67,7 +67,7 @@ end
 function _execute_type2_impl(
         prep::NUFFTSetPts{T, D}, fk_full::AbstractArray, ntrans::Int, squeeze_out::Bool
     ) where {T, D}
-    fw = _type2_grid(prep, fk_full)
+    fw = _type2_grid(prep.plan, fk_full)
     # Gather each point's stencil and contract against the kernel weights.
     c = _interp(prep, fw, ntrans)
     return squeeze_out ? dropdims(c; dims = 2) : c
@@ -76,8 +76,7 @@ end
 # The oversampled grids of `fk_full :: (nmodes..., ntrans)`: deconvolve by the separable
 # phi_hat product, embed the central modes into the grid corners, and (inverse-)FFT with the
 # type-1 sign convention.
-function _type2_grid(prep::NUFFTSetPts{T, D}, fk_full::AbstractArray) where {T, D}
-    plan = prep.plan
+function _type2_grid(plan::NUFFTPlan{T, D}, fk_full::AbstractArray) where {T, D}
     fk_dec = fk_full ./ _phi_hat_tensor(plan)
     fw_hat = _corner_embed(fk_dec, plan.nmodes, plan.ngrid)
     return plan.iflag < 0 ?
@@ -92,13 +91,14 @@ Type-2 NUFFT of a stack of planes `fk :: (nmodes..., planedims...)` in which eac
 reads only its own plane. Without `batched`, `plane :: (M, K)` holds point `j`'s index
 along each of the `K` plane dims. Otherwise the points are laid out as `size(plane)[1:end-1]`
 (in the order of `prep`'s points), its dim `i + 1` is plane dim `batched[i]` of `fk`, and
-`plane[..., :]` holds the index along each plane dim not in `batched`. Returns `c :: (M,)`.
+`plane[..., :]` holds the index along each plane dim, `1` along those in `batched`. Returns
+`c :: (M,)`.
 Every plane is deconvolved and FFTed in one batch; the interpolation gathers each point's
 stencil from its own plane.
 """
 function execute_type2(prep::NUFFTSetPts{T, D}, fk::AbstractArray, plane::AbstractArray, batched::Tuple = ()) where {T, D}
     @assert nufft_type(prep.plan) == 2 "Plan was not built for type-2"
-    @assert ndims(fk) == D + length(batched) + size(plane, ndims(plane)) && size(fk)[1:D] == prep.plan.nmodes "fk must be (nmodes..., planedims...)"
+    @assert ndims(fk) == D + size(plane, ndims(plane)) && size(fk)[1:D] == prep.plan.nmodes "fk must be (nmodes..., planedims...)"
     @assert ndims(plane) == length(batched) + 2 && prod(size(plane)[1:(end - 1)]) == prep.M "need one plane index per point"
-    return _interp_plane(prep, _type2_grid(prep, fk), plane, batched)
+    return _interp_plane(prep, _type2_grid(prep.plan, fk), plane, batched)
 end
