@@ -13,6 +13,8 @@ Pkg.instantiate()
 
 using CairoMakie
 using VLBISkyModels
+# Loaded here because an example activates `examples/`; the XLA client starts on first use.
+using Reactant, Enzyme
 using Documenter
 using Literate
 using Pkg
@@ -39,12 +41,15 @@ makedocs(;
         assets = String[],
     ),
     draft = false,
+    checkdocs = :exports,
     pages = [
         "Home" => "index.md",
         "interface.md",
+        "multidomain.md",
+        "Non-Analytic Modeling" => joinpath("examples", "nonanalytic.md"),
+        "Multifrequency Movies with Reactant" => joinpath("examples", "reactant_movie.md"),
         "api.md",
         "base_api.md",
-        "Non-Analytic Modeling" => joinpath("examples", "nonanalytic.md"),
     ],
     checkdocs_ignored_modules = [Base.get_extension(VLBISkyModels, :VLBISkyModelsMakieExt)]
 )

@@ -50,12 +50,13 @@ define an `intensity_point` and `visibility_point` method.
 function ComradeBase.intensity_point(m::MyGaussian, p)
     (; X, Y) = p
     @unpack_params size = m(p)
-    return exp(-(X^2 + Y^2) * inv(2 * size^2)) * inv(2π * size)
+    return exp(-(X^2 + Y^2) * inv(2 * size^2)) * inv(2π * size^2)
 end
 
-function ComradeBase.visibility_point(m::MyGaussian, p) where {T}
+function ComradeBase.visibility_point(m::MyGaussian, p)
+    (; U, V) = p
     @unpack_params size = m(p)
-    return exp(-2π^2 * size^2 * (u^2 + v^2)) + 0im
+    return exp(-2π^2 * size^2 * (U^2 + V^2)) + 0im
 end
 ```
 
@@ -79,6 +80,7 @@ adding multiple Gaussians and modifying them. For instance, with a flux of 2 Jy.
 ```julia
 using Plots
 gauss = 2.0 * MyGaussian(1.0)
+ellgauss = modify(gauss, Stretch(1.0, 0.5))
 fig = plot(gauss; layout=(1, 2), size=(800, 300))
 plot!(fig[2], ellgauss; size=(800, 350))
 ```
@@ -100,10 +102,10 @@ Plots.scatter!(hypot.(u, v), abs.(veg); label="Elliptical Gaussian")
 
 ## Making the model frequency dependent
 
-To make the model frequency dependent we can use the existing [`VLBISkyModels.DomainParams`](@ref) interface.
-This defines how the model parameters behave as a function of frequency and time. For example,
-to make the size of the Gaussian frequency dependent we can pair the base size with a
-[`PolySpectral`](@ref) expansion using [`MultiDomainParams`](@ref)
+A parameter of the model may be a [`MultiDomainParams`](@ref), a base value paired with
+families that say how it changes with time and frequency. Since `intensity_point` and
+`visibility_point` read `size` with `@unpack_params`, `MyGaussian` needs no changes. To make
+the size frequency dependent, pair the base size with a [`PolySpectral`](@ref) expansion:
 
 ```julia
 ν₀ = 230e9
@@ -111,67 +113,16 @@ to make the size of the Gaussian frequency dependent we can pair the base size w
 a = 1.0
 size = MultiDomainParams(σ₀, PolySpectral(a, ν₀))
 gauss = MyGaussian(size)
-ellgauss = 2.0 * MyGaussian(size)
 ```
 
-which will make a Gaussian whose size as a function of frequency is given by
+which makes a Gaussian whose size as a function of frequency is
 
 ```math
 \sigma(\nu) = \sigma_0 (\nu / \nu_0)^a
 ```
 
-[`PolyTemporal`](@ref) does the same in time about a reference epoch `t₀`, and families
-compose in one chain, so `MultiDomainParams(σ₀, PolyTemporal(r, t₀), PolySpectral(a, ν₀))`
-varies the size in both time and frequency. Both scale the base by default
-(`link = log`); pass `link = identity` for a parameter that drifts additively, such as a
-position, or any function with an `InverseFunctions.inverse`.
-
-If we wanted a different function form for the frequency dependence, we can define a new type
-
-```julia
-struct MyFreq{T,F} <: VLBISkyModels.DomainParams{T}
-    a::T
-    F0::F
-end
-```
-
-The type parameter of `DomainParams` is the element type of the value the family produces at
-a point — a single parameter value, never a container. A family describes how a parameter
-*departs* from a base value as time and frequency change, so the single method it must
-define transforms a base
-
-```julia
-function VLBISkyModels.apply_param(base, param::MyFreq, p)
-    return base * (param.a + p.Fr / param.F0)
-end
-```
-
-which scales the base linearly with frequency. Pair it with a base to get something that can
-be evaluated
-
-```julia
-ν₀ = 230e9
-σ₀ = 1.0
-size = MultiDomainParams(σ₀, MyFreq(1.0, ν₀))
-gauss = MyGaussian(size)
-```
-
-A [`MultiDomainParams`](@ref) chain applies several models in turn, each transforming the
-result of the previous one, so a family never needs to know what precedes it. A family on
-its own has no value — evaluating one is an error, because the base it transforms is
-missing.
-
-Two things are worth knowing when writing `apply_param`. Work that depends on only some of
-the domain axes should be computed before it is broadcast against `base`: the whole
-frequency axis may arrive at once, and fusing a per-frequency computation into the
-element-wise broadcast evaluates it once per point of the result instead of once per
-frequency. And a family may return a lazy `Base.Broadcasted` rather than an array, in which
-case the links of a chain compose without materializing and the value is realized once at
-the end; this is worth doing for long chains and unnecessary for short ones.
-
-A [`ContinuousImage`](@ref) evaluated at a single point reads only the pixels under its
-kernel, so a family whose `apply_param` returns a lazy `Base.Broadcasted` is evaluated at
-those pixels alone; one that returns an array evaluates the whole image at every point.
+[Multidomain models](@ref) covers time dependence, chains of several families, and writing
+a new family.
 
 !!! note
     This extension of the model to be time and frequency dependent is only necessary for models

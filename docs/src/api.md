@@ -171,4 +171,6 @@ VLBISkyModels.transform_image
 VLBISkyModels.stokes_intensitymap
 VLBISkyModels.FFTPlan
 VLBISkyModels.NUFTPlan
+VLBISkyModels.AxisTaps
+VLBISkyModels._resample!
 ```

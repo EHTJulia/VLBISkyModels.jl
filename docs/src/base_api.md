@@ -83,7 +83,11 @@ ComradeBase.RectiGrid
 ComradeBase.gridproduct
 ComradeBase.frames
 ComradeBase.frameindex
+ComradeBase.StructuredDomain
 ComradeBase.UnstructuredDomain
+ComradeBase.coords
+ComradeBase.coordspans
+ComradeBase.spatialdims
 ComradeBase.dims
 ComradeBase.named_dims
 ComradeBase.axisdims
@@ -107,11 +111,23 @@ ComradeBase.AbstractDualDomain
 ```@docs
 ComradeBase.IntensityMap
 ComradeBase.IntensityMap(::AbstractArray, ::AbstractRectiGrid)
-ComradeBase.UnstructuredMap
+ComradeBase.StructuredMap
+ComradeBase.StokesMap
+ComradeBase.CoherencyMap
+ComradeBase.stokesmap
+ComradeBase.coherencymap
+ComradeBase.coherency
 ComradeBase.baseimage
 ComradeBase.centroid
 ComradeBase.second_moment
 ComradeBase.stokes
+```
+
+## Sharding
+
+```@docs
+ComradeBase.shard
+ComradeBase.ShardLayout
 ```
 
 ## Polarization

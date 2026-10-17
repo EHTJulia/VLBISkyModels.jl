@@ -12,13 +12,15 @@ This repository has tries to follow [ColPrac](https://github.com/SciML/ColPrac).
 
 ## Requirements
 
-The minimum Julia version we require is 1.7. In the future we may increase this as Julia advances.
+The minimum Julia version we require is 1.10. In the future we may increase this as Julia advances.
 
 ```@contents
 Pages = [
     "index.md",
     "interface.md",
+    "multidomain.md",
     "examples/nonanalytic.md",
+    "examples/reactant_movie.md",
     "api.md",
 ]
 ```
