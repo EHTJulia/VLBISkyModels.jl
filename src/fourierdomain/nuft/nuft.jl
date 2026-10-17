@@ -63,7 +63,7 @@ _iscontiguous(inds) = last(inds) - first(inds) == length(inds) - 1
 
 # The points of `visdomain` as one flat list, in the domain's memory order, stored in the
 # array type of its baseline coordinates.
-_pointlist(visdomain::StructuredDomain{<:Tuple{<:Pt}}) = visdomain
+_pointlist(visdomain::StructuredDomain{<:Tuple{<:Node}}) = visdomain
 function _pointlist(visdomain::StructuredDomain)
     sc = ComradeBase.shapedcoords(_hostdomain(visdomain))
     sz = size(visdomain)

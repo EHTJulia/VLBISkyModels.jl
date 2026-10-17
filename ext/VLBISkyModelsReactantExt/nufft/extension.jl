@@ -1,7 +1,7 @@
 using VLBISkyModels
 using Reactant: unwrapped_eltype
 using ReactantCore
-using ComradeBase: DD, X, Y, Pt
+using ComradeBase: DD, X, Y, Node
 
 function VLBISkyModels._jlnuft!(out, A::NUFFTSetPts, b::Reactant.AnyTracedRArray{<:Real})
     VLBISkyModels._jlnuft!(out, A, complex.(b))
@@ -75,7 +75,7 @@ end
 
 function _batchplanes(plane, imgdomain, visdomain)
     pnames = map(DD.name, DD.otherdims(imgdomain, (X, Y)))
-    vdims = DD.otherdims(visdomain, Pt)
+    vdims = DD.otherdims(visdomain, Node)
     batched = map(d -> something(findfirst(==(DD.name(d)), pnames), 0), vdims)
     sz = size(visdomain)
     full = reshape(plane, sz..., length(pnames))

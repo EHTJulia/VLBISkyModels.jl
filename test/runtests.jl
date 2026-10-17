@@ -38,7 +38,7 @@ function FiniteDifferences.to_vec(k::IntensityMap)
     return v, back
 end
 
-# The points of a `(Pt,)` domain whose `Ti` and `Fr` coordinates equal the given values.
+# The points of a `(Node,)` domain whose `Ti` and `Fr` coordinates equal the given values.
 function selectpoints(d; Ti = nothing, Fr = nothing)
     keep = trues(length(d))
     isnothing(Ti) || (keep .&= d.Ti .== Ti)

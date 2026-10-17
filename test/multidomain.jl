@@ -1216,7 +1216,7 @@ end
     g = spatialgrid(10.0, 10.0, 16, 16)
     frs = [ref, 1.5 * ref]
     n = 30
-    dpf = StructuredDomain((Pt(n), Fr(frs)); u = randn(n) ./ 10 .* c ./ ref, v = randn(n) ./ 10 .* c ./ ref)
+    dpf = StructuredDomain((Node(n), Fr(frs)); u = randn(n) ./ 10 .* c ./ ref, v = randn(n) ./ 10 .* c ./ ref)
     U, V = vec(dpf.U), vec(dpf.V)
     dpt = UnstructuredDomain((; U, V, Fr = vec(repeat(frs', n))))
     pimg = IntensityMap(FieldDimArray{StokesParams}(rand(16, 16, 4)), g)
@@ -1232,11 +1232,11 @@ end
         @test vec(baseimage(vpf)) == baseimage(vpt)
     end
 
-    # A per-point `Ti` coordinate on a `(Pt, Fr)` domain selects the time plane.
+    # A per-point `Ti` coordinate on a `(Node, Fr)` domain selects the time plane.
     tis = [0.0, 1.0]
     tpt = repeat([0.0, 1.0], n ÷ 2)
     uv = ComradeBase.coords(dpf)
-    dptf = StructuredDomain((Pt(n), Fr(frs)); uv.u, uv.v, Ti = tpt)
+    dptf = StructuredDomain((Node(n), Fr(frs)); uv.u, uv.v, Ti = tpt)
     gtf = g ⊗ Ti(tis) ⊗ Fr(frs)
     cube = ContinuousImage(IntensityMap(rand(16, 16, 2, 2), gtf), BSplinePulse{3}())
     vtf = visibilitymap(cube, FourierDualDomain(gtf, dptf, NFFTAlg()))

@@ -148,13 +148,13 @@ end
         end
     end
 
-    @testset "(Pt, Fr) visibility domain" begin
+    @testset "(Node, Fr) visibility domain" begin
         ref = 230.0e9
         c = 299_792_458.0
         g = spatialgrid(10.0, 10.0, 16, 16)
         frs = [ref, 1.5 * ref]
         n = 30
-        dpf = StructuredDomain((Pt(n), Fr(frs)); u = randn(n) ./ 10 .* c ./ ref, v = randn(n) ./ 10 .* c ./ ref)
+        dpf = StructuredDomain((Node(n), Fr(frs)); u = randn(n) ./ 10 .* c ./ ref, v = randn(n) ./ 10 .* c ./ ref)
         base = rand(16, 16)
         spec = PolySpectral(1.2, ref)
         gcube = g ⊗ Fr(frs)
@@ -274,16 +274,16 @@ end
                 @test isempty(heavy(vf, ar, sgf))
             end
 
-            @testset "(Pt, Fr) domain split along Fr" begin
+            @testset "(Node, Fr) domain split along Fr" begin
                 np = 60
-                dpf = StructuredDomain((Pt(np), Fr(frs)); U = randn(np, 2) ./ 10, V = randn(np, 2) ./ 10, Ti = repeat(4 .* rand(np), 1, 2))
+                dpf = StructuredDomain((Node(np), Fr(frs)); U = randn(np, 2) ./ 10, V = randn(np, 2) ./ 10, Ti = repeat(4 .* rand(np), 1, 2))
                 sg = shard(FourierDualDomain(g, Reactant.to_rarray(dpf), alg), layout)
                 vf(a, g) = baseimage(visibilitymap(ContinuousImage(IntensityMap(a, imgdomain(g)), pulse), g))
                 a = rand(16, 16, 4, 2)
                 ar = baseimage(shard(IntensityMap(a, g), layout))
                 v = @jit vf(ar, sg)
                 @test Array(v) ≈ vf(a, FourierDualDomain(g, dpf, DFTAlg()))
-                # The (Pt, Fr) result is a reshape of the flat points, which are in Fr-major order.
+                # The (Node, Fr) result is a reshape of the flat points, which are in Fr-major order.
                 @test blocks(parent(v), 1) == [1:np, (np + 1):(2np)]
                 @test isempty(heavy(vf, ar, sg; grid = sg))
             end
@@ -310,7 +310,7 @@ end
                 gb = gs ⊗ ti ⊗ frames(Fr, [220.0e9, 340.0e9], [240.0e9, 350.0e9])
                 np = 40
                 db = StructuredDomain(
-                    (Pt(np), Fr([225.0e9, 235.0e9, 342.0e9, 348.0e9]));
+                    (Node(np), Fr([225.0e9, 235.0e9, 342.0e9, 348.0e9]));
                     U = randn(np, 4) ./ 10, V = randn(np, 4) ./ 10, Ti = repeat(4 .* rand(np), 1, 4)
                 )
                 sb = shard(FourierDualDomain(gb, Reactant.to_rarray(db), alg), layout)
