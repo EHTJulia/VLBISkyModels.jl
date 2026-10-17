@@ -1,4 +1,4 @@
-function create_domains(Nx, alg; Nt = 0, Nf = 0, fov = 12.0, swap_tf = false)
+function create_domains(Nx, alg; Nt = 0, Nf = 0, fov = 12.0, swap_tf = false, npts = 500)
     X = Y = range(-fov, fov; length = Nx)
     Ti = Nt > 0 ? sort(10 * rand(Nt)) : Float64[]
     Fr = Nf > 0 ? sort(1.0e11 * rand(Nf)) : Float64[]
@@ -15,8 +15,8 @@ function create_domains(Nx, alg; Nt = 0, Nf = 0, fov = 12.0, swap_tf = false)
     end
 
     dx, dy = pixelsizes(imgdomain)
-    U_vals = fftshift(fftfreq(500, 1 / dx))
-    V_vals = fftshift(fftfreq(500, 1 / dy))
+    U_vals = fftshift(fftfreq(npts, 1 / dx))
+    V_vals = fftshift(fftfreq(npts, 1 / dy))
 
     if !isempty(Ti) && !isempty(Fr)
         if swap_tf
@@ -163,8 +163,8 @@ function rotating4dgaussian(p)
     return cimg, gaussians
 end
 
-function test4dgaussiansft(Nx, Nt, alg)
-    p = create_domains(Nx, alg; Nt = Nt, Nf = 1)
+function test4dgaussiansft(Nx, Nt, alg; npts = 500)
+    p = create_domains(Nx, alg; Nt = Nt, Nf = 1, npts)
     cimg, gaussians = rotating4dgaussian(p)
     vis_numeric = VLBISkyModels.visibilitymap(cimg, p)
     vis_analytic = similar(vis_numeric, 0)
@@ -186,8 +186,8 @@ function test4dgaussiansft(Nx, Nt, alg)
     return isapprox(maximum(abs, vis_numeric - vis_analytic), 0; atol = 1.0e-3)
 end
 
-function test4dft_individual(Nx, Nt, alg)
-    p = create_domains(Nx, alg; Nt = Nt, Nf = 1)
+function test4dft_individual(Nx, Nt, alg; npts = 500)
+    p = create_domains(Nx, alg; Nt = Nt, Nf = 1, npts)
     cimg, gaussians = rotating4dgaussian(p)
     vis_numeric = VLBISkyModels.visibilitymap(cimg, p)
     vis_ind = similar(vis_numeric, 0)
@@ -235,8 +235,8 @@ function rotating4dgaussian_swap(p)
     return cimg, gaussians
 end
 
-function test4dgaussiansft_swap(Nx, Nt, alg)
-    p = create_domains(Nx, alg; Nt = Nt, Nf = 1, swap_tf = true)
+function test4dgaussiansft_swap(Nx, Nt, alg; npts = 500)
+    p = create_domains(Nx, alg; Nt = Nt, Nf = 1, swap_tf = true, npts)
     cimg, gaussians = rotating4dgaussian_swap(p)
     vis_numeric = VLBISkyModels.visibilitymap_numeric(cimg, p)
     vis_analytic = similar(vis_numeric, 0)
@@ -279,8 +279,8 @@ function rotating3dgaussian(p)
     return cimg, gaussians
 end
 
-function test3dgaussians(Nx, Nt, alg)
-    p = create_domains(Nx, alg; Nt = Nt)
+function test3dgaussians(Nx, Nt, alg; npts = 500)
+    p = create_domains(Nx, alg; Nt = Nt, npts)
     cimg, gaussians = rotating3dgaussian(p)
     vis_numeric = VLBISkyModels.visibilitymap_numeric(cimg, p)
     vis_analytic = similar(vis_numeric, 0)
@@ -317,8 +317,8 @@ function freqgaussians(p)
     return cimg, gaussians
 end
 
-function test3dgaussians_freq(Nx, Nf, alg)
-    p = create_domains(Nx, alg; Nf = Nf)
+function test3dgaussians_freq(Nx, Nf, alg; npts = 500)
+    p = create_domains(Nx, alg; Nf = Nf, npts)
     cimg, gaussians = freqgaussians(p)
 
     vis_numeric = VLBISkyModels.visibilitymap(cimg, p)
@@ -336,8 +336,8 @@ function test3dgaussians_freq(Nx, Nf, alg)
     return isapprox(maximum(abs, vis_numeric - vis_analytic), 0; atol = 1.0e-3)
 end
 
-function test2dgaussian(Nx, alg)
-    p = create_domains(Nx, alg)
+function test2dgaussian(Nx, alg; npts = 500)
+    p = create_domains(Nx, alg; npts)
 
     gaussian = modify(
         Gaussian(), Stretch(2, 1), Shift(2.0, 1.0), Rotate(π / 4),
@@ -371,12 +371,12 @@ end
     @test test3dgaussians_freq(1024, 4, FINUFFTAlg())
     @test test2dgaussian(1024, FINUFFTAlg())
 
-    @test test4dgaussiansft(512, 2, DFTAlg())
-    @test test4dgaussiansft_swap(512, 2, DFTAlg())
-    @test test4dft_individual(512, 2, DFTAlg())
-    @test test3dgaussians(512, 2, DFTAlg())
-    @test test3dgaussians_freq(512, 2, DFTAlg())
-    @test test2dgaussian(512, DFTAlg())
+    @test test4dgaussiansft(512, 2, DFTAlg(); npts = 100)
+    @test test4dgaussiansft_swap(512, 2, DFTAlg(); npts = 100)
+    @test test4dft_individual(512, 2, DFTAlg(); npts = 100)
+    @test test3dgaussians(512, 2, DFTAlg(); npts = 100)
+    @test test3dgaussians_freq(512, 2, DFTAlg(); npts = 100)
+    @test test2dgaussian(512, DFTAlg(); npts = 100)
 end
 
 @testset "Multidomain models" begin
