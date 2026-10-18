@@ -25,6 +25,7 @@ import CairoMakie as CM
 using ForwardDiff
 using Enzyme
 using LinearAlgebra
+using Random
 using Downloads
 using BenchmarkTools
 using EnzymeTestUtils
@@ -58,7 +59,7 @@ end
 
 function testmodel(
         m::VLBISkyModels.AbstractModel, npix = 256, atol = 1.0e-4, maxu = 1.0;
-        radmul = 3.0
+        radmul = 3.0, nvis = 1000
     )
     GC.gc()
     @info "Testing $(m)"
@@ -85,15 +86,10 @@ function testmodel(
     @test isapprox(maximum(parent(img) .- parent(img2)), 0, atol = 1.0e-8)
     dx, dy = pixelsizes(img)
     dx = max(VLBISkyModels.radialextent(m) / 128, dx)
-    u1 = fftshift(fftfreq(size(img, 1), 1 / dx)) ./ 40
-    u2 = range(-1 / (4 * dx), 1 / (4 * dx); length = size(img, 1) ÷ 2) * maxu
-    if maximum(u2) > maximum(u1)
-        u = u1
-    else
-        u = u2
-    end
-    uu = vec(u .* ones(length(u))')
-    vv = vec(ones(length(u)) .* u')
+    umax = min(1 / (80 * dx), maxu / (4 * dx))
+    rng = Random.Xoshiro(1)
+    uu = umax .* (2 .* rand(rng, nvis) .- 1)
+    vv = umax .* (2 .* rand(rng, nvis) .- 1)
     guv = UnstructuredDomain((U = uu, V = vv))
     gff = FourierDualDomain(g, guv, NFFTAlg())
     # Plots.closeall()
@@ -103,7 +99,6 @@ function testmodel(
     @test isapprox(maximum(abs, van .- vnu), 0.0, atol = atol)
     img = nothing
     imgt = nothing
-    u = nothing
     mnon = nothing
     van = nothing
     vnu = nothing
@@ -113,8 +108,6 @@ function testmodel(
     vv = nothing
     guv = nothing
     gff = nothing
-    u1 = nothing
-    u2 = nothing
     img2 = nothing
 
     return GC.gc()
