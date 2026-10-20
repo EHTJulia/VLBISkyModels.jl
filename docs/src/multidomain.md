@@ -150,6 +150,15 @@ dpf = StructuredDomain((Node(n), Fr([86.0e9, 230.0e9, 345.0e9])); u = 4.0e6 .* r
 size(visibilitymap(cube, FourierDualDomain(gcube, dpf, NFFTAlg())))
 ```
 
+The [ComradeBase documentation](https://ptiede.github.io/ComradeBase.jl/stable/domains/)
+describes which layout fits which data: scans with different baselines, epochs months apart,
+missing channels.
+
+Each point is evaluated once, from its own plane. On the CPU, a nonuniform transform builds
+one plan per plane from that plane's points, and a plane with no points is not transformed.
+Sort the points by time: each plane's points are then contiguous, and its visibilities are
+written to one contiguous range. Under Reactant every plane is transformed in one batch.
+
 [`FFTAlg`](@ref) interpolates a single 2D FFT and cannot transform an image with `Ti` or
 `Fr` planes; use a nonuniform transform such as [`NFFTAlg`](@ref) or [`DFTAlg`](@ref).
 
