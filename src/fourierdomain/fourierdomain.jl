@@ -170,14 +170,11 @@ has no coordinate for, throw. A `Ti` or `Fr` of `visdomain` that `imgdomain` lac
 ignored, so the image is the same along it. The visibility map has the shape of
 `visdomain`.
 
-With Reactant, `shard(d, layout)` places a dual domain on a device mesh: both domains as
-`shard` places them, and the plans on the mesh. With `ReactantNUFFTAlg`, an image sharded
-along its `Ti` and `Fr` dims is transformed where each plane lives: the forward plan groups
-the points by the device that holds their plane, each device interpolates only its own
-group (padded to the largest), and the results are returned to the domain's point order,
-which moves two values per point between devices. Each sharded `Ti` or `Fr` dim of
-`imgdomain` must split evenly over its shards. A `Fr` dim of `visdomain` that equals the
-image's `Fr` dim keeps the visibilities split along it.
+With Reactant, `shard(d, layout)` places both domains on a device mesh and rebuilds the
+plans. When the layout splits image planes such as `Ti`, each device gets the points of its
+own planes, padded to a common length, and the visibility map is on that blocked
+`visdomain`. Move data and weights to it with `shard(map, visdomain(sd))`. Sharded image
+dims must split evenly. With `ReactantNUFFTAlg`, no visibilities move between devices.
 """
 function FourierDualDomain(
         imgdomain::AbstractSingleDomain, visdomain::AbstractSingleDomain,

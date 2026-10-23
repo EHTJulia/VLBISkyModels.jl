@@ -103,17 +103,17 @@ function VLBISkyModels._nuft(
     return copyto!(out, execute_type2(s.points, fk, s.plane, s.batched))
 end
 
-# A plane stack split across devices along its plane dims. The points are grouped by the
-# device that holds their plane into blocks padded to one length `Mb` (padding points read
-# plane 1 and are discarded), so each device interpolates only its own points. `start` and
-# `frac` are laid out as `(Mb, nblocks...)` (see `_interp_blocks`), block dim `i` splitting
-# plane dim `batched[i]`, and `order[j]` is the position of point `j` in the flattened blocks.
-struct BlockedPlaneStack{P, S, F, O, B}
+# A plane stack split across devices. Points are laid out as `(local points, blocks...)`,
+# block dim `i` splitting plane dim `batched[i]`; `blockshape` and `unperm` map this layout
+# back to `visshape`.
+struct BlockedPlaneStack{P, S, F, B, Z, Q, V}
     plan::P
     start::S
     frac::F
-    order::O
     batched::B
+    blockshape::Z
+    unperm::Q
+    visshape::V
 end
 
 function VLBISkyModels._nuft(
@@ -122,71 +122,113 @@ function VLBISkyModels._nuft(
     )
     s = VLBISkyModels.getplan(p)
     ri = _interp_blocks(s.plan, _type2_grid(s.plan, complex.(img)), s.start, s.frac, s.batched)
-    r = reshape(ri, :, 2)[s.order, :]
-    return complex.(r[:, 1], r[:, 2])
+    r = permutedims(reshape(ri, s.blockshape..., 2), (s.unperm..., length(s.unperm) + 1))
+    r = reshape(r, s.visshape..., 2)
+    c = map(_ -> Colon(), s.visshape)
+    return complex.(r[c..., 1], r[c..., 2])
 end
 
-# Device arrays in a plan must sit on the same mesh as the sharded inputs they meet under `@jit`.
+# Plans are rebuilt for the blocked visibility domain, on the mesh of the sharded inputs.
 function ComradeBase.shard(d::VLBISkyModels.FourierDualDomain, layout::ComradeBase.ShardLayout)
     s = invoke(ComradeBase.shard, Tuple{ComradeBase.AbstractDualDomain, ComradeBase.ShardLayout}, d, layout)
-    rep = Reactant.Sharding.Replicated(layout.mesh)
-    s = VLBISkyModels.@set s.plan_forward = _shardplan(VLBISkyModels.forward_plan(s), ComradeBase.imgdomain(s), layout)
-    return VLBISkyModels.@set s.plan_reverse = _replicate(VLBISkyModels.reverse_plan(s), rep)
+    vis = ComradeBase.visdomain(s)
+    fwd, rev = VLBISkyModels.create_plans(
+        VLBISkyModels.algorithm(s), ComradeBase.imgdomain(s), Reactant.to_rarray(VLBISkyModels._hostdomain(vis))
+    )
+    s = VLBISkyModels.@set s.plan_forward = _shardplan(fwd, ComradeBase.imgdomain(s), vis, layout)
+    return VLBISkyModels.@set s.plan_reverse = _replicate(rev, Reactant.Sharding.Replicated(layout.mesh))
 end
 
-_shardplan(p, _, layout) = _replicate(p, Reactant.Sharding.Replicated(layout.mesh))
+_shardplan(p, _, _, layout) = _replicate(p, Reactant.Sharding.Replicated(layout.mesh))
 
-function _shardplan(p::VLBISkyModels.NUFTPlan{<:VLBISkyModels.ReactantNUFFTAlg, <:PlaneStack}, imgdomain, layout)
+function _shardplan(p::VLBISkyModels.NUFTPlan{<:VLBISkyModels.ReactantNUFFTAlg, <:PlaneStack}, imgdomain, vis, layout)
     pdims = DD.otherdims(imgdomain, (X, Y))
-    nblocks = map(d -> _nshards(layout, DD.name(d)), pdims)
-    batched = Tuple(findall(>(1), collect(nblocks)))
-    rep = Reactant.Sharding.Replicated(layout.mesh)
-    isempty(batched) && return _replicate(p, rep)
-    for k in batched
+    names = map(DD.name, pdims)
+    nblocks = map(n -> _nshards(layout, n), names)
+    all(==(1), nblocks) && return _replicate(p, Reactant.Sharding.Replicated(layout.mesh))
+    for k in eachindex(pdims)
         length(pdims[k]) % nblocks[k] == 0 || throw(
-            ArgumentError("the image's `$(DD.name(pdims[k]))` dim has $(length(pdims[k])) planes, which do not split evenly over its $(nblocks[k]) shards")
+            ArgumentError("the image's `$(names[k])` dim has $(length(pdims[k])) planes, which do not split evenly over its $(nblocks[k]) shards")
         )
     end
+    vislayout = ComradeBase.executor(vis).layout
+    vnames = map(DD.name, dims(vis))
+    vsz = size(vis)
+    nodeplanes = reverse(filter(k -> nblocks[k] > 1 && !(names[k] in vnames), collect(eachindex(names))))
+    isempty(nodeplanes) && haskey(vislayout.axes, :Node) && throw(
+        ArgumentError("the layout splits both `Node` and the image's planes; split only the planes, and the points follow them")
+    )
+    shape = [first(vsz) ÷ prod(k -> nblocks[k], nodeplanes; init = 1); map(k -> nblocks[k], nodeplanes)]
+    locals = [1]
+    blocks = collect(2:length(shape))
+    batched = copy(nodeplanes)
+    for (n, len) in zip(Base.tail(vnames), Base.tail(vsz))
+        k = findfirst(==(n), names)
+        if k === nothing
+            haskey(vislayout.axes, n) && throw(
+                ArgumentError("the layout splits the visibility domain's `$n` dim, which the image has no planes along; with split image planes, only dims the image shares can be split")
+            )
+            push!(shape, len)
+            push!(locals, length(shape))
+        elseif nblocks[k] == 1
+            push!(shape, len)
+            push!(locals, length(shape))
+        else
+            len % nblocks[k] == 0 || throw(
+                ArgumentError("the visibility domain's `$n` dim has $len values, which do not split evenly over its $(nblocks[k]) shards")
+            )
+            push!(shape, len ÷ nblocks[k], nblocks[k])
+            push!(locals, length(shape) - 1)
+            push!(blocks, length(shape))
+            push!(batched, k)
+        end
+    end
+    byplane = sortperm(batched)
+    perm = (locals..., blocks[byplane]...)
+    batched = Tuple(batched[byplane])
+    nb = length(batched)
+
     pts = VLBISkyModels.getplan(p).points
     plane = _planeindex(VLBISkyModels.getindices(p), pts.M, length(pdims))
-    perblock = map(k -> length(pdims[k]) ÷ nblocks[k], 1:length(pdims))
-    blockof(j) = CartesianIndex(map(k -> cld(plane[j, k], perblock[k]), batched))
-    bshape = map(k -> nblocks[k], batched)
-    counts = zeros(Int, bshape)
-    for j in axes(plane, 1)
-        counts[blockof(j)] += 1
-    end
-    Mb = maximum(counts)
-
+    perblock = map((d, n) -> length(d) ÷ n, pdims, nblocks)
+    permuted = permutedims(reshape(collect(1:pts.M), shape...), perm)
+    point = reshape(permuted, :, size(permuted)[(end - nb + 1):end]...)
     base = map(Array, pts.base)
     fracs = map(Array, pts.frac)
     N = pts.plan.ngrid
-    start = ones(Int, Mb, bshape..., 3 + length(pdims))
-    frac = map(f -> zeros(eltype(f), Mb, bshape...), fracs)
-    order = zeros(Int, pts.M)
-    L = LinearIndices((Mb, bshape...))
-    fill!(counts, 0)
-    for j in axes(plane, 1)
-        b = blockof(j)
-        i = counts[b] += 1
-        start[i, b, 1] = mod(base[1][j], N[1]) + 1
-        start[i, b, 2] = mod(base[2][j], N[2]) + 1
-        for k in axes(plane, 2)
-            start[i, b, 3 + k] = mod1(plane[j, k], perblock[k])
+    start = similar(point, (size(point)..., 3 + length(pdims)))
+    frac = map(f -> similar(f, size(point)), fracs)
+    for J in CartesianIndices(point)
+        j = point[J]
+        start[J, 1] = mod(base[1][j], N[1]) + 1
+        start[J, 2] = mod(base[2][j], N[2]) + 1
+        start[J, 3] = 1
+        for k in eachindex(pdims)
+            i = findfirst(==(k), batched)
+            start[J, 3 + k] = i === nothing ? plane[j, k] : _withinblock(plane[j, k], perblock[k], J[i + 1], names[k])
         end
-        foreach((f, fs) -> f[i, b] = fs[j], frac, fracs)
-        order[j] = L[i, b]
+        foreach((f, fs) -> f[J] = fs[j], frac, fracs)
     end
 
-    names = map(k -> DD.name(pdims[k]), batched)
-    split = Reactant.Sharding.DimsSharding(layout.mesh, Tuple(2:(length(batched) + 1)), map(n -> layout.axes[n], names))
-    blocks = BlockedPlaneStack(
-        pts.plan, Reactant.to_rarray(start; sharding = split),
-        map(f -> Reactant.to_rarray(f; sharding = split), frac),
-        Reactant.to_rarray(order; sharding = rep), batched
+    mesh = layout.mesh
+    split = Reactant.Sharding.DimsSharding(mesh, Tuple(2:(nb + 1)), map(k -> layout.axes[names[k]], batched))
+    stack = BlockedPlaneStack(
+        pts.plan, Reactant.to_rarray(start; sharding = split), map(f -> Reactant.to_rarray(f; sharding = split), frac),
+        batched, size(permuted), Tuple(invperm(collect(perm))), vsz
     )
-    p = VLBISkyModels.@set p.plan = blocks
-    return VLBISkyModels.@set p.phases = _replicate(p.phases, rep)
+    phases = reshape(Array(p.phases), vsz)
+    vsplit = Tuple(findall(in(keys(vislayout.axes)), collect(vnames)))
+    vsharding = Reactant.Sharding.DimsSharding(mesh, vsplit, map(i -> vislayout.axes[vnames[i]], vsplit))
+    p = VLBISkyModels.@set p.plan = stack
+    return VLBISkyModels.@set p.phases = Reactant.to_rarray(phases; sharding = vsharding)
+end
+
+# The index of plane `q` within its block of `per` planes, which must be block `b`.
+function _withinblock(q, per, b, name)
+    cld(q, per) == b || throw(
+        ArgumentError("the visibility domain's `$name` dim and the image's `$name` planes split differently over devices: points on the devices of image block $b use planes of block $(cld(q, per))")
+    )
+    return mod1(q, per)
 end
 
 # The number of devices a dim named `name` is split over.

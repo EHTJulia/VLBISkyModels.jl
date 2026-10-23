@@ -41,11 +41,11 @@ end
 
 # ---------- phi_hat outer-product for deconvolution -------------------------
 #
-# (nmodes_1, ..., nmodes_D, 1) host tensor of per-dim phi_hat products; the
-# trailing singleton is the ntrans axis. Enters the trace as a constant.
+# (nmodes_1, ..., nmodes_D) host tensor of per-dim phi_hat products, a trace constant.
+# No trailing singleton dim: it would line up with a split dim (EnzymeAD/Reactant.jl#3527).
 function _phi_hat_tensor(plan::NUFFTPlan{T, D}) where {T, D}
     factors = ntuple(D) do d
-        shape = ntuple(i -> i == d ? plan.nmodes[d] : 1, Val(D + 1))
+        shape = ntuple(i -> i == d ? plan.nmodes[d] : 1, Val(D))
         return reshape(plan.phi_hat[d], shape...)
     end
     return reduce(.*, factors)

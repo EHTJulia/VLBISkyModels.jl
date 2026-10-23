@@ -43,7 +43,7 @@ size(truth)
 npt = 400
 dom = StructuredDomain(
     (Node(npt), frs);
-    u = 3.0e6 .* randn(npt), v = 3.0e6 .* randn(npt), Ti = repeat(4 .* rand(npt), 1, 2),
+    u = 3.0e6 .* randn(npt), v = 3.0e6 .* randn(npt), Ti = 4 .* rand(npt),
 )
 
 # The image grid of the transform has every dim the visibilities depend on: the frames and
@@ -68,19 +68,20 @@ framesdev = Reactant.to_rarray(truth)
 vdev = @jit vis(framesdev, gdev)
 maximum(abs, Array(vdev) .- vtrue)
 
-# A loss and its gradient compile the same way. Enzyme writes the gradient into a shadow
-# array created outside the compiled function.
+# A weighted loss and its gradient compile the same way. Enzyme writes the gradient into a
+# shadow array created outside the compiled function.
 
-chi2(frames, gd, data) = sum(abs2, vis(frames, gd) .- data)
-function grad!(dframes, frames, gd, data)
-    Enzyme.autodiff(Reverse, chi2, Active, Duplicated(frames, dframes), Const(gd), Const(data))
+chi2(frames, gd, data, w) = sum(abs2, (vis(frames, gd) .- data) .* w)
+function grad!(dframes, frames, gd, data, w)
+    Enzyme.autodiff(Reverse, chi2, Active, Duplicated(frames, dframes), Const(gd), Const(data), Const(w))
     return dframes
 end
 
 start = Reactant.to_rarray(zero(truth))
 datadev = Reactant.to_rarray(vtrue)
+wdev = Reactant.to_rarray(ones(size(vtrue)))
 dstart = Reactant.to_rarray(zero(truth))
-size(@jit grad!(dstart, start, gdev, datadev))
+size(@jit grad!(dstart, start, gdev, datadev, wdev))
 
 # ## Splitting the movie across devices
 
@@ -93,10 +94,13 @@ size(@jit grad!(dstart, start, gdev, datadev))
 mesh = Reactant.Sharding.Mesh(reshape(Reactant.devices()[1:4], 2, 2), (:t, :f))
 layout = ShardLayout(mesh; Ti = :t, Fr = :f)
 
-# `shard` places the dual domain on the mesh. The visibilities of each band stay on the
-# devices that hold it, and each device interpolates only the points whose frame it holds.
+# `shard` places the dual domain on the mesh. Each device gets the points of its own frames,
+# padded to a common length. The `Node` lookup of the new visibility domain gives each
+# slot's original point, with `0` for padding.
 
 gshard = shard(gdev, layout)
+vsd = visdomain(gshard)
+size(vsd)
 
 # The frames of the model have no `Fr` dim, so they are split along `Ti` alone. A gradient
 # shadow is split the same way.
@@ -104,14 +108,17 @@ gshard = shard(gdev, layout)
 tlayout = ShardLayout(mesh; Ti = :t)
 framesshard = baseimage(shard(IntensityMap(truth, gs ⊗ ti), tlayout))
 vshard = @jit vis(framesshard, gshard)
-maximum(abs, Array(vshard) .- vtrue)
+slot = indexin(lookup(dims(dom), Node), lookup(dims(vsd), Node))
+maximum(abs, Array(vshard)[slot, :] .- vtrue)
 
-#
+# The data and weights move to the same domain. Padding gets weight `0`, so it does not
+# enter the loss.
 
+datashard = baseimage(shard(IntensityMap(vtrue, dom), vsd))
+wshard = baseimage(shard(IntensityMap(ones(size(vtrue)), dom), vsd))
 startshard = baseimage(shard(IntensityMap(zero(truth), gs ⊗ ti), tlayout))
 dshard = baseimage(shard(IntensityMap(zero(truth), gs ⊗ ti), tlayout))
-datashard = Reactant.to_rarray(vtrue; sharding = Reactant.Sharding.DimsSharding(mesh, (2,), (:f,)))
-size(@jit grad!(dshard, startshard, gshard, datashard))
+size(@jit grad!(dshard, startshard, gshard, datashard, wshard))
 
 # Each sharded dim of the image grid must split evenly over its devices. The sharding page of
 # the [ComradeBase documentation](https://ptiede.github.io/ComradeBase.jl/stable/sharding/)

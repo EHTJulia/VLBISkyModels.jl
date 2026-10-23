@@ -211,14 +211,22 @@ end
             @warn "Sharded NUFFT tests skipped: start Julia with XLA_FLAGS=--xla_force_host_platform_device_count=4"
         else
             blocks(a, d) = sort!(unique(map(s -> s[d], a.sharding.device_to_array_slices)); by = first)
+            collectives(f, args...) = [
+                m.captures[1] for m in eachmatch(
+                    r"= (\([^)]*\)|[^ ]+) (?:all-gather|all-reduce|all-to-all|collective-permute|reduce-scatter)\(",
+                    repr(@code_xla shardy_passes = :to_mhlo_shardings f(args...))
+                )
+            ]
             # Shapes of the collectives that carry a stencil window or a Fourier grid.
             function heavy(f, args...; grid = sgf)
                 pl = VLBISkyModels.getplan(VLBISkyModels.forward_plan(grid)).plan
                 big = Regex("\\b($(pl.nspread),$(pl.nspread)|$(pl.ngrid[1]),$(pl.ngrid[2]))\\b")
-                hlo = repr(@code_xla shardy_passes = :to_mhlo_shardings f(args...))
-                shapes = [m.captures[1] for m in eachmatch(r"= ([^ ]+) (?:all-gather|all-reduce|all-to-all|collective-permute|reduce-scatter)\(", hlo)]
-                return filter(s -> occursin(big, s), shapes)
+                return filter(s -> occursin(big, s), collectives(f, args...))
             end
+            # Values at the points of `d`, in its order.
+            onpoints(v, sg, d) = selectdim(Array(v), 1, indexin(DD.lookup(dims(d), Node), DD.lookup(dims(visdomain(sg)), Node)))
+            # 1 at the points of `d`, 0 at padding.
+            weights(sg, d) = baseimage(shard(IntensityMap(ones(size(d)), d), visdomain(sg)))
             mesh = Reactant.Sharding.Mesh(reshape(Reactant.devices()[1:4], 2, 2), (:t, :f))
             layout = ShardLayout(mesh; Ti = :t, Fr = :f)
             pulse = BSplinePulse{3}()
@@ -228,41 +236,44 @@ end
             g = gs ⊗ ti ⊗ Fr(frs)
             alg = VLBISkyModels.ReactantNUFFTAlg(Float64; eps = 1.0e-10)
             n = 200
-            dom = UnstructuredDomain((; U = randn(n) ./ 10, V = randn(n) ./ 10, Ti = 4 .* rand(n), Fr = rand(frs, n)))
+            pointdomain(t, f) = UnstructuredDomain((; U = randn(length(t)) ./ 10, V = randn(length(t)) ./ 10, Ti = t, Fr = f))
+            dom = pointdomain(sort(4 .* rand(n)), rand(frs, n))
             gfh = FourierDualDomain(g, dom, DFTAlg())
             sgf = shard(FourierDualDomain(g, Reactant.to_rarray(dom), alg), layout)
             @test imgdomain(sgf) === g
+            w = weights(sgf, dom)
 
             onmesh(a, gr, lay) = lay === nothing ?
                 Reactant.to_rarray(a; sharding = Reactant.Sharding.Replicated(mesh)) :
                 baseimage(shard(IntensityMap(a, gr), lay))
             gpf = gs ⊗ ti
+            # The last entry is false for models with per-plane coefficients (EnzymeAD/Reactant.jl#3527).
             cases = (
-                ("stored cube", a -> ContinuousImage(IntensityMap(a, g), pulse), rand(16, 16, 4, 2), g, layout, (3, 4)),
-                ("per-frame base", a -> MultiDomainImage(IntensityMap(a, gpf), pulse, PolySpectral(-0.7, 230.0e9)), rand(16, 16, 4), gpf, ShardLayout(mesh; Ti = :t), (3,)),
-                ("time and frequency families", a -> MultiDomainImage(IntensityMap(a, gs), pulse, PolyTemporal(0.2, 2.0), PolySpectral(-0.7, 230.0e9)), rand(16, 16), gs, nothing, ()),
+                ("stored cube", a -> ContinuousImage(IntensityMap(a, g), pulse), rand(16, 16, 4, 2), g, layout, (3, 4), true),
+                ("per-frame base", a -> MultiDomainImage(IntensityMap(a, gpf), pulse, PolySpectral(-0.7, 230.0e9)), rand(16, 16, 4), gpf, ShardLayout(mesh; Ti = :t), (3,), false),
+                ("time and frequency families", a -> MultiDomainImage(IntensityMap(a, gs), pulse, PolyTemporal(0.2, 2.0), PolySpectral(-0.7, 230.0e9)), rand(16, 16), gs, nothing, (), false),
             )
-            for (lbl, mk, a, ga, lay, sdims) in cases
+            for (lbl, mk, a, ga, lay, sdims, onlyscalar) in cases
                 @testset "$lbl" begin
                     vf(a, g) = baseimage(visibilitymap(mk(a), g))
-                    loss(a, g) = sum(abs2, vf(a, g))
-                    function grad!(da, a, g)
-                        Enzyme.autodiff(Enzyme.Reverse, loss, Active, Duplicated(a, da), Const(g))
+                    loss(a, g, w) = sum(abs2, vf(a, g) .* w)
+                    function grad!(da, a, g, w)
+                        Enzyme.autodiff(Enzyme.Reverse, loss, Active, Duplicated(a, da), Const(g), Const(w))
                         return da
                     end
                     ar = onmesh(a, ga, lay)
-                    @test Array(@jit vf(ar, sgf)) ≈ vf(a, gfh)
+                    @test onpoints(@jit(vf(ar, sgf)), sgf, dom) ≈ vf(a, gfh)
                     @test isempty(heavy(vf, ar, sgf))
+                    @test collectives(loss, ar, sgf, w) == ["f64[]"] broken = !onlyscalar
                     dar = onmesh(zero(a), ga, lay)
-                    dr = @jit grad!(dar, ar, sgf)
-                    dh = Enzyme.gradient(set_runtime_activity(Enzyme.Reverse), Const(x -> loss(x, gfh)), a)[1]
+                    dr = @jit grad!(dar, ar, sgf, w)
+                    dh = Enzyme.gradient(set_runtime_activity(Enzyme.Reverse), Const(x -> sum(abs2, vf(x, gfh))), a)[1]
                     @test Array(dr) ≈ dh
                     for d in sdims
                         @test length(blocks(dr, d)) == 2
                     end
-                    # The FFT adjoint's `chlo.conj` stops sharding propagation, so the
-                    # Fourier-grid cotangents are all-gathered (EnzymeAD/Reactant.jl#3464).
-                    @test_broken isempty(heavy(grad!, dar, ar, sgf))
+                    @test isempty(heavy(grad!, dar, ar, sgf, w))
+                    onlyscalar && @test isempty(collectives(grad!, dar, ar, sgf, w))
                 end
             end
 
@@ -270,62 +281,72 @@ end
                 a = rand(16, 16, 4, 2, 4)
                 vf(a, gd) = parent(baseimage(visibilitymap(ContinuousImage(IntensityMap(FieldDimArray{StokesParams}(a), g), pulse), gd)))
                 ar = Reactant.to_rarray(a; sharding = Reactant.Sharding.DimsSharding(mesh, (3, 4), (:t, :f)))
-                @test Array(@jit vf(ar, sgf)) ≈ vf(a, gfh)
+                @test onpoints(@jit(vf(ar, sgf)), sgf, dom) ≈ vf(a, gfh)
                 @test isempty(heavy(vf, ar, sgf))
             end
 
+            vfb(a, g) = baseimage(visibilitymap(ContinuousImage(IntensityMap(a, imgdomain(g)), pulse), g))
             @testset "(Node, Fr) domain split along Fr" begin
                 np = 60
-                dpf = StructuredDomain((Node(np), Fr(frs)); U = randn(np, 2) ./ 10, V = randn(np, 2) ./ 10, Ti = repeat(4 .* rand(np), 1, 2))
+                dpf = StructuredDomain((Node(np), Fr(frs)); U = randn(np, 2) ./ 10, V = randn(np, 2) ./ 10, Ti = 4 .* rand(np))
                 sg = shard(FourierDualDomain(g, Reactant.to_rarray(dpf), alg), layout)
-                vf(a, g) = baseimage(visibilitymap(ContinuousImage(IntensityMap(a, imgdomain(g)), pulse), g))
                 a = rand(16, 16, 4, 2)
                 ar = baseimage(shard(IntensityMap(a, g), layout))
-                v = @jit vf(ar, sg)
-                @test Array(v) ≈ vf(a, FourierDualDomain(g, dpf, DFTAlg()))
-                # The (Node, Fr) result is a reshape of the flat points, which are in Fr-major order.
-                @test blocks(parent(v), 1) == [1:np, (np + 1):(2np)]
-                @test isempty(heavy(vf, ar, sg; grid = sg))
+                v = @jit vfb(ar, sg)
+                @test onpoints(v, sg, dpf) ≈ vfb(a, FourierDualDomain(g, dpf, DFTAlg()))
+                Mb = size(visdomain(sg))[1] ÷ 2
+                @test blocks(parent(v), 1) == [1:Mb, (Mb + 1):(2Mb)]
+                @test blocks(parent(v), 2) == [1:1, 2:2]
+                @test isempty(heavy(vfb, ar, sg; grid = sg))
+                @test collectives(vfb, ar, sg) == []
             end
 
-            vfb(a, g) = baseimage(visibilitymap(ContinuousImage(IntensityMap(a, imgdomain(g)), pulse), g))
             @testset "uneven frame occupancy" begin
-                tu = [rand() < 0.8 ? 0.5 * rand() : 4 * rand() for _ in 1:n]
-                du = UnstructuredDomain((; U = randn(n) ./ 10, V = randn(n) ./ 10, Ti = tu, Fr = rand(frs, n)))
+                du = pointdomain([rand() < 0.8 ? 0.5 * rand() : 4 * rand() for _ in 1:n], rand(frs, n))
                 sg = shard(FourierDualDomain(g, Reactant.to_rarray(du), alg), layout)
-                loss(a, g) = sum(abs2, vfb(a, g))
-                function grad!(da, a, g)
-                    Enzyme.autodiff(Enzyme.Reverse, loss, Active, Duplicated(a, da), Const(g))
+                wu = weights(sg, du)
+                loss(a, g, w) = sum(abs2, vfb(a, g) .* w)
+                function grad!(da, a, g, w)
+                    Enzyme.autodiff(Enzyme.Reverse, loss, Active, Duplicated(a, da), Const(g), Const(w))
                     return da
                 end
                 a = rand(16, 16, 4, 2)
                 ar = baseimage(shard(IntensityMap(a, g), layout))
                 gh = FourierDualDomain(g, du, DFTAlg())
-                @test Array(@jit vfb(ar, sg)) ≈ vfb(a, gh)
-                dh = Enzyme.gradient(set_runtime_activity(Enzyme.Reverse), Const(x -> loss(x, gh)), a)[1]
-                @test Array(@jit grad!(baseimage(shard(IntensityMap(zero(a), g), layout)), ar, sg)) ≈ dh
+                @test onpoints(@jit(vfb(ar, sg)), sg, du) ≈ vfb(a, gh)
+                dh = Enzyme.gradient(set_runtime_activity(Enzyme.Reverse), Const(x -> sum(abs2, vfb(x, gh))), a)[1]
+                @test Array(@jit grad!(baseimage(shard(IntensityMap(zero(a), g), layout)), ar, sg, wu)) ≈ dh
             end
 
+            gb = gs ⊗ ti ⊗ frames(Fr, [220.0e9, 340.0e9], [240.0e9, 350.0e9])
+            channeldomain(chs) = StructuredDomain(
+                (Node(40), Fr(chs)); U = randn(40, 4) ./ 10, V = randn(40, 4) ./ 10, Ti = 4 .* rand(40)
+            )
             @testset "bands coarser than channels" begin
-                gb = gs ⊗ ti ⊗ frames(Fr, [220.0e9, 340.0e9], [240.0e9, 350.0e9])
-                np = 40
-                db = StructuredDomain(
-                    (Node(np), Fr([225.0e9, 235.0e9, 342.0e9, 348.0e9]));
-                    U = randn(np, 4) ./ 10, V = randn(np, 4) ./ 10, Ti = repeat(4 .* rand(np), 1, 4)
-                )
+                db = channeldomain([225.0e9, 235.0e9, 342.0e9, 348.0e9])
                 sb = shard(FourierDualDomain(gb, Reactant.to_rarray(db), alg), layout)
                 a = rand(16, 16, 4, 2)
                 ar = baseimage(shard(IntensityMap(a, gb), layout))
-                @test Array(@jit vfb(ar, sb)) ≈ vfb(a, FourierDualDomain(gb, db, DFTAlg()))
+                @test onpoints(@jit(vfb(ar, sb)), sb, db) ≈ vfb(a, FourierDualDomain(gb, db, DFTAlg()))
                 @test isempty(heavy(vfb, ar, sb; grid = sb))
             end
 
+            @test_throws "split differently over devices" shard(
+                FourierDualDomain(gb, Reactant.to_rarray(channeldomain([225.0e9, 342.0e9, 345.0e9, 348.0e9])), alg), layout
+            )
             @test_throws "do not split evenly" shard(
                 FourierDualDomain(
                     gs ⊗ frames(Ti, [0.0, 1.0, 2.0], [1.0, 2.0, 3.0]),
-                    Reactant.to_rarray(UnstructuredDomain((; U = randn(n) ./ 10, V = randn(n) ./ 10, Ti = 3 .* rand(n)))), alg
+                    Reactant.to_rarray(UnstructuredDomain((; U = randn(n) ./ 10, V = randn(n) ./ 10, Ti = sort(3 .* rand(n))))), alg
                 ),
                 ShardLayout(mesh; Ti = :t)
+            )
+            dc = Reactant.to_rarray(channeldomain([225.0e9, 235.0e9, 342.0e9, 348.0e9]))
+            @test_throws "splits both `Node` and the image's planes" shard(
+                FourierDualDomain(gb, dc, alg), ShardLayout(mesh; Fr = :f, Node = :t)
+            )
+            @test_throws "which the image has no planes along" shard(
+                FourierDualDomain(gs ⊗ ti, dc, alg), ShardLayout(mesh; Ti = :t, Fr = :f)
             )
         end
     end

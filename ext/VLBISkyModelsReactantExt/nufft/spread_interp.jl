@@ -18,19 +18,16 @@ the bin-sort permutation chunk-wise (see `_chunk_stencil`).
 # `coefs :: (w, deg+1)` host matrix, `frac` traced array of offsets.
 # Returns (size(frac)..., w): weights[J, k] = p_k(2*frac[J] - 1).
 function _horner_weights(coefs::AbstractMatrix, frac::AbstractArray)
-    t = 2 .* frac .- 1
+    t = reshape(2 .* frac .- 1, 1, size(frac)...)
     n = size(coefs, 2)
-    column(p) = reshape(coefs[:, p], ntuple(_ -> 1, ndims(t))..., :)
-    # Seed the Horner recurrence with the leading coefficient broadcast to
-    # (size(frac)..., w), then fold in the remaining columns. Seeding from the
-    # constant (rather than starting the recurrence at column n-1) keeps the
-    # degree-0 case (`n == 1`, single coefficient column) valid — the loop is
-    # then empty and `acc` is the constant column.
-    acc = one.(t) .* column(n)
+    # Seeding with the leading coefficient keeps the degree-0 case valid. Coefficients
+    # broadcast as vectors: singleton dims would line up with split dims of `frac`
+    # (EnzymeAD/Reactant.jl#3527).
+    acc = one.(t) .* coefs[:, n]
     for p in (n - 1):-1:1
-        acc = acc .* t .+ column(p)
+        acc = acc .* t .+ coefs[:, p]
     end
-    return acc
+    return permutedims(acc, (ntuple(i -> i + 1, ndims(frac))..., 1))
 end
 
 # Wrapped 0-based grid coordinates of the stencil cells for one dim:
