@@ -6,7 +6,8 @@ using InverseFunctions: inverse, NoInverse
     return reduce(+, ntuple(n -> index[n] * x^n, Val(N)))
 end
 
-# Through the tuple: broadcasting a static vector with a traced `p0` fails under Reactant.
+# Through the tuple: Reactant cannot broadcast a static vector with a traced `p0`
+# (EnzymeAD/Reactant.jl#3535).
 @inline addoffset(x::Number, p0) = x + p0
 @inline addoffset(x::StaticArray, p0) = similar_type(x)(Tuple(x) .+ p0)
 

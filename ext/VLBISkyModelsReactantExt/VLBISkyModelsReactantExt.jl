@@ -35,7 +35,7 @@ function VLBISkyModels.PolExp2Map!(
         grid::ComradeBase.AbstractRectiGrid
     )
 
-    # The generic loop traces to a `while` over `dynamic_update_slice`; broadcasts do not.
+    # Broadcasts: the generic loop traces to a `while` loop (EnzymeAD/Reactant.jl#3389).
     p = sqrt.(b .^ 2 .+ c .^ 2 .+ d .^ 2)
     pimgI = exp.(a) .* cosh.(p)
     tmp = exp.(a) .* sinh.(p) ./ p

@@ -9,9 +9,7 @@ The per-point stencil data (`base`, `frac`) is stored in *original* point
 order. The bin-sort permutation `perm` is only applied chunk-wise by the
 type-1 spread (where scatter locality matters); the type-2 interpolation
 reads points in original order, so its output needs no final un-sorting
-gather. (That also sidesteps a Reactant 0.2.264 miscompilation of gathers
-whose complex operand is a concatenate/dynamic_update_slice — see
-spread_interp.jl.)
+gather.
 ==============================================================================#
 
 """

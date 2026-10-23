@@ -12,4 +12,4 @@ VLBISkyModels = "d6343c73-7174-4e0f-bb64-562643efbeca"
 
 [compat]
 Enzyme = "0.13"
-Reactant = "0.2"
+Reactant = "0.2.295"

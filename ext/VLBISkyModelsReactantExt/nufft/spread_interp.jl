@@ -185,10 +185,8 @@ end
 # `cmat :: (M, ntrans)` complex strengths in original (unsorted) point order.
 # Returns `fw :: (ngrid..., ntrans)` complex.
 #
-# Real and imaginary parts are accumulated in separate real buffers: XLA has
-# no 128-bit atomic add, so a ComplexF64 scatter runs ~30-40x slower than two
-# Float64 scatters at large update counts (measured 24.2 ms vs 0.79 ms for
-# 2 x 4.9e6 f64 updates on an RTX 3090 Ti).
+# Real and imaginary parts go in separate real buffers: without a 128-bit atomic add,
+# a complex scatter-add is far slower on GPUs (EnzymeAD/Reactant.jl#3563).
 function _spread(prep::NUFFTSetPts{T, D}, cmat::AbstractMatrix, ntrans::Int) where {T, D}
     plan = prep.plan
     nflat = prod(plan.ngrid)
@@ -229,10 +227,7 @@ Points are read in *original* order (no bin-sort indirection), so chunk
 results drop straight into their output rows with no final permutation
 gather. The per-chunk stencil gather reads from the FFT output (`fw_vec`)
 directly; the output buffer `out` is written via `setindex!`
-(dynamic_update_slice) but never gathered from again — gathering a
-concatenate- or dynamic_update_slice-built complex operand is miscompiled by
-the scatter/gather optimization passes (silent zeros / invalid
-`stablehlo.real`), so we must not re-gather `out`.
+(dynamic_update_slice).
 ==============================================================================#
 
 # One chunk's interpolation: gather column `i` of the (cs, nchunks)-reshaped
