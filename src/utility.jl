@@ -1,5 +1,134 @@
 export centroid_mean, center_image, convolve!, convolve, regrid, smooth
 
+@inline function _rfft_plan(::Type{T}, shape::NTuple{N, Int}) where {T <: Real, N}
+    return plan_rfft(zeros(T, shape), 1:2)
+end
+
+@inline function _irfft_plan(::Type{T}, shape::NTuple{N, Int}) where {T <: Real, N}
+    spectrum_shape = (div(shape[1], 2) + 1, Base.tail(shape)...)
+    return plan_irfft(zeros(Complex{T}, spectrum_shape), shape[1], 1:2)
+end
+
+EnzymeRules.inactive(::typeof(_rfft_plan), args...) = nothing
+EnzymeRules.inactive(::typeof(_irfft_plan), args...) = nothing
+
+function _convolution_uvpoints(grid, shape)
+    (; X, Y) = grid
+    u = U(rfftfreq(shape[1], inv(step(X))))
+    v = V(fftfreq(shape[2], inv(step(Y))))
+    frequency_dims = (u, v, dims(grid)[3:end]...)
+    return domainpoints(rebuild(grid; dims = frequency_dims))
+end
+
+EnzymeRules.inactive(::typeof(_convolution_uvpoints), args...) = nothing
+
+@inline function _apply_rfft!(out, plan, input)
+    mul!(out, plan, input)
+    return nothing
+end
+
+@inline function _apply_irfft!(out, plan, input)
+    mul!(out, plan, input)
+    return nothing
+end
+
+function _rfft_adjoint_add!(input_gradient, spectrum_gradient)
+    weighted_spectrum_gradient = copy(spectrum_gradient)
+    n = size(input_gradient, 1)
+    interior = iseven(n) ? (2:(size(weighted_spectrum_gradient, 1) - 1)) :
+               (2:size(weighted_spectrum_gradient, 1))
+    trailing_indices = ntuple(_ -> Colon(), ndims(weighted_spectrum_gradient) - 1)
+    view(weighted_spectrum_gradient, interior, trailing_indices...) ./= 2
+    input_gradient .+= brfft(weighted_spectrum_gradient, n, 1:2)
+    return nothing
+end
+
+function _irfft_adjoint_add!(spectrum_gradient, image_gradient)
+    image_size = size(image_gradient, 1) * size(image_gradient, 2)
+    transformed_gradient = rfft(image_gradient, 1:2)
+    n = size(image_gradient, 1)
+    interior = iseven(n) ? (2:(size(transformed_gradient, 1) - 1)) :
+               (2:size(transformed_gradient, 1))
+    trailing_indices = ntuple(_ -> Colon(), ndims(transformed_gradient) - 1)
+    view(transformed_gradient, interior, trailing_indices...) .*= 2 / image_size
+    view(transformed_gradient, 1, trailing_indices...) ./= image_size
+    iseven(n) && (view(transformed_gradient, size(transformed_gradient, 1), trailing_indices...) ./= image_size)
+    spectrum_gradient .+= transformed_gradient
+    return nothing
+end
+
+function EnzymeRules.augmented_primal(
+        config::EnzymeRules.RevConfigWidth,
+        ::Const{typeof(_apply_rfft!)},
+        ::Type{<:Const},
+        out::Annotation,
+        plan::Annotation,
+        input::Annotation,
+    )
+    plan isa Const || throw(ArgumentError("FFTW plans must be constant during differentiation"))
+    _apply_rfft!(out.val, plan.val, input.val)
+    primal = EnzymeRules.needs_primal(config) ? out.val : nothing
+    shadow = EnzymeRules.needs_shadow(config) ? out.dval : nothing
+    return EnzymeRules.AugmentedReturn(primal, shadow, nothing)
+end
+
+function EnzymeRules.reverse(
+        config::EnzymeRules.RevConfigWidth,
+        ::Const{typeof(_apply_rfft!)},
+        ::Type{RT},
+        _,
+        out::Annotation,
+        plan::Annotation,
+        input::Annotation,
+    ) where {RT}
+    plan isa Const || throw(ArgumentError("FFTW plans must be constant during differentiation"))
+    out isa Const && return (nothing, nothing, nothing)
+    input isa Const && return (nothing, nothing, nothing)
+    output_gradients = EnzymeRules.width(config) == 1 ? (out.dval,) : out.dval
+    input_gradients = EnzymeRules.width(config) == 1 ? (input.dval,) : input.dval
+    for (input_gradient, output_gradient) in zip(input_gradients, output_gradients)
+        _rfft_adjoint_add!(input_gradient, output_gradient)
+        fill!(output_gradient, 0)
+    end
+    return (nothing, nothing, nothing)
+end
+
+function EnzymeRules.augmented_primal(
+        config::EnzymeRules.RevConfigWidth,
+        ::Const{typeof(_apply_irfft!)},
+        ::Type{<:Const},
+        out::Annotation,
+        plan::Annotation,
+        input::Annotation,
+    )
+    plan isa Const || throw(ArgumentError("FFTW plans must be constant during differentiation"))
+    _apply_irfft!(out.val, plan.val, input.val)
+    primal = EnzymeRules.needs_primal(config) ? out.val : nothing
+    shadow = EnzymeRules.needs_shadow(config) ? out.dval : nothing
+    return EnzymeRules.AugmentedReturn(primal, shadow, nothing)
+end
+
+function EnzymeRules.reverse(
+        config::EnzymeRules.RevConfigWidth,
+        ::Const{typeof(_apply_irfft!)},
+        ::Type{RT},
+        _,
+        out::Annotation,
+        plan::Annotation,
+        input::Annotation,
+    ) where {RT}
+    plan isa Const || throw(ArgumentError("FFTW plans must be constant during differentiation"))
+    out isa Const && return (nothing, nothing, nothing)
+    input isa Const && return (nothing, nothing, nothing)
+    output_gradients = EnzymeRules.width(config) == 1 ? (out.dval,) : out.dval
+    input_gradients = EnzymeRules.width(config) == 1 ? (input.dval,) : input.dval
+    for (input_gradient, output_gradient) in zip(input_gradients, output_gradients)
+        _irfft_adjoint_add!(input_gradient, output_gradient)
+        fill!(output_gradient, 0)
+    end
+    return (nothing, nothing, nothing)
+end
+
 function centroid_mean(imgs::AbstractVector{<:IntensityMap})
     mimg = mapreduce(+, imgs) do img
         return center_image(img)
@@ -89,23 +218,23 @@ function convolve!(img::IntensityMap{<:Real}, m::AbstractModel)
     ComradeBase.baseimage(img) isa FillArrays.Fill && return img
 
     @assert visanalytic(typeof(m)) isa IsAnalytic "Convolving model must have an analytic Fourier transform currently"
-    p = plan_rfft(baseimage(img), 1:2)
+    image = baseimage(img)
+    shape = size(image)
+    p = _rfft_plan(eltype(image), shape)
 
     # plan_rfft uses just the positive first axis to respect real conjugate symmetry
-    (; X, Y) = img
-    u = U(rfftfreq(size(img, 1), inv(step(X))))
-    v = V(fftfreq(size(img, 2), inv(step(Y))))
-    ds = (u, v, dims(img)[3:end]...)
-    griduv = rebuild(axisdims(img); dims = ds)
-    puv = domainpoints(griduv)
+    puv = _convolution_uvpoints(axisdims(img), shape)
 
     # TODO maybe ask a user to pass a vis buffer as well?
-    vis = p * baseimage(img)
+    vis = Array{Complex{eltype(image)}}(undef, div(shape[1], 2) + 1, Base.tail(shape)...)
+    _apply_rfft!(vis, p, image)
 
-    # Conjugate because Comrade uses +2πi exponent
-    vis .*= conj.(visibility_point.(Ref(m), puv))
-    pinv = plan_irfft(vis, size(img, 1), 1:2)
-    mul!(baseimage(img), pinv, vis)
+    # Conjugate because Comrade uses +2πi exponent.
+    for index in eachindex(vis, puv)
+        vis[index] *= conj(visibility_point(m, puv[index]))
+    end
+    pinv = _irfft_plan(eltype(image), shape)
+    _apply_irfft!(image, pinv, vis)
     return img
 end
 
