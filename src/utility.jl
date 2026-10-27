@@ -57,6 +57,12 @@ function _irfft_adjoint_add!(spectrum_gradient, image_gradient)
     return nothing
 end
 
+function _require_single_reverse_seed(config)
+    EnzymeRules.width(config) == 1 ||
+        throw(ArgumentError("FFTW convolution Enzyme rules support one reverse seed"))
+    return nothing
+end
+
 function EnzymeRules.augmented_primal(
         config::EnzymeRules.RevConfigWidth,
         ::Const{typeof(_apply_rfft!)},
@@ -66,6 +72,7 @@ function EnzymeRules.augmented_primal(
         input::Annotation,
     )
     plan isa Const || throw(ArgumentError("FFTW plans must be constant during differentiation"))
+    _require_single_reverse_seed(config)
     _apply_rfft!(out.val, plan.val, input.val)
     primal = EnzymeRules.needs_primal(config) ? out.val : nothing
     shadow = EnzymeRules.needs_shadow(config) ? out.dval : nothing
@@ -82,14 +89,11 @@ function EnzymeRules.reverse(
         input::Annotation,
     ) where {RT}
     plan isa Const || throw(ArgumentError("FFTW plans must be constant during differentiation"))
+    _require_single_reverse_seed(config)
     out isa Const && return (nothing, nothing, nothing)
     input isa Const && return (nothing, nothing, nothing)
-    output_gradients = EnzymeRules.width(config) == 1 ? (out.dval,) : out.dval
-    input_gradients = EnzymeRules.width(config) == 1 ? (input.dval,) : input.dval
-    for (input_gradient, output_gradient) in zip(input_gradients, output_gradients)
-        _rfft_adjoint_add!(input_gradient, output_gradient)
-        fill!(output_gradient, 0)
-    end
+    _rfft_adjoint_add!(input.dval, out.dval)
+    fill!(out.dval, 0)
     return (nothing, nothing, nothing)
 end
 
@@ -102,6 +106,7 @@ function EnzymeRules.augmented_primal(
         input::Annotation,
     )
     plan isa Const || throw(ArgumentError("FFTW plans must be constant during differentiation"))
+    _require_single_reverse_seed(config)
     _apply_irfft!(out.val, plan.val, input.val)
     primal = EnzymeRules.needs_primal(config) ? out.val : nothing
     shadow = EnzymeRules.needs_shadow(config) ? out.dval : nothing
@@ -118,14 +123,11 @@ function EnzymeRules.reverse(
         input::Annotation,
     ) where {RT}
     plan isa Const || throw(ArgumentError("FFTW plans must be constant during differentiation"))
+    _require_single_reverse_seed(config)
     out isa Const && return (nothing, nothing, nothing)
     input isa Const && return (nothing, nothing, nothing)
-    output_gradients = EnzymeRules.width(config) == 1 ? (out.dval,) : out.dval
-    input_gradients = EnzymeRules.width(config) == 1 ? (input.dval,) : input.dval
-    for (input_gradient, output_gradient) in zip(input_gradients, output_gradients)
-        _irfft_adjoint_add!(input_gradient, output_gradient)
-        fill!(output_gradient, 0)
-    end
+    _irfft_adjoint_add!(input.dval, out.dval)
+    fill!(out.dval, 0)
     return (nothing, nothing, nothing)
 end
 
