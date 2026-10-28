@@ -36,7 +36,7 @@ function _rfft_adjoint_add!(input_gradient, spectrum_gradient)
     weighted_spectrum_gradient = copy(spectrum_gradient)
     n = size(input_gradient, 1)
     interior = iseven(n) ? (2:(size(weighted_spectrum_gradient, 1) - 1)) :
-               (2:size(weighted_spectrum_gradient, 1))
+        (2:size(weighted_spectrum_gradient, 1))
     trailing_indices = ntuple(_ -> Colon(), ndims(weighted_spectrum_gradient) - 1)
     view(weighted_spectrum_gradient, interior, trailing_indices...) ./= 2
     input_gradient .+= brfft(weighted_spectrum_gradient, n, 1:2)
@@ -48,7 +48,7 @@ function _irfft_adjoint_add!(spectrum_gradient, image_gradient)
     transformed_gradient = rfft(image_gradient, 1:2)
     n = size(image_gradient, 1)
     interior = iseven(n) ? (2:(size(transformed_gradient, 1) - 1)) :
-               (2:size(transformed_gradient, 1))
+        (2:size(transformed_gradient, 1))
     trailing_indices = ntuple(_ -> Colon(), ndims(transformed_gradient) - 1)
     view(transformed_gradient, interior, trailing_indices...) .*= 2 / image_size
     view(transformed_gradient, 1, trailing_indices...) ./= image_size

@@ -44,17 +44,17 @@ end
     for n in (5, 6), m in (3, 4)
         image_direction = randn(rng, n, m)
         spectrum_direction = randn(rng, div(n, 2) + 1, m) .+
-                             im .* randn(rng, div(n, 2) + 1, m)
+            im .* randn(rng, div(n, 2) + 1, m)
 
         rfft_adjoint = zeros(n, m)
         VLBISkyModels._rfft_adjoint_add!(rfft_adjoint, spectrum_direction)
         @test real(sum(conj.(spectrum_direction) .* rfft(image_direction, 1:2))) ≈
-              sum(rfft_adjoint .* image_direction) atol = 5.0e-13 rtol = 5.0e-13
+            sum(rfft_adjoint .* image_direction) atol = 5.0e-13 rtol = 5.0e-13
 
         irfft_adjoint = zeros(ComplexF64, div(n, 2) + 1, m)
         VLBISkyModels._irfft_adjoint_add!(irfft_adjoint, image_direction)
         @test sum(image_direction .* irfft(spectrum_direction, n, 1:2)) ≈
-              real(sum(conj.(irfft_adjoint) .* spectrum_direction)) atol = 5.0e-13 rtol = 5.0e-13
+            real(sum(conj.(irfft_adjoint) .* spectrum_direction)) atol = 5.0e-13 rtol = 5.0e-13
     end
 end
 
