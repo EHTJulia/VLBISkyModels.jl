@@ -5,13 +5,16 @@ chunked-scatter strategy.
 ==============================================================================#
 
 
-# Per-FINUFFT setup_spreader: w = ceil(log10(1/eps)) + (sigma==2 ? 1 : 2),
-# capped at 16, floored at 2.
+# Per-FINUFFT setup_spreader: w = ceil(log10(1/eps)) + 1 for sigma = 2, otherwise
+# w = ceil(log(1/eps) / (π sqrt(1 - 1/sigma))); capped at 16, floored at 2.
 function _nspread_for_eps(::Type{T}, eps::Real, sigma::Real) where {T <: Real}
     e = max(T(eps), eps_tolerance_floor(T))
-    base = ceil(Int, log10(T(1) / e))
-    extra = sigma >= 1.99 ? 1 : 2
-    return clamp(base + extra, 2, 16)
+    w = if sigma >= 1.99
+        ceil(Int, log10(T(1) / e)) + 1
+    else
+        ceil(Int, log(T(1) / e) / (T(π) * sqrt(1 - 1 / T(sigma))))
+    end
+    return clamp(w, 2, 16)
 end
 
 # Smallest tolerance we target without losing all accuracy.

@@ -4,7 +4,7 @@ ES (exp-sqrt / "exponential of semicircle") kernel + Horner polynomial machinery
 Math:
     phi(z) = exp(beta * (sqrt(1 - z^2) - 1)),  |z| <= 1, else 0
 with z = (cell-centered offset) / (w/2). Beta is set as in FINUFFT:
-    beta = 2.30 * w * (2 / sigma).
+    beta = 2.30 * w for sigma = 2, otherwise 0.97 * π * (1 - 1 / (2 sigma)) * w.
 
 Per-cell Horner expansion. With the stencil placement in `setpts.jl`
 (`base = floor(s - w/2 + 1)`, `frac = s - base - (w/2 - 1) ∈ [0, 1)`), the
@@ -33,7 +33,7 @@ end
 
 # FINUFFT's beta scaling for ES kernel.
 @inline function expsemicircle_beta(::Type{T}, w::Integer, sigma::Real) where {T <: Real}
-    gamma = T(2.3) * (T(2) / T(sigma))
+    gamma = sigma >= 1.99 ? T(2.3) : T(0.97) * T(π) * (1 - 1 / (2 * T(sigma)))
     return gamma * T(w)
 end
 

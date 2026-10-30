@@ -20,8 +20,8 @@ but the fields are documented below for those who want to tune.
     To use you must first import Reactant. 
 
 # Fields
-- `eps::T`                — target tolerance (default `1e-9` if `T` is `Float64`).
-- `sigma::T`              — oversampling factor (default 2.0; 1.25 supported).
+- `eps::T`                — target tolerance (default `1e-6`).
+- `sigma::T`              — oversampling factor (default 1.25; 2.0 supported).
 - `nspread::Int`          — kernel half-width `w`. If `< 0`, picked from `eps`.
 - `chunk_size::Int`       — points per spread/interp chunk. Default 131072.
   The type-2 interp processes the M nonuniform points in `ceil(M/chunk_size)`
@@ -33,8 +33,8 @@ but the fields are documented below for those who want to tune.
 """
 function ReactantNUFFTAlg(
         ::Type{T};
-        eps::Real = T === Float64 ? 1.0e-9 : 1.0e-6,  # default tighter for Float64
-        sigma::Real = 2,
+        eps::Real = 1.0e-6,
+        sigma::Real = 1.25,
         nspread::Integer = -1,
         chunk_size::Integer = 131072,
         bin_dims::B = (),

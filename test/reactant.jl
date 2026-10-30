@@ -44,6 +44,10 @@ end
 
         @test parent(vrf) ≈ vnf
 
+        gfd = FourierDualDomain(gimr, Reactant.to_rarray(guv), VLBISkyModels.ReactantNUFFTAlg(Float64))
+        vrd = @jit visibilitymap(mr, gfd)
+        @test parent(vrd) ≈ vnf rtol = 1.0e-5
+
         mrs = shifted(mr, ConcreteRNumber(1.0), ConcreteRNumber(1.0))
         ms = shifted(m, 1.0, 1.0)
 
