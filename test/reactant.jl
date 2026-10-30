@@ -124,6 +124,12 @@ end
             test_analytic(m, mr, gf, gfr)
         end
 
+        @testset "AnisotropicPowerLaw" begin
+            m = AnisotropicPowerLaw(1.5, (0.3, -0.1), (0.2, 0.1), 0.2)
+            mr = Reactant.to_rarray(m; track_numbers = true)
+            test_analytic(m, mr, gf, gfr)
+        end
+
         @testset "RingTemplate" begin
             m = RingTemplate(RadialDblPower(1.0, 2.0), AzimuthalUniform())
             mr = Reactant.to_rarray(m; track_numbers = true)

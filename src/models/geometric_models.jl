@@ -5,6 +5,7 @@ export Gaussian,
     Crescent,
     ConcordanceCrescent,
     ExtendedRing,
+    AnisotropicPowerLaw,
     Ring,
     ParabolicSegment,
     Wisp,
@@ -524,6 +525,58 @@ radialextent(::ExtendedRing{T}) where {T} = convert(paramtype(T), 6)
     β = (shape + 1)
     α = shape
     return β^α * r^(-α - 2) * exp(-β / r) / gamma(α) / (2 * T(π))
+end
+
+"""
+    $(TYPEDEF)
+
+Power law whose slope depends on direction, with a Gaussian taper; it describes, for example,
+a compact core with a one- or two-sided jet. The intensity is
+
+    I(r, θ) = exp(-a(θ) log(1 + r²) - τ r²),    a(θ) = s + ∑ₙ (αₙ cos(nθ) - βₙ sin(nθ))
+
+with `θ` measured as in [`MRing`](@ref). The core radius is 1 (use `Stretch` to set it), so
+`I(0) = 1` and the flux is not normalized. Along each direction the profile falls as
+`r^(-2a(θ))` outside the core until the taper takes over; the `n = 1` terms make the jet
+one-sided, the `n = 2` terms two-sided, and a negative `a(θ)` makes the intensity rise
+outward. `log I` is linear in `s`, `α`, `β` and `τ`.
+
+# Fields
+$(FIELDS)
+"""
+struct AnisotropicPowerLaw{T, V <: Union{AbstractVector{T}, NTuple}} <: GeometricModel{T}
+    """Angle-averaged power-law slope `s`"""
+    slope::T
+    """Cosine coefficients of the slope's angular modes"""
+    α::V
+    """Sine coefficients of the slope's angular modes"""
+    β::V
+    """Coefficient `τ` of the Gaussian taper"""
+    taper::T
+    AnisotropicPowerLaw{T, V}(slope, α, β, taper) where {T, V} = new{T, V}(slope, α, β, taper)
+end
+function AnisotropicPowerLaw(slope, α::Union{AbstractVector, NTuple}, β::Union{AbstractVector, NTuple}, taper)
+    @argcheck length(α) == length(β) "Lengths of the cosine and sine coefficients must be equal in AnisotropicPowerLaw"
+    s, t = promote(slope, taper)
+    a, b = promote(α, β)
+    return AnisotropicPowerLaw{typeof(s), typeof(a)}(s, a, b, t)
+end
+visanalytic(::Type{<:AnisotropicPowerLaw}) = NotAnalytic()
+
+# The taper alone falls to e⁻¹⁰ here.
+radialextent(m::AnisotropicPowerLaw) = sqrt(10 / m.taper)
+
+@inline function intensity_point(m::AnisotropicPowerLaw, p)
+    x, y = _getxy(p)
+    @unpack_params slope, α, β, taper = m(p)
+    r² = x^2 + y^2
+    θ = atan(-x, y)
+    a = slope
+    for n in eachindex(α, β)
+        s, c = sincos(n * θ)
+        a += α[n] * c - β[n] * s
+    end
+    return exp(-a * log1p(r²) - taper * r²)
 end
 
 """

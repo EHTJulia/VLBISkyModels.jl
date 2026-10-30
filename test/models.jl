@@ -266,6 +266,22 @@ end
         @inferred VLBISkyModels.intensity_point(mr, (X = 0.0, Y = 0.0))
     end
 
+    @testset "AnisotropicPowerLaw" begin
+        m = AnisotropicPowerLaw(1.5, (0.3, -0.1), (0.2, 0.1), 0.2)
+        testft_nonan(m)
+        @inferred VLBISkyModels.intensity_point(m, (X = 0.0, Y = 0.0))
+        @test VLBISkyModels.intensity_point(m, (X = 0.0, Y = 0.0)) ≈ 1
+        x, y = 0.7, -1.3
+        θ = atan(-x, y)
+        a = 1.5 + 0.3 * cos(θ) - 0.2 * sin(θ) - 0.1 * cos(2θ) - 0.1 * sin(2θ)
+        @test VLBISkyModels.intensity_point(m, (X = x, Y = y)) ≈ exp(-a * log1p(x^2 + y^2) - 0.2 * (x^2 + y^2))
+        # a negative α₁ lowers the slope toward θ = 0, so the jet points along +Y
+        jet = AnisotropicPowerLaw(1.0, (-0.5,), (0.0,), 0.05)
+        @test VLBISkyModels.intensity_point(jet, (X = 0.0, Y = 3.0)) > VLBISkyModels.intensity_point(jet, (X = 0.0, Y = -3.0))
+        @test AnisotropicPowerLaw(1, (0.1,), (0.0,), 0.5) isa AnisotropicPowerLaw{Float64}
+        @test_throws ArgumentError AnisotropicPowerLaw(1.0, (0.1, 0.2), (0.1,), 0.05)
+    end
+
     @testset "M87 model test" begin
         xopt = (
             rad = 21.895093363492155,
