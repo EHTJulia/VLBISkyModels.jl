@@ -19,6 +19,9 @@ but the fields are documented below for those who want to tune.
 !!! warn
     To use you must first import Reactant. 
 
+The plan's arrays live where the visibility domain's coordinates do: on the device for a
+domain moved there with `Reactant.to_rarray`, on the host otherwise.
+
 # Fields
 - `eps::T`                — target tolerance (default `1e-9` if `T` is `Float64`).
 - `sigma::T`              — oversampling factor (default 2.0; 1.25 supported).

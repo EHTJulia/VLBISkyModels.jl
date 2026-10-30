@@ -217,6 +217,17 @@ end
                     repr(@code_xla shardy_passes = :to_mhlo_shardings f(args...))
                 )
             ]
+            # The device arrays that `x` holds.
+            function devicearrays(x, found = Any[])
+                if x isa Reactant.AbstractConcreteArray
+                    push!(found, x)
+                elseif x isa Union{Tuple, NamedTuple}
+                    foreach(y -> devicearrays(y, found), x)
+                elseif !(isbits(x) || x isa Union{AbstractArray, Module, Type, Symbol, AbstractString})
+                    foreach(i -> isdefined(x, i) && devicearrays(getfield(x, i), found), 1:fieldcount(typeof(x)))
+                end
+                return found
+            end
             # Shapes of the collectives that carry a stencil window or a Fourier grid.
             function heavy(f, args...; grid = sgf)
                 pl = VLBISkyModels.getplan(VLBISkyModels.forward_plan(grid)).plan
@@ -239,8 +250,12 @@ end
             pointdomain(t, f) = UnstructuredDomain((; U = randn(length(t)) ./ 10, V = randn(length(t)) ./ 10, Ti = t, Fr = f))
             dom = pointdomain(sort(4 .* rand(n)), rand(frs, n))
             gfh = FourierDualDomain(g, dom, DFTAlg())
-            sgf = shard(FourierDualDomain(g, Reactant.to_rarray(dom), alg), layout)
+            gfd = FourierDualDomain(g, dom, alg)
+            @test isempty(devicearrays(gfd))
+            sgf = shard(gfd, layout)
             @test imgdomain(sgf) === g
+            @test !isempty(devicearrays(sgf))
+            @test all(Reactant.Sharding.is_sharded, devicearrays(sgf))
             w = weights(sgf, dom)
 
             onmesh(a, gr, lay) = lay === nothing ?
@@ -289,7 +304,7 @@ end
             @testset "(Node, Fr) domain split along Fr" begin
                 np = 60
                 dpf = StructuredDomain((Node(np), Fr(frs)); U = randn(np, 2) ./ 10, V = randn(np, 2) ./ 10, Ti = 4 .* rand(np))
-                sg = shard(FourierDualDomain(g, Reactant.to_rarray(dpf), alg), layout)
+                sg = shard(FourierDualDomain(g, dpf, alg), layout)
                 a = rand(16, 16, 4, 2)
                 ar = baseimage(shard(IntensityMap(a, g), layout))
                 v = @jit vfb(ar, sg)
@@ -303,7 +318,7 @@ end
 
             @testset "uneven frame occupancy" begin
                 du = pointdomain([rand() < 0.8 ? 0.5 * rand() : 4 * rand() for _ in 1:n], rand(frs, n))
-                sg = shard(FourierDualDomain(g, Reactant.to_rarray(du), alg), layout)
+                sg = shard(FourierDualDomain(g, du, alg), layout)
                 wu = weights(sg, du)
                 loss(a, g, w) = sum(abs2, vfb(a, g) .* w)
                 function grad!(da, a, g, w)
@@ -324,7 +339,7 @@ end
             )
             @testset "bands coarser than channels" begin
                 db = channeldomain([225.0e9, 235.0e9, 342.0e9, 348.0e9])
-                sb = shard(FourierDualDomain(gb, Reactant.to_rarray(db), alg), layout)
+                sb = shard(FourierDualDomain(gb, db, alg), layout)
                 a = rand(16, 16, 4, 2)
                 ar = baseimage(shard(IntensityMap(a, gb), layout))
                 @test onpoints(@jit(vfb(ar, sb)), sb, db) ≈ vfb(a, FourierDualDomain(gb, db, DFTAlg()))
@@ -332,16 +347,16 @@ end
             end
 
             @test_throws "split differently over devices" shard(
-                FourierDualDomain(gb, Reactant.to_rarray(channeldomain([225.0e9, 342.0e9, 345.0e9, 348.0e9])), alg), layout
+                FourierDualDomain(gb, channeldomain([225.0e9, 342.0e9, 345.0e9, 348.0e9]), alg), layout
             )
             @test_throws "do not split evenly" shard(
                 FourierDualDomain(
                     gs ⊗ frames(Ti, [0.0, 1.0, 2.0], [1.0, 2.0, 3.0]),
-                    Reactant.to_rarray(UnstructuredDomain((; U = randn(n) ./ 10, V = randn(n) ./ 10, Ti = sort(3 .* rand(n))))), alg
+                    UnstructuredDomain((; U = randn(n) ./ 10, V = randn(n) ./ 10, Ti = sort(3 .* rand(n)))), alg
                 ),
                 ShardLayout(mesh; Ti = :t)
             )
-            dc = Reactant.to_rarray(channeldomain([225.0e9, 235.0e9, 342.0e9, 348.0e9]))
+            dc = channeldomain([225.0e9, 235.0e9, 342.0e9, 348.0e9])
             @test_throws "splits both `Node` and the image's planes" shard(
                 FourierDualDomain(gb, dc, alg), ShardLayout(mesh; Fr = :f, Node = :t)
             )

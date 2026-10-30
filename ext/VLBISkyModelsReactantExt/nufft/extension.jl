@@ -22,16 +22,16 @@ function VLBISkyModels.plan_nuft_spatial(
     rm = ComradeBase.rotmat(imgdomain)'
     # No sign flip because we will use the FINUFFT +1 sign convention
     pl = plan_nufft(unwrapped_eltype(U), 2, size(imgdomain)[1:2]; iflag = +1, opts = alg)
-    if ReactantCore.within_compile()
-        u = convert(T, 2π) .* VLBISkyModels._rotatex.(U, V, Ref(rm)) .* dx
-        v = convert(T, 2π) .* VLBISkyModels._rotatey.(U, V, Ref(rm)) .* dy
-        pls = set_nufft_points(pl, (u, v))
-    else
+    # The point data live where the coordinates do: on the host for host arrays, so that
+    # `shard` can place them on the devices directly.
+    if U isa Reactant.AbstractConcreteArray
         u = @jit convert(T, 2π) .* VLBISkyModels._rotatex.(U, V, Ref(rm)) .* dx
         v = @jit convert(T, 2π) .* VLBISkyModels._rotatey.(U, V, Ref(rm)) .* dy
-        pls = @jit set_nufft_points(pl, (u, v))
+        return @jit set_nufft_points(pl, (u, v))
     end
-    return pls
+    u = convert(T, 2π) .* VLBISkyModels._rotatex.(U, V, Ref(rm)) .* dx
+    v = convert(T, 2π) .* VLBISkyModels._rotatey.(U, V, Ref(rm)) .* dy
+    return set_nufft_points(pl, (u, v))
 end
 
 Base.adjoint(plan::NUFFTSetPts) = plan # Not needed Reactant is too smart for this
@@ -60,8 +60,10 @@ function VLBISkyModels.plan_nuft(
     pts = VLBISkyModels.plan_nuft_spatial(alg, imgdomain, VLBISkyModels._pointlist(visdomain))
     if ReactantCore.within_compile()
         return PlaneStack(pts, Reactant.promote_to(Reactant.TracedRArray{Int, ndims(plane)}, plane), batched)
+    elseif pts.frac[1] isa Reactant.AbstractConcreteArray
+        return PlaneStack(pts, Reactant.to_rarray(plane), batched)
     end
-    return PlaneStack(pts, Reactant.to_rarray(plane), batched)
+    return PlaneStack(pts, plane, batched)
 end
 
 # Each point's index along every plane dim, `(M, K)`.
@@ -128,15 +130,13 @@ function VLBISkyModels._nuft(
     return complex.(r[c..., 1], r[c..., 2])
 end
 
-# Plans are rebuilt for the blocked visibility domain, on the mesh of the sharded inputs.
-function ComradeBase.shard(d::VLBISkyModels.FourierDualDomain, layout::ComradeBase.ShardLayout)
-    s = invoke(ComradeBase.shard, Tuple{ComradeBase.AbstractDualDomain, ComradeBase.ShardLayout}, d, layout)
-    vis = ComradeBase.visdomain(s)
-    fwd, rev = VLBISkyModels.create_plans(
-        VLBISkyModels.algorithm(s), ComradeBase.imgdomain(s), Reactant.to_rarray(VLBISkyModels._hostdomain(vis))
-    )
-    s = VLBISkyModels.@set s.plan_forward = _shardplan(fwd, ComradeBase.imgdomain(s), vis, layout)
-    return VLBISkyModels.@set s.plan_reverse = _replicate(rev, Reactant.Sharding.Replicated(layout.mesh))
+# The plans are built on the host for the blocked visibility domain and placed by the layout.
+function ComradeBase._placederived(d::VLBISkyModels.FourierDualDomain, hostvis, layout::ComradeBase.ShardLayout)
+    img = ComradeBase.imgdomain(d)
+    vis = ComradeBase.visdomain(d)
+    fwd, rev = VLBISkyModels.create_plans(VLBISkyModels.algorithm(d), img, hostvis)
+    d = VLBISkyModels.@set d.plan_forward = _shardplan(fwd, img, vis, layout)
+    return VLBISkyModels.@set d.plan_reverse = _shardplan(rev, img, vis, layout)
 end
 
 _shardplan(p, _, _, layout) = _replicate(p, Reactant.Sharding.Replicated(layout.mesh))
@@ -193,8 +193,8 @@ function _shardplan(p::VLBISkyModels.NUFTPlan{<:VLBISkyModels.ReactantNUFFTAlg, 
     perblock = map((d, n) -> length(d) ÷ n, pdims, nblocks)
     permuted = permutedims(reshape(collect(1:pts.M), shape...), perm)
     point = reshape(permuted, :, size(permuted)[(end - nb + 1):end]...)
-    base = map(Array, pts.base)
-    fracs = map(Array, pts.frac)
+    base = pts.base
+    fracs = pts.frac
     N = pts.plan.ngrid
     start = similar(point, (size(point)..., 3 + length(pdims)))
     frac = map(f -> similar(f, size(point)), fracs)
@@ -216,7 +216,7 @@ function _shardplan(p::VLBISkyModels.NUFTPlan{<:VLBISkyModels.ReactantNUFFTAlg, 
         pts.plan, Reactant.to_rarray(start; sharding = split), map(f -> Reactant.to_rarray(f; sharding = split), frac),
         batched, size(permuted), Tuple(invperm(collect(perm))), vsz
     )
-    phases = reshape(Array(p.phases), vsz)
+    phases = reshape(p.phases, vsz)
     vsplit = Tuple(findall(in(keys(vislayout.axes)), collect(vnames)))
     vsharding = Reactant.Sharding.DimsSharding(mesh, vsplit, map(i -> vislayout.axes[vnames[i]], vsplit))
     p = VLBISkyModels.@set p.plan = stack
@@ -241,7 +241,7 @@ end
 
 _replicate(x, _) = x
 _replicate(x::Tuple, rep) = map(y -> _replicate(y, rep), x)
-_replicate(x::Reactant.ConcreteRArray, rep) = Reactant.to_rarray(Array(x); sharding = rep)
+_replicate(x::Array, rep) = Reactant.to_rarray(x; sharding = rep)
 function _replicate(p::VLBISkyModels.NUFTPlan, rep)
     p = VLBISkyModels.@set p.plan = _replicate(p.plan, rep)
     return VLBISkyModels.@set p.phases = _replicate(p.phases, rep)
