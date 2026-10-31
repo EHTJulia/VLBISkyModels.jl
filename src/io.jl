@@ -91,13 +91,8 @@ function _fits_linear_world(header, n, p)
     return float(get(header, "CRVAL$n", 0.0)) + delta * (p - float(get(header, "CRPIX$n", 0.0)))
 end
 
-"""
-    _fits_planes(hdu::FITSIO.ImageHDU, label::Symbol)
-
-Returns the images in `hdu` keyed by Stokes parameter. The planes of a `STOKES` axis are keyed
-by their FITS Stokes codes; an HDU without one holds a single image, keyed by `label`. Any
-other axis beyond the two celestial ones must have length one.
-"""
+# The images in `hdu` keyed by Stokes parameter: the planes of a STOKES axis by their FITS codes,
+# or a single image keyed by `label`. Other non-celestial axes must have length one.
 function _fits_planes(hdu::FITSIO.ImageHDU, label::Symbol)
     header = read_header(hdu)
     data = read(hdu)
@@ -130,14 +125,8 @@ function _fits_planes(hdu::FITSIO.ImageHDU, label::Symbol)
     )
 end
 
-"""
-    _fits_celestial_jacobian(header)
-
-The linear part of the celestial WCS: the derivative of the intermediate world coordinates
-(l, m) with respect to the pixel coordinates (p₁, p₂), in radians per pixel. It is taken from
-`CDi_j`, from `PCi_j` and `CDELTi`, or from `CDELTi` and the legacy `CROTA2`, in that order of
-precedence.
-"""
+# d(l, m)/d(p₁, p₂) of the celestial WCS in radians per pixel, from CDi_j, else PCi_j and CDELTi,
+# else CDELTi and CROTA2.
 function _fits_celestial_jacobian(header)
     for n in 1:2
         unit = strip(string(get(header, "CUNIT$n", "deg")))
@@ -182,16 +171,9 @@ function _fits_frequency(header)
     return isnothing(n) ? 0.0 : _fits_linear_world(header, n, 1)
 end
 
-"""
-    _extract_fits_image(data::AbstractMatrix, header)
-
-Places the celestial plane `data` on a `RectiGrid` following the FITS WCS (FITS 4.0, §8).
-Pixel coordinate p lies at the intermediate world coordinates (l, m) = J (p - CRPIX), with `J`
-from [`_fits_celestial_jacobian`](@ref), offset by the position of (CRVAL1, CRVAL2) relative to
-the phase center (OBSRA, OBSDEC). For the SIN projection (l, m) are the direction cosines of the
-image plane. The pixel axes are reversed as needed so that X and Y increase along the grid, and
-any rotation of the pixel axes on the sky becomes the grid's `posang`.
-"""
+# Places `data` on a RectiGrid following the FITS WCS (FITS 4.0, §8): pixel p lies at
+# (l, m) = J (p - CRPIX) plus the offset of (CRVAL1, CRVAL2) from the phase center. Axes are
+# reversed so X and Y increase, and a rotation of the pixel axes becomes the grid's `posang`.
 function _extract_fits_image(data::AbstractMatrix, header)
     nx, ny = size(data)
     J = _fits_celestial_jacobian(header)
