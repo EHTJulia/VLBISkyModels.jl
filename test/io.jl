@@ -79,7 +79,7 @@ end
     @test header(img).frequency == 230.0e9
 
     ρ = 30.0
-    cd = deg2rad.([-1.0e-10*cosd(ρ) -2.0e-10*sind(ρ); -1.0e-10*sind(ρ) 2.0e-10*cosd(ρ)])
+    cd = deg2rad.([-1.0e-10 * cosd(ρ) -2.0e-10 * sind(ρ); -1.0e-10 * sind(ρ) 2.0e-10 * cosd(ρ)])
     rotated = cubeheader("FREQ"; extra = ("CD1_1", "CD1_2", "CD2_1", "CD2_2") .=> rad2deg.((cd[1, 1], cd[1, 2], cd[2, 1], cd[2, 2])))
     VLBISkyModels.FITSIO.FITS(f -> write(f, plane; header = rotated), fname, "w")
     img = load_fits(fname, IntensityMap)

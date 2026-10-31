@@ -151,7 +151,7 @@ function _fits_celestial_jacobian(header)
         cdelt .* [float(get(header, "PC$(i)_$(j)", i == j ? 1.0 : 0.0)) for i in 1:2, j in 1:2]
     else
         s, c = sincosd(float(get(header, "CROTA2", 0.0)))
-        [cdelt[1]*c -cdelt[2]*s; cdelt[1]*s cdelt[2]*c]
+        [cdelt[1] * c -cdelt[2] * s; cdelt[1] * s cdelt[2] * c]
     end
     return deg2rad.(cd)
 end
