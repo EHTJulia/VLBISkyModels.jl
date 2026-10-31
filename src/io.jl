@@ -3,9 +3,12 @@ export load_fits, save_fits
 """
     load_fits(fitsfile::String, T::Type{<:IntensityMap}))
 
-This loads in a fits file that is more robust to the various imaging algorithms
-in the EHT, i.e. is works with clean, smili, eht-imaging.
-The function returns an `T<:IntensityMap`. By default if `T===IntensityMap` then we only return the Stokes I image. If `T<:IntensityMap{StokesParams}` then we return the full Stokes image.  
+Loads an image from a FITS file, placing it on the sky with the FITS world coordinate system
+(the `CDi_j`, `PCi_j`/`CDELTi`, or legacy `CROTA2` forms) relative to the phase center
+`OBSRA`/`OBSDEC`, or `CRVAL1`/`CRVAL2` when those are absent.
+The function returns an `T<:IntensityMap`. By default if `T===IntensityMap` then we only return the Stokes I image. If `T<:IntensityMap{StokesParams}` then we return the full Stokes image.
+Stokes planes are read from a `STOKES` axis of the primary HDU, identified by their FITS Stokes
+codes, and otherwise from HDUs named `Q`, `U` and `V`.
 """
 function load_fits(file, T::Type{<:IntensityMap})
     if !endswith(file, ".fits")
@@ -16,33 +19,43 @@ end
 
 function _load_fits(fname, ::Type{IntensityMap})
     img = FITS(fname, "r") do f
-        if length(f) > 1
+        planes = _fits_planes(f[1], :I)
+        if length(f) > 1 || length(planes) > 1
             @warn "Currently only loading stokes I. To load polarized quantities\n" *
                 "please call `load_fits(filename, IntensityMap{StokesParams})`"
         end
-        # assume that the first element is stokes I
-        return _extract_fits_image(f[1])
+        return _stokes_i_plane(planes, fname)
     end
     return img
 end
 
-function try_loading(f, stokes, imgI)
-    try
-        return _extract_fits_image(f[stokes])
-    catch
+function _stokes_i_plane(planes, fname)
+    haskey(planes, :I) || throw(ArgumentError("$fname has no Stokes I plane in its primary HDU"))
+    return planes[:I]
+end
+
+function _load_stokes_hdu(f, stokes::Symbol, imgI)
+    name = string(stokes)
+    if !haskey(f, name)
         @warn "No stokes $(stokes) found creating a zero array"
-        imgQ = zero(imgI)
-        return imgQ
+        return zero(imgI)
     end
+    planes = _fits_planes(f[name], stokes)
+    haskey(planes, stokes) ||
+        throw(ArgumentError("HDU $name holds the Stokes planes $(collect(keys(planes))), not $stokes"))
+    img = planes[stokes]
+    img.X ≈ imgI.X && img.Y ≈ imgI.Y && posang(axisdims(img)) ≈ posang(axisdims(imgI)) ||
+        throw(ArgumentError("HDU $name is on a different pixel grid than Stokes I"))
+    return img
 end
 
 function _load_fits(fname, ::Type{<:IntensityMap{<:StokesParams}})
     img = FITS(fname, "r") do f
-        # assume that the first element is stokes I
-        imgI = _extract_fits_image(f[1])
-        imgQ = try_loading(f, "Q", imgI)
-        imgU = try_loading(f, "U", imgI)
-        imgV = try_loading(f, "V", imgI)
+        planes = _fits_planes(f[1], :I)
+        imgI = _stokes_i_plane(planes, fname)
+        imgQ, imgU, imgV = map((:Q, :U, :V)) do s
+            haskey(planes, s) ? planes[s] : _load_stokes_hdu(f, s, imgI)
+        end
         return IntensityMap(
             StructArray{StokesParams{eltype(imgI)}}(
                 (
@@ -58,69 +71,151 @@ function _load_fits(fname, ::Type{<:IntensityMap{<:StokesParams}})
     return img
 end
 
-function _extract_fits_image(f::FITSIO.ImageHDU{T}) where {T}
-    image = read(f)[end:-1:begin, :]
-    header = read_header(f)
-    nx = Int(header["NAXIS1"])
-    ny = Int(header["NAXIS2"])
+# Stokes and polarization codes of a FITS STOKES axis (FITS 4.0, Table 29).
+const FITS_STOKES_CODES = (
+    I = 1, Q = 2, U = 3, V = 4,
+    RR = -1, LL = -2, RL = -3, LR = -4,
+    XX = -5, YY = -6, XY = -7, YX = -8,
+)
 
-    psizex = deg2rad(abs(float(header["CDELT1"])))
-    psizey = deg2rad(abs(float(header["CDELT2"])))
-    # We assume that the pixel center is in the middle of the image
-    x0c = float(header["CRPIX1"]) - nx / 2 - 0.5
-    y0c = float(header["CRPIX2"]) - ny / 2 - 0.5
-    ra = (180)
-    dec = zero(T)
-    try
-        ra = float(header["OBSRA"])
-        dec = float(header["OBSDEC"])
-    catch
-        @warn "No OBSRA or OBSDEC in header setting to 180.0, 0.0"
-    end
+_fits_ctype(header, n) = strip(string(get(header, "CTYPE$n", "")))
 
-    if haskey(header, "CROTA2")
-        pa = -deg2rad(float(header["CROTA2"]))
+_fits_axis(header, ctype, nd) = findfirst(n -> _fits_ctype(header, n) == ctype, 1:nd)
+
+function _fits_linear_world(header, n, p)
+    delta = if haskey(header, "CD$(n)_$(n)")
+        float(header["CD$(n)_$(n)"])
     else
-        pa = zero(psizex)
+        float(get(header, "CDELT$n", 1.0)) * float(get(header, "PC$(n)_$(n)", 1.0))
+    end
+    return float(get(header, "CRVAL$n", 0.0)) + delta * (p - float(get(header, "CRPIX$n", 0.0)))
+end
+
+# The images in `hdu` keyed by Stokes parameter: the planes of a STOKES axis by their FITS codes,
+# or a single image keyed by `label`. Other non-celestial axes must have length one.
+function _fits_planes(hdu::FITSIO.ImageHDU, label::Symbol)
+    header = read_header(hdu)
+    data = read(hdu)
+    nd = ndims(data)
+    nd >= 2 || throw(ArgumentError("FITS image HDU has $nd axes; an image needs two celestial axes"))
+    sax = _fits_axis(header, "STOKES", nd)
+    for n in 3:nd
+        n == sax || size(data, n) == 1 || throw(
+            ArgumentError(
+                "FITS axis $n ($(_fits_ctype(header, n))) has length $(size(data, n)); " *
+                    "only a STOKES axis may have more than one plane"
+            )
+        )
+    end
+    nx, ny = size(data, 1), size(data, 2)
+    isnothing(sax) && return Dict(label => _extract_fits_image(reshape(data, nx, ny), header))
+    codes = map(k -> _fits_linear_world(header, sax, k), axes(data, sax))
+    stokes = map(codes) do c
+        s = findfirst(==(c), FITS_STOKES_CODES)
+        isnothing(s) && throw(ArgumentError("FITS Stokes code $c is not defined; codes on this axis: $codes"))
+        s in (:I, :Q, :U, :V) || throw(
+            ArgumentError("FITS $s planes are not supported; only Stokes I, Q, U, V planes can be loaded")
+        )
+        s
+    end
+    allunique(stokes) || throw(ArgumentError("repeated FITS Stokes codes $codes"))
+    return Dict(
+        s => _extract_fits_image(reshape(selectdim(data, sax, k), nx, ny), header)
+            for (k, s) in zip(axes(data, sax), stokes)
+    )
+end
+
+# d(l, m)/d(p₁, p₂) of the celestial WCS in radians per pixel, from CDi_j, else PCi_j and CDELTi,
+# else CDELTi and CROTA2.
+function _fits_celestial_jacobian(header)
+    for n in 1:2
+        unit = strip(string(get(header, "CUNIT$n", "deg")))
+        unit == "deg" || throw(ArgumentError("FITS celestial axis $n has CUNIT$n = $unit; expected deg"))
+    end
+    has(prefix) = any(((i, j),) -> haskey(header, "$prefix$(i)_$(j)"), Iterators.product(1:2, 1:2))
+    cdelt = [float(get(header, "CDELT$i", 1.0)) for i in 1:2]
+    cd = if has("CD")
+        [float(get(header, "CD$(i)_$(j)", 0.0)) for i in 1:2, j in 1:2]
+    elseif has("PC")
+        cdelt .* [float(get(header, "PC$(i)_$(j)", i == j ? 1.0 : 0.0)) for i in 1:2, j in 1:2]
+    else
+        s, c = sincosd(float(get(header, "CROTA2", 0.0)))
+        [cdelt[1] * c -cdelt[2] * s; cdelt[1] * s cdelt[2] * c]
+    end
+    return deg2rad.(cd)
+end
+
+function _fits_phase_center(header)
+    haskey(header, "OBSRA") && haskey(header, "OBSDEC") &&
+        return float(header["OBSRA"]), float(header["OBSDEC"])
+    _fits_is_radec(header) && return float(get(header, "CRVAL1", 0.0)), float(get(header, "CRVAL2", 0.0))
+    @warn "No OBSRA/OBSDEC or RA/DEC reference value in header setting to 180.0, 0.0"
+    return 180.0, 0.0
+end
+
+_fits_is_radec(header) = startswith(_fits_ctype(header, 1), "RA") && startswith(_fits_ctype(header, 2), "DEC")
+
+# Direction cosines (l, m) of the WCS reference point (CRVAL1, CRVAL2) about the phase center.
+function _fits_reference_offset(header, ra0, dec0)
+    _fits_is_radec(header) || return SVector(0.0, 0.0)
+    αr, δr = deg2rad(float(get(header, "CRVAL1", ra0))), deg2rad(float(get(header, "CRVAL2", dec0)))
+    α0, δ0 = deg2rad(ra0), deg2rad(dec0)
+    l = cos(δr) * sin(αr - α0)
+    m = sin(δr) * cos(δ0) - cos(δr) * sin(δ0) * cos(αr - α0)
+    return SVector(l, m)
+end
+
+function _fits_frequency(header)
+    haskey(header, "FREQ") && return float(header["FREQ"])
+    n = _fits_axis(header, "FREQ", Int(get(header, "NAXIS", 0)))
+    return isnothing(n) ? 0.0 : _fits_linear_world(header, n, 1)
+end
+
+# Places `data` on a RectiGrid following the FITS WCS (FITS 4.0, §8): pixel p lies at
+# (l, m) = J (p - CRPIX) plus the offset of (CRVAL1, CRVAL2) from the phase center. Axes are
+# reversed so X and Y increase, and a rotation of the pixel axes becomes the grid's `posang`.
+function _extract_fits_image(data::AbstractMatrix, header)
+    nx, ny = size(data)
+    J = _fits_celestial_jacobian(header)
+    dJ = det(J)
+    iszero(dJ) && throw(ArgumentError("singular FITS celestial pixel transform $J"))
+    f1 = J[1, 1] < 0 ? -1 : 1
+    f2 = dJ < 0 ? -f1 : f1
+    A = J .* [f1 f2]
+    dx, dy = norm(A[:, 1]), norm(A[:, 2])
+    abs(dot(A[:, 1], A[:, 2])) <= sqrt(eps()) * dx * dy || throw(
+        ArgumentError("FITS celestial pixel axes are not perpendicular on the sky (transform $J)")
+    )
+    pa = atan(A[1, 2] / dy, A[1, 1] / dx)
+
+    ra, dec = _fits_phase_center(header)
+    rot = SMatrix{2, 2}(cos(pa), -sin(pa), sin(pa), cos(pa))
+    o = transpose(rot) * _fits_reference_offset(header, ra, dec)
+    r1 = float(get(header, "CRPIX1", 0.0))
+    r2 = float(get(header, "CRPIX2", 0.0))
+    r1 = f1 == 1 ? r1 : nx + 1 - r1
+    r2 = f2 == 1 ? r2 : ny + 1 - r2
+    xs = LinRange(dx * (1 - r1) + o[1], dx * (nx - r1) + o[1], nx)
+    ys = LinRange(dy * (1 - r2) + o[2], dy * (ny - r2) + o[2], ny)
+
+    i1 = f1 == 1 ? axes(data, 1) : reverse(axes(data, 1))
+    i2 = f2 == 1 ? axes(data, 2) : reverse(axes(data, 2))
+    image = data[i1, i2]
+    T = eltype(image)
+
+    if lowercase(strip(string(get(header, "BUNIT", "")))) == "jy/beam"
+        @info "Converting Jy/Beam => Jy/pixel"
+        bmaj = deg2rad(float(header["BMAJ"]))
+        bmin = deg2rad(float(header["BMIN"]))
+        beamarea = (2 * π * bmaj * bmin) / (8 * log(2))
+        image .= image .* T(dx * dy / beamarea)
     end
 
-    #Get frequency
-    freq = zero(T)
-    if haskey(header, "FREQ")
-        freq = parse(T, string(header["FREQ"]))
-    elseif "CRVAL3" in keys(header)
-        freq = float(header["CRVAL3"])
-    end
-    mjd = 0
-    if haskey(header, "MJD")
-        mjd = parse(T, string(header["MJD"]))
-    end
-    source = "NA"
-    if haskey(header, "OBJECT")
-        source = string(header["OBJECT"])
-    end
-    stokes = "NA"
-    if haskey(header, "STOKES")
-        stokes = Symbol(header["STOKES"])
-    end
-    bmaj = one(T) #Nominal values
-    bmin = one(T)
-    if haskey(header, "BUNIT")
-        if header["BUNIT"] == "JY/BEAM"
-            @info "Converting Jy/Beam => Jy/pixel"
-            bmaj = header["BMAJ"] * π / 180
-            bmin = header["BMIN"] * π / 180
-            beamarea = (2 * T(π) * bmaj * bmin) / (8 * log(T(2)))
-            image .= image .* (psizex * psizey / beamarea)
-        end
-    end
-    info = ComradeBase.MinimalHeader(source, ra, dec, mjd, freq)
-    g = imagepixels(
-        psizex * nx, psizey * ny, nx, ny, x0c * psizex, y0c * psizey;
-        header = info, posang = pa
-    )
-    imap = IntensityMap(image, g)
-    return imap
+    mjd = float(get(header, "MJD-OBS", get(header, "MJD", 0)))
+    source = haskey(header, "OBJECT") ? string(header["OBJECT"]) : "NA"
+    info = ComradeBase.MinimalHeader(source, ra, dec, mjd, _fits_frequency(header))
+    g = RectiGrid((X = xs, Y = ys); header = info, posang = pa)
+    return IntensityMap(image, g)
 end
 
 """
@@ -189,7 +284,7 @@ function _prepare_header(image, stokes = "I")
         true,
         head.source,
         "RA---SIN",
-        "DEC---SIN",
+        "DEC--SIN",
         CD1,
         CD2,
         CD1 * rmat[1, 1],
@@ -200,7 +295,7 @@ function _prepare_header(image, stokes = "I")
         head.RA,
         head.DEC,
         head.F,
-        size(image, 1) / 2 + 0.5 + x0c / psizex,
+        size(image, 1) / 2 + 0.5 - x0c / psizex,
         size(image, 2) / 2 + 0.5 + y0c / psizey,
         head.mjd,
         "VLBI",

@@ -166,21 +166,21 @@ function rotating4dgaussian(p)
     # Elliptical gaussians rotating with a constant stretch and varying rotation
     gaussians = [
         modify(
-                Gaussian(), Stretch(2, 1), Shift(2.0, 1.0),
-                Rotate((i - 1) * 0.5 * π / length(p.imgdomain.Ti) + π / 4),
-                Renormalize(1.0)
-            ) for (i, t) in enumerate(p.imgdomain.Ti)
+            Gaussian(), Stretch(2, 1), Shift(2.0, 1.0),
+            Rotate((i - 1) * 0.5 * π / length(p.imgdomain.Ti) + π / 4),
+            Renormalize(1.0)
+        ) for (i, t) in enumerate(p.imgdomain.Ti)
     ]
     intensity_maps = [
         intensitymap(
-                mpr,
-                RectiGrid(
-                    (;
-                        X = p.imgdomain.X, Y = p.imgdomain.Y, Ti = [t],
-                        Fr = p.imgdomain.Fr,
-                    )
+            mpr,
+            RectiGrid(
+                (;
+                    X = p.imgdomain.X, Y = p.imgdomain.Y, Ti = [t],
+                    Fr = p.imgdomain.Fr,
                 )
             )
+        )
             for (t, mpr) in zip(p.imgdomain.Ti, gaussians)
     ]
     combined_img = cat(intensity_maps...; dims = 3)  # Concatenate along the third dimension (Ti)
@@ -238,21 +238,21 @@ function rotating4dgaussian_swap(p)
     # Elliptical gaussians rotating with a constant stretch and varying rotation
     gaussians = [
         modify(
-                Gaussian(), Stretch(2, 1), Shift(2.0, 1.0),
-                Rotate((i - 1) * 0.5 * π / length(p.imgdomain.Ti) + π / 4),
-                Renormalize(1.0)
-            ) for (i, t) in enumerate(p.imgdomain.Ti)
+            Gaussian(), Stretch(2, 1), Shift(2.0, 1.0),
+            Rotate((i - 1) * 0.5 * π / length(p.imgdomain.Ti) + π / 4),
+            Renormalize(1.0)
+        ) for (i, t) in enumerate(p.imgdomain.Ti)
     ]
     intensity_maps = [
         intensitymap(
-                mpr,
-                RectiGrid(
-                    (;
-                        X = p.imgdomain.X, Y = p.imgdomain.Y,
-                        Fr = p.imgdomain.Fr, Ti = [t],
-                    )
+            mpr,
+            RectiGrid(
+                (;
+                    X = p.imgdomain.X, Y = p.imgdomain.Y,
+                    Fr = p.imgdomain.Fr, Ti = [t],
                 )
             )
+        )
             for (t, mpr) in zip(p.imgdomain.Ti, gaussians)
     ]
     combined_img = cat(intensity_maps...; dims = 4)  # Concatenate along the fourth dimension (Ti)
@@ -287,16 +287,16 @@ function rotating3dgaussian(p)
     # Elliptical gaussians rotating with a constant stretch and varying rotation
     gaussians = [
         modify(
-                Gaussian(), Stretch(2, 1), Shift(2.0, 1.0),
-                Rotate((i - 1) * 0.5 * π / length(p.imgdomain.Ti) + π / 4),
-                Renormalize(1.0)
-            ) for (i, t) in enumerate(p.imgdomain.Ti)
+            Gaussian(), Stretch(2, 1), Shift(2.0, 1.0),
+            Rotate((i - 1) * 0.5 * π / length(p.imgdomain.Ti) + π / 4),
+            Renormalize(1.0)
+        ) for (i, t) in enumerate(p.imgdomain.Ti)
     ]
     intensity_maps = [
         intensitymap(
-                mpr,
-                RectiGrid((; X = p.imgdomain.X, Y = p.imgdomain.Y, Ti = [t]))
-            )
+            mpr,
+            RectiGrid((; X = p.imgdomain.X, Y = p.imgdomain.Y, Ti = [t]))
+        )
             for (t, mpr) in zip(p.imgdomain.Ti, gaussians)
     ]
     combined_img = cat(intensity_maps...; dims = 3)  # Concatenate along the third dimension (Ti)
@@ -325,16 +325,16 @@ end
 function freqgaussians(p)
     gaussians = [
         modify(
-                Gaussian(), Stretch(2, 1), Shift(2.0, 1.0),
-                Rotate((i - 1) * 0.5 * π / length(p.imgdomain.Fr) + π / 4),
-                Renormalize(1.0)
-            ) for (i, fr) in enumerate(p.imgdomain.Fr)
+            Gaussian(), Stretch(2, 1), Shift(2.0, 1.0),
+            Rotate((i - 1) * 0.5 * π / length(p.imgdomain.Fr) + π / 4),
+            Renormalize(1.0)
+        ) for (i, fr) in enumerate(p.imgdomain.Fr)
     ]
     intensity_maps = [
         intensitymap(
-                mpr,
-                RectiGrid((; X = p.imgdomain.X, Y = p.imgdomain.Y, Fr = [fr]))
-            )
+            mpr,
+            RectiGrid((; X = p.imgdomain.X, Y = p.imgdomain.Y, Fr = [fr]))
+        )
             for (fr, mpr) in zip(p.imgdomain.Fr, gaussians)
     ]
     combined_img = cat(intensity_maps...; dims = 3)  # Concatenate along the third dimension (Fr)

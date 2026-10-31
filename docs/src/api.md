@@ -42,6 +42,7 @@ VLBISkyModels.Crescent
 VLBISkyModels.Disk
 VLBISkyModels.SlashedDisk
 VLBISkyModels.ExtendedRing
+VLBISkyModels.AnisotropicPowerLaw
 VLBISkyModels.Gaussian
 VLBISkyModels.TBlob
 VLBISkyModels.MRing

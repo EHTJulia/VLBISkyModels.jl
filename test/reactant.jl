@@ -44,6 +44,10 @@ end
 
         @test parent(vrf) ≈ vnf
 
+        gfd = FourierDualDomain(gimr, Reactant.to_rarray(guv), VLBISkyModels.ReactantNUFFTAlg(Float64))
+        vrd = @jit visibilitymap(mr, gfd)
+        @test parent(vrd) ≈ vnf rtol = 1.0e-5
+
         mrs = shifted(mr, ConcreteRNumber(1.0), ConcreteRNumber(1.0))
         ms = shifted(m, 1.0, 1.0)
 
@@ -120,6 +124,12 @@ end
 
         @testset "ExtendedRing" begin
             m = ExtendedRing(4.0)
+            mr = Reactant.to_rarray(m; track_numbers = true)
+            test_analytic(m, mr, gf, gfr)
+        end
+
+        @testset "AnisotropicPowerLaw" begin
+            m = AnisotropicPowerLaw(1.5, (0.3, -0.1), (0.2, 0.1), 0.2)
             mr = Reactant.to_rarray(m; track_numbers = true)
             test_analytic(m, mr, gf, gfr)
         end
