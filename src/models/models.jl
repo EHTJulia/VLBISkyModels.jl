@@ -7,8 +7,8 @@ import ComradeBase: visibility_point,
     flux
 
 export visibility, amplitude, closure_phase, logclosure_amplitude, bispectrum,
-    visibilitymap, amplitudemap, closure_phasemap, logclosure_amplitudemap, bispectummap,
-    flux, intensitymap, intensitymap!, PolarizedModel, convolve!
+    visibilitymap, amplitudemap, closure_phasemap, logclosure_amplitudemap, bispectrummap,
+    flux, intensitymap, intensitymap!
 
 include(joinpath(@__DIR__, "multidomain", "multidomain.jl"))
 include(joinpath(@__DIR__, "pulse.jl"))

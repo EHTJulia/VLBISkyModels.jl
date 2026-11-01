@@ -1,4 +1,4 @@
-export add, convolved, smoothed, components
+export convolved, smoothed, components
 
 """
     $(TYPEDEF)

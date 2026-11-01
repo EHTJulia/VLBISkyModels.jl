@@ -1,4 +1,4 @@
-export PolarizedModel, coherencymatrix, PoincareSphere2Map, PolExp2Map, PolExp2Map2,
+export PolarizedModel, PoincareSphere2Map, PolExp2Map,
     stokes_intensitymap,
     SingleStokes
 

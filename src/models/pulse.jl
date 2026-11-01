@@ -1,4 +1,4 @@
-export DeltaPulse, SqExpPulse, BSplinePulse, BicubicPulse, RaisedCosinePulse
+export DeltaPulse, BSplinePulse, BicubicPulse, RaisedCosinePulse
 
 """
     Pulse

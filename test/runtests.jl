@@ -228,6 +228,11 @@ function test_opt(m::M) where {M}
 end
 
 @testset "VLBISkyModels.jl" begin
+    @testset "exported names are defined" begin
+        # PolarizedTypes exports some names it does not define.
+        upstream = filter(n -> !isdefined(VLBISkyModels.PolarizedTypes, n), names(VLBISkyModels.PolarizedTypes))
+        @test setdiff(filter(n -> !isdefined(VLBISkyModels, n), names(VLBISkyModels)), upstream) == Symbol[]
+    end
     include("models.jl")
     include("continuous_image.jl")
     include("templates.jl")

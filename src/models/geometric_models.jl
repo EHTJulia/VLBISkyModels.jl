@@ -7,7 +7,6 @@ export Gaussian,
     ExtendedRing,
     Ring,
     ParabolicSegment,
-    Wisp,
     Butterworth,
     SlashedDisk
 
