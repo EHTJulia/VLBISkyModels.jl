@@ -1,11 +1,12 @@
 export NonuniformFFTsAlg
 
 """
-    NonuniFFTAlg
+    NonuniformFFTsAlg(; padfac = 1, m = -1, reltol = 1.0e-9, sigma = 2.0, fftflags = FFTW.MEASURE)
+
 Uses the NonuniformFFTs NUFT to compute transforms to visibility space.
 
-! warn 
-  To use this you must have loaded NonuniformFFTs.jl in your session/REPL
+!!! warning
+    To use this you must have loaded NonuniformFFTs.jl in your session/REPL
 
 # Fields
 $(FIELDS)

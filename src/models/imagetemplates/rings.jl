@@ -130,21 +130,21 @@ radialextent(d::RadialDblPower{T}) where {T} = 1 + convert(T, 50^(1 / d.αouter)
 end
 
 """
-    RadialJohnsonSU(αinner, αouter)
+    RadialJohnsonSU(σ, γ)
 
 Radial profile that given by positive unit radius Johnson SU distributions with the functional form
 
 ```julia
-    exp[-1/2(γ + arcsinh((r - μ)/σ)²]*inv(1 + (r - 1)² + σ²)
+    exp(-(γ + asinh((r - 1)/σ))²/2) / sqrt((r - 1)² + σ²)
 ```
 
-where controls σ ≥ 0 the width, and γ the asymmetry.
+where σ ≥ 0 controls the width, and γ the asymmetry.
 
 ## Notes
 This is usually couple with a azimuthal profile to create a general ring template
 
 ```julia-repl
-julia> rad = RadialJohnsonSU(1/2, -3/2)
+julia> rad = RadialJohnsonSU(0.1, 0.5)
 julia> azi = AzimuthalUniform()
 julia> t = RingTemplate(rad, azi)
 ```
@@ -226,14 +226,17 @@ AzimuthalUniform() = AzimuthalUniform{Float64}()
 @inline azimuthal_profile(::AzimuthalUniform{T}, p) where {T} = one(T) / 2π
 
 """
-    AzimuthalCosine(s::NTuple{N,T}, ξ::NTuple{N, T}) where {N, T}
+    AzimuthalCosine(s::NTuple{N}, ξs::NTuple{N})
+    AzimuthalCosine(s, ξs)
 
 A azimuthal profile that is  given by a cosine expansion of order `N`.
 The expansion is given by
 
 ```
-    1 - ∑ₙ sₙcos(nϕ - ξₙ)
+    1 - ∑ₙ sₙcos(nϕ - ξsₙ)
 ```
+
+The second form is the first-order expansion.
 
 ## Notes
 This is usually couple with a radial profile to create a general ring template
@@ -350,7 +353,7 @@ to implement the slash.
 - `r0`: radius of the ring
 - `σ` : standard deviation of the Gaussian ring
 - `s` : Slash amplitude. 0 means no slash, and 1 is maximal.
-- `ξs`: azimuthal peak brightness P.A. measured east of north
+- `ξ` : azimuthal peak brightness P.A. measured east of north
 - `x0`: location of the ring center horizontally
 - `y0`: location of the ring center vertically
 

@@ -148,9 +148,9 @@ end
 convolve(img::StokesMap, m::AbstractModel) = convolve!(copy(img), m)
 
 """
-    smooth(img::IntensityMap)
+    smooth(img::IntensityMap, σ::Number)
 
-Smooths the `img` using a symmetric Gaussian with σ standard deviation.
+Smooths the `img` using a symmetric Gaussian with standard deviation `σ`.
 
 For more flexible convolution please see [`convolve`](@ref).
 """

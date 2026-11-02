@@ -5,9 +5,10 @@ function polimage end
 function polimage! end
 
 """
-    imageviz(img::IntensityMap; scale_length = fieldofview(img.X/4), kwargs...)
+    imageviz(img::IntensityMap; scale_length = rad2μas(fieldofview(img).X / 4), backgroundcolor = nothing, kwargs...)
 
-A default image visualization for a `IntensityMap`.
+A default image visualization for a `IntensityMap`. The scale bar has length `scale_length`
+in μas, and `backgroundcolor = nothing` uses the first color of the colormap.
 
 **If `eltype(img) <: Real`** i.e. an image of a single stokes parameter
 this will plot the image with a colorbar in units of Jy/μas². The plot will

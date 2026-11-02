@@ -123,21 +123,20 @@ end
 
 """
     polimage(img::IntensityMap{<:StokesParams};
-                colormap = :sepia,
-                colorrange = Makie.automatic,
-                pcolorrange=Makie.automatic,
-                pcolormap=Makie.Reverse(:RdBu),
+                pcolorrange = Makie.automatic,
+                pcolormap = Makie.automatic,
                 nvec = 30,
                 min_frac = 0.1,
-                min_pol_frac=0.2,
-                length_norm=1.0,
-                plot_total=true)
+                min_pol_frac = 0.1,
+                length_norm = 1.0,
+                adjust_length = false,
+                plot_total = true,
+                marker_width = 0.5,
+                kwargs...)
 
 Plot a polarized intensity map using the image `img`.
 
 The plot follows the conventions from [EHTC M87 Paper VII](https://iopscience.iop.org/article/10.3847/2041-8213/abe71d).
-
-  - `colorscale`
 
 The polarized image will consist of a set. The attribute `plot_total` changes what polarized
 quantities are considered.
@@ -359,9 +358,10 @@ function Makie.plot!(plot::PolImage{<:Tuple{<:IntensityMap{<:StokesParams}}})
 end
 
 """
-    imageviz(img::IntensityMap; scale_length = fieldofview(img.X/4), kwargs...)
+    imageviz(img::IntensityMap; scale_length = rad2μas(fieldofview(img).X / 4), backgroundcolor = nothing, kwargs...)
 
-A default image visualization for a `IntensityMap`.
+A default image visualization for a `IntensityMap`. The scale bar has length `scale_length`
+in μas, and `backgroundcolor = nothing` uses the first color of the colormap.
 
 **If `eltype(img) <: Real`** i.e. an image of a single stokes parameter
 this will plot the image with a colorbar in units of Jy/μas². The plot will

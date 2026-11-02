@@ -114,10 +114,10 @@ function _extract_fits_image(f::FITSIO.ImageHDU{T}) where {T}
 end
 
 """
-    save_fits(file::String, img::IntensityMap, obs)
+    save_fits(file::String, img::IntensityMap)
 
-Saves an image to a fits file. You can optionally pass an EHTObservation so that ancillary information
-will be added.
+Saves an image to a fits file. The source, coordinates, date, and frequency are taken from the
+header of `img`.
 """
 function save_fits(fname::String, img::IntensityMap)
     return _save_fits(fname, img)

@@ -90,7 +90,7 @@ end
 
 """
     $(TYPEDEF)
-    BicubicPulse(b = 0.5)
+    BicubicPulse(b = -0.5)
 
 The bicubic pulse for imaging. This pulse tends to have a flat spectrum but for most values
 of `b` can produce negative intensities in an image. This is the pulse used in
