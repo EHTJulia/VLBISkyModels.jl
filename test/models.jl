@@ -49,7 +49,7 @@ end
     v = randn(100) * 0.5
     t = sort(rand(100) * 0.5)
     f = fill(230.0e9, 100)
-    g = UnstructuredDomain((U = u, V = v, Ti = t, Fr = f))
+    g = StructuredDomain((U = u, V = v, Ti = t, Fr = f))
 
     @testset "Gaussian" begin
         m = Gaussian()
@@ -327,7 +327,7 @@ end
     v = randn(100) * 0.5
     t = sort(rand(100) * 0.5)
     f = fill(230.0e9, 100)
-    g = UnstructuredDomain((U = u, V = v, Ti = t, Fr = f))
+    g = StructuredDomain((U = u, V = v, Ti = t, Fr = f))
     ma = Gaussian()
     mb = ExtendedRing(8.0)
     @testset "Shifted" begin
@@ -441,7 +441,7 @@ end
     v = randn(100) * 0.5
     t = sort(rand(100) * 0.5)
     f = fill(230.0e9, 100)
-    guv = UnstructuredDomain((U = u, V = v, Ti = t, Fr = f))
+    guv = StructuredDomain((U = u, V = v, Ti = t, Fr = f))
 
     @testset "Add models" begin
         g = spatialgrid(20.0, 20.0, 256, 256)
@@ -503,7 +503,7 @@ end
 
     @testset "Convolved models" begin
         g = spatialgrid(20.0, 20.0, 256, 256)
-        guv = UnstructuredDomain((U = randn(32), V = randn(32)))
+        guv = StructuredDomain((U = randn(32), V = randn(32)))
         gfour = FourierDualDomain(g, guv, NFFTAlg())
         mt1 = convolved(m1, m2)
         img = allocate_imgmap(mt1, g)
@@ -559,7 +559,7 @@ end
         # the equivalent inside-the-composite form, and the independent FFT-grid
         # and NUFT code paths must agree.
         g = spatialgrid(20.0, 20.0, 256, 256)
-        guv = UnstructuredDomain((U = randn(64) ./ 20, V = randn(64) ./ 20))
+        guv = StructuredDomain((U = randn(64) ./ 20, V = randn(64) ./ 20))
         gfour = FourierDualDomain(g, guv, NFFTAlg())
         mc = convolved(m1, m2)  # m1 = Gaussian(), m2 = ExtendedRing(8.0) (numeric)
 
@@ -616,7 +616,7 @@ end
 
     @testset "All composite" begin
         g = spatialgrid(20.0, 20.0, 256, 256)
-        guv = UnstructuredDomain((U = randn(32), V = randn(32)))
+        guv = StructuredDomain((U = randn(32), V = randn(32)))
         gfour = FourierDualDomain(g, guv, NFFTAlg())
 
         mt = m1 + convolved(m1, m2)
@@ -663,7 +663,7 @@ end
     v = randn(100) * 0.5
     t = sort(rand(100) * 0.5)
     f = fill(230.0e9, 100)
-    guv = UnstructuredDomain((U = u, V = v, Ti = t, Fr = f))
+    guv = StructuredDomain((U = u, V = v, Ti = t, Fr = f))
 
     m = MultiComponentModel(Gaussian(), rand(10), randn(10), randn(10))
     @test amplitude(m, (U = 0.0, V = 0.0)) == abs(visibility(m, (U = 0.0, V = 0.0)))
@@ -701,7 +701,7 @@ end
     m = PolarizedModel(mI, mQ, mU, mV)
     @inferred visibility(m, (U = 0.0, V = 0.0))
     @inferred ComradeBase.intensity_point(m, (X = 0.0, Y = 0.0))
-    guv = UnstructuredDomain((U = randn(64), V = randn(64)))
+    guv = StructuredDomain((U = randn(64), V = randn(64)))
     g = spatialgrid(10.0, 10.0, 64, 64)
 
     foo(x) = sum(
@@ -835,7 +835,7 @@ end
     v = randn(100) * 0.5
     t = sort(rand(100) * 0.5)
     f = fill(230.0e9, 100)
-    guv = UnstructuredDomain((U = u, V = v, Ti = t, Fr = f))
+    guv = StructuredDomain((U = u, V = v, Ti = t, Fr = f))
     m = ExtendedRing(10.0)
     @testset "NFFT" begin
         gnf = FourierDualDomain(gim, guv, NFFTAlg())
@@ -907,7 +907,7 @@ end
 
     ComradeBase.visibilitymap_numeric(m, VLBISkyModels.uvgrid(g))
 
-    guv = UnstructuredDomain((U = u1, V = v1))
+    guv = StructuredDomain((U = u1, V = v1))
     @test_throws "StructuredDomain not supported" ComradeBase.visibilitymap_numeric(
         m,
         guv

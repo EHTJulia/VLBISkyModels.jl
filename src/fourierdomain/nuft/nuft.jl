@@ -71,7 +71,7 @@ function _pointlist(visdomain::StructuredDomain)
     proto = haskey(cs, :U) ? cs.U : cs.u
     U = _like(proto, vec(_fullcoord(sc.U, sz)))
     V = _like(proto, vec(_fullcoord(sc.V, sz)))
-    return UnstructuredDomain((; U, V); executor = executor(visdomain), header = header(visdomain))
+    return StructuredDomain((; U, V); executor = executor(visdomain), header = header(visdomain))
 end
 
 # The phases built from the points must keep the domain's array type: under Reactant, a host
@@ -81,7 +81,7 @@ _like(proto, a) = copyto!(similar(proto, eltype(a), size(a)), a)
 function _subdomain(visdomain::StructuredDomain, visind)
     U = visdomain.U[visind]
     V = visdomain.V[visind]
-    return UnstructuredDomain((; U, V); executor = executor(visdomain), header = header(visdomain))
+    return StructuredDomain((; U, V); executor = executor(visdomain), header = header(visdomain))
 end
 
 function plan_nuft(

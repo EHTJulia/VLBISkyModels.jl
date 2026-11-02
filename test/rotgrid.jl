@@ -2,7 +2,7 @@ function testrot(m, g, gr, uv; alg = NFFTAlg(), atoli = 5.0e-4, atolu = 1.0e-6)
     Ut = uv .* ones(length(uv))'
     Vt = ones(length(uv)) .* uv'
 
-    guv = UnstructuredDomain((U = vec(Ut), V = vec(Vt)))
+    guv = StructuredDomain((U = vec(Ut), V = vec(Vt)))
     gfour = FourierDualDomain(g, guv, NFFTAlg())
     grfour = FourierDualDomain(gr, guv, NFFTAlg())
 

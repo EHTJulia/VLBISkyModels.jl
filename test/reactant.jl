@@ -42,7 +42,7 @@ end
 
         u = randn(10^2) / 5.0
         v = randn(10^2) / 5.0
-        guv = UnstructuredDomain((U = u, V = v))
+        guv = StructuredDomain((U = u, V = v))
 
         gfn = FourierDualDomain(gim, guv, NFFTAlg())
         gfr = FourierDualDomain(gimr, Reactant.to_rarray(guv), VLBISkyModels.ReactantNUFFTAlg(Float64; eps = 1.0e-9))
@@ -71,7 +71,7 @@ end
         rast = rand(32, 32)
         m = ContinuousImage(rast, gim, BSplinePulse{3}())
         mr = ContinuousImage(Reactant.to_rarray(rast), @jit(identity(gim)), BSplinePulse{3}())
-        guv = UnstructuredDomain((U = randn(90_000) ./ 5, V = randn(90_000) ./ 5))
+        guv = StructuredDomain((U = randn(90_000) ./ 5, V = randn(90_000) ./ 5))
         gfn = FourierDualDomain(gim, guv, NFFTAlg())
         gfr = FourierDualDomain(@jit(identity(gim)), Reactant.to_rarray(guv), VLBISkyModels.ReactantNUFFTAlg(Float64; eps = 1.0e-9))
         @test parent(@jit visibilitymap(mr, gfr)) ≈ visibilitymap(m, gfn)
@@ -82,7 +82,7 @@ end
         cube = rand(32, 32, 2)
         m = ContinuousImage(IntensityMap(cube, g), BSplinePulse{3}())
         mr = ContinuousImage(IntensityMap(Reactant.to_rarray(cube), g), BSplinePulse{3}())
-        guv = UnstructuredDomain((U = randn(90_000) ./ 5, V = randn(90_000) ./ 5, Fr = rand([230.0e9, 345.0e9], 90_000)))
+        guv = StructuredDomain((U = randn(90_000) ./ 5, V = randn(90_000) ./ 5, Fr = rand([230.0e9, 345.0e9], 90_000)))
         gfn = FourierDualDomain(g, guv, NFFTAlg())
         gfr = FourierDualDomain(g, Reactant.to_rarray(guv), VLBISkyModels.ReactantNUFFTAlg(Float64; eps = 1.0e-9))
         @test parent(@jit visibilitymap(mr, gfr)) ≈ parent(visibilitymap(m, gfn))
@@ -107,7 +107,7 @@ end
 
         u = randn(10^2) / 5.0
         v = randn(10^2) / 5.0
-        guv = UnstructuredDomain((U = u, V = v))
+        guv = StructuredDomain((U = u, V = v))
 
         gfn = FourierDualDomain(gim, guv, NFFTAlg())
         gfr = FourierDualDomain(gimr, Reactant.to_rarray(guv), VLBISkyModels.ReactantNUFFTAlg(; eps = 1.0e-12))
@@ -130,7 +130,7 @@ end
         spec = PolySpectral((1.0, 0.1), ref, 0.01)
         cimg = MultiDomainImage(img, BSplinePulse{3}(), spec)
         gcube = RectiGrid((; X = g.X, Y = g.Y, Fr = [ref, 1.5 * ref]))
-        guv = UnstructuredDomain(
+        guv = StructuredDomain(
             (; U = randn(40) ./ 5, V = randn(40) ./ 5, Fr = vcat(fill(ref, 20), fill(1.5 * ref, 20)))
         )
         vis = visibilitymap(cimg, FourierDualDomain(gcube, guv, NFFTAlg()))
@@ -177,7 +177,7 @@ end
             (0.5, 230.0e9), (2.0, 345.0e9), (4.5, 230.0e9), (2.0, 230.0e9), (0.5, 345.0e9), (4.5, 345.0e9),
             (2.0, 345.0e9), (4.5, 230.0e9), (0.5, 345.0e9), (2.0, 230.0e9), (4.5, 345.0e9),
         ]
-        dom = UnstructuredDomain((; U = randn(11) ./ 10, V = randn(11) ./ 10, Ti = first.(tf), Fr = last.(tf)))
+        dom = StructuredDomain((; U = randn(11) ./ 10, V = randn(11) ./ 10, Ti = first.(tf), Fr = last.(tf)))
         gfh = FourierDualDomain(gf, dom, DFTAlg())
         gfr = FourierDualDomain(gf, Reactant.to_rarray(dom), VLBISkyModels.ReactantNUFFTAlg(Float64; eps = 1.0e-10))
         cases = (
@@ -247,7 +247,7 @@ end
             g = gs ⊗ ti ⊗ Fr(frs)
             alg = VLBISkyModels.ReactantNUFFTAlg(Float64; eps = 1.0e-10)
             n = 200
-            pointdomain(t, f) = UnstructuredDomain((; U = randn(length(t)) ./ 10, V = randn(length(t)) ./ 10, Ti = t, Fr = f))
+            pointdomain(t, f) = StructuredDomain((; U = randn(length(t)) ./ 10, V = randn(length(t)) ./ 10, Ti = t, Fr = f))
             dom = pointdomain(sort(4 .* rand(n)), rand(frs, n))
             gfh = FourierDualDomain(g, dom, DFTAlg())
             gfd = FourierDualDomain(g, dom, alg)
@@ -352,7 +352,7 @@ end
             @test_throws "do not split evenly" shard(
                 FourierDualDomain(
                     gs ⊗ frames(Ti, [0.0, 1.0, 2.0], [1.0, 2.0, 3.0]),
-                    UnstructuredDomain((; U = randn(n) ./ 10, V = randn(n) ./ 10, Ti = sort(3 .* rand(n)))), alg
+                    StructuredDomain((; U = randn(n) ./ 10, V = randn(n) ./ 10, Ti = sort(3 .* rand(n)))), alg
                 ),
                 ShardLayout(mesh; Ti = :t)
             )
@@ -369,7 +369,7 @@ end
     @testset "Polarized plus unpolarized" begin
         g = spatialgrid(10.0, 10.0, 32, 32)
         img = IntensityMap(FieldDimArray{StokesParams}(rand(32, 32, 4)), g)
-        guv = UnstructuredDomain((; U = randn(50) ./ 5, V = randn(50) ./ 5))
+        guv = StructuredDomain((; U = randn(50) ./ 5, V = randn(50) ./ 5))
         gf = FourierDualDomain(g, guv, NFFTAlg())
         gfr = FourierDualDomain(@jit(identity(g)), Reactant.to_rarray(guv), VLBISkyModels.ReactantNUFFTAlg(Float64; eps = 1.0e-10))
         m = ContinuousImage(img, BSplinePulse{3}()) + 0.5 * Gaussian()
@@ -393,7 +393,7 @@ end
         g = spatialgrid(10.0, 10.0, 128, 128)
         gr = @jit(identity(g))
 
-        guv = UnstructuredDomain((U = randn(10^2) / 5.0, V = randn(10^2) / 5.0))
+        guv = StructuredDomain((U = randn(10^2) / 5.0, V = randn(10^2) / 5.0))
         guvr = Reactant.to_rarray(guv)
 
         gf = FourierDualDomain(g, guv, NFFTAlg())

@@ -52,7 +52,7 @@ export linearpol, mbreve, evpa, rad2μas, μas2rad
 
 using ComradeBase: AbstractDomain, AbstractSingleDomain, AbstractRectiGrid,
     AbstractModel, AbstractPolarizedModel,
-    StructuredDomain, UnstructuredDomain, RectiGrid
+    StructuredDomain, RectiGrid
 
 import ComradeBase: flux, radialextent, intensitymap, intensitymap!,
     intensitymap_analytic, intensitymap_analytic!,

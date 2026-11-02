@@ -137,7 +137,7 @@ end
 #                               g::UnstructuredDomain)
 #     vis = visibilitymap_analytic(m, g)
 #     function _composite_visibilitymap_analytic_pullback(Δ)
-#         dg = UnstructuredDomain(map(zero, named_dims(g)); executor=executor(g),
+#         dg = StructuredDomain(map(zero, named_dims(g)); executor=executor(g),
 #                                 header=header(g))
 
 #         dvis = UnstructuredMap(similar(parent(vis)), dg)

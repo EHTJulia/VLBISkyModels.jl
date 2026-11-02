@@ -552,7 +552,7 @@ end
 #     # guv = uvgrid(axisdims(img))
 #     # U = guv.U.*ones(length(guv.V))' |> vec
 #     # V = ones(length(guv.U)).*guv.V' |> vec
-#     # gfour = FourierDualDomain(g, UnstructuredDomain((;U, V)), FFTAlg())
+#     # gfour = FourierDualDomain(g, StructuredDomain((;U, V)), FFTAlg())
 #     # vis = reshape(parent(visibilitymap_numeric(m, gfour)), size(img))
 #     # img .= real.(ifftshift(ifft!(fftshift(conj.(vis)))))
 #     return nothing

@@ -84,7 +84,6 @@ ComradeBase.gridproduct
 ComradeBase.frames
 ComradeBase.frameindex
 ComradeBase.StructuredDomain
-ComradeBase.UnstructuredDomain
 ComradeBase.coords
 ComradeBase.coordspans
 ComradeBase.spatialdims

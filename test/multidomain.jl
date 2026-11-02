@@ -30,7 +30,7 @@ function create_domains(Nx, alg; Nt = 0, Nf = 0, fov = 12.0, swap_tf = false, np
             V_repeated = repeat(V_repeated; outer = (length(Ti)))
             Fr_repeated = repeat(Fr_repeated; outer = (length(Ti)))
             Ti_repeated = repeat(Ti; inner = (Int(length(U_repeated) / length(Ti))))
-            visdomain = UnstructuredDomain(
+            visdomain = StructuredDomain(
                 (;
                     U = U_repeated, V = V_repeated, Fr = Fr_repeated,
                     Ti = Ti_repeated,
@@ -47,7 +47,7 @@ function create_domains(Nx, alg; Nt = 0, Nf = 0, fov = 12.0, swap_tf = false, np
             V_repeated = repeat(V_repeated; outer = (length(Fr)))
             Ti_repeated = repeat(Ti_repeated; outer = (length(Fr)))
             Fr_repeated = repeat(Fr; inner = (Int(length(U_repeated) / length(Fr))))
-            visdomain = UnstructuredDomain(
+            visdomain = StructuredDomain(
                 (;
                     U = U_repeated, V = V_repeated, Ti = Ti_repeated,
                     Fr = Fr_repeated,
@@ -59,16 +59,16 @@ function create_domains(Nx, alg; Nt = 0, Nf = 0, fov = 12.0, swap_tf = false, np
         U_repeated = repeat(vec(U_vals); outer = (length(Ti)))
         V_repeated = repeat(vec(V_vals); outer = (length(Ti)))
         Ti_repeated = repeat(Ti; inner = (Int(length(vec(U_vals)))))
-        visdomain = UnstructuredDomain((; U = U_repeated, V = V_repeated, Ti = Ti_repeated))
+        visdomain = StructuredDomain((; U = U_repeated, V = V_repeated, Ti = Ti_repeated))
     elseif !isempty(Fr)
         # (X, Y, Fr)
         U_repeated = repeat(vec(U_vals); outer = (length(Fr)))
         V_repeated = repeat(vec(V_vals); outer = (length(Fr)))
         Fr_repeated = repeat(Fr; inner = (Int(length(vec(U_vals)))))
-        visdomain = UnstructuredDomain((; U = U_repeated, V = V_repeated, Fr = Fr_repeated))
+        visdomain = StructuredDomain((; U = U_repeated, V = V_repeated, Fr = Fr_repeated))
     else
         # (X, Y)
-        visdomain = UnstructuredDomain((; U = vec(U_vals), V = vec(V_vals)))
+        visdomain = StructuredDomain((; U = vec(U_vals), V = vec(V_vals)))
     end
     p = FourierDualDomain(imgdomain, visdomain, alg)
     return p
@@ -412,7 +412,7 @@ end
         v = randn(50) .* 0.25
         ti = range(1.0, 3.0; length = 50)
         fr = vcat(fill(230.0e9, 25), fill(345.0e9, 25))
-        guv = UnstructuredDomain((; U = u, V = v, Fr = fr, Ti = ti))
+        guv = StructuredDomain((; U = u, V = v, Fr = fr, Ti = ti))
         gfr = FourierDualDomain(g, guv, NFFTAlg())
 
         @testset "Stretch" begin
@@ -514,7 +514,7 @@ end
         v = randn(50) .* 0.25
         ti = range(1.0, 3.0; length = 50)
         fr = vcat(fill(230.0e9, 25), fill(345.0e9, 25))
-        guv = UnstructuredDomain((; U = u, V = v, Fr = fr, Ti = ti))
+        guv = StructuredDomain((; U = u, V = v, Fr = fr, Ti = ti))
         gfr = FourierDualDomain(g, guv, NFFTAlg())
 
         ts = MultiDomainParams(1.0, PolySpectral(1.0, 230.0e9))
@@ -551,7 +551,7 @@ end
             v = randn(50) .* 0.25
             ti = range(1.0, 3.0; length = 50)
             fr = vcat(fill(230.0e9, 25), fill(345.0e9, 25))
-            guv = UnstructuredDomain((; U = u, V = v, Fr = fr, Ti = ti))
+            guv = StructuredDomain((; U = u, V = v, Fr = fr, Ti = ti))
             vmf = visibilitymap(convolved(m1, m2), guv)
             v230 = visibilitymap(mtr230, guv)[1:25]
             v345 = visibilitymap(mtr345, guv)[26:50]
@@ -577,7 +577,7 @@ end
             v = randn(50) .* 0.25
             ti = range(1.0, 3.0; length = 50)
             fr = vcat(fill(230.0e9, 10), fill(345.0e9, 40))
-            guv = UnstructuredDomain((; U = u, V = v, Fr = fr, Ti = ti))
+            guv = StructuredDomain((; U = u, V = v, Fr = fr, Ti = ti))
             vmf = visibilitymap(convolved(m1, m2), guv)
             v230 = visibilitymap(mtr230, selectpoints(guv; Fr = 230.0e9))
             v345 = visibilitymap(mtr345, selectpoints(guv; Fr = 345.0e9))
@@ -824,7 +824,7 @@ end
             u = randn(40) .* 0.25
             v = randn(40) .* 0.25
             fr = vcat(fill(frs[1], 20), fill(frs[2], 20))
-            guv = UnstructuredDomain((; U = u, V = v, Fr = fr))
+            guv = StructuredDomain((; U = u, V = v, Fr = fr))
             gfr = FourierDualDomain(gcube, guv, NFFTAlg())
 
             @test visibilitymap(cimg, gfr) ≈ visibilitymap(cimg_ref, gfr) atol = 1.0e-8
@@ -888,7 +888,7 @@ end
 
             # The Fourier plans are tied to the grid they are built from, so there the
             # mismatch is an error rather than a resampling.
-            guv = UnstructuredDomain(
+            guv = StructuredDomain(
                 (; U = randn(20) ./ 8, V = randn(20) ./ 8, Fr = fill(ref, 20))
             )
             gbad = spatialgrid(20.0, 20.0, 32, 32)
@@ -990,7 +990,7 @@ end
         PolySpectral((1.0,), 230.0e9)
     )
     gcube = RectiGrid((; X = g.X, Y = g.Y, Fr = [230.0e9, 345.0e9]))
-    guv = UnstructuredDomain((; U = randn(8), V = randn(8), Fr = fill(230.0e9, 8)))
+    guv = StructuredDomain((; U = randn(8), V = randn(8), Fr = fill(230.0e9, 8)))
     gfour = FourierDualDomain(gcube, guv, FFTAlg())
     @test_throws "FFTAlg does not support multidomain" visibilitymap(cimg, gfour)
 end
@@ -1001,7 +1001,7 @@ end
     U = [0.05, 0.1]
     V = [0.05, -0.1]
     Frs = [230.0e9, 345.0e9]
-    guv = UnstructuredDomain((; U, V, Fr = Frs))
+    guv = StructuredDomain((; U, V, Fr = Frs))
     cimg = MultiDomainImage(
         IntensityMap(rand(16, 16), g), BSplinePulse{3}(),
         PolySpectral((1.0,), 230.0e9)
@@ -1010,7 +1010,7 @@ end
     vis = visibilitymap(cimg, gfour)
     @test length(vis) == 2
     for k in 1:2
-        guv1 = UnstructuredDomain((; U = U[k:k], V = V[k:k], Fr = Frs[k:k]))
+        guv1 = StructuredDomain((; U = U[k:k], V = V[k:k], Fr = Frs[k:k]))
         gf1 = FourierDualDomain(gcube, guv1, NFFTAlg())
         vis1 = visibilitymap(cimg, gf1)
         @test vis[k] ≈ vis1[1]
@@ -1218,7 +1218,7 @@ end
     n = 30
     dpf = StructuredDomain((Node(n), Fr(frs)); u = randn(n) ./ 10 .* c ./ ref, v = randn(n) ./ 10 .* c ./ ref)
     U, V = vec(dpf.U), vec(dpf.V)
-    dpt = UnstructuredDomain((; U, V, Fr = vec(repeat(frs', n))))
+    dpt = StructuredDomain((; U, V, Fr = vec(repeat(frs', n))))
     pimg = IntensityMap(FieldDimArray{StokesParams}(rand(16, 16, 4)), g)
     models = (
         MultiDomainImage(IntensityMap(rand(16, 16), g), BSplinePulse{3}(), PolySpectral(1.2, ref)),
@@ -1240,30 +1240,30 @@ end
     gtf = g ⊗ Ti(tis) ⊗ Fr(frs)
     cube = ContinuousImage(IntensityMap(rand(16, 16, 2, 2), gtf), BSplinePulse{3}())
     vtf = visibilitymap(cube, FourierDualDomain(gtf, dptf, NFFTAlg()))
-    dflat = UnstructuredDomain((; U, V, Ti = repeat(tpt, 2), Fr = vec(repeat(frs', n))))
+    dflat = StructuredDomain((; U, V, Ti = repeat(tpt, 2), Fr = vec(repeat(frs', n))))
     @test vec(baseimage(vtf)) == baseimage(visibilitymap(cube, FourierDualDomain(gtf, dflat, NFFTAlg())))
 
     # A grid without `Fr` is constant along the domain's `Fr` dim.
     plain = ContinuousImage(IntensityMap(rand(16, 16), g), BSplinePulse{3}())
     vplain = visibilitymap(plain, FourierDualDomain(g, dpf, NFFTAlg()))
-    @test vec(baseimage(vplain)) == baseimage(visibilitymap(plain, FourierDualDomain(g, UnstructuredDomain((; U, V)), NFFTAlg())))
+    @test vec(baseimage(vplain)) == baseimage(visibilitymap(plain, FourierDualDomain(g, StructuredDomain((; U, V)), NFFTAlg())))
 
     # `Intervals` planes match raw observation times by containment.
     gt = g ⊗ frames(Ti, [0.0, 2.0], [1.0, 3.0])
     traw = rand(16, 16, 2)
     tcube = ContinuousImage(IntensityMap(traw, gt), BSplinePulse{3}())
-    dti = UnstructuredDomain((; U = U[1:20], V = V[1:20], Ti = [rand(10); 2 .+ rand(10)]))
+    dti = StructuredDomain((; U = U[1:20], V = V[1:20], Ti = [rand(10); 2 .+ rand(10)]))
     vt = baseimage(visibilitymap(tcube, FourierDualDomain(gt, dti, NFFTAlg())))
     for k in 1:2
         sel = (1:10) .+ 10 * (k - 1)
         slice = ContinuousImage(IntensityMap(traw[:, :, k], g), BSplinePulse{3}())
-        gk = FourierDualDomain(g, UnstructuredDomain((; U = U[sel], V = V[sel])), NFFTAlg())
+        gk = FourierDualDomain(g, StructuredDomain((; U = U[sel], V = V[sel])), NFFTAlg())
         @test vt[sel] ≈ baseimage(visibilitymap(slice, gk))
     end
 
-    @test_throws "has no `Ti` coordinate or dim" FourierDualDomain(gt, UnstructuredDomain((; U, V)), NFFTAlg())
+    @test_throws "has no `Ti` coordinate or dim" FourierDualDomain(gt, StructuredDomain((; U, V)), NFFTAlg())
     @test_throws "1 of 2 coordinates match no plane" FourierDualDomain(
-        gt, UnstructuredDomain((; U = U[1:2], V = V[1:2], Ti = [0.5, 1.5])), NFFTAlg()
+        gt, StructuredDomain((; U = U[1:2], V = V[1:2], Ti = [0.5, 1.5])), NFFTAlg()
     )
     @test_throws "match no plane" FourierDualDomain(g ⊗ Fr([ref]), dpf, NFFTAlg())
 end
@@ -1288,7 +1288,7 @@ InverseFunctions.inverse(::typeof(testlogit)) = testlogistic
     tf = [(a, b) for b in (230.0e9, 345.0e9) for a in (0.5, 2.0, 4.5) for _ in 1:2]
     t, f = first.(tf), last.(tf)
     U, V = randn(12) ./ 10, randn(12) ./ 10
-    dom = UnstructuredDomain((; U, V, Ti = t, Fr = f))
+    dom = StructuredDomain((; U, V, Ti = t, Fr = f))
 
     @testset "PolyTemporal" begin
         pt = MultiDomainParams(2.0, PolyTemporal((0.3, -0.1), 1.0, 0.5))
@@ -1315,7 +1315,7 @@ InverseFunctions.inverse(::typeof(testlogit)) = testlogistic
         @test parent(vn) ≈ parent(vd)
         for i in eachindex(t)
             k = frameindex(ti, t[i])
-            di = UnstructuredDomain((; U = U[i:i], V = V[i:i], Fr = f[i:i]))
+            di = StructuredDomain((; U = U[i:i], V = V[i:i], Fr = f[i:i]))
             v1 = visibilitymap(MultiDomainImage(frame(1), pulse, ps), FourierDualDomain(gs ⊗ fr, di, DFTAlg()))
             @test parent(vd)[i] ≈ only(parent(v1)) * exp(0.2 * (collect(ti)[k] - 2.0))
         end
@@ -1352,7 +1352,7 @@ InverseFunctions.inverse(::typeof(testlogit)) = testlogistic
         @test parent(vn) ≈ parent(vd)
         for i in eachindex(t)
             k = frameindex(ti, t[i])
-            di = UnstructuredDomain((; U = U[i:i], V = V[i:i], Fr = f[i:i]))
+            di = StructuredDomain((; U = U[i:i], V = V[i:i], Fr = f[i:i]))
             v1 = visibilitymap(MultiDomainImage(frame(k), pulse, ps), FourierDualDomain(gs ⊗ fr, di, DFTAlg()))
             @test parent(vd)[i] ≈ only(parent(v1))
         end
@@ -1380,7 +1380,7 @@ InverseFunctions.inverse(::typeof(testlogit)) = testlogistic
         for (k, tk) in enumerate(collect(ti))
             @test parent(im)[:, :, k] ≈ parent(intensitymap(fixed(tk), gs))
         end
-        dt = UnstructuredDomain((; U, V, Ti = t))
+        dt = StructuredDomain((; U, V, Ti = t))
         vis = visibilitymap(mg, dt)
         @test parent(vis) ≈ [VLBISkyModels.visibility_point(fixed(t[i]), (; U = U[i], V = V[i])) for i in eachindex(t)]
     end
@@ -1393,7 +1393,7 @@ InverseFunctions.inverse(::typeof(testlogit)) = testlogistic
             mi = MultiDomainImage(stokes(pimg, s), pulse, PolyTemporal(0.2, 2.0))
             @test baseimage(stokes(im, s)) ≈ baseimage(intensitymap(mi, gc))
         end
-        dt = UnstructuredDomain((; U, V, Ti = t))
+        dt = StructuredDomain((; U, V, Ti = t))
         vp = visibilitymap(mp, FourierDualDomain(gc, dt, NFFTAlg()))
         vI = visibilitymap(MultiDomainImage(stokes(pimg, :I), pulse, PolyTemporal(0.2, 2.0)), FourierDualDomain(gc, dt, NFFTAlg()))
         @test baseimage(stokes(vp, :I)) ≈ baseimage(vI)
@@ -1430,7 +1430,7 @@ InverseFunctions.inverse(::typeof(testlogit)) = testlogistic
         for (k, tk) in enumerate(collect(ti))
             @test parent(im)[:, :, k] ≈ parent(intensitymap(shifted(Gaussian(), 0.2 + 0.5 * (tk - 1.0), 0.0), gs))
         end
-        dt = UnstructuredDomain((; U, V, Ti = t))
+        dt = StructuredDomain((; U, V, Ti = t))
         vis = visibilitymap(mm, dt)
         @test parent(vis) ≈ [VLBISkyModels.visibility_point(shifted(Gaussian(), 0.2 + 0.5 * (t[i] - 1.0), 0.0), (; U = U[i], V = V[i])) for i in eachindex(t)]
 
@@ -1455,7 +1455,7 @@ InverseFunctions.inverse(::typeof(testlogit)) = testlogistic
 
     @testset "Enzyme gradients" begin
         gfn = FourierDualDomain(gf, dom, NFFTAlg())
-        lm(v) = sum(real, parent(visibilitymap(shifted(Gaussian(), MultiDomainParams(0.2, PolyTemporal(v, 1.0; link = identity)), 0.0), UnstructuredDomain((; U, V, Ti = t)))))
+        lm(v) = sum(real, parent(visibilitymap(shifted(Gaussian(), MultiDomainParams(0.2, PolyTemporal(v, 1.0; link = identity)), 0.0), StructuredDomain((; U, V, Ti = t)))))
         dv = Enzyme.gradient(set_runtime_activity(Enzyme.Reverse), Const(lm), 0.5)[1]
         @test dv ≈ central_fdm(5, 1)(lm, 0.5) rtol = 1.0e-6
         lc(c) = sum(abs2, baseimage(visibilitymap(MultiDomainImage(IntensityMap(c, gc), pulse, ps), gfn)))

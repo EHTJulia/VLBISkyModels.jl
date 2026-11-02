@@ -35,11 +35,11 @@ gim = spatialgrid(10.0, 10.0, 256, 256)
 
 # Second we need to specify the list of points in the uv domain we are interested in.
 # Since VLBI tends sparsely sample the UV plan we provide a specific type for this
-# type called [`UnstructuredDomain`](@ref) that can be used to specify the UV points,
+# type called [`StructuredDomain`](@ref) that can be used to specify the UV points,
 
 u = randn(1000) / 2
 v = randn(1000) / 2
-guv = UnstructuredDomain((U = u, V = v))
+guv = StructuredDomain((U = u, V = v))
 
 # We can now create a *dual domain* that contains both the image and the UV points and
 # the specific Fourier transform algorithm we want to use. The options for algorithms are:

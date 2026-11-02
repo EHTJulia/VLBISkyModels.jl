@@ -32,7 +32,7 @@ end
 
     u = fftshift(fftfreq(length(g.X), 1 / step(g.X)))
     uv = RectiGrid((U(u), V(-u)))
-    uvus = UnstructuredDomain((U = randn(32), V = randn(32)))
+    uvus = StructuredDomain((U = randn(32), V = randn(32)))
     foo(x) = sum(
         norm,
         VLBISkyModels.visibilitymap_analytic(
@@ -61,7 +61,7 @@ end
     s = map(length, dims(g))
 
     u = fftshift(fftfreq(length(g.X), 1 / step(g.X)))
-    uv = UnstructuredDomain((U = u, V = -u))
+    uv = StructuredDomain((U = u, V = -u))
 
     gff = FourierDualDomain(g, uv, FFTAlg())
     gnf = FourierDualDomain(g, uv, NFFTAlg())
@@ -79,7 +79,7 @@ end
 @testset "Polarized Modified" begin
     g = spatialgrid(5.0, 5.0, 128, 128)
     u = fftshift(fftfreq(length(g.X), 1 / step(g.X)))
-    uv = UnstructuredDomain((U = u, V = -u))
+    uv = StructuredDomain((U = u, V = -u))
 
     s = map(length, dims(g))
     m0 = PolarizedModel(
@@ -106,7 +106,7 @@ end
     m2 = PolarizedModel(Disk(), shifted(Disk(), 0.1, 1.0), ZeroModel(), ZeroModel())
     g = spatialgrid(5.0, 5.0, 128, 128)
     u = fftshift(fftfreq(length(g.X), 1 / step(g.X)))
-    uv = UnstructuredDomain((U = u, V = -u))
+    uv = StructuredDomain((U = u, V = -u))
 
     testpol(convolved(m1, m2), uv)
 
@@ -134,7 +134,7 @@ end
     g = spatialgrid(5.0, 5.0, 128, 128)
     s = map(length, dims(g))
     u = fftshift(fftfreq(length(g.X), 1 / step(g.X))) ./ 40
-    uv = UnstructuredDomain((U = u, V = -u))
+    uv = StructuredDomain((U = u, V = -u))
     gnf = FourierDualDomain(g, uv, NFFTAlg())
 
     testpol(m, gnf)
@@ -188,7 +188,7 @@ end
     @test all(==(1), stokes(rimg1, :V) .≈ 0.1 * stokes(rimg1, :I))
 
     u, v = randn(32) / 5, randn(32) / 5
-    uv = UnstructuredDomain((U = u, V = v))
+    uv = StructuredDomain((U = u, V = v))
     gnf = FourierDualDomain(g, uv, NFFTAlg())
     gdf = FourierDualDomain(g, uv, DFTAlg())
     gff = FourierDualDomain(g, uv, FFTAlg())
@@ -218,7 +218,7 @@ end
     pimg = PoincareSphere2Map(sI, p ./ sI, Χ, g)
     cimg = ContinuousImage(pimg, BSplinePulse{3}())
     gfour = FourierDualDomain(
-        g, UnstructuredDomain((U = randn(32) / 5, V = randn(32) / 5)),
+        g, StructuredDomain((U = randn(32) / 5, V = randn(32) / 5)),
         NFFTAlg()
     )
     visibilitymap(cimg, gfour)
@@ -251,7 +251,7 @@ end
     @test baseimage(pmap) === baseimage(img)
     @test @inferred(ComradeBase.intensity_point(cimg, (; X = 0.1, Y = 0.2))) isa StokesParams
     @test @inferred(intensitymap(cimg, g)) isa StokesMap
-    guv = UnstructuredDomain((U = randn(20) ./ 5, V = randn(20) ./ 5))
+    guv = StructuredDomain((U = randn(20) ./ 5, V = randn(20) ./ 5))
     gf = FourierDualDomain(g, guv, NFFTAlg())
     vis = @inferred visibilitymap(cimg, gf)
     @test vis isa StokesMap
@@ -262,7 +262,7 @@ end
 
 @testset "an unpolarized model adds to Stokes I" begin
     g = spatialgrid(10.0, 10.0, 32, 32)
-    guv = UnstructuredDomain((; U = randn(50) ./ 5, V = randn(50) ./ 5))
+    guv = StructuredDomain((; U = randn(50) ./ 5, V = randn(50) ./ 5))
     gf = FourierDualDomain(g, guv, NFFTAlg())
     unpol = 0.5 * shifted(Gaussian(), 1.0, 0.0)
 
@@ -289,7 +289,7 @@ end
     cfd = ContinuousImage(IntensityMap(FieldDimArray{StokesParams}(P), g), BSplinePulse{3}())
     @test baseimage(VLBISkyModels.make_map(csa)) === sa
     @test intensitymap(csa, g) ≈ intensitymap(cfd, g)
-    gf = FourierDualDomain(g, UnstructuredDomain((U = randn(20) ./ 5, V = randn(20) ./ 5)), NFFTAlg())
+    gf = FourierDualDomain(g, StructuredDomain((U = randn(20) ./ 5, V = randn(20) ./ 5)), NFFTAlg())
     @test visibilitymap(csa, gf) ≈ visibilitymap(cfd, gf)
 end
 
@@ -322,8 +322,8 @@ end
     fr = Fr([230.0e9, 345.0e9])
     U, V = randn(12) ./ 20, randn(12) ./ 20
     cases = (
-        ("one plane", gs, UnstructuredDomain((; U, V)), rand(8, 8, 4)),
-        ("Fr planes", gs ⊗ fr, UnstructuredDomain((; U, V, Fr = repeat([230.0e9, 345.0e9], 6))), rand(8, 8, 2, 4)),
+        ("one plane", gs, StructuredDomain((; U, V)), rand(8, 8, 4)),
+        ("Fr planes", gs ⊗ fr, StructuredDomain((; U, V, Fr = repeat([230.0e9, 345.0e9], 6))), rand(8, 8, 2, 4)),
     )
     algs = (DFTAlg(), NFFTAlg(), FINUFFTAlg(), NonuniformFFTsAlg())
     for (lbl, g, dom, P) in cases, alg in algs

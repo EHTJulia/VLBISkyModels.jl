@@ -20,7 +20,7 @@ end
     cimg = ContinuousImage(img, BSplinePulse{3}())
     # testmodel(InterpolatedModel(cimg, g; algorithm=FFTAlg()), 1024, 1e-3)
     testft_cimg(cimg)
-    guv = UnstructuredDomain((U = randn(32) / 40, V = randn(32) / 40))
+    guv = StructuredDomain((U = randn(32) / 40, V = randn(32) / 40))
     gfour = FourierDualDomain(g, guv, NFFTAlg())
     foo(x) = sum(
         abs2,
@@ -91,7 +91,7 @@ end
     @test convolved(img, Gaussian()) isa ContinuousImage
     @test convolved(Gaussian(), img) isa ContinuousImage
 
-    guv = UnstructuredDomain((U = randn(32) / 40, V = randn(32) / 40))
+    guv = StructuredDomain((U = randn(32) / 40, V = randn(32) / 40))
     gfour = FourierDualDomain(g, guv, NFFTAlg())
 
     dm = dualmap(img, gfour)

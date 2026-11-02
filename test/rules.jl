@@ -37,7 +37,7 @@ end
     g = spatialgrid(10.0, 10.0, 16, 16)
     U = randn(64)
     V = randn(64)
-    guv = UnstructuredDomain((; U, V))
+    guv = StructuredDomain((; U, V))
     gfi = FourierDualDomain(g, guv, VLBISkyModels.FINUFFTAlg())
 
     plan = VLBISkyModels.forward_plan(gfi).plan
@@ -58,7 +58,7 @@ end
     g = spatialgrid(10.0, 10.0, 16, 16)
     U = randn(64)
     V = randn(64)
-    guv = UnstructuredDomain((; U, V))
+    guv = StructuredDomain((; U, V))
     gnu = FourierDualDomain(g, guv, VLBISkyModels.NonuniformFFTsAlg())
 
     plan = VLBISkyModels.forward_plan(gnu).plan

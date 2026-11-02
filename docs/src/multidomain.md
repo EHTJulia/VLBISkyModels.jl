@@ -32,7 +32,7 @@ points observed at several frequencies:
 
 ```@example md
 n = 200
-dom = UnstructuredDomain((; U = randn(n) ./ 4, V = randn(n) ./ 4, Fr = rand([86.0e9, 230.0e9, 345.0e9], n)))
+dom = StructuredDomain((; U = randn(n) ./ 4, V = randn(n) ./ 4, Fr = rand([86.0e9, 230.0e9, 345.0e9], n)))
 vis = visibilitymap(m, dom)
 vis[1:3]
 ```
@@ -44,7 +44,7 @@ position that drifts at a constant rate:
 ```@example md
 x0 = MultiDomainParams(0.0, PolyTemporal(0.5, 0.0; link = identity))
 mt = modify(Gaussian(), Shift(x0, 0.0))
-dt = UnstructuredDomain((; U = randn(n) ./ 4, V = randn(n) ./ 4, Ti = 4 .* rand(n)))
+dt = StructuredDomain((; U = randn(n) ./ 4, V = randn(n) ./ 4, Ti = 4 .* rand(n)))
 visibilitymap(mt, dt)[1:3]
 ```
 
@@ -127,7 +127,7 @@ assigns to its `Ti` and `Fr`: the interval that contains it for a dim built with
 the equal value otherwise. A point that falls in no plane is an error:
 
 ```@example md
-uvd = UnstructuredDomain((; U = 2.0e9 .* randn(n), V = 2.0e9 .* randn(n), Ti = 5 .* rand(n)))
+uvd = StructuredDomain((; U = 2.0e9 .* randn(n), V = 2.0e9 .* randn(n), Ti = 5 .* rand(n)))
 err = try
     FourierDualDomain(gm, uvd, NFFTAlg())
 catch e
@@ -138,7 +138,7 @@ end
 With the points inside the frames, the movie's visibilities have the shape of the domain:
 
 ```@example md
-uvd = UnstructuredDomain((; U = 2.0e9 .* randn(n), V = 2.0e9 .* randn(n), Ti = rand([0.5, 2.0, 4.5], n) .+ 0.2 .* rand(n)))
+uvd = StructuredDomain((; U = 2.0e9 .* randn(n), V = 2.0e9 .* randn(n), Ti = rand([0.5, 2.0, 4.5], n) .+ 0.2 .* rand(n)))
 size(visibilitymap(movie, FourierDualDomain(gm, uvd, NFFTAlg())))
 ```
 
