@@ -233,6 +233,14 @@ end
         upstream = filter(n -> !isdefined(VLBISkyModels.PolarizedTypes, n), names(VLBISkyModels.PolarizedTypes))
         @test setdiff(filter(n -> !isdefined(VLBISkyModels, n), names(VLBISkyModels)), upstream) == Symbol[]
     end
+    @static if VERSION >= v"1.11"
+        @testset "public names are defined and documented" begin
+            pub = filter(n -> !Base.isexported(VLBISkyModels, n), names(VLBISkyModels))
+            @test !isempty(pub)
+            @test filter(n -> !(isdefined(VLBISkyModels, n) && Base.Docs.hasdoc(VLBISkyModels, n)), pub) == Symbol[]
+            @test Base.isexported(VLBISkyModels, :ReactantNUFFTAlg)
+        end
+    end
     include("models.jl")
     include("continuous_image.jl")
     include("templates.jl")

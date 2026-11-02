@@ -60,7 +60,7 @@ size(vtrue)
 # moved to the device with `Reactant.to_rarray`; the image grid stays on the host, since it
 # only sets up the plan.
 
-alg = VLBISkyModels.ReactantNUFFTAlg(Float64; eps = 1.0e-10)
+alg = ReactantNUFFTAlg(Float64; eps = 1.0e-10)
 gdev = FourierDualDomain(g, Reactant.to_rarray(dom), alg)
 
 vis(frames, gd) = baseimage(visibilitymap(movie(frames), gd))

@@ -1,5 +1,12 @@
 export FourierDualDomain
 
+"""
+    FourierTransform
+
+The algorithm that transforms an image to visibilities in a [`FourierDualDomain`](@ref).
+Subtypes include [`FFTAlg`](@ref), [`DFTAlg`](@ref), [`NFFTAlg`](@ref),
+[`FINUFFTAlg`](@ref), [`NonuniformFFTsAlg`](@ref) and [`ReactantNUFFTAlg`](@ref).
+"""
 abstract type FourierTransform end
 
 export allocate_imgmap, allocate_vismap

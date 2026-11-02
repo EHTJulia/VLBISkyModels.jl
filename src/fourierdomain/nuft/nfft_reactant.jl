@@ -1,3 +1,5 @@
+export ReactantNUFFTAlg
+
 struct ReactantNUFFTAlg{T <: Real, B <: Tuple} <: NUFT
     eps::T
     sigma::T

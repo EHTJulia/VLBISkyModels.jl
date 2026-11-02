@@ -74,4 +74,19 @@ include("utility.jl")
 include(joinpath("visualizations", "vis.jl"))
 include("io.jl")
 
+@static if VERSION >= v"1.11"
+    eval(
+        Expr(
+            :public,
+            :Pulse, :GeometricModel, :ModelModifier, :CompositeModel, :AbstractImageTemplate,
+            :ModifiedModel, :AddModel, :ConvolvedModel,
+            :added, :unmodified, :basemodel,
+            :transform_image, :transform_uv, :scale_image, :scale_uv, :posangle,
+            :AbstractFourierDualDomain, :FourierTransform, :FFTPlan, :NUFTPlan,
+            :uvgrid, :xygrid, :uviterator,
+            :Constant, :GaussDisk, :LogSpiral, :AxisTaps,
+        )
+    )
+end
+
 end

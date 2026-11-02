@@ -92,6 +92,7 @@ VLBISkyModels.FourierDualDomain
 VLBISkyModels.xygrid
 VLBISkyModels.uvgrid
 VLBISkyModels.uviterator
+VLBISkyModels.FourierTransform
 VLBISkyModels.DFTAlg
 VLBISkyModels.FFTAlg
 VLBISkyModels.NFFTAlg
