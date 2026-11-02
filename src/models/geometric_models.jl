@@ -73,19 +73,17 @@ unit Gaussian.
 struct TBlob{T} <: GeometricModel{T}
     slope::T
     norm::T
-    function TBlob(slope::Number)
-        T = typeof(slope)
-        norm = tblobnorm(slope)
-        return new{T}(slope, norm)
-    end
-    function TBlob(slope::DomainParams)
-        T = typeof(slope)
-        return new{T}(slope, slope)
+    function TBlob(slope)
+        norm = _storednorm(slope)
+        return new{promote_type(typeof(slope), typeof(norm))}(slope, norm)
     end
 end
 visanalytic(::Type{<:TBlob}) = NotAnalytic()
 
 @inline tblobnorm(s) = gamma((s + 2) / 2) * inv(gamma(s / 2)s * π)
+# A domain-dependent slope is normalized when evaluated, in `getnorm`.
+_storednorm(s::DomainParams) = s
+_storednorm(s) = tblobnorm(s)
 @inline getnorm(m, p) = m.norm
 @inline getnorm(s::TBlob{<:DomainParams}, p) = tblobnorm(s.norm(p))
 radialextent(m::TBlob) = 5 * m.slope / (m.slope - 2)
@@ -255,10 +253,25 @@ struct MRing{T, V <: Union{AbstractVector{T}, NTuple}} <: GeometricModel{T}
     Imaginary Fourier mode coefficients
     """
     β::V
-    function MRing(α::V, β::V) where {V <: Union{AbstractVector, NTuple}}
+    function MRing{T, V}(α, β) where {T, V}
         @argcheck length(α) == length(β) "Lengths of real/imag components must be equal in MRing"
-        return new{eltype(α), V}(α, β)
+        return new{T, V}(α, β)
     end
+end
+
+function MRing(α, β)
+    a, b = _promote_modes(α, β)
+    return MRing{eltype(a), typeof(a)}(a, b)
+end
+
+function _promote_modes(α::Tuple, β::Tuple)
+    n = length(α)
+    c = promote(α..., β...)
+    return ntuple(i -> c[i], Val(n)), ntuple(i -> c[n + i], Val(length(β)))
+end
+_promote_modes(α::AbstractVector, β::AbstractVector) = promote(α, β)
+function _promote_modes(α, β)
+    throw(ArgumentError("MRing needs α and β both tuples or both vectors, got $(typeof(α)) and $(typeof(β))"))
 end
 
 """
@@ -275,10 +288,7 @@ function MRing(c::Union{AbstractVector{<:Complex}, NTuple{N, <:Complex}}) where 
     return MRing(α, β)
 end
 
-function MRing(a::Number, b::Number)
-    aT, bT = promote(a, b)
-    return MRing((aT,), (bT,))
-end
+MRing(a::Number, b::Number) = MRing((a,), (b,))
 
 # Depreciate this method since we are moving to vectors for simplificty
 #@deprecate MRing(a::Tuple, b::Tuple) MRing(a::AbstractVector, b::AbstractVector)
@@ -387,7 +397,9 @@ crescent model. This works by composing two disk models together.
 - `shift`: How much the inner disk radius is shifted (positive is to the right)
 - `floor`: The floor of the inner disk 0 means the inner intensity is zero and 1 means it is a large disk.
 """
-function Crescent(router::T, rinner::T, shift::T, floor::T) where {T}
+function Crescent(router, rinner, shift, floor)
+    router, rinner, shift, floor = promote(float(router), float(rinner), float(shift), float(floor))
+    T = typeof(router)
     m = stretched(Disk{T}(), router, router) * (T(π) * router^2) +
         T(-1) *
         shifted(
@@ -433,6 +445,11 @@ struct ConcordanceCrescent{T} <: GeometricModel{T}
     s∈[0.0,1.0] to ensure positivity in the image.
     """
     slash::T
+end
+
+function ConcordanceCrescent(router, rinner, shift, slash)
+    args = promote(router, rinner, shift, slash)
+    return ConcordanceCrescent{eltype(args)}(args...)
 end
 
 radialextent(m::ConcordanceCrescent{T}) where {T} = m.router * 3 / 2

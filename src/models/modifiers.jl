@@ -283,23 +283,8 @@ end
 #    return ShiftedModel{(model, promote(Δx, Δy)...)
 #end
 
-function Shift(a::Number, b::Number)
-    T = promote_type(typeof(a), typeof(b))
-    return Shift{T, typeof(a), typeof(b)}(a, b)
-end
-
-function Shift(a::DomainParams{P}, b) where {P}
-    T = promote_type(P, typeof(b))
-    return Shift{T, typeof(a), typeof(b)}(a, b)
-end
-
-function Shift(a, b::DomainParams{P}) where {P}
-    T = promote_type(P, typeof(a))
-    return Shift{T, typeof(a), typeof(b)}(a, b)
-end
-
-function Shift(a::DomainParams{P1}, b::DomainParams{P2}) where {P1, P2}
-    T = promote_type(P1, P2)
+function Shift(a, b)
+    T = promote_type(paramtype(typeof(a)), paramtype(typeof(b)))
     return Shift{T, typeof(a), typeof(b)}(a, b)
 end
 
@@ -424,23 +409,8 @@ struct Stretch{T, T1, T2} <: ModelModifier{T}
     β::T2
 end
 
-function Stretch(a::Number, b::Number)
-    T = promote_type(typeof(a), typeof(b))
-    return Stretch{T, typeof(a), typeof(b)}(a, b)
-end
-
-function Stretch(a::DomainParams{P}, b) where {P}
-    T = promote_type(P, typeof(b))
-    return Stretch{T, typeof(a), typeof(b)}(a, b)
-end
-
-function Stretch(a, b::DomainParams{P}) where {P}
-    T = promote_type(P, typeof(a))
-    return Stretch{T, typeof(a), typeof(b)}(a, b)
-end
-
-function Stretch(a::DomainParams{P1}, b::DomainParams{P2}) where {P1, P2}
-    T = promote_type(P1, P2)
+function Stretch(a, b)
+    T = promote_type(paramtype(typeof(a)), paramtype(typeof(b)))
     return Stretch{T, typeof(a), typeof(b)}(a, b)
 end
 

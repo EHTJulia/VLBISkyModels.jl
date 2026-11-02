@@ -957,3 +957,45 @@ using ForwardDiff
     gfd, = grad(fdm, temp, x)
     @test gfo ≈ gfd
 end
+
+@testset "Constructor call forms" begin
+    dp = PolyTemporal(0.2, 2.0)
+    @test VLBISkyModels.paramtype(typeof(dp)) === Float64
+    g = spatialgrid(10.0, 10.0, 8, 8)
+
+    @test Crescent(1, 0.5, 0, 0) == Crescent(1.0, 0.5, 0.0, 0.0)
+    @test Crescent(1.0f0, 0.5, 0, 0) == Crescent(1.0, 0.5, 0.0, 0.0)
+    @test Crescent(2, 1, 0, 0) == Crescent(2.0, 1.0, 0.0, 0.0)
+
+    c = ConcordanceCrescent(2.0, 1.0, 0.5, 0.1)
+    @test ConcordanceCrescent(2, 1.0, 0.5, 0.1) === c
+    @test ConcordanceCrescent{Float64}(2, 1, 0.5, 0.1) === c
+    @test ConcordanceCrescent(2.0f0, 1.0f0, 0.5f0, 0.1f0) isa ConcordanceCrescent{Float32}
+    @test ConcordanceCrescent(dp, dp, dp, dp) isa ConcordanceCrescent{typeof(dp)}
+    @test_throws "promotion of types" ConcordanceCrescent(dp, 1.0, 0.5, 0.1)
+
+    @test MRing((1, 0.2), (0, 0.4)) === MRing((1.0, 0.2), (0.0, 0.4))
+    @test MRing(1, 0.5) === MRing((1.0,), (0.5,))
+    @test MRing{Float64, NTuple{1, Float64}}((1, ), (0.5,)) === MRing((1.0,), (0.5,))
+    mv = MRing([1, 2], [0.5, 0.25])
+    @test mv isa MRing{Float64, Vector{Float64}}
+    @test mv.α == [1.0, 2.0]
+    @test mv.β == [0.5, 0.25]
+    @test MRing([1.0 + 0.5im, 2.0 + 0.25im]).β == mv.β
+    @test_throws "both tuples or both vectors" MRing((1.0,), [0.5])
+    @test_throws "Lengths of real/imag components must be equal" MRing((1.0, 2.0), (0.5,))
+
+    @test TBlob(8) === TBlob(8.0)
+    @test TBlob(8.0).norm ≈ VLBISkyModels.tblobnorm(8.0)
+    @test TBlob(dp) isa TBlob{typeof(dp)}
+
+    for M in (Shift, Stretch)
+        @test M(1, 2.0) === M{Float64, Int, Float64}(1, 2.0)
+        @test M(1.0f0, 2.0f0) isa M{Float32, Float32, Float32}
+        @test M(dp, 1.0) isa M{Float64, typeof(dp), Float64}
+        @test M(1.0f0, dp) isa M{Float64, Float32, typeof(dp)}
+        @test M(dp, dp) isa M{Float64, typeof(dp), typeof(dp)}
+        @test intensitymap(modify(Gaussian(), M(1, 2.0)), g) ≈ intensitymap(modify(Gaussian(), M(1.0, 2.0)), g)
+    end
+    @test Stretch(2) === Stretch(2, 2)
+end
