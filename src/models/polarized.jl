@@ -1,40 +1,7 @@
 export PolarizedModel, PoincareSphere2Map, PolExp2Map,
-    stokes_intensitymap,
     SingleStokes
 
 import ComradeBase: AbstractPolarizedModel, evpa, StokesParams
-
-# simple check to ensure that the four grids are equal across stokes parameters
-function _check_grid(I::IntensityMap, Q::IntensityMap, U::IntensityMap, V::IntensityMap)
-    return axisdims(I) == axisdims(Q) == axisdims(U) == axisdims(V)
-end
-
-"""
-    stokes_intensitymap(I, Q, U, V)
-    stokes_intensitymap(I, Q, U, V, domain)
-
-Constructs a `StokesMap` from four maps, or four arrays on `domain`, holding Stokes I, Q, U
-and V. The components are copied into one dense array whose last dim holds I, Q, U and V,
-seen as `StokesParams` through a `FieldDimArray`.
-"""
-@inline function stokes_intensitymap(
-        I::IntensityMap, Q::IntensityMap,
-        U::IntensityMap, V::IntensityMap
-    )
-    _check_grid(I, Q, U, V) || throw(ArgumentError("the Stokes I, Q, U and V maps must share one domain"))
-    data = _stokesparams(baseimage(I), baseimage(Q), baseimage(U), baseimage(V))
-    return IntensityMap(data, axisdims(I), refdims(I), name(I))
-end
-
-@inline function stokes_intensitymap(
-        I::AbstractArray, Q::AbstractArray,
-        U::AbstractArray, V::AbstractArray,
-        domain::AbstractSingleDomain
-    )
-    return IntensityMap(_stokesparams(I, Q, U, V), domain)
-end
-
-_stokesparams(I, Q, U, V) = FieldDimArray{StokesParams}(cat(I, Q, U, V; dims = Val(ndims(I) + 1)))
 
 """
     $(TYPEDEF)
@@ -104,7 +71,7 @@ function visibilitymap_analytic(pimg::PolarizedModel, p::AbstractSingleDomain)
     sq = baseimage(visibilitymap_analytic(stokes(pimg, :Q), p))
     su = baseimage(visibilitymap_analytic(stokes(pimg, :U), p))
     sv = baseimage(visibilitymap_analytic(stokes(pimg, :V), p))
-    return stokes_intensitymap(si, sq, su, sv, p)
+    return stokesmap(si, sq, su, sv, p)
 end
 
 function split_stokes(pimg::PolarizedModel)
@@ -119,7 +86,7 @@ function visibilitymap_numeric(pimg::PolarizedModel, p::FourierDualDomain)
     sq = visibilitymap(mQ, p)
     su = visibilitymap(mU, p)
     sv = visibilitymap(mV, p)
-    return stokes_intensitymap(baseimage(si), baseimage(sq), baseimage(su), baseimage(sv), visdomain(p))
+    return stokesmap(baseimage(si), baseimage(sq), baseimage(su), baseimage(sv), visdomain(p))
 end
 
 function intensitymap!(pimg::StokesMap, pmodel::PolarizedModel)
@@ -147,7 +114,7 @@ function intensitymap(pmodel::PolarizedModel, dims::AbstractSingleDomain)
     imgQ = baseimage(intensitymap(stokes(pmodel, :Q), dims))
     imgU = baseimage(intensitymap(stokes(pmodel, :U), dims))
     imgV = baseimage(intensitymap(stokes(pmodel, :V), dims))
-    return stokes_intensitymap(imgI, imgQ, imgU, imgV, dims)
+    return stokesmap(imgI, imgQ, imgU, imgV, dims)
 end
 
 @inline function convolved(m::PolarizedModel, p::AbstractModel)
@@ -282,7 +249,7 @@ function PoincareSphere2Map(I, p, X, grid)
         rsetindex!(V, pI * rgetindex(t3, i), i)
     end
 
-    return stokes_intensitymap(I, Q, U, V, grid)
+    return stokesmap(I, Q, U, V, grid)
 end
 
 function PoincareSphere2Map(I::IntensityMap, p, X)
@@ -339,7 +306,7 @@ end
         rsetindex!(d, tmp * rgetindex(d, i), i)
     end
 
-    return stokes_intensitymap(a, b, c, d, grid)
+    return stokesmap(a, b, c, d, grid)
 end
 
 """

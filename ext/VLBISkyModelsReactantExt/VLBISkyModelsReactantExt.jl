@@ -48,7 +48,7 @@ function VLBISkyModels.PolExp2Map!(
     copyto!(c, pimgU)
     copyto!(d, pimgV)
 
-    return stokes_intensitymap(a, b, c, d, grid)
+    return stokesmap(a, b, c, d, grid)
 end
 
 

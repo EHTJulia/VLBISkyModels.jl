@@ -43,7 +43,7 @@ function _load_fits(fname, ::Type{<:IntensityMap{<:StokesParams}})
         imgQ = try_loading(f, "Q", imgI)
         imgU = try_loading(f, "U", imgI)
         imgV = try_loading(f, "V", imgI)
-        return stokes_intensitymap(imgI, imgQ, imgU, imgV)
+        return stokesmap(imgI, imgQ, imgU, imgV)
     end
     return img
 end

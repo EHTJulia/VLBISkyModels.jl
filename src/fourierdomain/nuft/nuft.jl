@@ -151,7 +151,7 @@ function _stokesft(_, plan, img)
     vQ = applyft(plan, stokes(img, :Q))
     vU = applyft(plan, stokes(img, :U))
     vV = applyft(plan, stokes(img, :V))
-    return _stokesparams(vI, vQ, vU, vV)
+    return ComradeBase._stokesparams(vI, vQ, vU, vV)
 end
 
 # A DFT matrix transforms the four components in one product.

@@ -772,7 +772,7 @@ end
     pQ = similar(pI)
     pU = similar(pI)
     pV = similar(pI)
-    pimg1 = stokes_intensitymap(pI, pQ, pU, pV)
+    pimg1 = stokesmap(pI, pQ, pU, pV)
     intensitymap!(pimg1, m)
     pimg2 = intensitymap(m, axisdims(pI))
     @test isapprox(sum(abs, (stokes(pimg1, :I) .- stokes(pimg2, :I))), 0.0, atol = 1.0e-12)
