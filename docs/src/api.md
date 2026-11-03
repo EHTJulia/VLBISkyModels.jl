@@ -110,7 +110,7 @@ VLBISkyModels.basemodel
 VLBISkyModels.unmodified
 VLBISkyModels.renormed
 VLBISkyModels.rotated
-VLBISkyModels.posangle
+VLBISkyModels.posang(::VLBISkyModels.Rotate)
 VLBISkyModels.shifted
 VLBISkyModels.stretched
 VLBISkyModels.ModifiedModel

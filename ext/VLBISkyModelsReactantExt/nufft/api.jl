@@ -115,12 +115,12 @@ One-shot Type-1 NUFFT convenience wrapper: builds a plan host-side, calls
 `set_nufft_points` (traceable), then `execute_nufft` (traceable). Pure Julia
 — wrap the call in `Reactant.@jit` to compile + execute, e.g.
 
-    fk = Reactant.@jit nufft_type1(points, c, nmodes; eps=1e-6)
+    fk = Reactant.@jit nufft_type1(points, c, nmodes; reltol=1e-6)
 
 For repeated calls with the same point set, build the plan and
 `set_nufft_points` outside the trace and reuse the prep:
 
-    plan = plan_nufft(T, 1, nmodes; eps=1e-6)
+    plan = plan_nufft(T, 1, nmodes; reltol=1e-6)
     prep = Reactant.@jit set_nufft_points(plan, points)
     fk1 = Reactant.@jit execute_nufft(prep, c1)
     fk2 = Reactant.@jit execute_nufft(prep, c2)

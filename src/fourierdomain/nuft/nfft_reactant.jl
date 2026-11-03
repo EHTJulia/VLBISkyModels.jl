@@ -1,9 +1,9 @@
 export ReactantNUFFTAlg
 
 struct ReactantNUFFTAlg{T <: Real, B <: Tuple} <: NUFT
-    eps::T
+    reltol::T
     sigma::T
-    nspread::Int                  # < 0 ⇒ derive from eps
+    nspread::Int                  # < 0 ⇒ derive from reltol
     chunk_size::Int
     bin_dims::B               # () ⇒ auto
 end
@@ -25,9 +25,9 @@ The plan's arrays live where the visibility domain's coordinates do: on the devi
 domain moved there with `Reactant.to_rarray`, on the host otherwise.
 
 # Fields
-- `eps::T`                — target tolerance (default `1e-9` if `T` is `Float64`).
+- `reltol::T`             — target relative tolerance (default `1e-9` if `T` is `Float64`).
 - `sigma::T`              — oversampling factor (default 2.0; 1.25 supported).
-- `nspread::Int`          — kernel half-width `w`. If `< 0`, picked from `eps`.
+- `nspread::Int`          — kernel half-width `w`. If `< 0`, picked from `reltol`.
 - `chunk_size::Int`       — points per spread/interp chunk. Default 131072.
   The type-2 interp processes the M nonuniform points in `ceil(M/chunk_size)`
   chunks via a single traced loop; fewer chunks is faster (less loop overhead)
@@ -38,14 +38,14 @@ domain moved there with `Reactant.to_rarray`, on the host otherwise.
 """
 function ReactantNUFFTAlg(
         ::Type{T};
-        eps::Real = T === Float64 ? 1.0e-9 : 1.0e-6,  # default tighter for Float64
+        reltol::Real = T === Float64 ? 1.0e-9 : 1.0e-6,  # default tighter for Float64
         sigma::Real = 2,
         nspread::Integer = -1,
         chunk_size::Integer = 131072,
         bin_dims::B = (),
     ) where {T <: Real, B <: Tuple}
     return ReactantNUFFTAlg{T, B}(
-        T(eps), T(sigma), Int(nspread), Int(chunk_size), bin_dims
+        T(reltol), T(sigma), Int(nspread), Int(chunk_size), bin_dims
     )
 end
 ReactantNUFFTAlg(; kwargs...) = ReactantNUFFTAlg(Float64; kwargs...)

@@ -657,7 +657,8 @@ end
         joinpath(@__DIR__, "test.fits")
     )
     mod = VLBISkyModels.load_clean_components(fname)
-    mod2 = VLBISkyModels.load_clean_components(fname, modify(Gaussian(), μas2rad(100.0)))
+    mod2 = VLBISkyModels.load_clean_components(fname; beam = modify(Gaussian(), μas2rad(100.0)))
+    @test_throws MethodError VLBISkyModels.load_clean_components(fname, modify(Gaussian(), μas2rad(100.0)))
     rm(fname)
     u = randn(100) * 0.5
     v = randn(100) * 0.5
@@ -998,4 +999,11 @@ end
         @test intensitymap(modify(Gaussian(), M(1, 2.0)), g) ≈ intensitymap(modify(Gaussian(), M(1.0, 2.0)), g)
     end
     @test Stretch(2) === Stretch(2, 2)
+end
+
+@testset "transform option names" begin
+    @test FFTAlg(; fftflags = FFTW.MEASURE).fftflags == FFTW.MEASURE
+    @test_throws "unsupported keyword argument \"flags\"" FFTAlg(; flags = FFTW.MEASURE)
+    @test ReactantNUFFTAlg(; reltol = 1.0e-6).reltol == 1.0e-6
+    @test_throws "unsupported keyword argument \"eps\"" ReactantNUFFTAlg(; eps = 1.0e-6)
 end

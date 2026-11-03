@@ -19,7 +19,7 @@ struct NUFFTPlan{T <: Real, D, K, CoefsType<:AbstractMatrix, PhiHatType<:Abstrac
     nmodes::NTuple{D, Int}
     ngrid::NTuple{D, Int}
     iflag::Int                        # +1 or -1
-    eps::T
+    reltol::T
     sigma::T
     nspread::Int                      # = w
     beta::T
@@ -108,14 +108,14 @@ function plan_nufft(
     @assert D == length(nmodes) "Dimension mismatch"
     @assert all(>(0), nmodes) "Mode counts must be positive"
 
-    eps_ = T(get(kwargs, :eps, opts.eps))
+    reltol = T(get(kwargs, :reltol, opts.reltol))
     sigma = T(get(kwargs, :sigma, opts.sigma))
     nsp = Int(get(kwargs, :nspread, opts.nspread))
     cz = Int(get(kwargs, :chunk_size, opts.chunk_size))
     bd_in = get(kwargs, :bin_dims, opts.bin_dims)
 
     if nsp < 0
-        nsp = _nspread_for_eps(T, eps_, sigma)
+        nsp = _nspread_for_eps(T, reltol, sigma)
     end
 
     # Oversampled grid: at least sigma*N, FFT-friendly, room for kernel halo.
@@ -139,7 +139,7 @@ function plan_nufft(
         modes_t,
         ngrid_t,
         iflag >= 0 ? 1 : -1,
-        eps_, sigma, nsp, beta,
+        reltol, sigma, nsp, beta,
         bd, nb, cz,
         coefs, phih,
     )

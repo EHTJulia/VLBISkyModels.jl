@@ -1201,7 +1201,7 @@ end
 
 @testset "Rotate stores its angle" begin
     @test Rotate(0.3).ξ == 0.3
-    @test VLBISkyModels.posangle(Rotate(2π + 0.1)) ≈ 0.1
+    @test posang(Rotate(2π + 0.1)) ≈ 0.1
     ξ = MultiDomainParams(1.0, PolySpectral(1.0, 230.0e9))
     r = Rotate(ξ)
     @test r.ξ === ξ

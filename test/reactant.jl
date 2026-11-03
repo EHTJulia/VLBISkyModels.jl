@@ -45,7 +45,7 @@ end
         guv = StructuredDomain((U = u, V = v))
 
         gfn = FourierDualDomain(gim, guv, NFFTAlg())
-        gfr = FourierDualDomain(gimr, Reactant.to_rarray(guv), VLBISkyModels.ReactantNUFFTAlg(Float64; eps = 1.0e-9))
+        gfr = FourierDualDomain(gimr, Reactant.to_rarray(guv), VLBISkyModels.ReactantNUFFTAlg(Float64; reltol = 1.0e-9))
 
         vnf = visibilitymap(m, gfn)
         vrf = @jit visibilitymap(mr, gfr)
@@ -64,7 +64,7 @@ end
     end
 
     # Above `INTERP_WIDE_WS_LIMIT` (M * w^2 * 16 bytes > 128 MiB) the type-2 interpolation
-    # gathers each point's whole stencil at once: eps = 1e-9 gives w = 10, so M = 90 000
+    # gathers each point's whole stencil at once: reltol = 1e-9 gives w = 10, so M = 90 000
     # needs 144 MB.
     @testset "VisibilityMap Parity wide path (large M)" begin
         gim = spatialgrid(10.0, 10.0, 32, 32)
@@ -73,7 +73,7 @@ end
         mr = ContinuousImage(Reactant.to_rarray(rast), @jit(identity(gim)), BSplinePulse{3}())
         guv = StructuredDomain((U = randn(90_000) ./ 5, V = randn(90_000) ./ 5))
         gfn = FourierDualDomain(gim, guv, NFFTAlg())
-        gfr = FourierDualDomain(@jit(identity(gim)), Reactant.to_rarray(guv), VLBISkyModels.ReactantNUFFTAlg(Float64; eps = 1.0e-9))
+        gfr = FourierDualDomain(@jit(identity(gim)), Reactant.to_rarray(guv), VLBISkyModels.ReactantNUFFTAlg(Float64; reltol = 1.0e-9))
         @test parent(@jit visibilitymap(mr, gfr)) ≈ visibilitymap(m, gfn)
     end
 
@@ -84,7 +84,7 @@ end
         mr = ContinuousImage(IntensityMap(Reactant.to_rarray(cube), g), BSplinePulse{3}())
         guv = StructuredDomain((U = randn(90_000) ./ 5, V = randn(90_000) ./ 5, Fr = rand([230.0e9, 345.0e9], 90_000)))
         gfn = FourierDualDomain(g, guv, NFFTAlg())
-        gfr = FourierDualDomain(g, Reactant.to_rarray(guv), VLBISkyModels.ReactantNUFFTAlg(Float64; eps = 1.0e-9))
+        gfr = FourierDualDomain(g, Reactant.to_rarray(guv), VLBISkyModels.ReactantNUFFTAlg(Float64; reltol = 1.0e-9))
         @test parent(@jit visibilitymap(mr, gfr)) ≈ parent(visibilitymap(m, gfn))
     end
 
@@ -110,7 +110,7 @@ end
         guv = StructuredDomain((U = u, V = v))
 
         gfn = FourierDualDomain(gim, guv, NFFTAlg())
-        gfr = FourierDualDomain(gimr, Reactant.to_rarray(guv), VLBISkyModels.ReactantNUFFTAlg(; eps = 1.0e-12))
+        gfr = FourierDualDomain(gimr, Reactant.to_rarray(guv), VLBISkyModels.ReactantNUFFTAlg(; reltol = 1.0e-12))
 
         pm = ContinuousImage(m, DeltaPulse())
         ppmr = ContinuousImage(Reactant.to_rarray(m), DeltaPulse())
@@ -138,7 +138,7 @@ end
 
         gcuber = @jit(identity(gcube))
         cimgr = MultiDomainImage(Reactant.to_rarray(img), BSplinePulse{3}(), spec)
-        gfr = FourierDualDomain(gcuber, Reactant.to_rarray(guv), VLBISkyModels.ReactantNUFFTAlg(Float64; eps = 1.0e-10))
+        gfr = FourierDualDomain(gcuber, Reactant.to_rarray(guv), VLBISkyModels.ReactantNUFFTAlg(Float64; reltol = 1.0e-10))
         visr = @jit visibilitymap(cimgr, gfr)
         imr = @jit intensitymap(cimgr, gcuber)
         im = intensitymap(cimg, gcube)
@@ -160,7 +160,7 @@ end
         gcube = g ⊗ Fr(frs)
         vis = visibilitymap(MultiDomainImage(IntensityMap(base, g), BSplinePulse{3}(), spec), FourierDualDomain(gcube, dpf, DFTAlg()))
         cimgr = MultiDomainImage(IntensityMap(Reactant.to_rarray(base), g), BSplinePulse{3}(), spec)
-        gfr = FourierDualDomain(gcube, Reactant.to_rarray(dpf), VLBISkyModels.ReactantNUFFTAlg(Float64; eps = 1.0e-10))
+        gfr = FourierDualDomain(gcube, Reactant.to_rarray(dpf), VLBISkyModels.ReactantNUFFTAlg(Float64; reltol = 1.0e-10))
         visr = @jit visibilitymap(cimgr, gfr)
         @test size(visr) == (n, 2)
         @test Array(baseimage(visr)) ≈ baseimage(vis)
@@ -179,7 +179,7 @@ end
         ]
         dom = StructuredDomain((; U = randn(11) ./ 10, V = randn(11) ./ 10, Ti = first.(tf), Fr = last.(tf)))
         gfh = FourierDualDomain(gf, dom, DFTAlg())
-        gfr = FourierDualDomain(gf, Reactant.to_rarray(dom), VLBISkyModels.ReactantNUFFTAlg(Float64; eps = 1.0e-10))
+        gfr = FourierDualDomain(gf, Reactant.to_rarray(dom), VLBISkyModels.ReactantNUFFTAlg(Float64; reltol = 1.0e-10))
         cases = (
             ("per-frame base", a -> MultiDomainImage(IntensityMap(a, gs ⊗ ti), pulse, ps), rand(16, 16, 3)),
             ("PolyTemporal", a -> MultiDomainImage(IntensityMap(a, gs), pulse, PolyTemporal(0.2, 2.0), ps), rand(16, 16)),
@@ -245,7 +245,7 @@ end
             ti = frames(Ti, [0.0, 1.0, 2.0, 3.0], [1.0, 2.0, 3.0, 4.0])
             frs = [230.0e9, 345.0e9]
             g = gs ⊗ ti ⊗ Fr(frs)
-            alg = VLBISkyModels.ReactantNUFFTAlg(Float64; eps = 1.0e-10)
+            alg = VLBISkyModels.ReactantNUFFTAlg(Float64; reltol = 1.0e-10)
             n = 200
             pointdomain(t, f) = StructuredDomain((; U = randn(length(t)) ./ 10, V = randn(length(t)) ./ 10, Ti = t, Fr = f))
             dom = pointdomain(sort(4 .* rand(n)), rand(frs, n))
@@ -371,7 +371,7 @@ end
         img = IntensityMap(FieldDimArray{StokesParams}(rand(32, 32, 4)), g)
         guv = StructuredDomain((; U = randn(50) ./ 5, V = randn(50) ./ 5))
         gf = FourierDualDomain(g, guv, NFFTAlg())
-        gfr = FourierDualDomain(@jit(identity(g)), Reactant.to_rarray(guv), VLBISkyModels.ReactantNUFFTAlg(Float64; eps = 1.0e-10))
+        gfr = FourierDualDomain(@jit(identity(g)), Reactant.to_rarray(guv), VLBISkyModels.ReactantNUFFTAlg(Float64; reltol = 1.0e-10))
         m = ContinuousImage(img, BSplinePulse{3}()) + 0.5 * Gaussian()
         mr = ContinuousImage(Reactant.to_rarray(img), BSplinePulse{3}()) + 0.5 * Gaussian()
         vr = @jit visibilitymap(mr, gfr)
@@ -397,7 +397,7 @@ end
         guvr = Reactant.to_rarray(guv)
 
         gf = FourierDualDomain(g, guv, NFFTAlg())
-        gfr = FourierDualDomain(gr, guvr, VLBISkyModels.ReactantNUFFTAlg(Float64; eps = 1.0e-9))
+        gfr = FourierDualDomain(gr, guvr, VLBISkyModels.ReactantNUFFTAlg(Float64; reltol = 1.0e-9))
 
         @testset "Gaussian" begin
             m = Gaussian()

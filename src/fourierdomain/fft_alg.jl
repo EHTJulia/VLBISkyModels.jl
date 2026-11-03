@@ -22,7 +22,7 @@ Base.@kwdef struct FFTAlg{T} <: FourierTransform
     but you can use `FFTW.MEASURE` for better performance if you plan on evaluating
     the sample FFT multiple times.
     """
-    flags::T = FFTW.ESTIMATE
+    fftflags::T = FFTW.ESTIMATE
 end
 
 function build_padded_uvgrid(grid::AbstractRectiGrid, alg::FFTAlg)
@@ -80,7 +80,7 @@ function create_forward_plan(
         ::AbstractSingleDomain
     )
     pimg = padimage(ComradeBase.allocate_map(Array{eltype(imgdomain)}, imgdomain), alg)
-    plan = plan_fft(pimg, 1:2; flags = alg.flags)
+    plan = plan_fft(pimg, 1:2; flags = alg.fftflags)
     return FFTPlan(alg, plan)
 end
 
@@ -95,7 +95,7 @@ end
 
 function inverse_plan(plan::FFTPlan)
     a = zeros(eltype(plan.plan), size(plan.plan))
-    ip = plan_ifft(a, 1:2; flags = plan.alg.flags)
+    ip = plan_ifft(a, 1:2; flags = plan.alg.fftflags)
     return FFTPlan(plan.alg, ip)
 end
 

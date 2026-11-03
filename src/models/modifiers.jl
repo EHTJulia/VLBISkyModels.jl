@@ -476,11 +476,11 @@ Rotates the model by an amount `ξ` in radians in the clockwise direction.
 rotated(model, ξ) = ModifiedModel(model, Rotate(ξ))
 
 """
-    $(SIGNATURES)
+    posang(model::Rotate)
 
-Returns the rotation angle of the rotated `model`
+Returns the rotation angle of the `Rotate` modifier `model`, in radians in (-π, π].
 """
-posangle(model::Rotate) = atan(sincos(model.ξ)...)
+ComradeBase.posang(model::Rotate) = atan(sincos(model.ξ)...)
 
 @inline doesnot_uv_modify(::Rotate) = false
 

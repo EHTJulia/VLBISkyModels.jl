@@ -81,7 +81,7 @@ include("io.jl")
             :Pulse, :GeometricModel, :ModelModifier, :CompositeModel, :AbstractImageTemplate,
             :ModifiedModel, :AddModel, :ConvolvedModel,
             :added, :unmodified, :basemodel,
-            :transform_image, :transform_uv, :scale_image, :scale_uv, :posangle,
+            :transform_image, :transform_uv, :scale_image, :scale_uv,
             :AbstractFourierDualDomain, :FourierTransform, :FFTPlan, :NUFTPlan,
             :uvgrid, :xygrid, :uviterator,
             :Constant, :GaussDisk, :LogSpiral, :AxisTaps,
