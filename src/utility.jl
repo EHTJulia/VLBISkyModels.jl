@@ -175,7 +175,7 @@ end
 
 Regrids the spatial parts of an image `img` on the new domain `g`
 """
-function regrid(img::IntensityMap, g::RectiGrid)
+function regrid(img::IntensityMap, g::AbstractRectiGrid)
     fimg = VLBISkyModels.InterpolatedImage(img)
     return intensitymap(fimg, g)
 end
