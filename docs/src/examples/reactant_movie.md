@@ -1,0 +1,157 @@
+```@meta
+EditURL = "../../../examples/reactant_movie.jl"
+```
+
+# Multifrequency movies with Reactant
+
+This example evaluates a multifrequency movie with [Reactant](https://github.com/EnzymeAD/Reactant.jl),
+which compiles the model and its gradient with XLA, and then splits the movie across
+several devices. It uses the models and domains described in [Multidomain models](@ref).
+
+XLA must be told how many devices to simulate before Reactant starts. With a real
+multi-device machine leave this out.
+
+````@example reactant_movie
+ENV["XLA_FLAGS"] = "--xla_force_host_platform_device_count=4"
+
+using VLBISkyModels
+using Reactant
+using Enzyme
+redirect_stderr(devnull) do #hide
+    Reactant.set_default_backend("cpu") #hide
+    Reactant.devices() #hide
+end #hide
+nothing #hide
+````
+
+## The model
+
+The movie has four frames and two observing bands. Each frame has its own image, and a
+spectral index scales every pixel between the bands:
+
+````@example reactant_movie
+nx = 32
+fov = μas2rad(120.0)
+gs = spatialgrid(fov, fov, nx, nx)
+ti = frames(Ti, [0.0, 1.0, 2.0, 3.0], [1.0, 2.0, 3.0, 4.0])
+frs = Fr([230.0e9, 345.0e9])
+pulse = BSplinePulse{3}()
+movie(frames) = MultiDomainImage(IntensityMap(frames, gs ⊗ ti), pulse, PolySpectral(-0.7, 230.0e9))
+````
+
+The frames show a Gaussian that moves across the field of view, one image at the center
+of each frame:
+
+````@example reactant_movie
+blob(t) = modify(Gaussian(), Stretch(μas2rad(10.0)), Shift(μas2rad(10.0 * (t - 2.0)), 0.0))
+truth = stack(t -> baseimage(intensitymap(blob(t), gs)), [0.5, 1.5, 2.5, 3.5])
+size(truth)
+````
+
+The data are one `(Node, Fr)` domain: each baseline is measured in both bands, at one time.
+Baselines are given in meters and converted to wavelengths with the `Fr` lookup.
+
+````@example reactant_movie
+npt = 400
+dom = StructuredDomain(
+    (Node(npt), frs);
+    u = 3.0e6 .* randn(npt), v = 3.0e6 .* randn(npt), Ti = 4 .* rand(npt),
+)
+````
+
+The image grid of the transform has every dim the visibilities depend on: the frames and
+the bands.
+
+````@example reactant_movie
+g = gs ⊗ ti ⊗ frs
+ghost = FourierDualDomain(g, dom, NFFTAlg())
+vtrue = baseimage(visibilitymap(movie(truth), ghost))
+size(vtrue)
+````
+
+## Compiling the model
+
+`ReactantNUFFTAlg` is the nonuniform FFT that runs under Reactant. The visibility domain is
+moved to the device with `Reactant.to_rarray`; the image grid stays on the host, since it
+only sets up the plan.
+
+````@example reactant_movie
+alg = ReactantNUFFTAlg(Float64; reltol = 1.0e-10)
+gdev = FourierDualDomain(g, Reactant.to_rarray(dom), alg)
+
+vis(frames, gd) = baseimage(visibilitymap(movie(frames), gd))
+framesdev = Reactant.to_rarray(truth)
+vdev = @jit vis(framesdev, gdev)
+maximum(abs, Array(vdev) .- vtrue)
+````
+
+A weighted loss and its gradient compile the same way. Enzyme writes the gradient into a
+shadow array created outside the compiled function.
+
+````@example reactant_movie
+chi2(frames, gd, data, w) = sum(abs2, (vis(frames, gd) .- data) .* w)
+function grad!(dframes, frames, gd, data, w)
+    Enzyme.autodiff(Reverse, chi2, Active, Duplicated(frames, dframes), Const(gd), Const(data), Const(w))
+    return dframes
+end
+
+start = Reactant.to_rarray(zero(truth))
+datadev = Reactant.to_rarray(vtrue)
+wdev = Reactant.to_rarray(ones(size(vtrue)))
+dstart = Reactant.to_rarray(zero(truth))
+size(@jit grad!(dstart, start, gdev, datadev, wdev))
+````
+
+## Splitting the movie across devices
+
+Sharding needs Reactant's IFRT runtime, selected with the Reactant preference
+`xla_runtime = "IFRT"`, for example in the `LocalPreferences.toml` next to the active
+project. A mesh arranges the devices in a grid with named axes. Here the frames are split over
+the `:t` axis and the bands over the `:f` axis, so each device holds two frames of one
+band.
+
+````@example reactant_movie
+mesh = Reactant.Sharding.Mesh(reshape(Reactant.devices()[1:4], 2, 2), (:t, :f))
+layout = ShardLayout(mesh; Ti = :t, Fr = :f)
+````
+
+`todevice` places the dual domain on the mesh. Each device gets the points of its own frames,
+padded to a common length. The `Node` lookup of the new visibility domain gives each
+slot's original point, with `0` for padding.
+
+````@example reactant_movie
+gshard = todevice(gdev, layout)
+vsd = visdomain(gshard)
+size(vsd)
+````
+
+The frames of the model have no `Fr` dim, so they are split along `Ti` alone. A gradient
+shadow is split the same way.
+
+````@example reactant_movie
+tlayout = ShardLayout(mesh; Ti = :t)
+framesshard = baseimage(todevice(IntensityMap(truth, gs ⊗ ti), tlayout))
+vshard = @jit vis(framesshard, gshard)
+slot = indexin(lookup(dims(dom), Node), lookup(dims(vsd), Node))
+maximum(abs, Array(vshard)[slot, :] .- vtrue)
+````
+
+The data and weights move to the same domain. Padding gets weight `0`, so it does not
+enter the loss.
+
+````@example reactant_movie
+datashard = baseimage(todevice(IntensityMap(vtrue, dom), vsd))
+wshard = baseimage(todevice(IntensityMap(ones(size(vtrue)), dom), vsd))
+startshard = baseimage(todevice(IntensityMap(zero(truth), gs ⊗ ti), tlayout))
+dshard = baseimage(todevice(IntensityMap(zero(truth), gs ⊗ ti), tlayout))
+size(@jit grad!(dshard, startshard, gshard, datashard, wshard))
+````
+
+Each sharded dim of the image grid must split evenly over its devices. The sharding page of
+the [ComradeBase documentation](https://ptiede.github.io/ComradeBase.jl/stable/sharding/)
+describes layouts and the current limitations of sharded computations in more detail.
+
+---
+
+*This page was generated using [Literate.jl](https://github.com/fredrikekre/Literate.jl).*
+

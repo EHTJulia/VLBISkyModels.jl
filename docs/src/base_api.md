@@ -125,7 +125,7 @@ ComradeBase.stokes
 ## Sharding
 
 ```@docs
-ComradeBase.shard
+ComradeBase.todevice
 ComradeBase.ShardLayout
 ```
 

@@ -94,11 +94,11 @@ size(@jit grad!(dstart, start, gdev, datadev, wdev))
 mesh = Reactant.Sharding.Mesh(reshape(Reactant.devices()[1:4], 2, 2), (:t, :f))
 layout = ShardLayout(mesh; Ti = :t, Fr = :f)
 
-# `shard` places the dual domain on the mesh. Each device gets the points of its own frames,
+# `todevice` places the dual domain on the mesh. Each device gets the points of its own frames,
 # padded to a common length. The `Node` lookup of the new visibility domain gives each
 # slot's original point, with `0` for padding.
 
-gshard = shard(gdev, layout)
+gshard = todevice(gdev, layout)
 vsd = visdomain(gshard)
 size(vsd)
 
@@ -106,7 +106,7 @@ size(vsd)
 # shadow is split the same way.
 
 tlayout = ShardLayout(mesh; Ti = :t)
-framesshard = baseimage(shard(IntensityMap(truth, gs ⊗ ti), tlayout))
+framesshard = baseimage(todevice(IntensityMap(truth, gs ⊗ ti), tlayout))
 vshard = @jit vis(framesshard, gshard)
 slot = indexin(lookup(dims(dom), Node), lookup(dims(vsd), Node))
 maximum(abs, Array(vshard)[slot, :] .- vtrue)
@@ -114,10 +114,10 @@ maximum(abs, Array(vshard)[slot, :] .- vtrue)
 # The data and weights move to the same domain. Padding gets weight `0`, so it does not
 # enter the loss.
 
-datashard = baseimage(shard(IntensityMap(vtrue, dom), vsd))
-wshard = baseimage(shard(IntensityMap(ones(size(vtrue)), dom), vsd))
-startshard = baseimage(shard(IntensityMap(zero(truth), gs ⊗ ti), tlayout))
-dshard = baseimage(shard(IntensityMap(zero(truth), gs ⊗ ti), tlayout))
+datashard = baseimage(todevice(IntensityMap(vtrue, dom), vsd))
+wshard = baseimage(todevice(IntensityMap(ones(size(vtrue)), dom), vsd))
+startshard = baseimage(todevice(IntensityMap(zero(truth), gs ⊗ ti), tlayout))
+dshard = baseimage(todevice(IntensityMap(zero(truth), gs ⊗ ti), tlayout))
 size(@jit grad!(dshard, startshard, gshard, datashard, wshard))
 
 # Each sharded dim of the image grid must split evenly over its devices. The sharding page of

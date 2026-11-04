@@ -9,7 +9,19 @@ function VLBISkyModels._jlnuft!(out, A::NUFFTSetPts, b::Reactant.AnyTracedRArray
 end
 
 function VLBISkyModels._jlnuft!(out, A::NUFFTSetPts, b::Reactant.AnyTracedRArray{<:Complex})
+    _checkondevice(A)
     execute_nufft!(out, A, b)
+    return nothing
+end
+
+# Host plan arrays read while tracing are embedded in the compiled program as constants.
+function _checkondevice(pts::NUFFTSetPts)
+    first(pts.frac) isa Reactant.AnyTracedRArray || throw(
+        ArgumentError(
+            "the NUFFT plan is on the host; build the dual domain from a visibility domain moved " *
+                "to the device with `Reactant.to_rarray`, or place it with `todevice(domain, layout)`"
+        )
+    )
     return nothing
 end
 
@@ -17,20 +29,20 @@ function VLBISkyModels.plan_nuft_spatial(
         alg::VLBISkyModels.ReactantNUFFTAlg, imgdomain::ComradeBase.AbstractRectiGrid, visdomain::ComradeBase.StructuredDomain
     )
     (; U, V) = visdomain
-    T = eltype(U)
     dx, dy = pixelsizes(imgdomain)
     rm = ComradeBase.rotmat(imgdomain)'
     # No sign flip because we will use the FINUFFT +1 sign convention
     pl = plan_nufft(unwrapped_eltype(U), 2, size(imgdomain)[1:2]; iflag = +1, opts = alg)
     # The point data live where the coordinates do: on the host for host arrays, so that
-    # `shard` can place them on the devices directly.
-    if U isa Reactant.AbstractConcreteArray
-        u = @jit convert(T, 2π) .* VLBISkyModels._rotatex.(U, V, Ref(rm)) .* dx
-        v = @jit convert(T, 2π) .* VLBISkyModels._rotatey.(U, V, Ref(rm)) .* dy
-        return @jit set_nufft_points(pl, (u, v))
-    end
-    u = convert(T, 2π) .* VLBISkyModels._rotatex.(U, V, Ref(rm)) .* dx
-    v = convert(T, 2π) .* VLBISkyModels._rotatey.(U, V, Ref(rm)) .* dy
+    # `todevice` can place them on the devices directly.
+    U isa Reactant.AbstractConcreteArray && return @jit _setpoints(pl, U, V, rm, dx, dy)
+    return _setpoints(pl, U, V, rm, dx, dy)
+end
+
+function _setpoints(pl, U, V, rm, dx, dy)
+    twopi = convert(unwrapped_eltype(U), 2π)
+    u = twopi .* VLBISkyModels._rotatex.(U, V, Ref(rm)) .* dx
+    v = twopi .* VLBISkyModels._rotatey.(U, V, Ref(rm)) .* dy
     return set_nufft_points(pl, (u, v))
 end
 
@@ -99,6 +111,7 @@ function VLBISkyModels._nuft(
         img::Reactant.AnyTracedRArray
     )
     s = VLBISkyModels.getplan(p)
+    _checkondevice(s.points)
     fk = complex.(img)
     # The result may be a lazy `ReshapedArray`, which is slow to read back from the device.
     out = similar(fk, s.points.M)
@@ -134,18 +147,26 @@ end
 function ComradeBase._placederived(d::VLBISkyModels.FourierDualDomain, hostvis, layout::ComradeBase.ShardLayout)
     img = ComradeBase.imgdomain(d)
     vis = ComradeBase.visdomain(d)
-    fwd, rev = VLBISkyModels.create_plans(VLBISkyModels.algorithm(d), img, hostvis)
-    d = VLBISkyModels.@set d.plan_forward = _shardplan(fwd, img, vis, layout)
-    return VLBISkyModels.@set d.plan_reverse = _shardplan(rev, img, vis, layout)
+    fwd, rev = _shardplans(VLBISkyModels.create_plans(VLBISkyModels.algorithm(d), img, hostvis)..., img, vis, layout)
+    d = VLBISkyModels.@set d.plan_forward = fwd
+    return VLBISkyModels.@set d.plan_reverse = rev
 end
 
-_shardplan(p, _, _, layout) = _replicate(p, Reactant.Sharding.Replicated(layout.mesh))
+_shardplans(fwd, rev, _, _, layout) = map(p -> _replicate(p, Reactant.Sharding.Replicated(layout.mesh)), (fwd, rev))
 
-function _shardplan(p::VLBISkyModels.NUFTPlan{<:VLBISkyModels.ReactantNUFFTAlg, <:PlaneStack}, imgdomain, vis, layout)
+# The reverse plan of a plane stack reads the same points as the forward plan, which the two
+# placed plans share; only the phases differ.
+function _shardplans(
+        fwd::VLBISkyModels.NUFTPlan{<:VLBISkyModels.ReactantNUFFTAlg, <:PlaneStack}, rev, imgdomain, vis, layout
+    )
     pdims = DD.otherdims(imgdomain, (X, Y))
     names = map(DD.name, pdims)
     nblocks = map(n -> _nshards(layout, n), names)
-    all(==(1), nblocks) && return _replicate(p, Reactant.Sharding.Replicated(layout.mesh))
+    if all(==(1), nblocks)
+        rep = Reactant.Sharding.Replicated(layout.mesh)
+        p = _replicate(fwd, rep)
+        return p, VLBISkyModels.@set p.phases = _replicate(rev.phases, rep)
+    end
     for k in eachindex(pdims)
         length(pdims[k]) % nblocks[k] == 0 || throw(
             ArgumentError("the image's `$(names[k])` dim has $(length(pdims[k])) planes, which do not split evenly over its $(nblocks[k]) shards")
@@ -188,8 +209,8 @@ function _shardplan(p::VLBISkyModels.NUFTPlan{<:VLBISkyModels.ReactantNUFFTAlg, 
     batched = Tuple(batched[byplane])
     nb = length(batched)
 
-    pts = VLBISkyModels.getplan(p).points
-    plane = _planeindex(VLBISkyModels.getindices(p), pts.M, length(pdims))
+    pts = VLBISkyModels.getplan(fwd).points
+    plane = _planeindex(VLBISkyModels.getindices(fwd), pts.M, length(pdims))
     perblock = map((d, n) -> length(d) ÷ n, pdims, nblocks)
     permuted = permutedims(reshape(collect(1:pts.M), shape...), perm)
     point = reshape(permuted, :, size(permuted)[(end - nb + 1):end]...)
@@ -216,11 +237,11 @@ function _shardplan(p::VLBISkyModels.NUFTPlan{<:VLBISkyModels.ReactantNUFFTAlg, 
         pts.plan, Reactant.to_rarray(start; sharding = split), map(f -> Reactant.to_rarray(f; sharding = split), frac),
         batched, size(permuted), Tuple(invperm(collect(perm))), vsz
     )
-    phases = reshape(p.phases, vsz)
     vsplit = Tuple(findall(in(keys(vislayout.axes)), collect(vnames)))
     vsharding = Reactant.Sharding.DimsSharding(mesh, vsplit, map(i -> vislayout.axes[vnames[i]], vsplit))
-    p = VLBISkyModels.@set p.plan = stack
-    return VLBISkyModels.@set p.phases = Reactant.to_rarray(phases; sharding = vsharding)
+    p = VLBISkyModels.@set fwd.plan = stack
+    placephases(q) = VLBISkyModels.@set p.phases = Reactant.to_rarray(reshape(q.phases, vsz); sharding = vsharding)
+    return placephases(fwd), placephases(rev)
 end
 
 # The index of plane `q` within its block of `per` planes, which must be block `b`.

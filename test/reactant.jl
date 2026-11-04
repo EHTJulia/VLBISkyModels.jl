@@ -60,7 +60,8 @@ end
 
         @test parent(vrf_s) ≈ vnf_s
 
-
+        ghost = FourierDualDomain(gimr, guv, VLBISkyModels.ReactantNUFFTAlg(Float64; reltol = 1.0e-9))
+        @test_throws "the NUFFT plan is on the host" @jit visibilitymap(mr, ghost)
     end
 
     # Above `INTERP_WIDE_WS_LIMIT` (M * w^2 * 16 bytes > 128 MiB) the type-2 interpolation
@@ -237,7 +238,7 @@ end
             # Values at the points of `d`, in its order.
             onpoints(v, sg, d) = selectdim(Array(v), 1, indexin(DD.lookup(dims(d), Node), DD.lookup(dims(visdomain(sg)), Node)))
             # 1 at the points of `d`, 0 at padding.
-            weights(sg, d) = baseimage(shard(IntensityMap(ones(size(d)), d), visdomain(sg)))
+            weights(sg, d) = baseimage(todevice(IntensityMap(ones(size(d)), d), visdomain(sg)))
             mesh = Reactant.Sharding.Mesh(reshape(Reactant.devices()[1:4], 2, 2), (:t, :f))
             layout = ShardLayout(mesh; Ti = :t, Fr = :f)
             pulse = BSplinePulse{3}()
@@ -252,15 +253,16 @@ end
             gfh = FourierDualDomain(g, dom, DFTAlg())
             gfd = FourierDualDomain(g, dom, alg)
             @test isempty(devicearrays(gfd))
-            sgf = shard(gfd, layout)
+            sgf = todevice(gfd, layout)
             @test imgdomain(sgf) === g
             @test !isempty(devicearrays(sgf))
             @test all(Reactant.Sharding.is_sharded, devicearrays(sgf))
+            @test VLBISkyModels.getplan(VLBISkyModels.reverse_plan(sgf)) === VLBISkyModels.getplan(VLBISkyModels.forward_plan(sgf))
             w = weights(sgf, dom)
 
             onmesh(a, gr, lay) = lay === nothing ?
                 Reactant.to_rarray(a; sharding = Reactant.Sharding.Replicated(mesh)) :
-                baseimage(shard(IntensityMap(a, gr), lay))
+                baseimage(todevice(IntensityMap(a, gr), lay))
             gpf = gs ⊗ ti
             # The last entry is false for models with per-plane coefficients (EnzymeAD/Reactant.jl#3527).
             cases = (
@@ -304,9 +306,9 @@ end
             @testset "(Node, Fr) domain split along Fr" begin
                 np = 60
                 dpf = StructuredDomain((Node(np), Fr(frs)); U = randn(np, 2) ./ 10, V = randn(np, 2) ./ 10, Ti = 4 .* rand(np))
-                sg = shard(FourierDualDomain(g, dpf, alg), layout)
+                sg = todevice(FourierDualDomain(g, dpf, alg), layout)
                 a = rand(16, 16, 4, 2)
-                ar = baseimage(shard(IntensityMap(a, g), layout))
+                ar = baseimage(todevice(IntensityMap(a, g), layout))
                 v = @jit vfb(ar, sg)
                 @test onpoints(v, sg, dpf) ≈ vfb(a, FourierDualDomain(g, dpf, DFTAlg()))
                 Mb = size(visdomain(sg))[1] ÷ 2
@@ -318,7 +320,7 @@ end
 
             @testset "uneven frame occupancy" begin
                 du = pointdomain([rand() < 0.8 ? 0.5 * rand() : 4 * rand() for _ in 1:n], rand(frs, n))
-                sg = shard(FourierDualDomain(g, du, alg), layout)
+                sg = todevice(FourierDualDomain(g, du, alg), layout)
                 wu = weights(sg, du)
                 loss(a, g, w) = sum(abs2, vfb(a, g) .* w)
                 function grad!(da, a, g, w)
@@ -326,11 +328,11 @@ end
                     return da
                 end
                 a = rand(16, 16, 4, 2)
-                ar = baseimage(shard(IntensityMap(a, g), layout))
+                ar = baseimage(todevice(IntensityMap(a, g), layout))
                 gh = FourierDualDomain(g, du, DFTAlg())
                 @test onpoints(@jit(vfb(ar, sg)), sg, du) ≈ vfb(a, gh)
                 dh = Enzyme.gradient(set_runtime_activity(Enzyme.Reverse), Const(x -> sum(abs2, vfb(x, gh))), a)[1]
-                @test Array(@jit grad!(baseimage(shard(IntensityMap(zero(a), g), layout)), ar, sg, wu)) ≈ dh
+                @test Array(@jit grad!(baseimage(todevice(IntensityMap(zero(a), g), layout)), ar, sg, wu)) ≈ dh
             end
 
             gb = gs ⊗ ti ⊗ frames(Fr, [220.0e9, 340.0e9], [240.0e9, 350.0e9])
@@ -339,17 +341,17 @@ end
             )
             @testset "bands coarser than channels" begin
                 db = channeldomain([225.0e9, 235.0e9, 342.0e9, 348.0e9])
-                sb = shard(FourierDualDomain(gb, db, alg), layout)
+                sb = todevice(FourierDualDomain(gb, db, alg), layout)
                 a = rand(16, 16, 4, 2)
-                ar = baseimage(shard(IntensityMap(a, gb), layout))
+                ar = baseimage(todevice(IntensityMap(a, gb), layout))
                 @test onpoints(@jit(vfb(ar, sb)), sb, db) ≈ vfb(a, FourierDualDomain(gb, db, DFTAlg()))
                 @test isempty(heavy(vfb, ar, sb; grid = sb))
             end
 
-            @test_throws "split differently over devices" shard(
+            @test_throws "split differently over devices" todevice(
                 FourierDualDomain(gb, channeldomain([225.0e9, 342.0e9, 345.0e9, 348.0e9]), alg), layout
             )
-            @test_throws "do not split evenly" shard(
+            @test_throws "do not split evenly" todevice(
                 FourierDualDomain(
                     gs ⊗ frames(Ti, [0.0, 1.0, 2.0], [1.0, 2.0, 3.0]),
                     StructuredDomain((; U = randn(n) ./ 10, V = randn(n) ./ 10, Ti = sort(3 .* rand(n)))), alg
@@ -357,10 +359,10 @@ end
                 ShardLayout(mesh; Ti = :t)
             )
             dc = channeldomain([225.0e9, 235.0e9, 342.0e9, 348.0e9])
-            @test_throws "splits both `Node` and the image's planes" shard(
+            @test_throws "splits both `Node` and the image's planes" todevice(
                 FourierDualDomain(gb, dc, alg), ShardLayout(mesh; Fr = :f, Node = :t)
             )
-            @test_throws "which the image has no planes along" shard(
+            @test_throws "which the image has no planes along" todevice(
                 FourierDualDomain(gs ⊗ ti, dc, alg), ShardLayout(mesh; Ti = :t, Fr = :f)
             )
         end
