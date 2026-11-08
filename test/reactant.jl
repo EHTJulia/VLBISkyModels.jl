@@ -151,11 +151,10 @@ end
 
     @testset "(Node, Fr) visibility domain" begin
         ref = 230.0e9
-        c = 299_792_458.0
         g = spatialgrid(10.0, 10.0, 16, 16)
         frs = [ref, 1.5 * ref]
         n = 30
-        dpf = StructuredDomain((Node(n), Fr(frs)); u = randn(n) ./ 10 .* c ./ ref, v = randn(n) ./ 10 .* c ./ ref)
+        dpf = StructuredDomain((Node(n), Fr(frs)); U = randn(n) ./ 10 .* frs' ./ ref, V = randn(n) ./ 10 .* frs' ./ ref)
         base = rand(16, 16)
         spec = PolySpectral(1.2, ref)
         gcube = g ⊗ Fr(frs)

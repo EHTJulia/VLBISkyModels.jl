@@ -67,8 +67,7 @@ _pointlist(visdomain::StructuredDomain{<:Tuple{<:Node}}) = visdomain
 function _pointlist(visdomain::StructuredDomain)
     sc = ComradeBase.shapedcoords(_hostdomain(visdomain))
     sz = size(visdomain)
-    cs = ComradeBase.coords(visdomain)
-    proto = haskey(cs, :U) ? cs.U : cs.u
+    proto = ComradeBase.coords(visdomain).U
     U = _like(proto, vec(_fullcoord(sc.U, sz)))
     V = _like(proto, vec(_fullcoord(sc.V, sz)))
     return StructuredDomain((; U, V); executor = executor(visdomain), header = header(visdomain))
