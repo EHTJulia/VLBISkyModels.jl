@@ -171,7 +171,7 @@ Makie.@recipe PolImage (img::IntensityMap{<:StokesParams},) begin
     pcolorrange = Makie.automatic
     "Polarized color map"
     pcolormap = Makie.automatic
-    "Number of polarization vectors to plot"
+    "Number of polarization markers along the longer image axis; the shorter axis gets the same spacing"
     nvec = 30
     "Minimal flux fraction to show ticks"
     min_frac = 0.1
@@ -187,6 +187,10 @@ Makie.@recipe PolImage (img::IntensityMap{<:StokesParams},) begin
     marker_width of the polarization markers
     """
     marker_width = 0.5
+    "Color of the border drawn around each polarization marker"
+    marker_strokecolor = :black
+    "Width of the border drawn around each polarization marker, in pixels; 0 draws no border"
+    marker_strokewidth = 0.4
     Makie.mixin_generic_plot_attributes()...
     Makie.mixin_colormap_attributes()...
 end
@@ -224,7 +228,9 @@ function Makie.plot!(plot::PolImage{<:Tuple{<:IntensityMap{<:StokesParams}}})
         return stokes(img, :I)
     end
 
-    pa = @lift -ComradeBase.posang(axisdims($img))
+    map!(plot.attributes, [:img], :pa) do img
+        return -ComradeBase.posang(axisdims(img))
+    end
 
 
     map!(
@@ -235,8 +241,13 @@ function Makie.plot!(plot::PolImage{<:Tuple{<:IntensityMap{<:StokesParams}}})
 
         X = img.X
         Y = img.Y
-        Xvec = range(X[begin + 1], X[end - 1]; length = nvec)
-        Yvec = range(Y[begin + 1], Y[end - 1]; length = nvec)
+        fovx = last(X) - first(X)
+        fovy = last(Y) - first(Y)
+        dx = max(fovx, fovy)
+        # One marker spacing on both axes, so a long, narrow image is not crowded across its
+        # short axis; the marker length below is scaled to this spacing.
+        Xvec = range(X[begin + 1], X[end - 1]; length = max(1, round(Int, nvec * fovx / dx)))
+        Yvec = range(Y[begin + 1], Y[end - 1]; length = max(1, round(Int, nvec * fovy / dx)))
 
         maxI = maximum((stokes(img, :I)))
         if ptot
@@ -244,10 +255,6 @@ function Makie.plot!(plot::PolImage{<:Tuple{<:IntensityMap{<:StokesParams}}})
         else
             maxL = maximum(x -> abs(linearpol(x)), img)
         end
-
-        fovx = last(X) - first(X)
-        fovy = last(Y) - first(Y)
-        dx = max(fovx, fovy)
 
         p = Point2{typeof(dx)}[]
         len = Vec2{typeof(dx)}[]
@@ -340,7 +347,11 @@ function Makie.plot!(plot::PolImage{<:Tuple{<:IntensityMap{<:StokesParams}}})
         plot, plot.attributes, plot.imgI
     )
 
-    rotate!(hm, pa[])
+    # The heatmap is drawn on the grid's own axes and turned onto the sky about the origin,
+    # matching `domainpoints`; the markers are already placed at sky positions.
+    on(plot.pa; update = true) do pa
+        rotate!(hm, pa)
+    end
 
 
     scatter!(
@@ -352,6 +363,8 @@ function Makie.plot!(plot::PolImage{<:Tuple{<:IntensityMap{<:StokesParams}}})
         colorrange = plot.pc,
         color = plot.col,
         colormap = plot.pcm,
+        strokecolor = plot.marker_strokecolor,
+        strokewidth = plot.marker_strokewidth,
     )
 
 
@@ -434,15 +447,7 @@ function _imgviz!(
     Colorbar(fig[1, 2], hm; label = "Brightness (Jy/μas²)", tellheight = true)
     colgap!(fig.layout, 15)
 
-    x1, y1 = rotmat(axisdims(img)) * VLBISkyModels.SVector(last(img.X), first(img.Y))
-    x2, y2 = rotmat(axisdims(img)) * VLBISkyModels.SVector(first(img.X), last(img.Y))
-    x3, y3 = rotmat(axisdims(img)) * VLBISkyModels.SVector(last(img.X), last(img.Y))
-    x4, y4 = rotmat(axisdims(img)) * VLBISkyModels.SVector(first(img.X), first(img.Y))
-
-    xl = min(x1, x2, x3, x4)
-    xu = max(x1, x2, x3, x4)
-    yl = min(y1, y2, y3, y4)
-    yu = max(y1, y2, y3, y4)
+    xl, xu, yl, yu = sky_limits(img)
 
     # Flip x l and u for astronomer conventions
     xlims!(ax, (xu, xl))
@@ -489,25 +494,34 @@ function _imgviz!(
     rowgap!(fig.layout, 15)
     trim!(fig.layout)
 
-    x1, y1 = rotmat(axisdims(img)) * VLBISkyModels.SVector(last(img.X), first(img.Y))
-    x2, y2 = rotmat(axisdims(img)) * VLBISkyModels.SVector(first(img.X), last(img.Y))
-    x3, y3 = rotmat(axisdims(img)) * VLBISkyModels.SVector(last(img.X), last(img.Y))
-    x4, y4 = rotmat(axisdims(img)) * VLBISkyModels.SVector(first(img.X), first(img.Y))
-
-    xl = min(x1, x2, x3, x4)
-    xu = max(x1, x2, x3, x4)
-    yl = min(y1, y2, y3, y4)
-    yu = max(y1, y2, y3, y4)
+    xl, xu, yl, yu = sky_limits(img)
 
     xlims!(ax, (xu, xl))
     ylims!(ax, (yl, yu))
     return Makie.FigureAxisPlot(fig, ax, hm)
 end
 
+# The sky-frame bounding box `(xmin, xmax, ymin, ymax)` of the pixel centers of `img`.
+function sky_limits(img)
+    rm = rotmat(axisdims(img))
+    X, Y = img.X, img.Y
+    corners = (
+        rm * SVector(first(X), first(Y)), rm * SVector(last(X), first(Y)),
+        rm * SVector(first(X), last(Y)), rm * SVector(last(X), last(Y)),
+    )
+    xs = map(first, corners)
+    ys = map(last, corners)
+    return minimum(xs), maximum(xs), minimum(ys), maximum(ys)
+end
+
+# The scale bar sits just inside the corner of the image's sky-frame bounding box at the
+# largest x and smallest y, which is the lower left of the plot since the x axis is reversed.
 function add_scalebar!(ax, img, scale_length, color)
-    fovx, fovy = fieldofview(img)
-    x0 = (last(img.X))
-    y0 = (first(img.Y))
+    xl, xu, yl, yu = sky_limits(img)
+    fovx = xu - xl
+    fovy = yu - yl
+    x0 = xu
+    y0 = yl
 
     sl = (scale_length)
     barx = [x0 - fovx / 32, x0 - fovx / 32 - sl]
