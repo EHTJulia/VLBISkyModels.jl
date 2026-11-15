@@ -80,10 +80,10 @@ function create_interpolator(g, vis::AbstractArray{<:Complex, N}, pulse) where {
     rm = ComradeBase.rotmat(g)'
     return f = let kg = kg, itp = itp, visre = visre, visim = visim, pulse = pulse
         p -> begin
-            pl = visibility_point(pulse, p)
             U2 = _rotatex(p.U, p.V, rm)
             V2 = _rotatey(p.U, p.V, rm)
             p2 = update_spat(p, U2, V2)
+            pl = visibility_point(pulse, p2)
             x = SVector{N}(myselect(p2, kg))
             vreal = interpolate(itp, visre, x)
             vimag = interpolate(itp, visim, x)
@@ -112,10 +112,10 @@ function create_interpolator(g, vis::StructArray{<:StokesParams}, pulse)
     # - sign is because we need to move into the frame of the vertical-horizontal image
     rm = ComradeBase.rotmat(g)'
     return function (p)
-        pl = visibility_point(pulse, p)
         U2 = _rotatex(p.U, p.V, rm)
         V2 = _rotatey(p.U, p.V, rm)
         p2 = update_spat(p, U2, V2)
+        pl = visibility_point(pulse, p2)
         x = SVector(myselect(p2, kg))
         return StokesParams(
             complex(

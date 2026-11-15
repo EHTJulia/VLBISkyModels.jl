@@ -96,3 +96,40 @@ end
     testrot(pm, g, gr, uv; alg = FFTAlg())
     testrot(pm, g, gr, uv; alg = DFTAlg())
 end
+
+# A raster on a rotated grid is the same image as that raster on an unrotated grid, turned by
+# the grid's position angle: rendering it on rotated grid points must reproduce the unrotated
+# rendering at the matching points, and its visibilities at (U, V) must equal the unrotated
+# image's visibilities at the (U, V) of the grid's axes.
+@testset "Rotated ContinuousImage" begin
+    pa = π / 7
+    g = imagepixels(6.0, 4.0, 48, 32, 0.3, -0.2)
+    gr = imagepixels(6.0, 4.0, 48, 32, 0.3, -0.2; posang = pa)
+    m = modify(Gaussian(), Stretch(0.8, 0.4), Shift(0.5, 0.2))
+    raster = parent(intensitymap(m, g))
+    pulse = BSplinePulse{3}()
+    cimg = ContinuousImage(raster, g, pulse)
+    cimgr = ContinuousImage(raster, gr, pulse)
+
+    # Output grids finer than the raster, so the samples fall between the pixel centers.
+    go = imagepixels(6.0, 4.0, 96, 64, 0.3, -0.2)
+    gor = imagepixels(6.0, 4.0, 96, 64, 0.3, -0.2; posang = pa)
+    img = intensitymap(cimg, go)
+    imgr = intensitymap(cimgr, gor)
+    @test parent(imgr) ≈ parent(img)
+    @test sum(imgr) ≈ flux(cimgr) rtol = 1.0e-3
+
+    uv = range(-1.0, 1.0; length = 7)
+    U = vec(uv .* ones(length(uv))')
+    V = vec(ones(length(uv)) .* uv')
+    rm = ComradeBase.rotmat(gr)'
+    Ug = VLBISkyModels._rotatex.(U, V, Ref(rm))
+    Vg = VLBISkyModels._rotatey.(U, V, Ref(rm))
+    guv = UnstructuredDomain((U = U, V = V))
+    guvg = UnstructuredDomain((U = Ug, V = Vg))
+    for alg in (NFFTAlg(), DFTAlg(), FFTAlg())
+        vr = visibilitymap(cimgr, FourierDualDomain(gr, guv, alg))
+        v = visibilitymap(cimg, FourierDualDomain(g, guvg, alg))
+        @test parent(vr) ≈ parent(v) rtol = 1.0e-5
+    end
+end
