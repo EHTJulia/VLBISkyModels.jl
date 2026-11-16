@@ -123,10 +123,10 @@ end
 
 """
     polimage(img::IntensityMap{<:StokesParams};
-                colormap = :sepia,
+                colormap = :cmr_gothic,
                 colorrange = Makie.automatic,
                 pcolorrange=Makie.automatic,
-                pcolormap=Makie.Reverse(:RdBu),
+                pcolormap=Makie.automatic,
                 nvec = 30,
                 min_frac = 0.1,
                 min_pol_frac=0.2,
@@ -193,7 +193,17 @@ Makie.@recipe PolImage (img::IntensityMap{<:StokesParams},) begin
     marker_strokewidth = 0.4
     Makie.mixin_generic_plot_attributes()...
     Makie.mixin_colormap_attributes()...
+    "Total intensity colormap"
+    colormap = :cmr_gothic
 end
+
+# Default marker colormaps, chosen to stand apart from the default intensity colormap
+# :cmr_gothic, whose hues are all violet and blue: every marker color differs by at least 28
+# (CIEDE2000) from each color in the upper 70% of :cmr_gothic, where markers are drawn. The
+# signed map runs red (negative V) to yellow to teal (positive V); its two ends stay
+# distinguishable under deuteranopia.
+const POL_TOTAL_COLORMAP = Makie.cgrad(["#c62828", "#ffe14d", "#00897b"])
+const POL_LINEAR_COLORMAP = :autumn1
 
 
 function polparams(x, y, s, xmin, ptot)
@@ -331,11 +341,7 @@ function Makie.plot!(plot::PolImage{<:Tuple{<:IntensityMap{<:StokesParams}}})
         if pcm != Makie.automatic
             return pcm
         end
-        if pt
-            return :cmr_guppy
-        else
-            return :cmr_neon
-        end
+        return pt ? POL_TOTAL_COLORMAP : POL_LINEAR_COLORMAP
     end
 
     # len2 = lift(plot.adjust_length, len, plot.length_norm) do al, l, lm
@@ -403,7 +409,7 @@ function imageviz(
         cmap = get(dkwargs, :colormap, :cmr_sepia)
     else
         res = get(dkwargs, :size, (640, 600))
-        cmap = get(dkwargs, :colormap, :cmr_neutral)
+        cmap = get(dkwargs, :colormap, :cmr_gothic)
     end
 
     bkgcolor = isnothing(backgroundcolor) ? Makie.to_colormap(cmap)[begin] : backgroundcolor
@@ -465,7 +471,7 @@ function _imgviz!(
     dkwargs = Dict(kwargs)
     crange = get(dkwargs, :colorrange, colorrange_default)
     delete!(dkwargs, :colorrange)
-    cmap = get(dkwargs, :colormap, :cmr_neutral)
+    cmap = get(dkwargs, :colormap, :cmr_gothic)
     delete!(dkwargs, :colormap)
     delete!(dkwargs, :size)
 
