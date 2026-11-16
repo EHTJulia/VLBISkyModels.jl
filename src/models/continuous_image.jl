@@ -87,6 +87,15 @@ imanalytic(::Type{<:ContinuousImage}) = IsAnalytic()
 
 radialextent(c::ContinuousImage) = maximum(values(fieldofview(c.img))) / 2
 
+# A sky point expressed on the grid's own axes. `domainpoints` places pixel `(i, j)` at
+# `rotmat(g) * (X[i], Y[j])`; undoing that rotation lets the point be compared directly with
+# `g.X` and `g.Y`. The identity for an unrotated grid.
+@inline function togrid(g::AbstractRectiGrid, p)
+    rm = rotmat(g)'
+    return (X = _rotatex(p.X, p.Y, rm), Y = _rotatey(p.X, p.Y, rm))
+end
+
+# `p` must already be on the grid's axes (see `togrid`).
 function support_ranges(img, p, rx, ry)
     dx, dy = pixelsizes(img)
     g = axisdims(img)
@@ -120,14 +129,19 @@ end
     rx *= dx
     ry *= dy
 
-    dp = domainpoints(img)
+    # The support window and the pulse offsets are both taken on the grid's axes. The pulse
+    # is the pixel response, so on a rotated grid it rotates with the pixels; `applypulse!`
+    # uses the same convention in the Fourier domain.
+    g = axisdims(img)
+    X, Y = g.X, g.Y
+    pg = togrid(g, p)
     sum = zero(eltype(img))
 
-    ix, iy = support_ranges(img, p, rx, ry)
+    ix, iy = support_ranges(img, pg, rx, ry)
 
     @trace for j in iy
         @trace for i in ix
-            dpi = (X = p.X - dp[i, j].X, Y = p.Y - dp[i, j].Y)
+            dpi = (X = pg.X - rgetindex(X, i), Y = pg.Y - rgetindex(Y, j))
             k = intensity_point(ms, dpi)
             sum += rgetindex(img, i, j) * k
         end
@@ -194,7 +208,12 @@ function applypulse!(vis, pulse, gfour::AbstractFourierDualDomain)
     # through the broadcast
     pvis = parent(vis)
     dp = domainpoints(guv)
-    vp = Base.Fix1(visibility_point, mp)
+    # The pulse is the pixel response, so it is evaluated at the (U, V) of the grid's own axes,
+    # matching the image-domain convention of `intensity_point`.
+    rm = rotmat(grid)'
+    vp = let mp = mp, rm = rm
+        q -> visibility_point(mp, update_spat(q, _rotatex(q.U, q.V, rm), _rotatey(q.U, q.V, rm)))
+    end
     pvis .*= vp.(dp)
     # for i in eachindex(pvis, dp)
     #     pvis[i] *= visibility_point(mp, dp[i])

@@ -85,6 +85,7 @@ ComradeBase.domainpoints
 ComradeBase.fieldofview
 ComradeBase.pixelsizes
 ComradeBase.phasecenter
+ComradeBase.refinespatial
 ComradeBase.executor
 ComradeBase.Serial
 ComradeBase.ThreadsEx
