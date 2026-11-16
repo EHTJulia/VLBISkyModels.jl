@@ -131,6 +131,8 @@ end
                 min_frac = 0.1,
                 min_pol_frac=0.2,
                 length_norm=1.0,
+                adjust_length=false,
+                length_ref=Makie.automatic,
                 plot_total=true)
 
 Plot a polarized intensity map using the image `img`.
@@ -147,7 +149,8 @@ quantities are considered.
  - The total polarization will be considered and the markers will be given by ellipses.
  - The orientation of the ellipse is equal to the EVPA.
  - The area of the ellipse is proportional to `|V|²`.
- - The semi-major axis is related to the total polarized intensity times the `length_norm`.
+ - The semi-major axis is related to the total polarized intensity times the `length_norm`
+   (see marker length below).
  - The color of the ellipse is given by the fractional total polarization times the
 sign of Stokes `V`.
 
@@ -156,8 +159,19 @@ sign of Stokes `V`.
  - Only the linear polarization is considered and the markers will be ticks.
  - The orientation of the ticks is equal to the EVPA.
  - The length of the ticks is equal to the total linear polarized intensity,
-   i.e. `√(Q² + U²)` times the `length_norm`.
+   i.e. `√(Q² + U²)` times the `length_norm` (see marker length below).
  - The color of the tick is given by the fractional linear polarization.
+
+**Marker length**
+
+ - If `adjust_length = false` every marker has the same length, `0.75 * length_norm` times the
+   marker spacing; ellipses keep their axis ratio. The length then does not depend on the image,
+   so images of the same field (e.g. posterior samples) have identical marker lengths.
+ - If `adjust_length = true` the marker length grows linearly with the polarized intensity of
+   its pixel, on a scale where a polarized intensity of `length_ref` corresponds to
+   `length_norm` marker spacings. `length_ref = Makie.automatic` uses the peak polarized
+   intensity of `img`, which differs between images; pass a number to put several images on
+   one scale.
 
 
 !!! warning
@@ -179,8 +193,10 @@ Makie.@recipe PolImage (img::IntensityMap{<:StokesParams},) begin
     min_pol_frac = 0.1
     "Renormalize the tick length"
     length_norm = 1.0
-    "Adjust the length of the ticks"
+    "If true the marker length grows with the polarized intensity; if false all markers have one length"
     adjust_length = false
+    "Polarized intensity (per pixel) whose marker is `length_norm` marker spacings long when `adjust_length = true`; automatic uses the image peak"
+    length_ref = Makie.automatic
     "If true plot the total polarization, if false only plot the linear polarization"
     plot_total = true
     """
@@ -190,7 +206,7 @@ Makie.@recipe PolImage (img::IntensityMap{<:StokesParams},) begin
     "Color of the border drawn around each polarization marker"
     marker_strokecolor = :black
     "Width of the border drawn around each polarization marker, in pixels; 0 draws no border"
-    marker_strokewidth = 0.4
+    marker_strokewidth = 0.75
     Makie.mixin_generic_plot_attributes()...
     Makie.mixin_colormap_attributes()...
     "Total intensity colormap"
@@ -214,7 +230,7 @@ end
 function ellipse_params(x, y, s, xmin)
     e = polellipse(s)
     p = Point2((x), (y))
-    len = Vec2(max(e.b, e.a / 20), e.a) / 2
+    len = Vec2(e.b, e.a)
     col = polintensity(s) / s.I * sign(s.V)
     rot = evpa(s)
     return p, len, col, rot
@@ -245,9 +261,9 @@ function Makie.plot!(plot::PolImage{<:Tuple{<:IntensityMap{<:StokesParams}}})
 
     map!(
         plot.attributes,
-        [:img, :nvec, :min_frac, :min_pol_frac, :length_norm, :plot_total, :adjust_length],
+        [:img, :nvec, :min_frac, :min_pol_frac, :length_norm, :plot_total, :adjust_length, :length_ref],
         [:p, :len, :col, :rot, :lenmul]
-    ) do img, nvec, Icut, pcut, length_norm, ptot, adjust_length
+    ) do img, nvec, Icut, pcut, length_norm, ptot, adjust_length, length_ref
 
         X = img.X
         Y = img.Y
@@ -271,7 +287,11 @@ function Makie.plot!(plot::PolImage{<:Tuple{<:IntensityMap{<:StokesParams}}})
         col = eltype(stokes(img, :I))[]
         rot = eltype(stokes(img, :I))[]
 
-        lenmul = dx / nvec / maxL .* length_norm
+        spacing = dx / nvec
+        lref = length_ref === Makie.automatic ? maxL : length_ref
+        lref > 0 || throw(ArgumentError("length_ref must be positive, got $lref"))
+        lenmul = spacing / lref .* length_norm
+        fixedlen = 0.75 * length_norm * spacing
         dimg = img
         rm = rotmat(axisdims(img))
         for y0 in Yvec
@@ -280,7 +300,7 @@ function Makie.plot!(plot::PolImage{<:Tuple{<:IntensityMap{<:StokesParams}}})
                 xyr = rm * SVector(x0, y0)
                 x = xyr[1]
                 y = xyr[2]
-                psi, leni, coli, roti = polparams(x, y, s, maxL ./ length_norm ./ 5, ptot)
+                psi, leni, coli, roti = polparams(x, y, s, lref ./ length_norm ./ 5, ptot)
 
                 if ptot
                     pol = polintensity(s)
@@ -290,21 +310,23 @@ function Makie.plot!(plot::PolImage{<:Tuple{<:IntensityMap{<:StokesParams}}})
 
                 if (pol / maxL > pcut && s.I / maxI > Icut)
                     push!(p, psi)
-                    push!(len, lenmul .* leni)
+                    l = lenmul .* leni
+                    # Fixed length: rescale so the long axis is `fixedlen`, keeping the
+                    # marker's width (ticks) or axis ratio (ellipses).
+                    if !adjust_length
+                        l = ptot ? l .* (fixedlen / l[2]) : typeof(l)(l[1], fixedlen)
+                    end
+                    # Ellipses are at least as wide as a linear tick, so nearly linear
+                    # polarization still draws a visible marker.
+                    ptot && (l = typeof(l)(max(l[1], spacing / 7.5), l[2]))
+                    push!(len, l)
                     push!(col, coli)
                     push!(rot, -roti)
                 end
             end
         end
 
-        if (!adjust_length && length(len) > 0)
-            len2 = maximum(len)
-        else
-            len2 = len
-        end
-
-
-        return p, len2, col, rot, lenmul
+        return p, len, col, rot, lenmul
     end
 
     # p = lift(x -> getindex(x, 1), points)
@@ -327,13 +349,15 @@ function Makie.plot!(plot::PolImage{<:Tuple{<:IntensityMap{<:StokesParams}}})
     end
 
     map!(plot.attributes, [:plot_total, :marker_width], :mrk) do pt, marker_width
-        pbig = Makie.GeometryBasics.decompose(Point2f, Circle(Point2f(0), 2.0))
-        psmall = Makie.GeometryBasics.decompose(Point2f, Circle(Point2f(0), (1 - marker_width) * 2.0))
+        # Both shapes are one unit across and centered on the origin, so `markersize` is the
+        # marker's extent in data units and each marker is centered on its sample point.
+        pbig = Makie.GeometryBasics.decompose(Point2f, Circle(Point2f(0), 0.5))
+        psmall = Makie.GeometryBasics.decompose(Point2f, Circle(Point2f(0), (1 - marker_width) * 0.5))
         # prect = Makie.Polygon(Makie.GeometryBasics.decompose(Point2f, Rect(Point2f(0), Point2f(0.0), 2.0, 2.0)))
         if pt
             return Makie.GeometryBasics.Polygon(pbig, [psmall])
         else
-            return Makie.Polygon(Makie.GeometryBasics.decompose(Point2f, Rect(0.0, 0.0, 1.0, 1.0)))
+            return Makie.Polygon(Makie.GeometryBasics.decompose(Point2f, Rect(-0.5, -0.5, 1.0, 1.0)))
         end
     end
 
