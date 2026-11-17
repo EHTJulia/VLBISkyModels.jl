@@ -229,6 +229,7 @@ end
     include("polarized.jl")
     include("multidomain.jl")
     include("utility.jl")
+    include("convolution_enzyme.jl")
     include("viz.jl")
     include("io.jl")
     include("stokesintensitymap.jl")
