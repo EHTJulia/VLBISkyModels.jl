@@ -57,7 +57,8 @@ end
             ), g
         )
     )
-    testgrad(foo, rand(6))
+    # Fixed parameters: the finite-difference steps must keep τ < 1, where sqrt(1 - τ) is real.
+    testgrad(foo, [0.6, 0.2, 0.3, 0.4, 0.1, -0.1])
 end
 
 @testset "RingTemplate" begin
