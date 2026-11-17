@@ -35,7 +35,7 @@ end
 
     @test_throws "tick_width must be positive" polimage(img; tick_width = 0)
 
-    # The border is a copy of each marker, larger by `marker_border` tick widths on each side.
+    # The border is drawn beneath each marker, larger by `marker_border` tick widths on each side.
     pd = polimage!(CM.Axis(fig[1, 3]), img; plot_total = false)
     b = 0.12 * 0.25 * spacing
     @test pd.showborder[]
@@ -44,15 +44,29 @@ end
     @test !polimage(img; marker_border = 0).plot.showborder[]
     @test_throws "marker_border must be nonnegative" polimage(img; marker_border = -0.1)
 
-    # The deprecated attributes warn when the plot is computed and draw the border as a Makie
-    # stroke.
-    pw = polimage(img; marker_width = 0.5).plot
-    @test_logs (:warn, r"marker_width. is deprecated") pw.stroked[]
-    @test pw.stroked[] && !pw.showborder[] && pw.strokew[] == 0.75
+    # Ellipses are rings; each ring's border also lines its hole, `b` inside the marker's hole.
+    @test length(only(pe.mrk[].interiors)) == length(pe.mrk[].exterior)
+    holes = 0
+    for (l, bl, bm) in zip(pe.len[], pe.blen[], pe.bmrk[])
+        # Full axes of the border's hole: the marker's hole less the border on each side.
+        h = 0.5 .* l .- 2 * 0.12 * 0.3 * spacing
+        all(>(0), h) || (@test isempty(bm.interiors); continue)
+        # Hole extent relative to the border's outer extent, both from the same polygon.
+        hole, outer = only(bm.interiors), bm.exterior
+        ext(f, pts) = maximum(f, pts) - minimum(f, pts)
+        @test ext(first, hole) / ext(first, outer) ≈ h[1] / bl[1] rtol = 1.0e-5
+        @test ext(last, hole) / ext(last, outer) ≈ h[2] / bl[2] rtol = 1.0e-5
+        holes += 1
+    end
+    @test holes > 0
+    @test isempty(polimage(img; marker_width = 1).plot.mrk[].interiors)
+    @test_throws "marker_width must be in (0, 1]" polimage(img; marker_width = 1.5).plot.mrk[]
+
+    # The deprecated `marker_strokewidth` warns when the plot is computed and draws the border
+    # as a Makie stroke.
     ps = polimage(img; marker_strokewidth = 0.3).plot
     @test_logs (:warn, r"marker_strokewidth. is deprecated") ps.stroked[]
     @test ps.stroked[] && !ps.showborder[] && ps.strokew[] == 0.3
-    @test_throws "marker_width must be in (0, 1]" polimage(img; marker_width = 1.5).plot.stroked[]
 
     # imageviz's polarization colorbar follows the markers, not their borders.
     fv = imageviz(img)

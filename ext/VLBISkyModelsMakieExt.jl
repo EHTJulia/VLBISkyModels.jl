@@ -149,7 +149,7 @@ quantities are considered.
 
 **If `plot_total = true`**
 
- - The total polarization will be considered and the markers will be given by filled ellipses.
+ - The total polarization will be considered and the markers will be given by ellipses.
  - The orientation of the ellipse is equal to the EVPA.
  - The area of the ellipse is proportional to `|V|²`.
  - The semi-major axis is related to the total polarized intensity times the `length_norm`
@@ -181,13 +181,13 @@ sign of Stokes `V`.
  - Linear-polarization ticks are `tick_width` marker spacings wide, and ellipses are at least
    that wide. Like the length, the width is a fixed fraction of the marker spacing, so it scales
    with the field of view and `nvec`.
+ - Ellipses are rings that fill the fraction `marker_width` of their radius; `marker_width = 1`
+   draws filled ellipses.
  - Each marker has a `marker_strokecolor` border `marker_border` tick widths thick, drawn
-   outside the marker; 0 draws no border. The border is in data units like the marker, so it
-   keeps the same proportion to the marker at any `nvec`, field of view or figure size.
- - `marker_width` and `marker_strokewidth` are deprecated and warn when given. With
-   `marker_width`, ellipses are rings whose filled fraction of the radius is `marker_width`;
-   with either, the border is a Makie stroke `marker_strokewidth` screen units wide (0.75 if
-   only `marker_width` is given) instead of `marker_border`.
+   along each of its edges; 0 draws no border. The border is in data units like the marker, so
+   it keeps the same proportion to the marker at any `nvec`, field of view or figure size.
+ - `marker_strokewidth` is deprecated and warns when given; it draws the border as a Makie
+   stroke `marker_strokewidth` screen units wide instead of `marker_border`.
 
 
 !!! warning
@@ -217,12 +217,12 @@ Makie.@recipe PolImage (img::IntensityMap{<:StokesParams},) begin
     plot_total = true
     "Width of a linear-polarization tick, and the least width of an ellipse, in marker spacings"
     tick_width = 0.25
-    "Thickness of the border drawn outside each polarization marker, in tick widths; 0 draws no border"
+    "Thickness of the border drawn along each edge of a polarization marker, in tick widths; 0 draws no border"
     marker_border = 0.12
     "Color of the border drawn around each polarization marker"
     marker_strokecolor = :black
-    "Deprecated: draws ellipses as rings filling this fraction of their radius"
-    marker_width = nothing
+    "Fraction of each ellipse's radius that its ring fills; 1 draws filled ellipses"
+    marker_width = 0.5
     "Deprecated: draws the border as a Makie stroke this many screen units wide"
     marker_strokewidth = nothing
     Makie.mixin_generic_plot_attributes()...
@@ -355,7 +355,7 @@ function Makie.plot!(plot::PolImage{<:Tuple{<:IntensityMap{<:StokesParams}}})
             end
         end
 
-        # Each marker's border is a copy of it, larger by `b` on every side, drawn beneath it.
+        # Each marker's border is drawn beneath it, larger by `b` on every side.
         blen = [l .+ 2b for l in len]
         return p, len, col, rot, lenmul, blen
     end
@@ -379,35 +379,42 @@ function Makie.plot!(plot::PolImage{<:Tuple{<:IntensityMap{<:StokesParams}}})
         end
     end
 
-    # The deprecated `marker_width` and `marker_strokewidth` draw the border as a Makie stroke,
-    # in screen units, instead of the copy beneath each marker; a copy would fill a ring's hole.
+    # The deprecated `marker_strokewidth` draws the border as a Makie stroke, in screen units,
+    # instead of beneath each marker.
     map!(
-        plot.attributes, [:marker_width, :marker_strokewidth, :marker_border, :visible],
+        plot.attributes, [:marker_strokewidth, :marker_border, :visible],
         [:stroked, :strokew, :showborder]
-    ) do mw, sw, border, visible
-        if !isnothing(mw)
-            Base.depwarn(
-                "polimage's `marker_width` is deprecated and will be removed: ellipses are " *
-                    "filled, and `marker_border` sets their border", :polimage; force = true
-            )
-            0 < mw <= 1 || throw(ArgumentError("marker_width must be in (0, 1], got $mw"))
-        end
+    ) do sw, border, visible
         isnothing(sw) || Base.depwarn(
             "polimage's `marker_strokewidth` is deprecated and will be removed: " *
                 "`marker_border` sets the border in tick widths", :polimage; force = true
         )
-        stroked = !(isnothing(mw) && isnothing(sw))
-        return stroked, stroked ? something(sw, 0.75) : 0.0, visible && !stroked && border > 0
+        stroked = !isnothing(sw)
+        return stroked, stroked ? sw : 0.0, visible && !stroked && border > 0
     end
 
-    map!(plot.attributes, [:plot_total, :marker_width], :mrk) do pt, marker_width
-        # Both shapes are one unit across and centered on the origin, so `markersize` is the
-        # marker's extent in data units and each marker is centered on its sample point.
-        pt || return Makie.Polygon(Makie.GeometryBasics.decompose(Point2f, Rect(-0.5, -0.5, 1.0, 1.0)))
-        outer = Makie.GeometryBasics.decompose(Point2f, Circle(Point2f(0), 0.5))
-        isnothing(marker_width) && return Makie.Polygon(outer)
-        inner = Makie.GeometryBasics.decompose(Point2f, Circle(Point2f(0), (1 - marker_width) * 0.5))
-        return Makie.GeometryBasics.Polygon(outer, [inner])
+    # All shapes are one unit across and centered on the origin, so `markersize` is the
+    # marker's extent in data units and each marker is centered on its sample point.
+    unitcircle = Makie.GeometryBasics.decompose(Point2f, Circle(Point2f(0), 0.5))
+    unitsquare = Makie.Polygon(Makie.GeometryBasics.decompose(Point2f, Rect(-0.5, -0.5, 1.0, 1.0)))
+
+    map!(plot.attributes, [:plot_total, :marker_width], :mrk) do pt, mw
+        0 < mw <= 1 || throw(ArgumentError("marker_width must be in (0, 1], got $mw"))
+        pt || return unitsquare
+        mw == 1 && return Makie.Polygon(unitcircle)
+        return Makie.Polygon(unitcircle, [unitcircle .* Float32(1 - mw)])
+    end
+
+    # A ring's border runs along both its outer and inner edges. The hole of the border shape,
+    # relative to its size, differs between markers, so each ellipse has its own border shape.
+    map!(plot.attributes, [:plot_total, :marker_width, :len, :blen], :bmrk) do pt, mw, len, blen
+        pt || return unitsquare
+        return map(len, blen) do l, bl
+            # Semi-axes of the border's hole, in data units: the marker's hole less the border.
+            h = (1 - mw) .* l ./ 2 .- (bl .- l) ./ 2
+            all(>(0), h) || return Makie.Polygon(unitcircle)
+            return Makie.Polygon(unitcircle, [unitcircle .* Point2f(2 .* h ./ bl)])
+        end
     end
 
     map!(plot.attributes, [:pcolormap, :plot_total], :pcm) do pcm, pt
@@ -436,7 +443,7 @@ function Makie.plot!(plot::PolImage{<:Tuple{<:IntensityMap{<:StokesParams}}})
     # All borders are drawn before any marker, so no border covers a neighboring marker.
     scatter!(
         plot, plot.p;
-        marker = plot.mrk,
+        marker = plot.bmrk,
         markersize = plot.blen,
         markerspace = :data,
         rotation = plot.rot,
